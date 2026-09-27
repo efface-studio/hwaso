@@ -72,3 +72,22 @@
     background-position: -200% 0;
   }
 }
+
+/* 테마별로 다른 자산(로고·배너)을 보여줄 때 */
+.theme-dark-only {
+  display: none !important;
+}
+:root[data-theme='dark'] .theme-light-only {
+  display: none !important;
+}
+:root[data-theme='dark'] .theme-dark-only {
+  display: block !important;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .theme-light-only {
+    display: none !important;
+  }
+  :root:not([data-theme='light']) .theme-dark-only {
+    display: block !important;
+  }
+}
