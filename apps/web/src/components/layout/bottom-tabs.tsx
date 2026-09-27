@@ -1,26 +1,23 @@
 'use client';
 
-import { Gavel, Home, PlusSquare, Search, User } from 'lucide-react';
+import { Gavel, Home, MessageCircle, PlusSquare, User } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/cn';
+import { CountBadge, useUnreadCounts } from './badges';
 
 const TABS = [
   { href: '/', label: '홈', Icon: Home, match: (p: string) => p === '/' },
-  {
-    href: '/search',
-    label: '검색',
-    Icon: Search,
-    match: (p: string) => p.startsWith('/search') || p.startsWith('/category'),
-  },
-  { href: '/sell', label: '판매', Icon: PlusSquare, match: (p: string) => p.startsWith('/sell') },
   { href: '/auctions', label: '경매', Icon: Gavel, match: (p: string) => p.startsWith('/auctions') },
+  { href: '/sell', label: '판매', Icon: PlusSquare, match: (p: string) => p.startsWith('/sell') },
+  { href: '/chat', label: '채팅', Icon: MessageCircle, match: (p: string) => p.startsWith('/chat') },
   { href: '/my', label: '마이', Icon: User, match: (p: string) => p.startsWith('/my') },
 ] as const;
 
 /** 모바일(<768px) 전용 하단 탭 — docs/WEB_ROUTES.md 레이아웃 */
 export function BottomTabs() {
   const pathname = usePathname();
+  const unread = useUnreadCounts();
   return (
     <nav
       aria-label="주요 메뉴"
@@ -39,7 +36,10 @@ export function BottomTabs() {
                   active ? 'text-foreground' : 'text-muted',
                 )}
               >
-                <Icon className="size-[22px]" strokeWidth={active ? 2 : 1.5} aria-hidden />
+                <span className="relative">
+                  <Icon className="size-[22px]" strokeWidth={active ? 2 : 1.5} aria-hidden />
+                  {href === '/chat' && <CountBadge n={unread.chat} className="-top-1.5 -right-2.5" />}
+                </span>
                 {label}
               </Link>
             </li>
