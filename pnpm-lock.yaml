@@ -153,6 +153,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@portone/browser-sdk':
+        specifier: 0.1.11
+        version: 0.1.11
       '@shop/api-client':
         specifier: workspace:*
         version: link:../../packages/api-client
@@ -1362,6 +1365,9 @@ packages:
 
   '@pinojs/redact@0.4.0':
     resolution: {integrity: sha512-k2ENnmBugE/rzQfEcdWHcCY+/FM3VLzH9cYEsbdsoqrvzAKRhUZeRNhAZvB8OitQJ1TBed3yqWtdjzS6wJKBwg==}
+
+  '@portone/browser-sdk@0.1.11':
+    resolution: {integrity: sha512-4rOvbBbVztIhHL2PeWWW0RwoxD00pJirchCXGpEeJs3hbyegzJxgGvxqJM/Eh6y5y0k6oLQUHJuDj4LH2173NA==}
 
   '@prisma/client@6.19.3':
     resolution: {integrity: sha512-mKq3jQFhjvko5LTJFHGilsuQs+W+T3Gm451NzuTDGQxwCzwXHYnIu2zGkRoW+Exq3Rob7yp2MfzSrdIiZVhrBg==}
@@ -5548,6 +5554,8 @@ snapshots:
   '@phc/format@1.0.0': {}
 
   '@pinojs/redact@0.4.0': {}
+
+  '@portone/browser-sdk@0.1.11': {}
 
   '@prisma/client@6.19.3(prisma@6.19.3(typescript@5.9.3))(typescript@5.9.3)':
     optionalDependencies:
