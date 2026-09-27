@@ -4,3 +4,4 @@ pnpm-lock.yaml
 **/.expo
 **/coverage
 **/migrations/**/*.sql
+packages/tokens/tokens.css
