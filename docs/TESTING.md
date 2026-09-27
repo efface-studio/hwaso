@@ -14,7 +14,7 @@ API 통합 테스트는 **모킹하지 않은 DB** 로 돈다. 동시성·잠금
 
 ## 테스트 DB
 
-- 로컬: `docker compose up -d postgres redis` → `pnpm --filter @shop/api test` 가 `DATABASE_URL_TEST`(`shop_test` DB)에 `prisma migrate reset --force --skip-seed` 후 실행.
+- 로컬: `docker compose up -d postgres redis` → `pnpm --filter @shop/api test` 가 `DATABASE_URL_TEST`(`shop_test` DB, 이름이 `_test` 로 끝나야 함)에 `prisma migrate deploy` 후 모든 테이블을 TRUNCATE 하고 실행.
 - 각 spec 파일은 고유 데이터(랜덤 이메일 등)를 만들어 서로 간섭하지 않는다. 테이블 truncate 는 전역 setup 에서 1회.
 - CI: GitHub Actions 서비스 컨테이너 (postgres:16, redis:7).
 

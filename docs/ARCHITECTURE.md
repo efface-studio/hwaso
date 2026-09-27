@@ -26,7 +26,7 @@ docs/         설계 문서
 ```
 
 - tsconfig 공통값은 루트 `tsconfig.base.json` 에 둔다. (별도 config 패키지는 만들지 않는다)
-- 공유 패키지는 **소스(TS) 그대로 export** 하고 각 앱 번들러(Next/Metro)가 트랜스파일한다. API 는 tsc 빌드 시 함께 컴파일한다.
+- 공유 패키지는 **소스(TS) 그대로 export** 하고 각 앱 번들러(Next/Metro)가 트랜스파일한다. API 는 tsup(swc, 데코레이터 메타데이터 지원)이 워크스페이스 패키지를 번들에 포함해 빌드한다.
 - Web/Mobile UI 컴포넌트는 플랫폼별로 구현한다 (DOM vs Native). 토큰·스키마·로직만 공유한다.
 
 ## 3. 런타임 구성
