@@ -12,7 +12,10 @@ export const NOTIFICATION_CATEGORY_LABEL: Record<
   auction: { label: '경매', description: '상위 입찰, 종료 임박, 낙찰·유찰, 관심 경매 시작' },
   trade: { label: '주문·배송', description: '결제, 발송, 배송 완료, 취소·환불' },
   chat: { label: '채팅', description: '새 메시지' },
-  activity: { label: '활동', description: '문의·답변, 후기, 관심 작품 가격 인하' },
+  activity: {
+    label: '활동',
+    description: '문의·답변, 후기, 팔로우, 관심 작품 가격 인하, 팔로우한 판매자의 새 작품',
+  },
 };
 
 export const NOTIFICATION_CATEGORY: Record<NotificationType, NotificationCategory | 'system'> = {
@@ -34,6 +37,7 @@ export const NOTIFICATION_CATEGORY: Record<NotificationType, NotificationCategor
   PRICE_CHANGED: 'activity',
   FOLLOWED: 'activity',
   FAVORITE_ON_SALE: 'activity',
+  FOLLOWING_NEW_ITEM: 'activity',
   SYSTEM: 'system',
 };
 
