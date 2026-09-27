@@ -1,0 +1,219 @@
+/* 자동 생성 파일 — packages/tokens/src 를 수정한 뒤 `pnpm --filter @shop/tokens build:css` 를 실행하세요. */
+
+:root {
+  --background: #FFFFFF;
+  --background-soft: #FAFAFA;
+  --surface: #FFFFFF;
+  --surface-2: #F5F5F5;
+  --foreground: #0A0A0A;
+  --foreground-2: #171717;
+  --muted: #5C5C5C;
+  --faint: #8A8A8A;
+  --border: #E5E5E5;
+  --border-soft: #F0F0F0;
+  --border-strong: #D4D4D4;
+  --primary: #2F7A58;
+  --primary-hover: #276849;
+  --primary-soft: #2F7A5814;
+  --primary-foreground: #FFFFFF;
+  --secondary: #0A0A0A;
+  --secondary-foreground: #FFFFFF;
+  --destructive: #DC2626;
+  --success: #1F8A4C;
+  --warning: #B45309;
+  --live: #DC2626;
+  --focus-ring: #2F7A58;
+  --overlay: #0A0A0A66;
+  --skeleton-base: #ECECEF;
+  --skeleton-shine: #F8F8FA;
+  --shadow-sm-value: 0 1px 2px rgb(0 0 0 / 0.06);
+  --shadow-md-value: 0 8px 24px rgb(0 0 0 / 0.12);
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  --background: #0A0A0B;
+  --background-soft: #101013;
+  --surface: #141418;
+  --surface-2: #1B1B21;
+  --foreground: #F6F6F7;
+  --foreground-2: #EDEDEF;
+  --muted: #9B9BA4;
+  --faint: #6A6A73;
+  --border: #FFFFFF17;
+  --border-soft: #FFFFFF0D;
+  --border-strong: #FFFFFF29;
+  --primary: #5FAE86;
+  --primary-hover: #74BD97;
+  --primary-soft: #5FAE8624;
+  --primary-foreground: #07140E;
+  --secondary: #F6F6F7;
+  --secondary-foreground: #0A0A0B;
+  --destructive: #F0443A;
+  --success: #4CC38A;
+  --warning: #F5A524;
+  --live: #F0443A;
+  --focus-ring: #5FAE86;
+  --overlay: #000000A6;
+  --skeleton-base: #1B1B21;
+  --skeleton-shine: #2A2A32;
+  --shadow-sm-value: 0 1px 2px rgb(0 0 0 / 0.4);
+  --shadow-md-value: 0 8px 24px rgb(0 0 0 / 0.5);
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --background: #0A0A0B;
+    --background-soft: #101013;
+    --surface: #141418;
+    --surface-2: #1B1B21;
+    --foreground: #F6F6F7;
+    --foreground-2: #EDEDEF;
+    --muted: #9B9BA4;
+    --faint: #6A6A73;
+    --border: #FFFFFF17;
+    --border-soft: #FFFFFF0D;
+    --border-strong: #FFFFFF29;
+    --primary: #5FAE86;
+    --primary-hover: #74BD97;
+    --primary-soft: #5FAE8624;
+    --primary-foreground: #07140E;
+    --secondary: #F6F6F7;
+    --secondary-foreground: #0A0A0B;
+    --destructive: #F0443A;
+    --success: #4CC38A;
+    --warning: #F5A524;
+    --live: #F0443A;
+    --focus-ring: #5FAE86;
+    --overlay: #000000A6;
+    --skeleton-base: #1B1B21;
+    --skeleton-shine: #2A2A32;
+    --shadow-sm-value: 0 1px 2px rgb(0 0 0 / 0.4);
+    --shadow-md-value: 0 8px 24px rgb(0 0 0 / 0.5);
+    color-scheme: dark;
+  }
+}
+
+@theme inline {
+  --color-*: initial;
+  --color-white: #ffffff;
+  --color-black: #000000;
+  --color-transparent: transparent;
+  --color-current: currentColor;
+  --color-background: var(--background);
+  --color-background-soft: var(--background-soft);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-foreground: var(--foreground);
+  --color-foreground-2: var(--foreground-2);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-border: var(--border);
+  --color-border-soft: var(--border-soft);
+  --color-border-strong: var(--border-strong);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-soft: var(--primary-soft);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-destructive: var(--destructive);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-live: var(--live);
+  --color-focus-ring: var(--focus-ring);
+  --color-overlay: var(--overlay);
+  --color-skeleton-base: var(--skeleton-base);
+  --color-skeleton-shine: var(--skeleton-shine);
+
+  --font-sans: var(--font-pretendard), "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+
+  --shadow-*: initial;
+  --shadow-none: none;
+  --shadow-sm: var(--shadow-sm-value);
+  --shadow-md: var(--shadow-md-value);
+}
+
+/* inline 이 아닌 @theme — 유틸리티가 var(--text-h1) 을 참조해 아래 모바일 재정의가 적용된다 */
+@theme {
+  --spacing: 4px;
+  --text-display: 40px;
+  --text-display--line-height: 48px;
+  --text-display--font-weight: 700;
+  --text-display--letter-spacing: -0.02em;
+  --text-h-1: 28px;
+  --text-h-1--line-height: 36px;
+  --text-h-1--font-weight: 700;
+  --text-h-1--letter-spacing: -0.015em;
+  --text-h-2: 20px;
+  --text-h-2--line-height: 28px;
+  --text-h-2--font-weight: 700;
+  --text-h-2--letter-spacing: -0.01em;
+  --text-h-3: 17px;
+  --text-h-3--line-height: 24px;
+  --text-h-3--font-weight: 600;
+  --text-h-3--letter-spacing: -0.005em;
+  --text-body: 15px;
+  --text-body--line-height: 24px;
+  --text-body--font-weight: 400;
+  --text-body--letter-spacing: 0em;
+  --text-body-strong: 15px;
+  --text-body-strong--line-height: 24px;
+  --text-body-strong--font-weight: 600;
+  --text-body-strong--letter-spacing: 0em;
+  --text-small: 13px;
+  --text-small--line-height: 20px;
+  --text-small--font-weight: 400;
+  --text-small--letter-spacing: 0em;
+  --text-caption: 12px;
+  --text-caption--line-height: 16px;
+  --text-caption--font-weight: 400;
+  --text-caption--letter-spacing: 0em;
+  --text-label: 13px;
+  --text-label--line-height: 18px;
+  --text-label--font-weight: 500;
+  --text-label--letter-spacing: 0em;
+  --text-price: 16px;
+  --text-price--line-height: 22px;
+  --text-price--font-weight: 700;
+  --text-price--letter-spacing: -0.01em;
+  --text-price-lg: 24px;
+  --text-price-lg--line-height: 32px;
+  --text-price-lg--font-weight: 700;
+  --text-price-lg--letter-spacing: -0.015em;
+
+  --radius-*: initial;
+  --radius-none: 0px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --radius-full: 9999px;
+
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 12px;
+  --spacing-lg: 16px;
+  --spacing-xl: 24px;
+  --spacing-2xl: 32px;
+  --spacing-3xl: 48px;
+  --spacing-4xl: 64px;
+
+  --container-page: 1280px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1280px;
+
+  --ease-out: cubic-bezier(.25, 1, .5, 1);
+  --default-transition-duration: 200ms;
+  --default-transition-timing-function: cubic-bezier(.25, 1, .5, 1);
+}
+
+@media (max-width: 767px) {
+  :root {
+    --text-display: 30px;
+    --text-display--line-height: 38px;
+    --text-h-1: 22px;
+    --text-h-1--line-height: 30px;
+  }
+}
