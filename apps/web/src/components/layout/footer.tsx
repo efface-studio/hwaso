@@ -95,7 +95,20 @@ export function Footer() {
             보호됩니다. 거래 분쟁은 고객센터 또는 한국소비자원·전자거래분쟁조정위원회를 통해 조정을 신청할 수
             있습니다.
           </p>
-          <p className="tabular">© {year} Hwaso Inc. All rights reserved.</p>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="tabular">© {year} Hwaso Inc. All rights reserved.</p>
+            <p>
+              Created by{' '}
+              <a
+                href="https://efface.dev"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-semibold text-foreground-2 hover:text-foreground hover:underline"
+              >
+                efface
+              </a>
+            </p>
+          </div>
         </div>
       </div>
     </footer>
