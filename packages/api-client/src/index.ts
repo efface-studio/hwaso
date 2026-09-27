@@ -2,6 +2,7 @@ import { createHttp, type HttpConfig } from './http';
 import { authApi } from './endpoints/auth';
 import { auctionsApi } from './endpoints/auctions';
 import { marketApi } from './endpoints/market';
+import { notificationsApi } from './endpoints/notifications';
 import { ordersApi } from './endpoints/orders';
 
 export type { UploadedImage } from './endpoints/market';
@@ -18,6 +19,7 @@ export function createApiClient(config: HttpConfig) {
     market: marketApi(http),
     auctions: auctionsApi(http),
     orders: ordersApi(http),
+    notifications: notificationsApi(http),
     time: () => http.get<{ serverTime: string }>('/time'),
   };
 }

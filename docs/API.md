@@ -205,14 +205,18 @@ NestJS REST API. Base URL `/api/v1`. 모든 요청/응답은 JSON (업로드 제
 
 ### Reviews / Notifications / Reports
 
-| Method | Path                        | 권한      | 설명                                   |
-| ------ | --------------------------- | --------- | -------------------------------------- |
-| POST   | /orders/:id/reviews         | U         | COMPLETED 주문 당사자, 1회             |
-| DELETE | /reviews/:id                | U(작성자) |                                        |
-| GET    | /notifications              | U         | 커서                                   |
-| POST   | /notifications/read         | U         | {ids} 또는 {all:true}                  |
-| GET    | /notifications/unread-count | U         |                                        |
-| POST   | /reports                    | U         | {targetType, targetId, reason, detail} |
+| Method      | Path                                | 권한      | 설명                                                                               |
+| ----------- | ----------------------------------- | --------- | ---------------------------------------------------------------------------------- |
+| POST        | /orders/:id/reviews                 | U         | COMPLETED 주문 당사자, 1회                                                         |
+| DELETE      | /reviews/:id                        | U(작성자) |                                                                                    |
+| GET         | /notifications                      | U         | 커서 (30개)                                                                        |
+| POST        | /notifications/read                 | U         | {ids} 또는 {all:true} → {unreadCount}                                              |
+| GET         | /notifications/unread-count         | U         |                                                                                    |
+| DELETE      | /notifications/:id · /notifications | U         | 한 건 삭제 / 읽은 알림 모두 삭제                                                   |
+| GET/PUT     | /me/notification-settings           | U         | {push:{auction,trade,chat,activity}, quietHours} — 방해 금지 21~8시(KST) 푸시 보류 |
+| POST/DELETE | /me/push-tokens                     | U         | {token, platform: expo·web} 등록(기기당 한 계정)·해제                              |
+| GET         | /notifications/push-config          | -         | {vapidPublicKey} (웹 푸시 구독용, 미설정 시 null)                                  |
+| POST        | /reports                            | U         | {targetType, targetId, reason, detail}                                             |
 
 ### Admin (`/admin/*`, 모든 변경은 AuditLog 기록)
 
@@ -236,20 +240,20 @@ NestJS REST API. Base URL `/api/v1`. 모든 요청/응답은 JSON (업로드 제
 
 연결: `io(API_ORIGIN + "/rt", { auth: { token } })`. 토큰 없이도 연결 가능 (경매 관전). 토큰이 유효하지 않으면 익명으로 취급한다.
 
-| 방향 | 이벤트                           | payload                                                                            |
-| ---- | -------------------------------- | ---------------------------------------------------------------------------------- |
-| C→S  | `auction:join` / `auction:leave` | {auctionId} → ack {snapshot, serverTime}                                           |
-| C→S  | `chat:join`                      | {roomId} (참여자 검증)                                                             |
-| C→S  | `time:sync`                      | ack {serverTime}                                                                   |
-| S→C  | `AUCTION_BID`                    | {auctionId, seq, bid:{id, amount, bidderMasked, createdAt}}                        |
-| S→C  | `AUCTION_PRICE_UPDATED`          | {auctionId, seq, currentPrice, minNextBid, bidCount, bidderCount, highestBidderId} |
-| S→C  | `AUCTION_TIMER_UPDATED`          | {auctionId, seq, endsAt, serverTime}                                               |
-| S→C  | `AUCTION_EXTENDED`               | {auctionId, seq, endsAt, extendedBySec}                                            |
-| S→C  | `AUCTION_STARTED`                | {auctionId, seq, status}                                                           |
-| S→C  | `AUCTION_ENDED`                  | {auctionId, seq, result, winnerId, finalPrice}                                     |
-| S→C  | `CHAT_MESSAGE`                   | {roomId, message}                                                                  |
-| S→C  | `CHAT_READ`                      | {roomId, userId, lastReadAt}                                                       |
-| S→C  | `NOTIFICATION`                   | {notification, unreadCount} (room `user:{id}`)                                     |
-| S→C  | `ORDER_STATUS_UPDATED`           | {orderId, status} (room `user:{id}`)                                               |
+| 방향 | 이벤트                           | payload                                                                                                                 |
+| ---- | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| C→S  | `auction:join` / `auction:leave` | {auctionId} → ack {snapshot, serverTime}                                                                                |
+| C→S  | `chat:join`                      | {roomId} (참여자 검증)                                                                                                  |
+| C→S  | `time:sync`                      | ack {serverTime}                                                                                                        |
+| S→C  | `AUCTION_BID`                    | {auctionId, seq, bid:{id, amount, bidderMasked, createdAt}}                                                             |
+| S→C  | `AUCTION_PRICE_UPDATED`          | {auctionId, seq, currentPrice, minNextBid, bidCount, bidderCount, highestBidderId}                                      |
+| S→C  | `AUCTION_TIMER_UPDATED`          | {auctionId, seq, endsAt, serverTime}                                                                                    |
+| S→C  | `AUCTION_EXTENDED`               | {auctionId, seq, endsAt, extendedBySec}                                                                                 |
+| S→C  | `AUCTION_STARTED`                | {auctionId, seq, status}                                                                                                |
+| S→C  | `AUCTION_ENDED`                  | {auctionId, seq, result, winnerId, finalPrice}                                                                          |
+| S→C  | `CHAT_MESSAGE`                   | {roomId, message}                                                                                                       |
+| S→C  | `CHAT_READ`                      | {roomId, userId, lastReadAt}                                                                                            |
+| S→C  | `NOTIFICATION`                   | {notification, unreadCount} (room `user:{id}`) — 상위 입찰·종료 임박·낙찰/유찰·경매 시작(관심)·주문 상태·문의·가격 인하 |
+| S→C  | `ORDER_STATUS_UPDATED`           | {orderId, status} (room `user:{id}`)                                                                                    |
 
 `seq` = `Auction.version`. 클라이언트는 `seq` 가 건너뛰면 `GET /auctions/:id` 로 재동기화한다. 재연결 시 룸 재가입 + 스냅샷 재조회는 항상 수행한다.
