@@ -17,7 +17,7 @@ import { AppException } from '../common/app-exception';
 import type { AuthUser } from '../common/auth';
 import { PrismaService } from '../prisma/prisma.service';
 import { cardInclude, toCard } from '../products/product.mapper';
-import { decodeCursor, encodeCursor, ProductsService } from '../products/products.service';
+import { decodeCursor, encodeCursor, HOME_CACHE_KEY, ProductsService } from '../products/products.service';
 import { RealtimeGateway, RealtimeService } from '../realtime/realtime';
 import { RedisService } from '../redis/redis.service';
 import { toAuctionDto } from './auction.mapper';
@@ -196,7 +196,7 @@ export class AuctionsService {
       where: { id: a.productId },
       data: { status: 'ACTIVE', publishedAt: new Date(), listPrice: a.startPrice },
     });
-    await this.redis.del('home:v1');
+    await this.redis.del(HOME_CACHE_KEY);
     return toAuctionDto(updated);
   }
 
@@ -206,7 +206,7 @@ export class AuctionsService {
       throw new AppException('INVALID_TRANSITION', '이미 시작 시간이 지났습니다.');
     const updated = await this.transition(id, 'SCHEDULED', 'DRAFT');
     await this.prisma.product.update({ where: { id: a.productId }, data: { status: 'DRAFT' } });
-    await this.redis.del('home:v1');
+    await this.redis.del(HOME_CACHE_KEY);
     return toAuctionDto(updated);
   }
 
@@ -267,7 +267,7 @@ export class AuctionsService {
       winnerId: null,
       finalPrice: Number(updated.currentPrice),
     });
-    await this.redis.del('home:v1');
+    await this.redis.del(HOME_CACHE_KEY);
     return toAuctionDto(updated);
   }
 

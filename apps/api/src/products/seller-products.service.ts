@@ -6,6 +6,7 @@ import { AppException } from '../common/app-exception';
 import type { AuthUser } from '../common/auth';
 import { PrismaService, type Tx } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
+import { HOME_CACHE_KEY } from './products.service';
 
 /** 업로드한 사용자만 자기 이미지 키를 상품에 붙일 수 있다 (media 업로드 시 기록) */
 export const mediaOwnerKey = (key: string) => `media:owner:${key}`;
@@ -266,7 +267,7 @@ export class SellerProductsService {
         });
       }
     });
-    await this.redis.del('home:v1');
+    await this.redis.del(HOME_CACHE_KEY);
     return {
       id,
       priceChanged: oldPrice != null && nextPrice != null && Number(oldPrice) !== nextPrice,
@@ -286,7 +287,7 @@ export class SellerProductsService {
       where: { id },
       data: { status: 'ACTIVE', publishedAt: p.publishedAt ?? new Date() },
     });
-    await this.redis.del('home:v1');
+    await this.redis.del(HOME_CACHE_KEY);
   }
 
   /** 판매 중지 ↔ 재개 (연결 기능) */
@@ -303,7 +304,7 @@ export class SellerProductsService {
       data: { status: 'HIDDEN' },
     });
     if (!updated.count) throw new AppException('INVALID_TRANSITION');
-    await this.redis.del('home:v1');
+    await this.redis.del(HOME_CACHE_KEY);
   }
 
   async resume(user: AuthUser, id: string) {
@@ -313,7 +314,7 @@ export class SellerProductsService {
       data: { status: 'ACTIVE' },
     });
     if (!updated.count) throw new AppException('INVALID_TRANSITION');
-    await this.redis.del('home:v1');
+    await this.redis.del(HOME_CACHE_KEY);
   }
 
   async remove(user: AuthUser, id: string) {
@@ -329,7 +330,7 @@ export class SellerProductsService {
       this.prisma.product.update({ where: { id }, data: { deletedAt: new Date(), status: 'HIDDEN' } }),
       this.prisma.cartItem.deleteMany({ where: { productId: id } }),
     ]);
-    await this.redis.del('home:v1');
+    await this.redis.del(HOME_CACHE_KEY);
   }
 
   /** 판매자 본인의 상품 목록 (모든 상태) */

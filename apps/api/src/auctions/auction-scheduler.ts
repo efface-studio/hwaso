@@ -4,6 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeService } from '../realtime/realtime';
 import { RedisService } from '../redis/redis.service';
 import { finalizeAuction } from './finalize';
+import { HOME_CACHE_KEY } from '../products/products.service';
 
 const TICK_MS = 1000;
 const BATCH = 50;
@@ -68,7 +69,7 @@ export class AuctionScheduler implements OnApplicationBootstrap, OnApplicationSh
     for (const a of started) {
       this.realtime.toAuction(a.id, 'AUCTION_STARTED', { auctionId: a.id, seq: a.version, status: a.status });
     }
-    if (started.length) await this.redis.del('home:v1');
+    if (started.length) await this.redis.del(HOME_CACHE_KEY);
   }
 
   private async endDue() {
@@ -87,7 +88,7 @@ export class AuctionScheduler implements OnApplicationBootstrap, OnApplicationSh
       });
       if (!ended) break;
       this.announceEnd(ended.auction);
-      await this.redis.del('home:v1');
+      await this.redis.del(HOME_CACHE_KEY);
     }
   }
 
