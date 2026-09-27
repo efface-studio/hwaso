@@ -17,6 +17,9 @@ describe('tokens.css', () => {
   it('primary 색은 kebab-case 변수로 노출된다', () => {
     const css = buildCss();
     expect(css).toContain('--primary-foreground: #FFFFFF;');
+    expect(css).toContain('--text-h1: 28px;');
+    expect(css).toContain('--text-body-strong: 15px;');
+    expect(css).toContain('--color-surface-2: var(--surface-2);');
     expect(css).toContain('--color-primary: var(--primary);');
   });
 });
