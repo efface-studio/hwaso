@@ -52,7 +52,7 @@ type RtSocket = Socket<
   ClientToServerEvents,
   ServerToClientEvents,
   Record<string, never>,
-  { userId?: string }
+  { userId?: string; typingAt?: Record<string, number> }
 >;
 
 /** 인스턴스 간 브로드캐스트를 위한 Socket.IO Redis adapter */
@@ -121,6 +121,40 @@ export class RealtimeGateway implements OnGatewayConnection {
     const room = rooms.auction(body.auctionId);
     await socket.leave(room);
     this.scheduleWatchers(room);
+  }
+
+  /** 채팅방 입장: 참여자만. 입력 중 표시를 주고받는 용도 (메시지는 개인 룸으로 온다) */
+  @SubscribeMessage('chat:join')
+  async joinChat(@ConnectedSocket() socket: RtSocket, @MessageBody() body: { roomId?: unknown }) {
+    const roomId = typeof body?.roomId === 'string' ? body.roomId.slice(0, 40) : '';
+    const userId = socket.data.userId;
+    const member =
+      userId &&
+      roomId &&
+      (await this.prisma.chatRoom.count({
+        where: { id: roomId, OR: [{ buyerId: userId }, { sellerId: userId }] },
+      }));
+    if (!member) return { ok: false, code: 'NOT_FOUND' };
+    await socket.join(rooms.chat(roomId));
+    return { ok: true, data: null };
+  }
+
+  @SubscribeMessage('chat:leave')
+  async leaveChat(@ConnectedSocket() socket: RtSocket, @MessageBody() body: { roomId?: unknown }) {
+    if (typeof body?.roomId === 'string') await socket.leave(rooms.chat(body.roomId));
+  }
+
+  /** 입력 중: 입장한 방에만, 소켓당 방별 1초에 한 번 */
+  @SubscribeMessage('chat:typing')
+  typing(@ConnectedSocket() socket: RtSocket, @MessageBody() body: { roomId?: unknown }) {
+    const userId = socket.data.userId;
+    if (!userId || typeof body?.roomId !== 'string') return;
+    const room = rooms.chat(body.roomId);
+    if (!socket.rooms.has(room)) return;
+    const typingAt = (socket.data.typingAt ??= {});
+    if (Date.now() - (typingAt[room] ?? 0) < 1000) return;
+    typingAt[room] = Date.now();
+    socket.to(room).emit('CHAT_TYPING', { roomId: body.roomId, userId });
   }
 
   @SubscribeMessage('time:sync')
