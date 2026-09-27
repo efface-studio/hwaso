@@ -174,6 +174,8 @@ enum ChatMessageKind {
   TEXT
   IMAGE
   PRODUCT
+  APPOINTMENT
+  SYSTEM
 }
 
 enum ReviewDirection {
@@ -261,6 +263,8 @@ model User {
   reports        Report[]           @relation("Reporter")
   settlements    Settlement[]
   coupons        CouponRedemption[]
+  blocking       UserBlock[]        @relation("Blocker")
+  blockedBy      UserBlock[]        @relation("Blocked")
 }
 
 model Profile {
@@ -450,6 +454,7 @@ model Product {
   cartItems   CartItem[]
   orderItems  OrderItem[]
   chatRooms   ChatRoom[]
+  chatShares  ChatMessage[]
 
   @@index([status, publishedAt(sort: Desc)])
   @@index([categoryId, status])
@@ -816,20 +821,40 @@ model ChatMessage {
   body      String?
   imageKey  String?
   productId String?
+  product   Product?        @relation(fields: [productId], references: [id], onDelete: SetNull)
+  /// 거래 약속 {at, place} · 외부 거래 유도 경고 {warning}
+  data      Json?
+  /// 클라이언트 전송 ID — 재전송 시 중복 메시지 방지
+  clientId  String?
   createdAt DateTime        @default(now()) @db.Timestamptz
   deletedAt DateTime?       @db.Timestamptz
 
+  @@unique([roomId, senderId, clientId])
   @@index([roomId, createdAt(sort: Desc)])
 }
 
 model ChatReadState {
   roomId     String
   userId     String
-  room       ChatRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  lastReadAt DateTime @default(now()) @db.Timestamptz
+  room       ChatRoom  @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lastReadAt DateTime  @default(now()) @db.Timestamptz
+  /// 나가기: 이 시각 이후 새 메시지가 오면 다시 목록에 보인다
+  hiddenAt   DateTime? @db.Timestamptz
+  muted      Boolean   @default(false)
 
   @@id([roomId, userId])
+}
+
+model UserBlock {
+  blockerId String
+  blockedId String
+  blocker   User     @relation("Blocker", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked   User     @relation("Blocked", fields: [blockedId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @db.Timestamptz
+
+  @@id([blockerId, blockedId])
+  @@index([blockedId])
 }
 
 model Review {

@@ -1,5 +1,6 @@
 import type { AuctionResult, AuctionStatus, NotificationType, OrderStatus } from './enums';
 import type { BidDto } from './dto';
+import type { ChatMessageDto } from './chat';
 
 /** Socket.IO namespace. docs/API.md "WebSocket" 과 동일 */
 export const RT_NAMESPACE = '/rt';
@@ -41,7 +42,9 @@ export interface ServerToClientEvents {
     finalPrice: number;
   }) => void;
   AUCTION_WATCHERS: (p: { auctionId: string; watchers: number }) => void;
-  CHAT_MESSAGE: (p: { roomId: string; message: unknown }) => void;
+  CHAT_MESSAGE: (p: { roomId: string; message: ChatMessageDto }) => void;
+  CHAT_MESSAGE_DELETED: (p: { roomId: string; messageId: string }) => void;
+  CHAT_TYPING: (p: { roomId: string; userId: string }) => void;
   CHAT_READ: (p: { roomId: string; userId: string; lastReadAt: string }) => void;
   NOTIFICATION: (p: { notification: NotificationDto; unreadCount: number }) => void;
   ORDER_STATUS_UPDATED: (p: { orderId: string; status: OrderStatus }) => void;
@@ -54,6 +57,7 @@ export interface ClientToServerEvents {
   'auction:leave': (p: { auctionId: string }) => void;
   'chat:join': (p: { roomId: string }, ack: Ack<null>) => void;
   'chat:leave': (p: { roomId: string }) => void;
+  'chat:typing': (p: { roomId: string }) => void;
   'time:sync': (ack: Ack<{ serverTime: string }>) => void;
 }
 
