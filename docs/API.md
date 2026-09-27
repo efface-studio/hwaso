@@ -158,32 +158,40 @@ NestJS REST API. Base URL `/api/v1`. 모든 요청/응답은 JSON (업로드 제
 
 입찰 에러 코드: `AUCTION_NOT_LIVE`, `AUCTION_ENDED`, `BID_TOO_LOW`, `BID_NOT_ALIGNED`, `SELF_BID`, `ALREADY_HIGHEST`, `EMAIL_NOT_VERIFIED`, `ACCOUNT_RESTRICTED`, `BUY_NOW_UNAVAILABLE`. 같은 `idempotencyKey` 재요청은 이전 결과를 그대로 반환한다.
 
-### Cart / Orders / Payments / Shipping
+### Addresses / Cart / Orders / Payments / Shipping
 
-| Method     | Path                        | 권한        | 설명                                                                                                 |
-| ---------- | --------------------------- | ----------- | ---------------------------------------------------------------------------------------------------- |
-| GET        | /cart                       | U           | 장바구니                                                                                             |
-| PUT/DELETE | /cart/:productId            | U           | 담기(수량)/빼기                                                                                      |
-| POST       | /orders                     | U           | {items:[{productId, quantity}], addressId, couponCode?} → 판매자별 주문 (PAYMENT_PENDING, 재고 예약) |
-| GET        | /orders/:id                 | U(당사자)/A | 상세 + 상태 로그                                                                                     |
-| POST       | /orders/:id/payments        | U           | {method} → {paymentId, orderNumber, amount, clientKey}                                               |
-| POST       | /payments/confirm           | U           | {paymentId, paymentKey, amount} → **서버가 주문 금액과 대조 후** PG 승인                             |
-| POST       | /payments/webhook/:provider | -           | PG 웹훅 (PG 재조회로 검증)                                                                           |
-| POST       | /orders/:id/cancel          | U/S         | 결제 전 취소 / 발송 전 취소 → 전액 환불                                                              |
-| POST       | /orders/:id/refund-request  | U           | 배송 후 환불 요청                                                                                    |
-| POST       | /orders/:id/refund          | S/A         | 환불 승인                                                                                            |
-| POST       | /orders/:id/prepare         | S           | PAID → PREPARING                                                                                     |
-| POST       | /orders/:id/ship            | S           | {carrier, trackingNumber} → SHIPPED                                                                  |
-| POST       | /orders/:id/deliver         | S/A         | → DELIVERED                                                                                          |
-| POST       | /orders/:id/confirm         | U           | 구매 확정 → COMPLETED (배송 완료 7일 후 자동)                                                        |
+| Method       | Path                                | 권한        | 설명                                                                                                 |
+| ------------ | ----------------------------------- | ----------- | ---------------------------------------------------------------------------------------------------- |
+| GET/POST     | /me/addresses                       | U           | 배송지 (최대 20개, 첫 배송지는 기본)                                                                 |
+| PATCH/DELETE | /me/addresses/:id                   | U           | 수정(전체 값) / 삭제 (기본 배송지를 지우면 최근 배송지가 기본)                                       |
+| GET          | /cart                               | U           | 장바구니 (+ 지금 주문 가능 여부 `available`)                                                         |
+| PUT/DELETE   | /cart/:productId                    | U           | 담기(수량)/빼기 · `DELETE /cart` 비우기                                                              |
+| POST         | /orders/quote                       | U           | {items, couponCode?} → 금액 미리보기 (주문 생성 없음)                                                |
+| POST         | /orders                             | U           | {items, addressId, couponCode?, fromCart?} → **한 판매자** 주문, 상품 잠금·재고 예약, 결제 기한 30분 |
+| GET          | /orders · /orders/summary           | U           | 구매 내역 (`filter` all·pending·progress·done·cancelled) / 상태별 건수                               |
+| GET          | /orders/:id                         | U(당사자)/A | 상세 + 결제·배송·상태 로그                                                                           |
+| POST         | /orders/:id/payments                | U           | {method, addressId?} → {paymentId, provider(toss·mock), clientKey, amount, orderName, dueAt}         |
+| POST         | /payments/confirm                   | U           | {paymentId, paymentKey, amount} → **서버가 주문 금액과 대조 후** PG 승인 (멱등)                      |
+| POST         | /payments/webhook/toss              | -           | PG 웹훅 — 본문을 믿지 않고 PG 재조회로 반영 (가상계좌 입금 포함)                                     |
+| POST         | /payments/:id/mock-deposit          | U           | 개발 전용 모의 가상계좌 입금 (운영 404)                                                              |
+| POST         | /orders/:id/cancel                  | U/S/A       | 결제 전 취소 / 발송 전 취소 → 전액 환불 (낙찰 주문 결제 전 구매자 취소는 미결제로 기록)              |
+| POST         | /orders/:id/prepare                 | S/A         | PAID → PREPARING                                                                                     |
+| POST · PATCH | /orders/:id/ship · /shipment        | S/A         | {carrier, trackingNumber} → SHIPPED / 송장 정정                                                      |
+| POST         | /orders/:id/deliver                 | S/A         | → DELIVERED (발송 14일 후 자동)                                                                      |
+| POST         | /orders/:id/confirm                 | U           | 구매 확정 → COMPLETED + 정산 예정 (배송 완료 7일 후 자동)                                            |
+| POST         | /orders/:id/refund-request          | U           | {reason} DELIVERED → REFUND_REQUESTED                                                                |
+| POST         | /orders/:id/refund · /refund-reject | S/A         | 환불 승인(PG 환불, 작품은 판매 중지) / 거절 {reason} → DELIVERED                                     |
+
+결제 금액은 항상 서버 주문 금액이며 쿠폰 할인은 플랫폼이 부담한다(판매 수수료 8%는 상품 금액 기준). 결제 완료가 주문 취소 뒤에 도착하면 자동 환불한다.
+결제 에러 코드: `PAYMENT_AMOUNT_MISMATCH`, `PAYMENT_EXPIRED`, `PAYMENT_FAILED`, `PAYMENT_NOT_CONFIGURED`, `REFUND_FAILED`, `OUT_OF_STOCK`, `NOT_FOR_SALE`, `SELF_PURCHASE`, `MULTI_SELLER_ORDER`, `ADDRESS_REQUIRED`, `COUPON_*`.
 
 ### Seller
 
-| Method | Path                                                 | 권한 | 설명                               |
-| ------ | ---------------------------------------------------- | ---- | ---------------------------------- |
-| GET    | /seller/products · /seller/auctions · /seller/orders | S    | 관리 목록                          |
-| GET    | /seller/stats                                        | S    | 기간별 매출·주문 수·조회수·관심 수 |
-| GET    | /seller/settlements                                  | S    | 정산 내역                          |
+| Method | Path                                                 | 권한 | 설명                                             |
+| ------ | ---------------------------------------------------- | ---- | ------------------------------------------------ |
+| GET    | /seller/products · /seller/auctions · /seller/orders | S    | 관리 목록 (`/seller/orders/summary` 상태별 건수) |
+| GET    | /seller/stats                                        | S    | 기간별 매출·주문 수·조회수·관심 수               |
+| GET    | /seller/settlements                                  | S    | 정산 내역                                        |
 
 ### Chat
 
