@@ -129,6 +129,17 @@ function MyHome() {
         </section>
       ))}
 
+      {(user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') && (
+        <Link
+          href="/admin"
+          className="mt-8 flex h-14 items-center gap-3 rounded-sm border border-border px-4 hover:border-foreground"
+        >
+          <ShieldCheck className="size-5 text-primary" aria-hidden />
+          <span className="flex-1 text-body-strong">관리자 콘솔</span>
+          <ChevronRight className="size-4 text-faint" aria-hidden />
+        </Link>
+      )}
+
       <section className="mt-8">
         <ul className="divide-y divide-border-soft border-y border-border-soft">
           <li>
