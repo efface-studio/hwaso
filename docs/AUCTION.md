@@ -16,15 +16,15 @@ DRAFT ──schedule──> SCHEDULED ──(worker: now ≥ startsAt)──> LI
   └──cancel(seller)─────┴──cancel(seller)                    └──cancel(admin)─────────────────────────┴──cancel(admin, 미결제)──> CANCELLED
 ```
 
-| From | To | 주체 | 조건 |
-| --- | --- | --- | --- |
-| DRAFT | SCHEDULED | 판매자 | 상품 소유, 필드 유효, startsAt ≥ now+1분 |
-| SCHEDULED | LIVE | Worker | now ≥ startsAt |
-| LIVE | ENDED | Worker | now ≥ endsAt (행 잠금 후 재확인) |
-| LIVE | ENDED | 즉시구매 | buyNowPrice 존재, 현재가 < buyNowPrice |
-| ENDED | SETTLED | 결제 | 낙찰 주문 PAID |
-| DRAFT, SCHEDULED | CANCELLED | 판매자/관리자 | |
-| LIVE, ENDED | CANCELLED | 관리자만 | 사유 필수, AuditLog |
+| From             | To        | 주체          | 조건                                     |
+| ---------------- | --------- | ------------- | ---------------------------------------- |
+| DRAFT            | SCHEDULED | 판매자        | 상품 소유, 필드 유효, startsAt ≥ now+1분 |
+| SCHEDULED        | LIVE      | Worker        | now ≥ startsAt                           |
+| LIVE             | ENDED     | Worker        | now ≥ endsAt (행 잠금 후 재확인)         |
+| LIVE             | ENDED     | 즉시구매      | buyNowPrice 존재, 현재가 < buyNowPrice   |
+| ENDED            | SETTLED   | 결제          | 낙찰 주문 PAID                           |
+| DRAFT, SCHEDULED | CANCELLED | 판매자/관리자 |                                          |
+| LIVE, ENDED      | CANCELLED | 관리자만      | 사유 필수, AuditLog                      |
 
 전이표는 `packages/shared/src/auction.ts` 의 `AUCTION_TRANSITIONS` 로 정의하고 서버는 모든 상태 변경 전에 `assertTransition(from, to)` 를 호출한다. 상태 변경 SQL 은 항상 `WHERE id=$1 AND status=$from` 조건부 UPDATE 로 수행해 경쟁 상태에서도 이중 전이가 불가능하다.
 
@@ -118,6 +118,7 @@ FOR UPDATE SKIP LOCKED;
 `SKIP LOCKED` 덕분에 Worker 를 여러 개 띄워도 한 경매는 한 번만 종료된다. 입찰 트랜잭션이 잠금을 쥐고 있는 경매는 이번 틱에 건너뛰고 다음 틱(1초 후)에 처리 — 그 사이 연장됐다면 `endsAt <= now()` 가 거짓이 되어 자연스럽게 종료되지 않는다.
 
 같은 루프에서:
+
 - `SCHEDULED AND startsAt <= now()` → LIVE, `AUCTION_STARTED` 방송, 관심 등록자에게 알림
 - `LIVE AND endsAt - now() <= endingSoonMin AND endingSoonNotifiedAt IS NULL` → 참가자·관심 등록자에게 `AUCTION_ENDING`
 - 낙찰 주문 `PAYMENT_PENDING AND paymentDueAt <= now()` → 주문 CANCELLED, 경매 `result=UNPAID`, 낙찰자 신뢰도 페널티, 상품 ACTIVE
@@ -151,16 +152,16 @@ FOR UPDATE SKIP LOCKED;
 
 ## 12. 테스트 (apps/api/test/auction.*.spec.ts)
 
-| 케이스 | 기대 |
-| --- | --- |
-| 최소 입찰가 미만 | 400 BID_TOO_LOW |
-| 단위 불일치 | 400 BID_NOT_ALIGNED |
-| 같은 idempotencyKey 2회 | 입찰 1건, 같은 응답 |
-| 동시 50건 같은 금액 | 정확히 1건 성공 |
+| 케이스                   | 기대                                                                                     |
+| ------------------------ | ---------------------------------------------------------------------------------------- |
+| 최소 입찰가 미만         | 400 BID_TOO_LOW                                                                          |
+| 단위 불일치              | 400 BID_NOT_ALIGNED                                                                      |
+| 같은 idempotencyKey 2회  | 입찰 1건, 같은 응답                                                                      |
+| 동시 50건 같은 금액      | 정확히 1건 성공                                                                          |
 | 동시 50건 서로 다른 금액 | 성공 건들의 금액은 엄격히 증가, 최종 currentPrice = 성공 최대 금액, bidCount = 성공 건수 |
-| 종료 후 입찰 | 409 AUCTION_ENDED |
-| 종료 30초 이내 입찰 | endsAt 연장, maxEndsAt 초과 안 함 |
-| Worker 종료 | 최고 입찰자 winner, 주문 1건 생성 |
-| Worker 2개 동시 실행 | 주문 정확히 1건 |
-| 즉시 구매 동시 2건 | 1건만 성공 |
-| 자기 상품 입찰 | 403 SELF_BID |
+| 종료 후 입찰             | 409 AUCTION_ENDED                                                                        |
+| 종료 30초 이내 입찰      | endsAt 연장, maxEndsAt 초과 안 함                                                        |
+| Worker 종료              | 최고 입찰자 winner, 주문 1건 생성                                                        |
+| Worker 2개 동시 실행     | 주문 정확히 1건                                                                          |
+| 즉시 구매 동시 2건       | 1건만 성공                                                                               |
+| 자기 상품 입찰           | 403 SELF_BID                                                                             |

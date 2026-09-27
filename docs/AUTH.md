@@ -2,11 +2,11 @@
 
 ## 1. 토큰 모델
 
-| 토큰 | 형식 | 수명 | 저장 위치 |
-| --- | --- | --- | --- |
-| Access | JWT HS256 `{sub, role, sid}` | 15분 | Web: 메모리(Zustand) · Mobile: 메모리 |
-| Refresh | 불투명 랜덤 32바이트 (base64url) | 30일 (슬라이딩) | Web: `httpOnly Secure SameSite=Lax` 쿠키 `rt` (Path `/api/v1/auth`) · Mobile: `expo-secure-store` |
-| Verification | JWT `{email, purpose}` | 10분 | 클라이언트 메모리 (가입/재설정 단계 사이 전달) |
+| 토큰         | 형식                             | 수명            | 저장 위치                                                                                         |
+| ------------ | -------------------------------- | --------------- | ------------------------------------------------------------------------------------------------- |
+| Access       | JWT HS256 `{sub, role, sid}`     | 15분            | Web: 메모리(Zustand) · Mobile: 메모리                                                             |
+| Refresh      | 불투명 랜덤 32바이트 (base64url) | 30일 (슬라이딩) | Web: `httpOnly Secure SameSite=Lax` 쿠키 `rt` (Path `/api/v1/auth`) · Mobile: `expo-secure-store` |
+| Verification | JWT `{email, purpose}`           | 10분            | 클라이언트 메모리 (가입/재설정 단계 사이 전달)                                                    |
 
 - DB 에는 refresh 토큰의 **SHA-256 해시만** 저장 (`Session.refreshTokenHash`).
 - **Refresh Rotation**: `/auth/refresh` 마다 새 토큰 발급, 이전 토큰 무효. 이미 회전된(폐기된) 토큰이 다시 오면 **재사용 탐지** → 해당 `familyId` 전체 세션 폐기 (토큰 탈취 대응).
@@ -38,12 +38,12 @@
 
 ## 5. 소셜 로그인
 
-| Provider | 방식 | 필요 설정 |
-| --- | --- | --- |
-| Google | OAuth 2.0 Authorization Code + PKCE, OIDC id_token 검증 | `GOOGLE_CLIENT_ID/SECRET` |
-| Apple | Sign in with Apple, id_token(JWKS) 검증, `form_post` | `APPLE_CLIENT_ID/TEAM_ID/KEY_ID/PRIVATE_KEY` |
-| Kakao | OAuth 2.0 Code → `/v2/user/me` | `KAKAO_CLIENT_ID/SECRET` |
-| Naver | OAuth 2.0 Code (+state) → `/v1/nid/me` | `NAVER_CLIENT_ID/SECRET` |
+| Provider | 방식                                                    | 필요 설정                                    |
+| -------- | ------------------------------------------------------- | -------------------------------------------- |
+| Google   | OAuth 2.0 Authorization Code + PKCE, OIDC id_token 검증 | `GOOGLE_CLIENT_ID/SECRET`                    |
+| Apple    | Sign in with Apple, id_token(JWKS) 검증, `form_post`    | `APPLE_CLIENT_ID/TEAM_ID/KEY_ID/PRIVATE_KEY` |
+| Kakao    | OAuth 2.0 Code → `/v2/user/me`                          | `KAKAO_CLIENT_ID/SECRET`                     |
+| Naver    | OAuth 2.0 Code (+state) → `/v1/nid/me`                  | `NAVER_CLIENT_ID/SECRET`                     |
 
 흐름 (Web·Mobile 공통, 서버가 code 교환):
 
@@ -71,13 +71,13 @@
 
 ## 8. 권한 (RBAC)
 
-| Role | 가능 |
-| --- | --- |
-| USER | 탐색, 구매, 입찰, 채팅, 리뷰, 신고 |
-| SELLER | + 상품/경매 등록, 판매 관리, 정산 조회 |
-| VERIFIED_SELLER | + 인증 배지, 고가 경매(1억 이상) 등록 |
-| ADMIN | + 관리자 기능 (역할 부여 제외) |
-| SUPER_ADMIN | + ADMIN 부여/회수, 정책 변경 |
+| Role            | 가능                                   |
+| --------------- | -------------------------------------- |
+| USER            | 탐색, 구매, 입찰, 채팅, 리뷰, 신고     |
+| SELLER          | + 상품/경매 등록, 판매 관리, 정산 조회 |
+| VERIFIED_SELLER | + 인증 배지, 고가 경매(1억 이상) 등록  |
+| ADMIN           | + 관리자 기능 (역할 부여 제외)         |
+| SUPER_ADMIN     | + ADMIN 부여/회수, 정책 변경           |
 
 - 서버: `@Roles()` 데코레이터 + `RolesGuard`, 리소스 소유권은 서비스 계층에서 `WHERE sellerId = currentUser` 로 강제.
 - 클라이언트의 버튼 숨김은 UX 일 뿐 보안이 아니다.
