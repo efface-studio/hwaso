@@ -4,6 +4,7 @@ import { AccountModule } from './account/account.controller';
 import { AuctionsModule } from './auctions/auctions.controller';
 import { AuthModule } from './auth/auth.controller';
 import { CatalogModule } from './catalog/catalog.controller';
+import { ChatModule } from './chat/chat.controller';
 import { AuthGuard } from './common/auth';
 import { HttpExceptionFilter } from './common/http-exception.filter';
 import { RateLimitGuard, RateLimitModule } from './common/rate-limit';
@@ -16,6 +17,7 @@ import { PrismaModule } from './prisma/prisma.service';
 import { ProductsModule } from './products/products.controller';
 import { RealtimeEmitterModule } from './realtime/realtime';
 import { RedisModule } from './redis/redis.service';
+import { SafetyModule } from './safety/safety.controller';
 import { StorageModule } from './storage/s3.service';
 import { UsersModule } from './users/users.controller';
 
@@ -37,6 +39,8 @@ import { UsersModule } from './users/users.controller';
     NotificationsModule,
     AuctionsModule,
     OrdersModule,
+    SafetyModule,
+    ChatModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: HttpExceptionFilter },
