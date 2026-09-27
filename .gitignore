@@ -21,3 +21,5 @@ coverage/
 ios/
 android/
 .claude/
+apps/api/prisma/seed/.cache/
+next-env.d.ts

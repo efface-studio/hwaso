@@ -1,0 +1,909 @@
+// docs/DATABASE.md 의 설계를 따른다. 금액은 BigInt(원), 시각은 timestamptz.
+// Prisma 로 표현할 수 없는 CHECK 제약·trigram 인덱스는 migrations SQL 에 직접 추가한다.
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [pg_trgm]
+}
+
+// ───────────────────────── enums ─────────────────────────
+
+enum Role {
+  USER
+  SELLER
+  VERIFIED_SELLER
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  DELETED
+}
+
+enum AuthProvider {
+  GOOGLE
+  APPLE
+  KAKAO
+  NAVER
+}
+
+enum VerificationPurpose {
+  SIGNUP
+  RESET_PASSWORD
+  DELETE_ACCOUNT
+}
+
+enum SaleType {
+  FIXED
+  AUCTION
+  RESERVATION
+}
+
+enum ProductStatus {
+  DRAFT
+  PENDING_REVIEW
+  ACTIVE
+  RESERVED
+  SOLD
+  SUSPENDED
+  HIDDEN
+}
+
+enum ItemCondition {
+  MINT
+  EXCELLENT
+  GOOD
+  FAIR
+  POOR
+}
+
+enum VerificationStatus {
+  UNVERIFIED
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum CategoryGroup {
+  ART
+  HISTORICAL
+  COLLECTIBLES
+}
+
+enum ProvenanceKind {
+  OWNERSHIP
+  EXHIBITION
+  PUBLICATION
+}
+
+enum AuctionStatus {
+  DRAFT
+  SCHEDULED
+  LIVE
+  ENDED
+  SETTLED
+  CANCELLED
+}
+
+enum AuctionResult {
+  NONE
+  SOLD
+  NO_BIDS
+  UNPAID
+}
+
+enum OrderStatus {
+  PENDING
+  PAYMENT_PENDING
+  PAID
+  PREPARING
+  SHIPPED
+  DELIVERED
+  COMPLETED
+  CANCELLED
+  REFUND_REQUESTED
+  REFUNDED
+}
+
+enum OrderSource {
+  DIRECT
+  AUCTION
+}
+
+enum PaymentStatus {
+  READY
+  DONE
+  CANCELLED
+  PARTIAL_REFUNDED
+  REFUNDED
+  FAILED
+}
+
+enum PaymentMethod {
+  CARD
+  EASY_PAY
+  BANK_TRANSFER
+}
+
+enum ShipmentStatus {
+  READY
+  SHIPPED
+  IN_TRANSIT
+  DELIVERED
+}
+
+enum SettlementStatus {
+  PENDING
+  SCHEDULED
+  PAID
+  HELD
+}
+
+enum NotificationType {
+  BID_PLACED
+  OUTBID
+  AUCTION_ENDING
+  AUCTION_WON
+  AUCTION_LOST
+  AUCTION_STARTED
+  ITEM_SOLD
+  PAYMENT_DONE
+  SHIPPED
+  DELIVERED
+  INQUIRY_ANSWERED
+  PRICE_CHANGED
+  FOLLOWED
+  FAVORITE_ON_SALE
+  CHAT_MESSAGE
+  SYSTEM
+}
+
+enum ChatMessageKind {
+  TEXT
+  IMAGE
+  PRODUCT
+}
+
+enum ReviewDirection {
+  BUYER_TO_SELLER
+  SELLER_TO_BUYER
+}
+
+enum ReportTarget {
+  PRODUCT
+  USER
+  REVIEW
+  MESSAGE
+}
+
+enum ReportReason {
+  FRAUD
+  FAKE_ITEM
+  COUNTERFEIT
+  COPYRIGHT
+  INAPPROPRIATE
+  OTHER
+}
+
+enum ReportStatus {
+  OPEN
+  IN_REVIEW
+  RESOLVED
+  REJECTED
+}
+
+enum CouponType {
+  FIXED
+  PERCENT
+}
+
+// ───────────────────────── 사용자 · 인증 ─────────────────────────
+
+model User {
+  id              String     @id @default(cuid())
+  email           String     @unique
+  passwordHash    String?
+  emailVerifiedAt DateTime?  @db.Timestamptz
+  role            Role       @default(USER)
+  status          UserStatus @default(ACTIVE)
+  unpaidStrikes   Int        @default(0)
+  marketingOptIn  Boolean    @default(false)
+  createdAt       DateTime   @default(now()) @db.Timestamptz
+  updatedAt       DateTime   @updatedAt @db.Timestamptz
+  deletedAt       DateTime?  @db.Timestamptz
+
+  profile        Profile?
+  seller         Seller?
+  socialAccounts SocialAccount[]
+  sessions       Session[]
+  pushTokens     PushToken[]
+  addresses      Address[]
+  products       Product[]          @relation("ProductSeller")
+  favorites      Favorite[]
+  recentViews    RecentView[]
+  inquiries      Inquiry[]
+  bids           AuctionBid[]
+  auctionsSold   Auction[]          @relation("AuctionSeller")
+  auctionsWon    Auction[]          @relation("AuctionWinner")
+  cartItems      CartItem[]
+  ordersBought   Order[]            @relation("OrderBuyer")
+  ordersSold     Order[]            @relation("OrderSeller")
+  following      Follow[]           @relation("Follower")
+  followers      Follow[]           @relation("Following")
+  notifications  Notification[]
+  reviewsWritten Review[]           @relation("ReviewAuthor")
+  reviewsGot     Review[]           @relation("ReviewTarget")
+  chatAsBuyer    ChatRoom[]         @relation("ChatBuyer")
+  chatAsSeller   ChatRoom[]         @relation("ChatSeller")
+  messages       ChatMessage[]
+  readStates     ChatReadState[]
+  reports        Report[]           @relation("Reporter")
+  settlements    Settlement[]
+  coupons        CouponRedemption[]
+}
+
+model Profile {
+  userId      String   @id
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  nickname    String   @unique
+  bio         String   @default("")
+  avatarKey   String?
+  region      String?
+  ratingAvg   Float    @default(0)
+  ratingCount Int      @default(0)
+  tradeCount  Int      @default(0)
+  updatedAt   DateTime @updatedAt @db.Timestamptz
+}
+
+model SocialAccount {
+  id             String       @id @default(cuid())
+  provider       AuthProvider
+  providerUserId String
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now()) @db.Timestamptz
+
+  @@unique([provider, providerUserId])
+  @@index([userId])
+}
+
+model Session {
+  id               String    @id @default(cuid())
+  userId           String
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  refreshTokenHash String    @unique
+  familyId         String
+  deviceName       String
+  platform         String
+  ip               String
+  userAgent        String    @default("")
+  lastUsedAt       DateTime  @default(now()) @db.Timestamptz
+  expiresAt        DateTime  @db.Timestamptz
+  revokedAt        DateTime? @db.Timestamptz
+  createdAt        DateTime  @default(now()) @db.Timestamptz
+
+  @@index([userId, revokedAt])
+  @@index([familyId])
+}
+
+model VerificationCode {
+  id         String              @id @default(cuid())
+  email      String
+  purpose    VerificationPurpose
+  codeHash   String
+  attempts   Int                 @default(0)
+  expiresAt  DateTime            @db.Timestamptz
+  consumedAt DateTime?           @db.Timestamptz
+  createdAt  DateTime            @default(now()) @db.Timestamptz
+
+  @@index([email, purpose, createdAt(sort: Desc)])
+}
+
+model PushToken {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  platform  String
+  createdAt DateTime @default(now()) @db.Timestamptz
+
+  @@index([userId])
+}
+
+model Follow {
+  followerId  String
+  followingId String
+  follower    User     @relation("Follower", fields: [followerId], references: [id], onDelete: Cascade)
+  following   User     @relation("Following", fields: [followingId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now()) @db.Timestamptz
+
+  @@id([followerId, followingId])
+  @@index([followingId])
+}
+
+model Seller {
+  userId            String    @id
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  businessName      String?
+  bankName          String
+  bankAccountMasked String
+  bankAccountEnc    String
+  accountHolder     String
+  verifiedAt        DateTime? @db.Timestamptz
+  createdAt         DateTime  @default(now()) @db.Timestamptz
+}
+
+model Address {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recipient String
+  phone     String
+  zipCode   String
+  address1  String
+  address2  String   @default("")
+  memo      String   @default("")
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now()) @db.Timestamptz
+
+  @@index([userId])
+}
+
+// ───────────────────────── 카탈로그 ─────────────────────────
+
+model Category {
+  id        String        @id @default(cuid())
+  slug      String        @unique
+  name      String
+  group     CategoryGroup
+  parentId  String?
+  parent    Category?     @relation("CategoryTree", fields: [parentId], references: [id])
+  children  Category[]    @relation("CategoryTree")
+  sortOrder Int           @default(0)
+  isActive  Boolean       @default(true)
+  products  Product[]
+
+  @@index([parentId])
+}
+
+model Artist {
+  id          String    @id @default(cuid())
+  name        String
+  nameEn      String?
+  birthYear   Int?
+  deathYear   Int?
+  nationality String?
+  bio         String    @default("")
+  products    Product[]
+  createdAt   DateTime  @default(now()) @db.Timestamptz
+
+  @@index([name])
+}
+
+model Product {
+  id                 String             @id @default(cuid())
+  sellerId           String
+  seller             User               @relation("ProductSeller", fields: [sellerId], references: [id])
+  categoryId         String
+  category           Category           @relation(fields: [categoryId], references: [id])
+  artistId           String?
+  artist             Artist?            @relation(fields: [artistId], references: [id])
+  title              String
+  description        String             @default("")
+  maker              String?
+  brand              String?
+  era                String?
+  productionYear     Int?
+  material           String?
+  widthCm            Float?
+  heightCm           Float?
+  depthCm            Float?
+  condition          ItemCondition      @default(GOOD)
+  conditionNote      String?
+  region             String?
+  saleType           SaleType
+  status             ProductStatus      @default(DRAFT)
+  price              BigInt?
+  stock              Int                @default(1)
+  shippingFee        BigInt             @default(0)
+  shippingMethod     String             @default("택배")
+  returnPolicy       String             @default("")
+  availableAt        DateTime?          @db.Timestamptz
+  viewCount          Int                @default(0)
+  favoriteCount      Int                @default(0)
+  verificationStatus VerificationStatus @default(UNVERIFIED)
+  publishedAt        DateTime?          @db.Timestamptz
+  createdAt          DateTime           @default(now()) @db.Timestamptz
+  updatedAt          DateTime           @updatedAt @db.Timestamptz
+  deletedAt          DateTime?          @db.Timestamptz
+
+  images      ProductImage[]
+  certificate Certificate?
+  provenance  Provenance[]
+  favorites   Favorite[]
+  recentViews RecentView[]
+  inquiries   Inquiry[]
+  auction     Auction?
+  cartItems   CartItem[]
+  orderItems  OrderItem[]
+  chatRooms   ChatRoom[]
+
+  @@index([status, publishedAt(sort: Desc)])
+  @@index([categoryId, status])
+  @@index([sellerId, status])
+  @@index([artistId])
+  @@index([price])
+}
+
+model ProductImage {
+  id            String  @id @default(cuid())
+  productId     String
+  product       Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  key           String
+  width         Int
+  height        Int
+  dominantColor String  @default("#EEEEEE")
+  sortOrder     Int     @default(0)
+
+  @@index([productId, sortOrder])
+}
+
+model Certificate {
+  id                 String             @id @default(cuid())
+  productId          String             @unique
+  product            Product            @relation(fields: [productId], references: [id], onDelete: Cascade)
+  issuer             String
+  number             String
+  issuedAt           DateTime?          @db.Date
+  imageKey           String?
+  authenticityNote   String             @default("")
+  verificationStatus VerificationStatus @default(UNVERIFIED)
+  reviewedById       String?
+  reviewedAt         DateTime?          @db.Timestamptz
+  reviewNote         String?
+}
+
+model Provenance {
+  id          String         @id @default(cuid())
+  productId   String
+  product     Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  kind        ProvenanceKind
+  period      String
+  title       String
+  description String         @default("")
+  sortOrder   Int            @default(0)
+
+  @@index([productId, sortOrder])
+}
+
+model Favorite {
+  userId    String
+  productId String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @db.Timestamptz
+
+  @@id([userId, productId])
+  @@index([productId])
+}
+
+model RecentView {
+  userId    String
+  productId String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  viewedAt  DateTime @default(now()) @db.Timestamptz
+
+  @@id([userId, productId])
+  @@index([userId, viewedAt(sort: Desc)])
+}
+
+model Inquiry {
+  id         String    @id @default(cuid())
+  productId  String
+  product    Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User      @relation(fields: [userId], references: [id])
+  question   String
+  answer     String?
+  answeredAt DateTime? @db.Timestamptz
+  isPrivate  Boolean   @default(false)
+  createdAt  DateTime  @default(now()) @db.Timestamptz
+
+  @@index([productId, createdAt(sort: Desc)])
+}
+
+// ───────────────────────── 경매 ─────────────────────────
+
+model Auction {
+  id                   String        @id @default(cuid())
+  productId            String        @unique
+  product              Product       @relation(fields: [productId], references: [id])
+  sellerId             String
+  seller               User          @relation("AuctionSeller", fields: [sellerId], references: [id])
+  status               AuctionStatus @default(DRAFT)
+  result               AuctionResult @default(NONE)
+  startPrice           BigInt
+  bidIncrement         BigInt
+  buyNowPrice          BigInt?
+  currentPrice         BigInt
+  highestBidId         String?       @unique
+  highestBidderId      String?
+  bidCount             Int           @default(0)
+  bidderCount          Int           @default(0)
+  startsAt             DateTime      @db.Timestamptz
+  endsAt               DateTime      @db.Timestamptz
+  originalEndsAt       DateTime      @db.Timestamptz
+  maxEndsAt            DateTime      @db.Timestamptz
+  autoExtend           Boolean       @default(true)
+  extensionWindowSec   Int
+  extensionSec         Int
+  description          String        @default("")
+  version              Int           @default(0)
+  endedAt              DateTime?     @db.Timestamptz
+  winnerId             String?
+  winner               User?         @relation("AuctionWinner", fields: [winnerId], references: [id])
+  endingSoonNotifiedAt DateTime?     @db.Timestamptz
+  cancelReason         String?
+  createdAt            DateTime      @default(now()) @db.Timestamptz
+  updatedAt            DateTime      @updatedAt @db.Timestamptz
+
+  bids  AuctionBid[]
+  order Order?
+
+  @@index([status, endsAt])
+  @@index([status, startsAt])
+  @@index([sellerId, status])
+}
+
+model AuctionBid {
+  id             String   @id @default(cuid())
+  auctionId      String
+  auction        Auction  @relation(fields: [auctionId], references: [id])
+  bidderId       String
+  bidder         User     @relation(fields: [bidderId], references: [id])
+  amount         BigInt
+  idempotencyKey String
+  isBuyNow       Boolean  @default(false)
+  createdAt      DateTime @default(now()) @db.Timestamptz
+
+  @@unique([auctionId, amount])
+  @@unique([bidderId, idempotencyKey])
+  @@index([auctionId, createdAt(sort: Desc)])
+  @@index([bidderId, createdAt(sort: Desc)])
+}
+
+/// 관리자 설정 싱글톤 (id = 'default')
+model AuctionPolicy {
+  id                 String   @id @default("default")
+  extensionWindowSec Int      @default(30)
+  extensionSec       Int      @default(30)
+  maxExtensionSec    Int      @default(1800)
+  paymentDueHours    Int      @default(72)
+  minDurationMin     Int      @default(10)
+  maxDurationDays    Int      @default(14)
+  endingSoonMin      Int      @default(10)
+  updatedAt          DateTime @updatedAt @db.Timestamptz
+}
+
+// ───────────────────────── 주문 · 결제 · 배송 · 정산 ─────────────────────────
+
+model CartItem {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  quantity  Int      @default(1)
+  createdAt DateTime @default(now()) @db.Timestamptz
+
+  @@unique([userId, productId])
+}
+
+model Order {
+  id              String      @id @default(cuid())
+  orderNumber     String      @unique
+  buyerId         String
+  buyer           User        @relation("OrderBuyer", fields: [buyerId], references: [id])
+  sellerId        String
+  seller          User        @relation("OrderSeller", fields: [sellerId], references: [id])
+  source          OrderSource
+  auctionId       String?     @unique
+  auction         Auction?    @relation(fields: [auctionId], references: [id])
+  status          OrderStatus @default(PENDING)
+  itemsAmount     BigInt
+  shippingFee     BigInt      @default(0)
+  discountAmount  BigInt      @default(0)
+  totalAmount     BigInt
+  couponId        String?
+  coupon          Coupon?     @relation(fields: [couponId], references: [id])
+  paymentDueAt    DateTime?   @db.Timestamptz
+  shippingAddress Json?
+  paidAt          DateTime?   @db.Timestamptz
+  deliveredAt     DateTime?   @db.Timestamptz
+  cancelledAt     DateTime?   @db.Timestamptz
+  cancelReason    String?
+  completedAt     DateTime?   @db.Timestamptz
+  createdAt       DateTime    @default(now()) @db.Timestamptz
+  updatedAt       DateTime    @updatedAt @db.Timestamptz
+
+  items      OrderItem[]
+  statusLogs OrderStatusLog[]
+  payments   Payment[]
+  shipment   Shipment?
+  settlement Settlement?
+  reviews    Review[]
+  redemption CouponRedemption?
+
+  @@index([buyerId, createdAt(sort: Desc)])
+  @@index([sellerId, status, createdAt(sort: Desc)])
+  @@index([status, paymentDueAt])
+}
+
+model OrderItem {
+  id               String  @id @default(cuid())
+  orderId          String
+  order            Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId        String
+  product          Product @relation(fields: [productId], references: [id])
+  titleSnapshot    String
+  imageKeySnapshot String?
+  unitPrice        BigInt
+  quantity         Int
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+model OrderStatusLog {
+  id        String       @id @default(cuid())
+  orderId   String
+  order     Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  from      OrderStatus?
+  to        OrderStatus
+  actorId   String?
+  reason    String       @default("")
+  createdAt DateTime     @default(now()) @db.Timestamptz
+
+  @@index([orderId, createdAt])
+}
+
+model Payment {
+  id                 String        @id @default(cuid())
+  orderId            String
+  order              Order         @relation(fields: [orderId], references: [id])
+  provider           String
+  providerPaymentKey String?       @unique
+  method             PaymentMethod
+  amount             BigInt
+  status             PaymentStatus @default(READY)
+  approvedAt         DateTime?     @db.Timestamptz
+  cancelledAmount    BigInt        @default(0)
+  failureCode        String?
+  raw                Json?
+  createdAt          DateTime      @default(now()) @db.Timestamptz
+  updatedAt          DateTime      @updatedAt @db.Timestamptz
+
+  refunds Refund[]
+
+  @@index([orderId])
+}
+
+model Refund {
+  id        String   @id @default(cuid())
+  paymentId String
+  payment   Payment  @relation(fields: [paymentId], references: [id])
+  amount    BigInt
+  reason    String
+  createdAt DateTime @default(now()) @db.Timestamptz
+
+  @@index([paymentId])
+}
+
+model Shipment {
+  id             String         @id @default(cuid())
+  orderId        String         @unique
+  order          Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  carrier        String
+  trackingNumber String?
+  status         ShipmentStatus @default(READY)
+  shippedAt      DateTime?      @db.Timestamptz
+  deliveredAt    DateTime?      @db.Timestamptz
+  updatedAt      DateTime       @updatedAt @db.Timestamptz
+}
+
+model Settlement {
+  id          String           @id @default(cuid())
+  sellerId    String
+  seller      User             @relation(fields: [sellerId], references: [id])
+  orderId     String           @unique
+  order       Order            @relation(fields: [orderId], references: [id])
+  grossAmount BigInt
+  feeAmount   BigInt
+  netAmount   BigInt
+  status      SettlementStatus @default(PENDING)
+  scheduledAt DateTime         @db.Timestamptz
+  paidAt      DateTime?        @db.Timestamptz
+  createdAt   DateTime         @default(now()) @db.Timestamptz
+
+  @@index([sellerId, status])
+}
+
+model Coupon {
+  id             String     @id @default(cuid())
+  code           String     @unique
+  name           String
+  type           CouponType
+  value          BigInt
+  minOrderAmount BigInt     @default(0)
+  maxDiscount    BigInt?
+  startsAt       DateTime   @db.Timestamptz
+  endsAt         DateTime   @db.Timestamptz
+  usageLimit     Int?
+  usedCount      Int        @default(0)
+  isActive       Boolean    @default(true)
+  createdAt      DateTime   @default(now()) @db.Timestamptz
+
+  orders      Order[]
+  redemptions CouponRedemption[]
+}
+
+model CouponRedemption {
+  id        String   @id @default(cuid())
+  couponId  String
+  coupon    Coupon   @relation(fields: [couponId], references: [id])
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  orderId   String   @unique
+  order     Order    @relation(fields: [orderId], references: [id])
+  createdAt DateTime @default(now()) @db.Timestamptz
+
+  @@unique([couponId, userId])
+}
+
+// ───────────────────────── 커뮤니티 ─────────────────────────
+
+model ChatRoom {
+  id            String   @id @default(cuid())
+  productId     String?
+  product       Product? @relation(fields: [productId], references: [id])
+  buyerId       String
+  buyer         User     @relation("ChatBuyer", fields: [buyerId], references: [id])
+  sellerId      String
+  seller        User     @relation("ChatSeller", fields: [sellerId], references: [id])
+  lastMessageAt DateTime @default(now()) @db.Timestamptz
+  createdAt     DateTime @default(now()) @db.Timestamptz
+
+  messages   ChatMessage[]
+  readStates ChatReadState[]
+
+  @@unique([productId, buyerId, sellerId])
+  @@index([buyerId, lastMessageAt(sort: Desc)])
+  @@index([sellerId, lastMessageAt(sort: Desc)])
+}
+
+model ChatMessage {
+  id        String          @id @default(cuid())
+  roomId    String
+  room      ChatRoom        @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  senderId  String
+  sender    User            @relation(fields: [senderId], references: [id])
+  kind      ChatMessageKind
+  body      String?
+  imageKey  String?
+  productId String?
+  createdAt DateTime        @default(now()) @db.Timestamptz
+  deletedAt DateTime?       @db.Timestamptz
+
+  @@index([roomId, createdAt(sort: Desc)])
+}
+
+model ChatReadState {
+  roomId     String
+  userId     String
+  room       ChatRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lastReadAt DateTime @default(now()) @db.Timestamptz
+
+  @@id([roomId, userId])
+}
+
+model Review {
+  id           String          @id @default(cuid())
+  orderId      String
+  order        Order           @relation(fields: [orderId], references: [id])
+  authorId     String
+  author       User            @relation("ReviewAuthor", fields: [authorId], references: [id])
+  targetUserId String
+  targetUser   User            @relation("ReviewTarget", fields: [targetUserId], references: [id])
+  direction    ReviewDirection
+  rating       Int
+  comment      String
+  imageKeys    String[]        @default([])
+  createdAt    DateTime        @default(now()) @db.Timestamptz
+  deletedAt    DateTime?       @db.Timestamptz
+
+  @@unique([orderId, authorId])
+  @@index([targetUserId, createdAt(sort: Desc)])
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      NotificationType
+  title     String
+  body      String
+  link      String?
+  data      Json?
+  readAt    DateTime?        @db.Timestamptz
+  createdAt DateTime         @default(now()) @db.Timestamptz
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([userId, readAt])
+}
+
+// ───────────────────────── 운영 ─────────────────────────
+
+model Report {
+  id          String       @id @default(cuid())
+  reporterId  String
+  reporter    User         @relation("Reporter", fields: [reporterId], references: [id])
+  targetType  ReportTarget
+  targetId    String
+  reason      ReportReason
+  detail      String       @default("")
+  status      ReportStatus @default(OPEN)
+  handledById String?
+  resolution  String?
+  createdAt   DateTime     @default(now()) @db.Timestamptz
+  updatedAt   DateTime     @updatedAt @db.Timestamptz
+
+  @@unique([reporterId, targetType, targetId])
+  @@index([status, createdAt])
+}
+
+model Banner {
+  id        String   @id @default(cuid())
+  title     String
+  imageKey  String
+  link      String
+  placement String   @default("home")
+  sortOrder Int      @default(0)
+  startsAt  DateTime @db.Timestamptz
+  endsAt    DateTime @db.Timestamptz
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now()) @db.Timestamptz
+}
+
+model Notice {
+  id          String   @id @default(cuid())
+  title       String
+  body        String
+  isPinned    Boolean  @default(false)
+  publishedAt DateTime @default(now()) @db.Timestamptz
+  createdAt   DateTime @default(now()) @db.Timestamptz
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  action     String
+  targetType String
+  targetId   String
+  before     Json?
+  after      Json?
+  ip         String?
+  createdAt  DateTime @default(now()) @db.Timestamptz
+
+  @@index([targetType, targetId])
+  @@index([actorId, createdAt])
+}
