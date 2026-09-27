@@ -209,3 +209,49 @@
     --text-h1--line-height: 30px;
   }
 }
+
+/* 시니어 모드 (html[data-senior]) */
+:root[data-senior] {
+    --text-display: 44px;
+    --text-display--line-height: 52px;
+    --text-h1: 32px;
+    --text-h1--line-height: 40px;
+    --text-h2: 24px;
+    --text-h2--line-height: 32px;
+    --text-h3: 21px;
+    --text-h3--line-height: 29px;
+    --text-body: 18px;
+    --text-body--line-height: 28px;
+    --text-body-strong: 18px;
+    --text-body-strong--line-height: 28px;
+    --text-small: 16px;
+    --text-small--line-height: 24px;
+    --text-caption: 15px;
+    --text-caption--line-height: 22px;
+    --text-label: 16px;
+    --text-label--line-height: 22px;
+    --text-price: 20px;
+    --text-price--line-height: 28px;
+    --text-price-lg: 30px;
+    --text-price-lg--line-height: 38px;
+    --muted: #3D3D3D;
+    --faint: #5C5C5C;
+}
+:root[data-senior][data-theme='dark'] {
+    --muted: #D2D2D8;
+    --faint: #A8A8B1;
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-senior]:not([data-theme='light']) {
+    --muted: #D2D2D8;
+    --faint: #A8A8B1;
+  }
+}
+@media (max-width: 767px) {
+  :root[data-senior] {
+    --text-display: 34px;
+    --text-display--line-height: 42px;
+    --text-h1: 27px;
+    --text-h1--line-height: 35px;
+  }
+}
