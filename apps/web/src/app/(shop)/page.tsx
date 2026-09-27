@@ -1,5 +1,6 @@
 import { ImageOff } from 'lucide-react';
 import Link from 'next/link';
+import { BannerCarousel } from '@/components/home/banner-carousel';
 import { PersonalSections } from '@/components/home/personal-sections';
 import { MediaImage } from '@/components/product/media-image';
 import { ProductCard } from '@/components/product/product-card';
@@ -22,6 +23,11 @@ export default async function HomePage() {
         />
       ) : (
         <>
+          {home.banners.length > 0 && (
+            <div className="-mx-4 -mt-6 md:mx-0 md:mt-0">
+              <BannerCarousel banners={home.banners} />
+            </div>
+          )}
           {home.liveAuctions.length > 0 && (
             <Section
               title="지금 진행 중인 경매"

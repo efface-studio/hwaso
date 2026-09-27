@@ -26,6 +26,8 @@ import {
 /** ponytail: 관련도 정렬은 일치 후보 최대 500건을 앱에서 점수화 — 카탈로그가 커지면 OpenSearch 로 전환 (docs/ARCHITECTURE.md §7) */
 const RELEVANCE_CANDIDATES = 500;
 const RECENT_VIEWS_KEEP = 50;
+/** 홈 섹션 캐시 키 — 상품·경매가 바뀌면 지운다 */
+export const HOME_CACHE_KEY = 'home:v2';
 
 export const encodeCursor = (offset: number) => Buffer.from(String(offset)).toString('base64url');
 export function decodeCursor(cursor?: string): number {
@@ -327,7 +329,7 @@ export class ProductsService {
   }
 
   async home(viewer?: AuthUser): Promise<HomeDto> {
-    const cacheKey = 'home:v1';
+    const cacheKey = HOME_CACHE_KEY;
     const cached = await this.redis.get(cacheKey);
     const base = cached ? (JSON.parse(cached) as HomeDto) : await this.buildHome();
     if (!cached) await this.redis.set(cacheKey, JSON.stringify(base), 'EX', 60);
@@ -370,20 +372,34 @@ export class ProductsService {
         })
       ).map((r) => toCard(r));
 
-    const [liveAuctions, endingSoon, upcomingAuctions, popular, newArrivals, popularArtists, notices] =
-      await Promise.all([
-        cards({ auction: { status: 'LIVE' } }, [{ auction: { bidCount: 'desc' } }]),
-        cards({ auction: { status: 'LIVE' } }, [{ auction: { endsAt: 'asc' } }], 8),
-        cards({ auction: { status: 'SCHEDULED' } }, [{ auction: { startsAt: 'asc' } }], 8),
-        cards({}, [{ favoriteCount: 'desc' }, { viewCount: 'desc' }]),
-        cards({}, [{ publishedAt: 'desc' }]),
-        this.popularArtists(10),
-        this.prisma.notice.findMany({
-          orderBy: [{ isPinned: 'desc' }, { publishedAt: 'desc' }],
-          take: 3,
-          select: { id: true, title: true, publishedAt: true },
-        }),
-      ]);
+    const now = new Date();
+    const [
+      banners,
+      liveAuctions,
+      endingSoon,
+      upcomingAuctions,
+      popular,
+      newArrivals,
+      popularArtists,
+      notices,
+    ] = await Promise.all([
+      this.prisma.banner.findMany({
+        where: { isActive: true, placement: 'home', startsAt: { lte: now }, endsAt: { gt: now } },
+        orderBy: { sortOrder: 'asc' },
+        take: 8,
+      }),
+      cards({ auction: { status: 'LIVE' } }, [{ auction: { bidCount: 'desc' } }]),
+      cards({ auction: { status: 'LIVE' } }, [{ auction: { endsAt: 'asc' } }], 8),
+      cards({ auction: { status: 'SCHEDULED' } }, [{ auction: { startsAt: 'asc' } }], 8),
+      cards({}, [{ favoriteCount: 'desc' }, { viewCount: 'desc' }]),
+      cards({}, [{ publishedAt: 'desc' }]),
+      this.popularArtists(10),
+      this.prisma.notice.findMany({
+        orderBy: [{ isPinned: 'desc' }, { publishedAt: 'desc' }],
+        take: 3,
+        select: { id: true, title: true, publishedAt: true },
+      }),
+    ]);
 
     // 추천 컬렉션: 상품이 많은 하위 카테고리 3개
     const topCategories = await this.prisma.product.groupBy({
@@ -407,6 +423,14 @@ export class ProductsService {
     );
 
     return {
+      banners: banners.map((b) => ({
+        id: b.id,
+        title: b.title,
+        subtitle: b.subtitle,
+        tone: b.tone === 'light' ? 'light' : 'dark',
+        imageKey: b.imageKey,
+        link: b.link,
+      })),
       liveAuctions,
       endingSoon,
       upcomingAuctions,

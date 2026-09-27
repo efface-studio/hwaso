@@ -655,8 +655,8 @@ async function main() {
   await prisma.notice.createMany({
     data: [
       {
-        title: 'Efface Shop 오픈 안내',
-        body: '미술품·컬렉터블 마켓플레이스와 실시간 경매 서비스를 시작합니다.',
+        title: '화소(畫所) 오픈 안내',
+        body: '작품과 사람이 만나는 곳, 화소가 문을 엽니다. 미술품·고미술·컬렉터블 거래와 실시간 경매를 만나보세요.',
         isPinned: true,
       },
       {
@@ -669,6 +669,45 @@ async function main() {
       },
     ],
   });
+
+  // 홈 상단 배너 (예시 작품 이미지 재사용). 운영 중에는 관리자 화면에서 관리한다
+  const imageOf = async (title: string) =>
+    (await prisma.productImage.findFirst({ where: { product: { title } }, select: { key: true } }))?.key;
+  const bannerPlan = [
+    {
+      title: '툴루즈 로트레크, 파리의 밤',
+      subtitle: '19세기 몽마르트르를 담은 석판화 포스터',
+      image: '메이 밀턴',
+      link: '/category/poster',
+    },
+    {
+      title: '조선의 백자',
+      subtitle: '담백한 선과 여백 — 조선 도자 컬렉션',
+      image: '백자 항아리',
+      link: '/category/antique',
+    },
+    {
+      title: '지금 진행 중인 경매',
+      subtitle: '마감 30초 전 입찰이 있으면 자동으로 연장돼요',
+      image: '빨강, 노랑, 파랑의 구성',
+      link: '/auctions',
+    },
+  ];
+  for (const [i, b] of bannerPlan.entries()) {
+    const key = await imageOf(b.image);
+    if (!key) continue;
+    await prisma.banner.create({
+      data: {
+        title: b.title,
+        subtitle: b.subtitle,
+        imageKey: key,
+        link: b.link,
+        sortOrder: i,
+        startsAt: new Date(Date.now() - 86_400_000),
+        endsAt: new Date(Date.now() + 90 * 86_400_000),
+      },
+    });
+  }
 
   console.log(`✔ 완료: 게시물 ${productIds.length}개, 작가 ${artistIds.size}명`);
 }

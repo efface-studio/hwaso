@@ -193,7 +193,17 @@ export interface ProductListResponse {
   total: number;
 }
 
+export interface BannerDto {
+  id: string;
+  title: string;
+  subtitle: string;
+  tone: 'dark' | 'light';
+  imageKey: string;
+  link: string;
+}
+
 export interface HomeDto {
+  banners: BannerDto[];
   liveAuctions: ProductCardDto[];
   endingSoon: ProductCardDto[];
   upcomingAuctions: ProductCardDto[];
