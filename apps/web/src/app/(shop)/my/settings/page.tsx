@@ -478,6 +478,12 @@ function Settings() {
       <Section id="identity" title="본인인증">
         <IdentitySection />
       </Section>
+      <Section title="배송지">
+        <Link href="/my/settings/addresses" className="flex h-14 items-center justify-between">
+          <span className="text-body">배송지 관리</span>
+          <ChevronRight className="size-4 text-faint" aria-hidden />
+        </Link>
+      </Section>
       <Section title="로그인 · 보안">
         <PasswordSection />
         <Link
