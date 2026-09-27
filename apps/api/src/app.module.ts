@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { AccountModule } from './account/account.controller';
+import { AuctionsModule } from './auctions/auctions.controller';
 import { AuthModule } from './auth/auth.controller';
 import { CatalogModule } from './catalog/catalog.controller';
 import { AuthGuard } from './common/auth';
@@ -11,6 +12,7 @@ import { MediaModule } from './media/media.controller';
 import { MailModule } from './mail/mail.service';
 import { PrismaModule } from './prisma/prisma.service';
 import { ProductsModule } from './products/products.controller';
+import { RealtimeEmitterModule } from './realtime/realtime';
 import { RedisModule } from './redis/redis.service';
 import { StorageModule } from './storage/s3.service';
 import { UsersModule } from './users/users.controller';
@@ -29,6 +31,8 @@ import { UsersModule } from './users/users.controller';
     ProductsModule,
     CatalogModule,
     UsersModule,
+    RealtimeEmitterModule,
+    AuctionsModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: HttpExceptionFilter },
