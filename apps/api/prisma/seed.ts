@@ -550,7 +550,6 @@ async function main() {
         artistId,
         title: k.title,
         description: describe(s, k),
-        maker: k.artist ? null : s.culture,
         era: k.era,
         productionYear: s.year,
         material: k.material,
