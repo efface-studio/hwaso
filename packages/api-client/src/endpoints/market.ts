@@ -11,6 +11,8 @@ import type {
   ProductListParams,
   ProductListResponse,
   PublicProfileDto,
+  SellerProductRow,
+  SellerStatsDto,
   SuggestDto,
   UpdateProductInput,
 } from '@shop/shared';
@@ -43,6 +45,9 @@ export const marketApi = (http: Http) => ({
   pauseProduct: (productId: string) => http.post<void>(`/products/${id(productId)}/pause`),
   resumeProduct: (productId: string) => http.post<void>(`/products/${id(productId)}/resume`),
   deleteProduct: (productId: string) => http.delete<void>(`/products/${id(productId)}`),
+  sellerProducts: (status: 'all' | 'selling' | 'draft' | 'hidden' | 'sold' = 'all') =>
+    http.get<SellerProductRow[]>('/seller/products', { status }),
+  sellerStats: () => http.get<SellerStatsDto>('/seller/stats'),
 
   favorite: (productId: string) => http.post<void>(`/products/${id(productId)}/favorite`),
   unfavorite: (productId: string) => http.delete<void>(`/products/${id(productId)}/favorite`),

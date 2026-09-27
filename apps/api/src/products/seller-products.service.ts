@@ -374,4 +374,30 @@ export class SellerProductsService {
       },
     });
   }
+
+  /** 판매자 대시보드 요약 */
+  async stats(user: AuthUser) {
+    const base = { sellerId: user.id, deletedAt: null };
+    const [byStatus, agg, liveAuctions, scheduledAuctions, unanswered, pendingOrders] = await Promise.all([
+      this.prisma.product.groupBy({ by: ['status'], where: base, _count: true }),
+      this.prisma.product.aggregate({ where: base, _sum: { viewCount: true, favoriteCount: true } }),
+      this.prisma.auction.count({ where: { sellerId: user.id, status: 'LIVE' } }),
+      this.prisma.auction.count({ where: { sellerId: user.id, status: 'SCHEDULED' } }),
+      this.prisma.inquiry.count({ where: { answer: null, product: base } }),
+      this.prisma.order.count({ where: { sellerId: user.id, status: { in: ['PAID', 'PREPARING'] } } }),
+    ]);
+    const count = (s: string) => byStatus.find((b) => b.status === s)?._count ?? 0;
+    return {
+      selling: count('ACTIVE') + count('RESERVED'),
+      draft: count('DRAFT'),
+      hidden: count('HIDDEN') + count('SUSPENDED') + count('PENDING_REVIEW'),
+      sold: count('SOLD'),
+      views: agg._sum.viewCount ?? 0,
+      favorites: agg._sum.favoriteCount ?? 0,
+      liveAuctions,
+      scheduledAuctions,
+      unansweredInquiries: unanswered,
+      ordersToShip: pendingOrders,
+    };
+  }
 }
