@@ -4,6 +4,7 @@ import type { CreateProductInput, UpdateProductInput } from '@shop/shared';
 import { SELLER_ROLES } from '@shop/shared';
 import { AppException } from '../common/app-exception';
 import type { AuthUser } from '../common/auth';
+import { logNotifyError, NotificationEvents } from '../notifications/notification-events';
 import { PrismaService, type Tx } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 import { HOME_CACHE_KEY } from './products.service';
@@ -26,6 +27,7 @@ export class SellerProductsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
+    private readonly events: NotificationEvents,
   ) {}
 
   private assertSeller(user: AuthUser) {
@@ -268,10 +270,9 @@ export class SellerProductsService {
       }
     });
     await this.redis.del(HOME_CACHE_KEY);
-    return {
-      id,
-      priceChanged: oldPrice != null && nextPrice != null && Number(oldPrice) !== nextPrice,
-    };
+    const priceChanged = oldPrice != null && nextPrice != null && Number(oldPrice) !== nextPrice;
+    if (priceChanged) void this.events.priceDropped(id, Number(oldPrice), nextPrice).catch(logNotifyError);
+    return { id, priceChanged };
   }
 
   async publish(user: AuthUser, id: string) {

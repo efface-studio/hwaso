@@ -1,8 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
-import type { Order } from '@prisma/client';
+import type { OrderStatus } from '@prisma/client';
 import type { ConfirmPaymentInput, PaymentRequestDto, PreparePaymentInput } from '@shop/shared';
 import type { AuthUser } from '../common/auth';
 import { AppException } from '../common/app-exception';
+import { logNotifyError, NotificationEvents } from '../notifications/notification-events';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeService } from '../realtime/realtime';
 import { addressSnapshot } from './cart.service';
@@ -24,6 +25,7 @@ export class PaymentsService {
     private readonly prisma: PrismaService,
     private readonly toss: TossClient,
     private readonly realtime: RealtimeService,
+    private readonly events: NotificationEvents,
   ) {}
 
   private provider(): 'toss' | 'mock' {
@@ -32,9 +34,17 @@ export class PaymentsService {
     throw new AppException('PAYMENT_NOT_CONFIGURED', undefined, undefined, 503);
   }
 
-  notify(order: Pick<Order, 'id' | 'buyerId' | 'sellerId' | 'status'>) {
+  /** 상태 변경 후: 양쪽 화면 갱신 + 받는 사람별 알림 */
+  notify(order: {
+    id: string;
+    status: OrderStatus;
+    buyerId: string;
+    sellerId: string;
+    items: { titleSnapshot: string }[];
+  }) {
     for (const uid of [order.buyerId, order.sellerId])
       this.realtime.toUser(uid, 'ORDER_STATUS_UPDATED', { orderId: order.id, status: order.status });
+    void this.events.orderChanged(order).catch(logNotifyError);
   }
 
   async prepare(user: AuthUser, orderId: string, input: PreparePaymentInput): Promise<PaymentRequestDto> {
