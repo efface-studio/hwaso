@@ -460,6 +460,7 @@ async function seedAuction(
       endedAt: ended ? endsAt : null,
     },
   });
+  await prisma.product.update({ where: { id: productId }, data: { listPrice: BigInt(current) } });
 }
 
 function certificateFor(s: Sample, i: number): Prisma.CertificateCreateWithoutProductInput | undefined {
@@ -549,7 +550,6 @@ async function main() {
         artistId,
         title: k.title,
         description: describe(s, k),
-        maker: k.artist ? null : s.culture,
         era: k.era,
         productionYear: s.year,
         material: k.material,
@@ -562,6 +562,7 @@ async function main() {
         saleType: plan.saleType,
         status: plan.status,
         price: plan.saleType === 'AUCTION' ? null : BigInt(price),
+        listPrice: plan.saleType === 'AUCTION' ? null : BigInt(price),
         shippingFee: BigInt(price >= 1_000_000 ? 0 : 5_000),
         shippingMethod: price >= 3_000_000 ? '미술품 전문 운송 (무료)' : '택배 (파손 방지 포장)',
         returnPolicy:

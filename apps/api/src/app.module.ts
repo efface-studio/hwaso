@@ -1,16 +1,28 @@
 import { Module } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
+import { CatalogModule } from './catalog/catalog.controller';
 import { AuthGuard } from './common/auth';
 import { HttpExceptionFilter } from './common/http-exception.filter';
 import { RateLimitGuard, RateLimitService } from './common/rate-limit';
 import { HealthModule } from './health/health.controller';
 import { MediaModule } from './media/media.controller';
 import { PrismaModule } from './prisma/prisma.service';
+import { ProductsModule } from './products/products.controller';
 import { RedisModule } from './redis/redis.service';
 import { StorageModule } from './storage/s3.service';
+import { UsersModule } from './users/users.controller';
 
 @Module({
-  imports: [PrismaModule, RedisModule, StorageModule, HealthModule, MediaModule],
+  imports: [
+    PrismaModule,
+    RedisModule,
+    StorageModule,
+    HealthModule,
+    MediaModule,
+    ProductsModule,
+    CatalogModule,
+    UsersModule,
+  ],
   providers: [
     RateLimitService,
     { provide: APP_FILTER, useClass: HttpExceptionFilter },

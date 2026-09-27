@@ -2,39 +2,12 @@
 
 import { Bell, MessageCircle, Search, User } from 'lucide-react';
 import Link from 'next/link';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { Suspense, useState, type FormEvent } from 'react';
+import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/cn';
 import { useAuthStore } from '@/stores/auth';
 import { NAV_CATEGORIES } from '@/lib/categories';
+import { SearchAutocomplete } from '@/components/search/search-autocomplete';
 import { Logo } from './logo';
-
-function SearchBox({ className }: { className?: string }) {
-  const router = useRouter();
-  const params = useSearchParams();
-  const [q, setQ] = useState(params.get('q') ?? '');
-  const submit = (e: FormEvent) => {
-    e.preventDefault();
-    const term = q.trim();
-    router.push(term ? `/search?q=${encodeURIComponent(term)}` : '/search');
-  };
-  return (
-    <form role="search" onSubmit={submit} className={cn('relative', className)}>
-      <Search
-        className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted"
-        aria-hidden
-      />
-      <input
-        type="search"
-        value={q}
-        onChange={(e) => setQ(e.target.value)}
-        placeholder="작품명, 작가, 시대, 소재 검색"
-        aria-label="검색어"
-        className="h-10 w-full rounded-sm bg-surface-2 pr-3 pl-9 text-body placeholder:text-faint focus:bg-background focus:outline-2 focus:outline-foreground"
-      />
-    </form>
-  );
-}
 
 function AccountLinks() {
   const user = useAuthStore((s) => s.user);
@@ -76,9 +49,7 @@ export function Header() {
     <header className="sticky top-0 z-40 border-b border-border bg-background">
       <div className="page-x mx-auto flex h-14 max-w-page items-center gap-4 md:h-16 md:gap-8">
         <Logo />
-        <Suspense fallback={<div className="hidden flex-1 md:block" />}>
-          <SearchBox className="hidden max-w-xl flex-1 md:block" />
-        </Suspense>
+        <SearchAutocomplete className="hidden max-w-xl flex-1 md:block" />
         <div className="ml-auto flex items-center">
           <Link
             href="/search"
