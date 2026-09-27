@@ -79,6 +79,9 @@ export const SETTLEMENT_STATUSES = e('PENDING', 'SCHEDULED', 'PAID', 'HELD');
 export type SettlementStatus = (typeof SETTLEMENT_STATUSES)[number];
 
 export const NOTIFICATION_TYPES = e(
+  'INQUIRY_RECEIVED',
+  'REVIEW_RECEIVED',
+  'ORDER_UPDATED',
   'BID_PLACED',
   'OUTBID',
   'AUCTION_ENDING',

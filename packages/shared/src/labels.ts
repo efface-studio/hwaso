@@ -95,5 +95,8 @@ export const NOTIFICATION_TYPE_LABEL: Record<NotificationType, string> = {
   FOLLOWED: '팔로우',
   FAVORITE_ON_SALE: '관심상품 판매 시작',
   CHAT_MESSAGE: '새 메시지',
+  INQUIRY_RECEIVED: '새 문의',
+  REVIEW_RECEIVED: '새 후기',
+  ORDER_UPDATED: '주문',
   SYSTEM: '알림',
 };

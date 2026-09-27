@@ -48,8 +48,3 @@ export const markNotificationsSchema = z.union([
   z.strictObject({ ids: z.array(id).min(1).max(100) }),
   z.strictObject({ all: z.literal(true) }),
 ]);
-
-export const pushTokenSchema = z.strictObject({
-  token: z.string().min(10).max(1000),
-  platform: z.enum(['expo', 'web']),
-});
