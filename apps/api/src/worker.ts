@@ -4,6 +4,7 @@ import { Module } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AuctionScheduler } from './auctions/auction-scheduler';
 import { logger } from './common/logger';
+import { NotificationsCoreModule } from './notifications/notifications.controller';
 import { OrderScheduler } from './orders/order-scheduler';
 import { OrdersService } from './orders/orders.service';
 import { PaymentsService } from './orders/payments.service';
@@ -15,7 +16,7 @@ import { RedisModule } from './redis/redis.service';
 
 /** 운영: API 는 SCHEDULER_ENABLED=false 로 띄우고 이 워커를 별도 프로세스로 실행한다 */
 @Module({
-  imports: [PrismaModule, RedisModule, RealtimeEmitterModule],
+  imports: [PrismaModule, RedisModule, RealtimeEmitterModule, NotificationsCoreModule],
   providers: [AuctionScheduler, OrderScheduler, OrdersService, PaymentsService, TossClient],
 })
 class WorkerModule {}
