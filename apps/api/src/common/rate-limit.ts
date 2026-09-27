@@ -1,4 +1,11 @@
-import { type CanActivate, type ExecutionContext, Injectable, SetMetadata } from '@nestjs/common';
+import {
+  type CanActivate,
+  type ExecutionContext,
+  Global,
+  Injectable,
+  Module,
+  SetMetadata,
+} from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import type { Request } from 'express';
 import { RedisService } from '../redis/redis.service';
@@ -60,3 +67,7 @@ export class RateLimitGuard implements CanActivate {
     return true;
   }
 }
+
+@Global()
+@Module({ providers: [RateLimitService], exports: [RateLimitService] })
+export class RateLimitModule {}
