@@ -412,6 +412,8 @@ model Product {
   saleType           SaleType
   status             ProductStatus      @default(DRAFT)
   price              BigInt?
+  /// 정렬·가격 필터용 표시 가격: 즉시구매/예약 = price, 경매 = 현재가 (입찰 시 함께 갱신)
+  listPrice          BigInt?
   stock              Int                @default(1)
   shippingFee        BigInt             @default(0)
   shippingMethod     String             @default("택배")
@@ -440,7 +442,8 @@ model Product {
   @@index([categoryId, status])
   @@index([sellerId, status])
   @@index([artistId])
-  @@index([price])
+  @@index([listPrice])
+  @@index([favoriteCount])
 }
 
 model ProductImage {
