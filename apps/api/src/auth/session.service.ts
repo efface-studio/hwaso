@@ -4,7 +4,7 @@ import type { AuthTokens, DeviceInput, MeDto, SessionDto } from '@shop/shared';
 import { AppException } from '../common/app-exception';
 import { ACCESS_TOKEN_TTL_SEC, invalidateUserStatus, signAccessToken } from '../common/auth';
 import { maskIp, randomToken, sha256 } from '../common/crypto';
-import { PrismaService } from '../prisma/prisma.service';
+import { PrismaService, type Tx } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 
 export const REFRESH_TTL_DAYS = 30;
@@ -33,9 +33,10 @@ export class SessionService {
     device: DeviceInput,
     client: ClientInfo,
     familyId?: string,
+    db: Tx = this.prisma,
   ): Promise<{ accessToken: string; refreshToken: string; sessionId: string }> {
     const refreshToken = randomToken(32);
-    const session = await this.prisma.session.create({
+    const session = await db.session.create({
       data: {
         userId: user.id,
         refreshTokenHash: sha256(refreshToken),
@@ -80,13 +81,17 @@ export class SessionService {
       throw new AppException('INVALID_TOKEN');
     }
 
-    // 동시 요청이 같은 토큰으로 두 번 회전하지 못하게 조건부 폐기 (진 쪽은 위의 유예 경로로 처리)
-    const revoked = await this.prisma.session.updateMany({
-      where: { id: s.id, revokedAt: null },
-      data: { revokedAt: new Date(), lastUsedAt: new Date() },
+    // 이전 토큰 폐기와 새 세션 생성을 한 트랜잭션으로 묶는다 — 다른 요청은 둘 다 커밋된 뒤에야 폐기 사실을 보므로
+    // 유예 경로에서 family 가 살아 있는지 항상 올바르게 판단한다. 조건부 폐기에 진 쪽은 재시도해 유예 경로로 간다.
+    const next = await this.prisma.$transaction(async (tx) => {
+      const revoked = await tx.session.updateMany({
+        where: { id: s.id, revokedAt: null },
+        data: { revokedAt: new Date(), lastUsedAt: new Date() },
+      });
+      if (!revoked.count) return null;
+      return this.issue(s.user, device, client, s.familyId, tx);
     });
-    if (!revoked.count) return this.rotate(refreshToken, client);
-    const next = await this.issue(s.user, device, client, s.familyId);
+    if (!next) return this.rotate(refreshToken, client);
     return { ...next, user: s.user, platform: s.platform };
   }
 
