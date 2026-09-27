@@ -6,7 +6,9 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Gavel, Share2 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { StartChatButton } from '@/components/chat/start-chat';
+import { ReportDialog } from '@/components/safety/report-dialog';
 import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
@@ -125,6 +127,7 @@ function Cta({ p, compact }: { p: ProductDetailDto; compact?: boolean }) {
 
 export function PurchasePanel({ product: p }: { product: ProductDetailDto }) {
   const a = p.auction;
+  const [reporting, setReporting] = useState(false);
   useEffect(() => {
     void api.market.recordView(p.id).catch(() => undefined);
   }, [p.id]);
@@ -199,7 +202,20 @@ export function PurchasePanel({ product: p }: { product: ProductDetailDto }) {
             <Share2 className="size-5" aria-hidden />
           </button>
         </div>
+        {!p.isMine && (
+          <div className="hidden flex-col gap-2 md:flex">
+            <StartChatButton productId={p.id} label="판매자에게 문의하기" size="lg" block />
+            <button
+              type="button"
+              onClick={() => setReporting(true)}
+              className="self-end text-caption text-muted underline-offset-2 hover:underline"
+            >
+              이 작품 신고하기
+            </button>
+          </div>
+        )}
       </div>
+      {reporting && <ReportDialog open onOpenChange={setReporting} targetType="PRODUCT" targetId={p.id} />}
 
       {/* 모바일 하단 고정 CTA 바 (탭 바 위) */}
       <div className="fixed inset-x-0 bottom-[calc(56px+env(safe-area-inset-bottom))] z-30 flex items-center gap-2 border-t border-border bg-background px-4 py-2 md:hidden">
@@ -212,6 +228,15 @@ export function PurchasePanel({ product: p }: { product: ProductDetailDto }) {
         >
           <Share2 className="size-5" aria-hidden />
         </button>
+        {!p.isMine && (
+          <StartChatButton
+            productId={p.id}
+            label=""
+            aria-label="판매자와 채팅"
+            variant="ghost"
+            className="size-11 px-0"
+          />
+        )}
         <div className="flex-1">
           <Cta p={p} compact />
         </div>

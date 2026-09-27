@@ -23,6 +23,7 @@ import { Select } from '@/components/ui/select';
 import { api } from '@/lib/api';
 import { getRealtime } from '@/lib/realtime';
 import { toast } from '@/stores/toast';
+import { StartChatButton } from '@/components/chat/start-chat';
 import { AddressList, AddressText } from './address';
 import { AmountSummary, OrderItemRow, OrderStatusBadge, OrderSteps } from './order-ui';
 import { PayMethodPicker, usePay } from './pay';
@@ -486,6 +487,14 @@ export function OrderDetail({ id }: { id: string }) {
       )}
 
       <Actions o={o} refresh={refresh} />
+      {o.role === 'buyer' && o.items[0] && (
+        <StartChatButton
+          productId={o.items[0].productId}
+          label="판매자와 채팅"
+          size="sm"
+          className="self-start"
+        />
+      )}
 
       <Block
         title="주문 작품"
