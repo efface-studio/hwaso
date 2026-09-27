@@ -3,8 +3,10 @@ import { Test } from '@nestjs/testing';
 import supertest from 'supertest';
 import { AppModule } from '../src/app.module';
 import { createApp } from '../src/bootstrap';
+import { AppException } from '../src/common/app-exception';
 import { PortOneClient, type PortOneIdentity } from '../src/identity/identity.service';
 import { MailService, type MailMessage } from '../src/mail/mail.service';
+import { TossClient, type TossPayment } from '../src/orders/toss.client';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { RedisService } from '../src/redis/redis.service';
 import { S3Service } from '../src/storage/s3.service';
@@ -41,6 +43,57 @@ export class FakePortOne {
   }
 }
 
+/** 토스페이먼츠 더블: 승인 결과(mode)를 바꿔 가상계좌·실패를 흉내 낸다 */
+export class FakeToss {
+  mode: 'DONE' | 'WAITING_FOR_DEPOSIT' | 'FAIL' = 'DONE';
+  payments = new Map<string, TossPayment>();
+  confirms: string[] = [];
+  cancels: { paymentKey: string; reason: string }[] = [];
+  enabled() {
+    return true;
+  }
+  clientKey() {
+    return 'test_ck';
+  }
+  confirm(paymentKey: string, orderId: string, amount: number) {
+    this.confirms.push(paymentKey);
+    if (this.mode === 'FAIL')
+      return Promise.reject(
+        new AppException('PAYMENT_FAILED', '카드 한도 초과', { providerCode: 'REJECT_CARD' }),
+      );
+    const p: TossPayment = {
+      paymentKey,
+      orderId,
+      status: this.mode,
+      totalAmount: amount,
+      balanceAmount: amount,
+      approvedAt: this.mode === 'DONE' ? new Date().toISOString() : null,
+      virtualAccount:
+        this.mode === 'WAITING_FOR_DEPOSIT'
+          ? { accountNumber: '123', bankCode: '88', customerName: '화소', dueDate: new Date().toISOString() }
+          : null,
+    };
+    this.payments.set(paymentKey, p);
+    return Promise.resolve(p);
+  }
+  /** 입금 완료 등 PG 쪽 상태 변경 */
+  settle(paymentKey: string, status: TossPayment['status']) {
+    const p = this.payments.get(paymentKey)!;
+    this.payments.set(paymentKey, { ...p, status, approvedAt: new Date().toISOString() });
+  }
+  get(paymentKey: string) {
+    const p = this.payments.get(paymentKey);
+    return p ? Promise.resolve(p) : Promise.reject(new AppException('NOT_FOUND'));
+  }
+  cancel(paymentKey: string, reason: string) {
+    this.cancels.push({ paymentKey, reason });
+    const p = this.payments.get(paymentKey)!;
+    const next = { ...p, status: 'CANCELED' as const, balanceAmount: 0 };
+    this.payments.set(paymentKey, next);
+    return Promise.resolve(next);
+  }
+}
+
 export interface TestContext {
   app: INestApplication;
   http: ReturnType<typeof supertest>;
@@ -49,12 +102,14 @@ export interface TestContext {
   s3: FakeS3;
   mail: FakeMail;
   portone: FakePortOne;
+  toss: FakeToss;
 }
 
 export async function createTestApp(): Promise<TestContext> {
   const s3 = new FakeS3();
   const mail = new FakeMail();
   const portone = new FakePortOne();
+  const toss = new FakeToss();
   // AppModule 을 오버라이드한 모듈로 createApp 과 같은 미들웨어 구성을 재사용한다
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
     .overrideProvider(S3Service)
@@ -63,6 +118,8 @@ export async function createTestApp(): Promise<TestContext> {
     .useValue(mail)
     .overrideProvider(PortOneClient)
     .useValue(portone)
+    .overrideProvider(TossClient)
+    .useValue(toss)
     .compile();
   const app = await createApp(moduleRef);
   await app.init();
@@ -76,5 +133,6 @@ export async function createTestApp(): Promise<TestContext> {
     s3,
     mail,
     portone,
+    toss,
   };
 }
