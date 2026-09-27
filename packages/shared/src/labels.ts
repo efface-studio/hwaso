@@ -50,6 +50,7 @@ export const PAYMENT_METHOD_LABEL: Record<PaymentMethod, string> = {
   CARD: '신용·체크카드',
   EASY_PAY: '간편결제',
   BANK_TRANSFER: '계좌이체',
+  VIRTUAL_ACCOUNT: '무통장입금(가상계좌)',
 };
 
 /** 플랫폼이 확인하지 않은 정보를 인증된 사실처럼 표기하지 않는다 (docs/DESIGN_SYSTEM.md §9) */

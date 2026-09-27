@@ -4,10 +4,16 @@ import type {
   AuctionStatus,
   CategoryGroup,
   ItemCondition,
+  OrderSource,
+  OrderStatus,
+  PaymentMethod,
+  PaymentStatus,
   ProductStatus,
   ProvenanceKind,
   Role,
   SaleType,
+  SettlementStatus,
+  ShipmentStatus,
   VerificationStatus,
 } from './enums';
 
@@ -337,4 +343,136 @@ export interface SellerProductRow {
     startsAt: string;
   } | null;
   _count: { inquiries: number };
+}
+
+// ───── 주문 · 결제 · 배송 ─────
+
+export interface ShippingAddress {
+  recipient: string;
+  phone: string;
+  zipCode: string;
+  address1: string;
+  address2: string;
+  memo: string;
+}
+
+export interface AddressDto extends ShippingAddress {
+  id: string;
+  isDefault: boolean;
+}
+
+export interface CartItemDto {
+  productId: string;
+  quantity: number;
+  addedAt: string;
+  product: ProductCardDto & { stock: number; shippingFee: number };
+  seller: UserSummary;
+  /** 지금 주문할 수 있는지 (판매 중·재고 있음·본인 상품 아님) */
+  available: boolean;
+}
+
+export interface OrderQuoteDto {
+  itemsAmount: number;
+  shippingFee: number;
+  discountAmount: number;
+  totalAmount: number;
+  coupon: { code: string; name: string } | null;
+}
+
+export interface OrderItemDto {
+  productId: string;
+  title: string;
+  image: ImageDto | null;
+  unitPrice: number;
+  quantity: number;
+}
+
+export interface OrderRowDto {
+  id: string;
+  orderNumber: string;
+  source: OrderSource;
+  status: OrderStatus;
+  totalAmount: number;
+  createdAt: string;
+  paymentDueAt: string | null;
+  items: OrderItemDto[];
+  /** 구매 목록에서는 판매자, 판매 목록에서는 구매자 */
+  counterpart: UserSummary;
+}
+
+export interface PaymentDto {
+  id: string;
+  method: PaymentMethod;
+  status: PaymentStatus;
+  amount: number;
+  cancelledAmount: number;
+  approvedAt: string | null;
+  /** 가상계좌 입금 안내 (입금 전) */
+  virtualAccount: { bank: string; accountNumber: string; holder: string; dueDate: string } | null;
+  receiptUrl: string | null;
+}
+
+export interface OrderDetailDto extends Omit<OrderRowDto, 'counterpart'> {
+  buyer: UserSummary;
+  seller: UserSummary;
+  role: 'buyer' | 'seller' | 'admin';
+  itemsAmount: number;
+  shippingFee: number;
+  discountAmount: number;
+  shippingAddress: ShippingAddress | null;
+  auctionId: string | null;
+  paidAt: string | null;
+  deliveredAt: string | null;
+  completedAt: string | null;
+  cancelledAt: string | null;
+  cancelReason: string | null;
+  refundReason: string | null;
+  payment: PaymentDto | null;
+  shipment: {
+    carrier: string;
+    trackingNumber: string | null;
+    trackingUrl: string | null;
+    status: ShipmentStatus;
+    shippedAt: string | null;
+    deliveredAt: string | null;
+  } | null;
+  logs: { from: OrderStatus | null; to: OrderStatus; reason: string; createdAt: string }[];
+  /** 자동 구매 확정 예정 시각 (배송 완료 상태일 때) */
+  autoConfirmAt: string | null;
+  reviewed: boolean;
+}
+
+export interface PaymentRequestDto {
+  paymentId: string;
+  provider: 'toss' | 'mock';
+  /** 토스 결제창에 넘길 값 (mock 이면 null) */
+  clientKey: string | null;
+  customerKey: string;
+  orderName: string;
+  amount: number;
+  method: PaymentMethod;
+  customerEmail: string | null;
+  customerName: string;
+  /** 결제 기한 — 가상계좌 입금 기한(validHours) 계산에 쓴다 */
+  dueAt: string | null;
+}
+
+export interface SettlementDto {
+  id: string;
+  orderId: string;
+  orderNumber: string;
+  title: string;
+  grossAmount: number;
+  feeAmount: number;
+  netAmount: number;
+  status: SettlementStatus;
+  scheduledAt: string;
+  paidAt: string | null;
+}
+
+export interface SettlementSummaryDto {
+  pending: number;
+  scheduled: number;
+  paid: number;
+  items: SettlementDto[];
 }
