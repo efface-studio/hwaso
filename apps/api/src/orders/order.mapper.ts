@@ -76,6 +76,7 @@ function toPayment(p: DetailOrder['payments'][number] | undefined): PaymentDto |
   const va = raw?.virtualAccount;
   return {
     id: p.id,
+    provider: p.provider,
     method: p.method,
     status: p.status,
     amount: Number(p.amount),

@@ -36,7 +36,8 @@ export function toAuctionDto(a: Auction): AuctionDto {
 
 /** 주문번호: 20260928-7K3F9Q (사람이 읽기 쉬운 값, 유니크 제약으로 충돌 방지) */
 export function newOrderNumber(now = new Date()): string {
-  const d = now.toISOString().slice(0, 10).replace(/-/g, '');
+  // 주문번호 날짜는 한국 시간 기준 (고객센터·영수증 날짜와 일치)
+  const d = new Date(now.getTime() + 9 * 3_600_000).toISOString().slice(0, 10).replace(/-/g, '');
   const alphabet = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
   let s = '';
   for (let i = 0; i < 6; i++) s += alphabet[Math.floor(Math.random() * alphabet.length)];
