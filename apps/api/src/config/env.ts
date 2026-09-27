@@ -25,7 +25,7 @@ const schema = z.object({
   S3_FORCE_PATH_STYLE: bool.default(false),
   MEDIA_PUBLIC_URL: z.string().url(),
   SMTP_URL: optional,
-  MAIL_FROM: z.string().default('Efface Shop <no-reply@shop.efface.dev>'),
+  MAIL_FROM: z.string().default('화소 <no-reply@shop.efface.dev>'),
   GOOGLE_CLIENT_ID: optional,
   GOOGLE_CLIENT_SECRET: optional,
   KAKAO_CLIENT_ID: optional,

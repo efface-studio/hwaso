@@ -4,7 +4,7 @@
 
 ## 프로젝트 컨텍스트
 
-- **프로젝트명**: Efface Shop — 미술품·컬렉터블 마켓플레이스 + 실시간 경매
+- **프로젝트명**: 화소(畫所) — 작품과 사람이 만나는 곳. 미술품·컬렉터블 마켓플레이스 + 실시간 경매
 - **스택**: pnpm monorepo · NestJS 11 / Prisma 6 / PostgreSQL 16 / Redis 7 / Socket.IO · Next.js 16 / Tailwind 4 / TanStack Query / Zustand · Expo / React Navigation
 - **기본 브랜치**: `main`
 - **설계 문서**: `docs/*.md` — 구현은 문서를 기준으로 하고, 동작이 바뀌면 문서도 함께 수정한다.

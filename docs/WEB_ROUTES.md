@@ -62,6 +62,6 @@ Next.js 16 App Router (`apps/web/src/app`). 렌더링: **SSR/ISR = 검색엔진 
 
 ## SEO
 
-- `/products/[id]`: `generateMetadata` → title `"{상품명} - {작가} | Efface Shop"`, description(설명 160자), `alternates.canonical`, OG image(대표 이미지 1600), JSON-LD `Product` + `Offer`(FIXED) / `AggregateOffer`(AUCTION: lowPrice=currentPrice) + `availability`.
+- `/products/[id]`: `generateMetadata` → title `"{상품명} - {작가} | 화소"`, description(설명 160자), `alternates.canonical`, OG image(대표 이미지 1600), JSON-LD `Product` + `Offer`(FIXED) / `AggregateOffer`(AUCTION: lowPrice=currentPrice) + `availability`.
 - 삭제/숨김 상품 → 404, 판매 완료 → 200 + `SoldOut`.
 - `sitemap.xml`: 활성 상품·카테고리·작가.
