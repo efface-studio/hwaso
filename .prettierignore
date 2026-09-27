@@ -1,0 +1,6 @@
+pnpm-lock.yaml
+**/dist
+**/.next
+**/.expo
+**/coverage
+**/migrations/**/*.sql

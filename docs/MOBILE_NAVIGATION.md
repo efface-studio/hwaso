@@ -36,33 +36,33 @@ RootStack (native-stack)
 
 scheme `shop://`, universal link `https://shop.efface.dev`. (웹 경로와 동일하게 맞춘다)
 
-| URL | 화면 |
-| --- | --- |
-| `/products/:id` | ProductDetail |
-| `/auctions/:id` | AuctionLive |
-| `/artists/:id` | ArtistDetail |
-| `/users/:id` | UserProfile |
-| `/category/:slug` | Category |
-| `/chat/:roomId` | ChatRoom |
-| `/orders/:id` | OrderDetail |
-| `/notifications` | Notifications |
+| URL                        | 화면             |
+| -------------------------- | ---------------- |
+| `/products/:id`            | ProductDetail    |
+| `/auctions/:id`            | AuctionLive      |
+| `/artists/:id`             | ArtistDetail     |
+| `/users/:id`               | UserProfile      |
+| `/category/:slug`          | Category         |
+| `/chat/:roomId`            | ChatRoom         |
+| `/orders/:id`              | OrderDetail      |
+| `/notifications`           | Notifications    |
 | `/auth/callback/:provider` | 소셜 로그인 복귀 |
 
 푸시 알림의 `data.link` 는 위 경로를 그대로 담고, 탭 시 `Linking` 으로 이동한다.
 
 ## 3. 네이티브 기능
 
-| 기능 | 패키지 | 사용 |
-| --- | --- | --- |
-| Push | `expo-notifications` | 로그인 후 권한 요청(첫 입찰/관심 등록 시점), Expo push token → `/me/push-tokens` |
-| Camera / Photo Library | `expo-image-picker` (카메라 + 앨범, 다중 선택 최대 20) | 상품 등록, 채팅 이미지 |
-| 이미지 압축 | `expo-image-manipulator` | 업로드 전 긴 변 2400px, JPEG 0.85 (서버에서 재처리) |
-| Share | RN `Share` | 상품/경매 공유 (웹 URL) |
-| Secure Storage | `expo-secure-store` | refresh 토큰 |
-| Biometric | `expo-local-authentication` | 앱 잠금 해제 (설정) |
-| Browser Auth | `expo-web-browser` + `expo-auth-session` | 소셜 로그인 |
-| Haptics | `expo-haptics` | 입찰 성공/실패 |
-| Image | `expo-image` | 캐시, placeholder 색 |
+| 기능                   | 패키지                                                 | 사용                                                                             |
+| ---------------------- | ------------------------------------------------------ | -------------------------------------------------------------------------------- |
+| Push                   | `expo-notifications`                                   | 로그인 후 권한 요청(첫 입찰/관심 등록 시점), Expo push token → `/me/push-tokens` |
+| Camera / Photo Library | `expo-image-picker` (카메라 + 앨범, 다중 선택 최대 20) | 상품 등록, 채팅 이미지                                                           |
+| 이미지 압축            | `expo-image-manipulator`                               | 업로드 전 긴 변 2400px, JPEG 0.85 (서버에서 재처리)                              |
+| Share                  | RN `Share`                                             | 상품/경매 공유 (웹 URL)                                                          |
+| Secure Storage         | `expo-secure-store`                                    | refresh 토큰                                                                     |
+| Biometric              | `expo-local-authentication`                            | 앱 잠금 해제 (설정)                                                              |
+| Browser Auth           | `expo-web-browser` + `expo-auth-session`               | 소셜 로그인                                                                      |
+| Haptics                | `expo-haptics`                                         | 입찰 성공/실패                                                                   |
+| Image                  | `expo-image`                                           | 캐시, placeholder 색                                                             |
 
 ## 4. Mobile UX
 

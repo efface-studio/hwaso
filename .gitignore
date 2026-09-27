@@ -20,4 +20,3 @@ coverage/
 !.vscode/extensions.json
 ios/
 android/
-!apps/mobile/app.json
