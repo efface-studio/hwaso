@@ -222,6 +222,8 @@ model User {
   role               Role       @default(USER)
   status             UserStatus @default(ACTIVE)
   /// 알림 설정: { push: { auction, trade, chat, activity }, quietHours } (docs/API.md)
+  /// 정지 사유 등 운영 조치 사유 (회원에게 로그인 시 안내)
+  statusReason       String?
   notificationPrefs  Json       @default("{}")
   unpaidStrikes      Int        @default(0)
   marketingOptIn     Boolean    @default(false)
@@ -938,6 +940,9 @@ model Notice {
   isPinned    Boolean  @default(false)
   publishedAt DateTime @default(now()) @db.Timestamptz
   createdAt   DateTime @default(now()) @db.Timestamptz
+  updatedAt   DateTime @default(now()) @updatedAt @db.Timestamptz
+
+  @@index([isPinned, publishedAt(sort: Desc)])
 }
 
 model AuditLog {
@@ -953,4 +958,5 @@ model AuditLog {
 
   @@index([targetType, targetId])
   @@index([actorId, createdAt])
+  @@index([createdAt(sort: Desc)])
 }
