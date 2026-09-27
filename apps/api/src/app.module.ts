@@ -10,6 +10,7 @@ import { RateLimitGuard, RateLimitModule } from './common/rate-limit';
 import { HealthModule } from './health/health.controller';
 import { MediaModule } from './media/media.controller';
 import { MailModule } from './mail/mail.service';
+import { OrdersModule } from './orders/orders.controller';
 import { PrismaModule } from './prisma/prisma.service';
 import { ProductsModule } from './products/products.controller';
 import { RealtimeEmitterModule } from './realtime/realtime';
@@ -33,6 +34,7 @@ import { UsersModule } from './users/users.controller';
     UsersModule,
     RealtimeEmitterModule,
     AuctionsModule,
+    OrdersModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: HttpExceptionFilter },
