@@ -88,3 +88,19 @@ export const deleteAccountSchema = z
   })
   .refine((v) => v.password || v.verificationToken, { message: '비밀번호 또는 이메일 인증이 필요합니다.' });
 export type DeleteAccountInput = z.infer<typeof deleteAccountSchema>;
+
+/** 로그인한 사용자가 소셜 계정을 연결할 때 (device 불필요) */
+export const oauthLinkSchema = oauthCallbackSchema.omit({ device: true });
+export type OAuthLinkInput = z.infer<typeof oauthLinkSchema>;
+
+/** iOS 네이티브 Sign in with Apple — identityToken 을 서버가 Apple 공개키로 검증 */
+export const appleNativeSchema = z.strictObject({
+  identityToken: z.string().min(20).max(4096),
+  name: z.string().max(80).optional(),
+  device: deviceSchema,
+});
+export type AppleNativeInput = z.infer<typeof appleNativeSchema>;
+
+export const identityCompleteSchema = z.strictObject({
+  identityVerificationId: z.string().min(8).max(100),
+});

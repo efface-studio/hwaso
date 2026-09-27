@@ -69,3 +69,6 @@ export const sellerRegisterSchema = z.strictObject({
   accountHolder: z.string().trim().min(1).max(50),
 });
 export type SellerRegisterInput = z.infer<typeof sellerRegisterSchema>;
+
+export const sellerUpdateSchema = sellerRegisterSchema.partial();
+export type SellerUpdateInput = z.infer<typeof sellerUpdateSchema>;

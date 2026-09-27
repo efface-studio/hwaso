@@ -216,6 +216,13 @@ model User {
   status          UserStatus @default(ACTIVE)
   unpaidStrikes   Int        @default(0)
   marketingOptIn  Boolean    @default(false)
+  termsAgreedAt   DateTime?  @db.Timestamptz
+  /// 본인인증(PASS) — CI 는 HMAC 해시만 저장해 중복 가입을 막는다
+  identityVerifiedAt DateTime? @db.Timestamptz
+  ciHash             String?   @unique
+  isAdult            Boolean   @default(false)
+  verifiedNameMasked String?
+  phoneMasked        String?
   createdAt       DateTime   @default(now()) @db.Timestamptz
   updatedAt       DateTime   @updatedAt @db.Timestamptz
   deletedAt       DateTime?  @db.Timestamptz

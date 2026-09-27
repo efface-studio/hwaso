@@ -2,7 +2,7 @@
 
 import { Check } from 'lucide-react';
 import { Checkbox as C, RadioGroup as R, Switch as Sw } from 'radix-ui';
-import type { ReactNode } from 'react';
+import { useId, type ReactNode } from 'react';
 import { cn } from '@/lib/cn';
 
 interface CheckboxProps {
@@ -15,11 +15,14 @@ interface CheckboxProps {
 }
 
 export function Checkbox({ checked, onCheckedChange, label, disabled, className }: CheckboxProps) {
+  // 스크린리더가 체크박스 이름을 라벨 텍스트로 읽도록 연결한다
+  const labelId = useId();
   return (
     <label className={cn('inline-flex min-h-11 cursor-pointer items-center gap-2.5 text-body', className)}>
       <C.Root
         checked={checked}
         disabled={disabled}
+        aria-labelledby={labelId}
         onCheckedChange={(v) => onCheckedChange(v === true)}
         className="flex size-5 shrink-0 items-center justify-center rounded-sm border border-border-strong bg-background data-[state=checked]:border-primary data-[state=checked]:bg-primary"
       >
@@ -27,7 +30,7 @@ export function Checkbox({ checked, onCheckedChange, label, disabled, className 
           <Check className="size-3.5 text-primary-foreground" strokeWidth={3} aria-hidden />
         </C.Indicator>
       </C.Root>
-      <span>{label}</span>
+      <span id={labelId}>{label}</span>
     </label>
   );
 }

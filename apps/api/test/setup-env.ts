@@ -13,4 +13,20 @@ const defaults: Record<string, string> = {
 };
 for (const [k, v] of Object.entries(defaults)) process.env[k] ??= v;
 process.env.NODE_ENV = 'test';
+
+// 기능 키는 로컬 .env 값과 무관하게 고정한다 (외부 호출은 테스트 더블로 교체)
+Object.assign(process.env, {
+  PORTONE_API_SECRET: 'test-portone-secret',
+  PORTONE_STORE_ID: 'store-test',
+  PORTONE_IDENTITY_CHANNEL_KEY: 'channel-test',
+  KAKAO_CLIENT_ID: 'kakao-test',
+  KAKAO_CLIENT_SECRET: '',
+  GOOGLE_CLIENT_ID: '',
+  GOOGLE_CLIENT_SECRET: '',
+  NAVER_CLIENT_ID: '',
+  NAVER_CLIENT_SECRET: '',
+  APPLE_CLIENT_ID: '',
+  SMTP_URL: '',
+  OAUTH_REDIRECT_ALLOWLIST: 'http://localhost:3000/auth/callback',
+});
 process.env.DATABASE_URL = process.env.DATABASE_URL_TEST;

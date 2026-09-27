@@ -1,5 +1,6 @@
 import type {
   AuctionResult,
+  AuthProvider,
   AuctionStatus,
   CategoryGroup,
   ItemCondition,
@@ -32,6 +33,9 @@ export interface MeDto {
   emailVerified: boolean;
   hasPassword: boolean;
   isSeller: boolean;
+  identityVerified: boolean;
+  isAdult: boolean;
+  socialProviders: AuthProvider[];
   profile: {
     nickname: string;
     bio: string;
@@ -248,4 +252,26 @@ export interface PublicProfileDto {
 /** 판매자 본인 편집용 상세 (비공개 필드 포함) */
 export interface EditableProductDto extends ProductDetailDto {
   certificateReviewNote: string | null;
+}
+
+export interface AuthProvidersDto {
+  oauth: AuthProvider[];
+  /** PASS 본인인증 사용 가능 여부와 클라이언트 SDK 설정 */
+  identity: { storeId: string; channelKey: string } | null;
+}
+
+export interface SellerInfoDto {
+  businessName: string | null;
+  bankName: string;
+  bankAccountMasked: string;
+  accountHolder: string;
+  verified: boolean;
+}
+
+export interface IdentityStatusDto {
+  verified: boolean;
+  verifiedAt: string | null;
+  nameMasked: string | null;
+  phoneMasked: string | null;
+  isAdult: boolean;
 }

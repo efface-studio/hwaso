@@ -36,6 +36,11 @@ const schema = z.object({
   APPLE_TEAM_ID: optional,
   APPLE_KEY_ID: optional,
   APPLE_PRIVATE_KEY: optional,
+  /** iOS 네이티브 Sign in with Apple 의 aud (앱 번들 ID) */
+  APPLE_BUNDLE_ID: optional,
+  /** 모바일 OAuth 가 브라우저에서 돌아올 때 거치는 API 공개 주소 */
+  API_PUBLIC_URL: z.string().default('http://localhost:4000'),
+  APP_SCHEME: z.string().default('shop'),
   OAUTH_REDIRECT_ALLOWLIST: z
     .string()
     .default('http://localhost:3000/auth/callback')
@@ -45,6 +50,9 @@ const schema = z.object({
         .map((s) => s.trim())
         .filter(Boolean),
     ),
+  PORTONE_API_SECRET: optional,
+  PORTONE_STORE_ID: optional,
+  PORTONE_IDENTITY_CHANNEL_KEY: optional,
   TOSS_SECRET_KEY: optional,
   TOSS_CLIENT_KEY: optional,
 });

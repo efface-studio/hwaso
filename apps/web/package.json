@@ -10,6 +10,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@portone/browser-sdk": "0.1.11",
     "@shop/api-client": "workspace:*",
     "@shop/shared": "workspace:*",
     "@shop/tokens": "workspace:*",
