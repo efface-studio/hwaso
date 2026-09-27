@@ -23,7 +23,7 @@ export function BottomTabs() {
       aria-label="주요 메뉴"
       className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background pb-[env(safe-area-inset-bottom)] md:hidden"
     >
-      <ul className="grid h-14 grid-cols-5">
+      <ul className="grid h-[var(--tabbar-h)] grid-cols-5">
         {TABS.map(({ href, label, Icon, match }) => {
           const active = match(pathname);
           return (

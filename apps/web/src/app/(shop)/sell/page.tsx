@@ -281,7 +281,7 @@ function SellFlow() {
         {error && <Alert tone="destructive">{error}</Alert>}
       </div>
 
-      <div className="sticky bottom-[calc(56px+env(safe-area-inset-bottom))] mt-8 border-t border-border bg-background py-3 md:static md:border-none md:p-0">
+      <div className="sticky bottom-[calc(var(--tabbar-h)+env(safe-area-inset-bottom))] mt-8 border-t border-border bg-background py-3 md:static md:border-none md:p-0">
         {step === 'review' ? (
           <Button size="lg" block loading={pending} onClick={() => void submit()}>
             {d.saleType === 'AUCTION' ? '작품 등록하고 경매 예약하기' : '작품 등록하기'}

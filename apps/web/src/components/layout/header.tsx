@@ -26,7 +26,9 @@ function CartLink({ className }: { className: string }) {
 function AccountLinks() {
   const user = useAuthStore((s) => s.user);
   const ready = useAuthStore((s) => s.ready);
-  const icon = 'relative inline-flex size-10 items-center justify-center rounded-sm hover:bg-surface-2';
+  const icon =
+    'relative inline-flex h-10 min-w-10 items-center justify-center gap-1 rounded-sm px-1 hover:bg-surface-2';
+  const label = 'senior-only text-label';
   const unread = useUnreadCounts();
   return (
     <div className="flex items-center gap-1">
@@ -43,6 +45,9 @@ function AccountLinks() {
         className={icon}
       >
         <Bell className="size-5" aria-hidden />
+        <span className={label} aria-hidden>
+          알림
+        </span>
         <CountBadge n={unread.notifications} />
       </Link>
       <Link
@@ -51,6 +56,9 @@ function AccountLinks() {
         className={cn(icon, 'hidden md:inline-flex')}
       >
         <MessageCircle className="size-5" aria-hidden />
+        <span className={label} aria-hidden>
+          채팅
+        </span>
         <CountBadge n={unread.chat} />
       </Link>
       {ready && !user ? (
@@ -63,6 +71,9 @@ function AccountLinks() {
       ) : (
         <Link href="/my" aria-label="마이페이지" className={cn(icon, 'hidden md:inline-flex')}>
           <User className="size-5" aria-hidden />
+          <span className={label} aria-hidden>
+            마이
+          </span>
         </Link>
       )}
     </div>
