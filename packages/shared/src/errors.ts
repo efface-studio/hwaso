@@ -52,6 +52,16 @@ export const ERROR_MESSAGES = {
   PAYMENT_AMOUNT_MISMATCH: '결제 금액이 주문 금액과 다릅니다. 결제가 취소되었습니다.',
   PAYMENT_FAILED: '결제에 실패했습니다. 다시 시도해주세요.',
   COUPON_INVALID: '사용할 수 없는 쿠폰입니다.',
+  COUPON_MIN_AMOUNT: '쿠폰 최소 주문 금액을 채우지 못했습니다.',
+  COUPON_ALREADY_USED: '이미 사용한 쿠폰입니다.',
+  SELF_PURCHASE: '본인 상품은 구매할 수 없습니다.',
+  NOT_FOR_SALE: '지금은 구매할 수 없는 상품입니다.',
+  MULTI_SELLER_ORDER: '한 번에 한 판매자의 상품만 주문할 수 있습니다.',
+  ADDRESS_REQUIRED: '배송지를 선택해주세요.',
+  ADDRESS_LIMIT: '배송지는 최대 20개까지 등록할 수 있습니다.',
+  PAYMENT_EXPIRED: '결제 기한이 지나 주문이 취소되었습니다.',
+  PAYMENT_NOT_CONFIGURED: '현재 결제를 이용할 수 없습니다. 잠시 후 다시 시도해주세요.',
+  REFUND_FAILED: '환불 처리에 실패했습니다. 고객센터에 문의해주세요.',
 } as const;
 
 export type ErrorCode = keyof typeof ERROR_MESSAGES;

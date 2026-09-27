@@ -4,13 +4,20 @@ import { Module } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AuctionScheduler } from './auctions/auction-scheduler';
 import { logger } from './common/logger';
+import { OrderScheduler } from './orders/order-scheduler';
+import { OrdersService } from './orders/orders.service';
+import { PaymentsService } from './orders/payments.service';
+import { TossClient } from './orders/toss.client';
 import { PinoNestLogger } from './common/nest-logger';
 import { PrismaModule } from './prisma/prisma.service';
 import { RealtimeEmitterModule } from './realtime/realtime';
 import { RedisModule } from './redis/redis.service';
 
 /** 운영: API 는 SCHEDULER_ENABLED=false 로 띄우고 이 워커를 별도 프로세스로 실행한다 */
-@Module({ imports: [PrismaModule, RedisModule, RealtimeEmitterModule], providers: [AuctionScheduler] })
+@Module({
+  imports: [PrismaModule, RedisModule, RealtimeEmitterModule],
+  providers: [AuctionScheduler, OrderScheduler, OrdersService, PaymentsService, TossClient],
+})
 class WorkerModule {}
 
 async function main() {

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { PAYMENT_METHODS } from '../enums';
-import { id, positiveMoney } from './common';
+import { cursorQuery, id, positiveMoney } from './common';
 
 export const phoneSchema = z
   .string()
@@ -26,19 +26,45 @@ export const cartItemSchema = z.strictObject({
   quantity: z.number().int().min(1).max(99).default(1),
 });
 
+const orderItems = z
+  .array(z.strictObject({ productId: id, quantity: z.number().int().min(1).max(99) }))
+  .min(1)
+  .max(50);
+const couponCode = z
+  .string()
+  .trim()
+  .toUpperCase()
+  .max(40)
+  .optional()
+  .transform((v) => v || undefined);
+
+/** 결제 전 금액 미리보기 (주문을 만들지 않는다) */
+export const quoteOrderSchema = z.strictObject({ items: orderItems, couponCode });
+export type QuoteOrderInput = z.infer<typeof quoteOrderSchema>;
+
 export const createOrderSchema = z.strictObject({
-  items: z
-    .array(z.strictObject({ productId: id, quantity: z.number().int().min(1).max(99) }))
-    .min(1)
-    .max(50),
+  items: orderItems,
   addressId: id,
-  couponCode: z.string().trim().max(40).optional(),
+  couponCode,
   fromCart: z.boolean().default(false),
 });
 export type CreateOrderInput = z.infer<typeof createOrderSchema>;
 
 export const preparePaymentSchema = z.strictObject({
   method: z.enum(PAYMENT_METHODS),
+  /** 낙찰 주문처럼 배송지 없이 만들어진 주문은 결제 전에 배송지를 정한다 */
+  addressId: id.optional(),
+});
+export type PreparePaymentInput = z.infer<typeof preparePaymentSchema>;
+
+export const ORDER_LIST_FILTERS = ['all', 'pending', 'progress', 'done', 'cancelled'] as const;
+export const orderListQuery = cursorQuery.extend({
+  filter: z.enum(ORDER_LIST_FILTERS).default('all'),
+});
+export type OrderListQuery = z.infer<typeof orderListQuery>;
+
+export const refundRequestSchema = z.strictObject({
+  reason: z.string().trim().min(5, '사유를 5자 이상 입력해주세요.').max(1000),
 });
 
 export const confirmPaymentSchema = z.strictObject({

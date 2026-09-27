@@ -69,7 +69,7 @@ export type OrderSource = (typeof ORDER_SOURCES)[number];
 export const PAYMENT_STATUSES = e('READY', 'DONE', 'CANCELLED', 'PARTIAL_REFUNDED', 'REFUNDED', 'FAILED');
 export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
 
-export const PAYMENT_METHODS = e('CARD', 'EASY_PAY', 'BANK_TRANSFER');
+export const PAYMENT_METHODS = e('CARD', 'EASY_PAY', 'BANK_TRANSFER', 'VIRTUAL_ACCOUNT');
 export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
 
 export const SHIPMENT_STATUSES = e('READY', 'SHIPPED', 'IN_TRANSIT', 'DELIVERED');

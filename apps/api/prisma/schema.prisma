@@ -131,6 +131,7 @@ enum PaymentMethod {
   CARD
   EASY_PAY
   BANK_TRANSFER
+  VIRTUAL_ACCOUNT
 }
 
 enum ShipmentStatus {
