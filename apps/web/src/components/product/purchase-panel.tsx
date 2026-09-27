@@ -1,11 +1,15 @@
 'use client';
 
+import { ApiError } from '@shop/api-client';
 import { formatPrice, type ProductDetailDto } from '@shop/shared';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Gavel, Share2 } from 'lucide-react';
 import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api';
+import { useAuthStore } from '@/stores/auth';
 import { toast } from '@/stores/toast';
 import { AuctionCountdown } from './countdown';
 import { FavoriteButton } from './favorite-button';
@@ -34,6 +38,31 @@ function formatDate(iso: string) {
     hour: '2-digit',
     minute: '2-digit',
   });
+}
+
+function AddToCart({ productId, size }: { productId: string; size: 'md' | 'lg' }) {
+  const user = useAuthStore((s) => s.user);
+  const router = useRouter();
+  const pathname = usePathname();
+  const qc = useQueryClient();
+  const add = useMutation({
+    mutationFn: () => api.orders.putCart(productId, 1),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['cart'] });
+      toast.success('장바구니에 담았어요');
+    },
+    onError: (e) => toast.error(e instanceof ApiError ? e.message : '담지 못했습니다.'),
+  });
+  return (
+    <Button
+      variant="outline"
+      size={size}
+      loading={add.isPending}
+      onClick={() => (user ? add.mutate() : router.push(`/login?next=${encodeURIComponent(pathname)}`))}
+    >
+      장바구니
+    </Button>
+  );
 }
 
 /** 판매 방식별 CTA. 가격·경매 상태는 서버 값만 표시한다 */
@@ -85,9 +114,12 @@ function Cta({ p, compact }: { p: ProductDetailDto; compact?: boolean }) {
     );
   }
   return (
-    <Button asChild size={size} block>
-      <Link href={`/checkout?productId=${p.id}`}>구매하기</Link>
-    </Button>
+    <div className="flex gap-2">
+      <AddToCart productId={p.id} size={size} />
+      <Button asChild size={size} className="flex-1">
+        <Link href={`/checkout?productId=${p.id}`}>구매하기</Link>
+      </Button>
+    </div>
   );
 }
 
