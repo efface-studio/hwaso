@@ -123,6 +123,7 @@ export class SellerProductsService {
         select: { id: true, status: true },
       });
     });
+    if (product.status === 'ACTIVE') void this.events.newProduct(product.id).catch(logNotifyError);
     return product;
   }
 
@@ -289,6 +290,7 @@ export class SellerProductsService {
       data: { status: 'ACTIVE', publishedAt: p.publishedAt ?? new Date() },
     });
     await this.redis.del(HOME_CACHE_KEY);
+    if (!p.publishedAt) void this.events.newProduct(id).catch(logNotifyError);
   }
 
   /** 판매 중지 ↔ 재개 (연결 기능) */

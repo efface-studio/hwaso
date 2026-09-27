@@ -15,6 +15,7 @@ import {
 } from '@shop/shared';
 import { AppException } from '../common/app-exception';
 import type { AuthUser } from '../common/auth';
+import { logNotifyError, NotificationEvents } from '../notifications/notification-events';
 import { PrismaService } from '../prisma/prisma.service';
 import { cardInclude, toCard } from '../products/product.mapper';
 import { decodeCursor, encodeCursor, HOME_CACHE_KEY, ProductsService } from '../products/products.service';
@@ -33,6 +34,7 @@ export class AuctionsService {
     private readonly realtime: RealtimeService,
     private readonly gateway: RealtimeGateway,
     private readonly products: ProductsService,
+    private readonly events: NotificationEvents,
   ) {}
 
   private async policy() {
@@ -192,11 +194,17 @@ export class AuctionsService {
     const a = await this.owned(user, id);
     await this.assertSchedule(a.startsAt, a.endsAt, a.startPrice, a.buyNowPrice, true);
     const updated = await this.transition(id, 'DRAFT', 'SCHEDULED');
+    const product = await this.prisma.product.findUniqueOrThrow({
+      where: { id: a.productId },
+      select: { publishedAt: true },
+    });
     await this.prisma.product.update({
       where: { id: a.productId },
-      data: { status: 'ACTIVE', publishedAt: new Date(), listPrice: a.startPrice },
+      data: { status: 'ACTIVE', publishedAt: product.publishedAt ?? new Date(), listPrice: a.startPrice },
     });
     await this.redis.del(HOME_CACHE_KEY);
+    // 최초 게시일 때만 팔로워에게 알린다 (예약 취소 후 재예약은 제외)
+    if (!product.publishedAt) void this.events.newProduct(a.productId).catch(logNotifyError);
     return toAuctionDto(updated);
   }
 
