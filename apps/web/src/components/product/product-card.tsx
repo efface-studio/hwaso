@@ -52,22 +52,30 @@ export function ProductCard({ product: p, priority, sizes, className }: ProductC
             판매 완료
           </span>
         )}
-        <FavoriteButton productId={p.id} initial={p.isFavorite} />
       </div>
-      <Link href={href} className="mt-2.5 flex flex-col gap-0.5 pr-1">
-        <span className="truncate text-small font-semibold text-foreground">
-          {p.artistName ?? '작자 미상'}
-        </span>
-        <h3 className="truncate text-small text-foreground-2">{p.title}</h3>
-        <PriceTag product={p} className="mt-1.5" />
-        {a && (a.status === 'LIVE' || a.status === 'SCHEDULED') && (
-          <span className="mt-0.5 flex items-center gap-2 text-caption">
-            <AuctionCountdown endsAt={a.endsAt} startsAt={a.startsAt} status={a.status} compact />
-            {a.status === 'LIVE' && <span className="text-muted">입찰 {a.bidCount}</span>}
+      <div className="mt-2.5 flex items-start gap-1">
+        <Link href={href} className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <span className="truncate text-small font-semibold text-foreground">
+            {p.artistName ?? '작자 미상'}
           </span>
-        )}
-        {p.saleType === 'RESERVATION' && <span className="mt-0.5 text-caption text-muted">예약 판매</span>}
-      </Link>
+          <h3 className="truncate text-small text-foreground-2">{p.title}</h3>
+          <PriceTag product={p} className="mt-1.5" />
+          {a && (a.status === 'LIVE' || a.status === 'SCHEDULED') && (
+            <span className="mt-0.5 flex items-center gap-2 text-caption">
+              <AuctionCountdown endsAt={a.endsAt} startsAt={a.startsAt} status={a.status} compact />
+              {a.status === 'LIVE' && <span className="text-muted">입찰 {a.bidCount}</span>}
+            </span>
+          )}
+          {p.saleType === 'RESERVATION' && <span className="mt-0.5 text-caption text-muted">예약 판매</span>}
+        </Link>
+        {/* 작품 이미지를 가리지 않도록 관심 버튼은 정보 영역 오른쪽에 둔다 */}
+        <FavoriteButton
+          productId={p.id}
+          initial={p.isFavorite}
+          variant="inline"
+          className="-mt-2 -mr-2 shrink-0"
+        />
+      </div>
     </article>
   );
 }

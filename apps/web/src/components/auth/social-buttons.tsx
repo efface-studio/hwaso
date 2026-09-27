@@ -68,6 +68,8 @@ const BRAND: Record<AuthProvider, { label: string; className: string; icon: Reac
 };
 
 const ORDER: AuthProvider[] = ['KAKAO', 'NAVER', 'GOOGLE', 'APPLE'];
+const SHOW_UNCONFIGURED =
+  process.env.NEXT_PUBLIC_SHOW_UNCONFIGURED_AUTH === 'true' || process.env.NODE_ENV !== 'production';
 
 /** API 에 키가 설정된 provider 만 보여준다 (키만 넣으면 버튼이 나타난다) */
 export function useAuthProviders() {
@@ -77,10 +79,16 @@ export function useAuthProviders() {
 export function SocialButtons({ next, mode = 'login' }: { next?: string; mode?: 'login' | 'link' }) {
   const { data } = useAuthProviders();
   const [busy, setBusy] = useState<AuthProvider | null>(null);
-  const enabled = ORDER.filter((p) => data?.oauth.includes(p));
-  if (!enabled.length) return null;
+  const configured = (p: AuthProvider) => !!data?.oauth.includes(p);
+  // 운영: 키가 설정된 방식만 노출. 개발: 모든 버튼을 보여주고 미설정이면 안내한다
+  const visible = SHOW_UNCONFIGURED ? ORDER : ORDER.filter(configured);
+  if (!visible.length) return null;
 
   const go = async (p: AuthProvider) => {
+    if (!configured(p)) {
+      toast.show(`${PROVIDER_LABEL[p]} 로그인은 API 키 설정 후 사용할 수 있어요 (apps/api/.env)`);
+      return;
+    }
     setBusy(p);
     try {
       await startOAuth(p, mode, next);
@@ -92,7 +100,7 @@ export function SocialButtons({ next, mode = 'login' }: { next?: string; mode?: 
 
   return (
     <div className="flex flex-col gap-2">
-      {enabled.map((p) => (
+      {visible.map((p) => (
         <button
           key={p}
           type="button"

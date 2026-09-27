@@ -193,7 +193,17 @@ export interface ProductListResponse {
   total: number;
 }
 
+export interface BannerDto {
+  id: string;
+  title: string;
+  subtitle: string;
+  tone: 'dark' | 'light';
+  imageKey: string;
+  link: string;
+}
+
 export interface HomeDto {
+  banners: BannerDto[];
   liveAuctions: ProductCardDto[];
   endingSoon: ProductCardDto[];
   upcomingAuctions: ProductCardDto[];
@@ -274,4 +284,20 @@ export interface IdentityStatusDto {
   nameMasked: string | null;
   phoneMasked: string | null;
   isAdult: boolean;
+}
+
+/** 내 입찰 내역 한 줄 (경매별 요약) */
+export interface MyBidDto {
+  auction: AuctionSummary & { highestBidderIsMe: boolean; result: AuctionResult };
+  product: Pick<ProductCardDto, 'id' | 'title' | 'artistName' | 'image'>;
+  myMaxBid: number;
+  myBidCount: number;
+  lastBidAt: string;
+  /** 낙찰 시 결제할 주문 */
+  orderId: string | null;
+}
+
+export interface SellerAuctionDto {
+  auction: AuctionDto;
+  product: Pick<ProductCardDto, 'id' | 'title' | 'artistName' | 'image'>;
 }

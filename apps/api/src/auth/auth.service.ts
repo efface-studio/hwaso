@@ -77,7 +77,7 @@ export class AuthService {
     if (purpose === 'SIGNUP' && exists) {
       await this.mail.send({
         to: email,
-        subject: '[Efface Shop] 이미 가입된 이메일입니다',
+        subject: '[화소] 이미 가입된 이메일입니다',
         text: '이 이메일로 이미 가입된 계정이 있습니다. 로그인하거나 비밀번호 찾기를 이용해주세요.',
       });
       return { retryAfterSec: 60 };
@@ -95,7 +95,7 @@ export class AuthService {
     });
     await this.mail.send({
       to: email,
-      subject: `[Efface Shop] ${PURPOSE_SUBJECT[purpose]}`,
+      subject: `[화소] ${PURPOSE_SUBJECT[purpose]}`,
       text: `인증번호: ${code}\n\n${CODE_TTL_MIN}분 안에 입력해주세요. 요청하지 않았다면 이 메일을 무시하세요.`,
     });
     return { retryAfterSec: 60 };

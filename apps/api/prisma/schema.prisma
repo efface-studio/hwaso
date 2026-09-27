@@ -884,6 +884,9 @@ model Report {
 model Banner {
   id        String   @id @default(cuid())
   title     String
+  subtitle  String   @default("")
+  /// 이미지 위 글자 색 (배너 이미지 밝기에 맞춰 관리자가 고른다)
+  tone      String   @default("dark")
   imageKey  String
   link      String
   placement String   @default("home")

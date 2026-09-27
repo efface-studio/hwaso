@@ -275,15 +275,12 @@ function IdentitySection() {
       </div>
     );
   }
-  if (!providers.data?.identity) {
-    return (
-      <p className="text-small text-muted">
-        현재 본인인증을 사용할 수 없습니다. (본인인증 서비스 키가 설정되지 않음)
-      </p>
-    );
-  }
-
   const verify = async () => {
+    // 키가 없는 개발 환경에서도 화면은 보이게 두고, 눌렀을 때 안내한다
+    if (!providers.data?.identity) {
+      toast.show('PASS 본인인증은 PortOne 키 설정 후 사용할 수 있어요 (apps/api/.env)');
+      return;
+    }
     setPending(true);
     try {
       const prep = await api.auth.prepareIdentity();

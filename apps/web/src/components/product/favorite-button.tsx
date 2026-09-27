@@ -14,7 +14,7 @@ interface FavoriteButtonProps {
   productId: string;
   initial: boolean;
   count?: number;
-  variant?: 'overlay' | 'plain';
+  variant?: 'inline' | 'plain';
   className?: string;
 }
 
@@ -25,7 +25,7 @@ export function FavoriteButton({
   productId,
   initial,
   count,
-  variant = 'overlay',
+  variant = 'inline',
   className,
 }: FavoriteButtonProps) {
   const [on, setOn] = useState(initial);
@@ -98,6 +98,7 @@ export function FavoriteButton({
       </button>
     );
   }
+  // 카드용: 정보 영역 오른쪽의 작은 아이콘 버튼 (터치 영역 40px)
   return (
     <button
       type="button"
@@ -105,7 +106,8 @@ export function FavoriteButton({
       aria-pressed={on}
       aria-label={label}
       className={cn(
-        'absolute right-1.5 bottom-1.5 inline-flex size-9 items-center justify-center rounded-full text-foreground/80 hover:text-foreground',
+        'inline-flex size-10 items-center justify-center rounded-sm transition-colors',
+        on ? 'text-destructive' : 'text-faint hover:text-foreground',
         className,
       )}
     >

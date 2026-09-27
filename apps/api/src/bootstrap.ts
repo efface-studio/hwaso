@@ -11,6 +11,7 @@ import { AppModule } from './app.module';
 import { env } from './config/env';
 import { httpLogger } from './common/logger';
 import { PinoNestLogger } from './common/nest-logger';
+import { RedisIoAdapter } from './realtime/realtime';
 import { clientIp, RateLimitService } from './common/rate-limit';
 import { S3Service } from './storage/s3.service';
 
@@ -51,6 +52,8 @@ export async function createApp(testing?: TestingModule): Promise<INestApplicati
   });
 
   app.setGlobalPrefix(API_PREFIX);
+  // 테스트는 단일 인스턴스라 인메모리 어댑터로 충분하다 (Redis 어댑터의 백그라운드 구독이 종료 시점에 끊기는 것 방지)
+  if (e.NODE_ENV !== 'test') app.useWebSocketAdapter(new RedisIoAdapter(app));
   app.enableShutdownHooks();
 
   if (e.NODE_ENV === 'development') await app.get(S3Service).ensureBucket();

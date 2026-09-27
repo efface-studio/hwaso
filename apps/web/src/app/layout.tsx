@@ -7,9 +7,10 @@ import { Providers } from './providers';
 
 export const metadata: Metadata = {
   metadataBase: new URL(env.siteUrl),
-  title: { default: 'Efface Shop — 미술품·컬렉터블 거래와 실시간 경매', template: '%s | Efface Shop' },
-  description: '회화, 판화, 조각, 고미술, 골동품, 컬렉터블을 사고팔고 실시간 경매에 참여하세요.',
-  openGraph: { siteName: 'Efface Shop', locale: 'ko_KR', type: 'website' },
+  title: { default: '화소(畫所) — 작품과 사람이 만나는 곳', template: '%s | 화소' },
+  description:
+    '작품과 사람이 만나는 곳, 화소. 회화·판화·조각·고미술·골동품·컬렉터블을 사고팔고 실시간 경매에 참여하세요.',
+  openGraph: { siteName: '화소', locale: 'ko_KR', type: 'website' },
 };
 
 export const viewport: Viewport = {

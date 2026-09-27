@@ -1,4 +1,6 @@
-# Efface Shop
+# 화소(畫所)
+
+> 작품과 사람이 만나는 곳
 
 미술품 · 역사적 제품 · 골동품 · 컬렉터블 거래 마켓플레이스와 **실시간 온라인 경매** 플랫폼.
 Web(Next.js) · iOS/Android(Expo) · API(NestJS) 모노레포.

@@ -6,8 +6,10 @@ export function Footer() {
     <footer className="mt-20 border-t border-border bg-background-soft pb-24 md:pb-0">
       <div className="page-x mx-auto flex max-w-page flex-col gap-6 py-10 md:flex-row md:justify-between">
         <div className="flex flex-col gap-2 text-small text-muted">
-          <p className="text-body-strong text-foreground">Efface Shop</p>
-          <p>미술품 · 역사적 제품 · 컬렉터블 마켓플레이스와 실시간 경매</p>
+          <p className="text-body-strong text-foreground">
+            화소 <span className="font-normal text-muted">畫所</span>
+          </p>
+          <p>작품과 사람이 만나는 곳 — 미술품 · 고미술 · 컬렉터블 거래와 실시간 경매</p>
           <p className="text-caption">
             상품 정보와 인증서·출처 정보는 판매자가 제공한 것이며, &lsquo;플랫폼 검수 완료&rsquo; 표시가 있는
             항목만 플랫폼이 확인했습니다.

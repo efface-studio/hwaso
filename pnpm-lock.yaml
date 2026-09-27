@@ -235,6 +235,9 @@ importers:
       '@shop/shared':
         specifier: workspace:*
         version: link:../shared
+      socket.io-client:
+        specifier: 4.8.4
+        version: 4.8.4(supports-color@7.2.0)
     devDependencies:
       vitest:
         specifier: ^3.2.7

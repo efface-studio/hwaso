@@ -12,7 +12,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@shop/shared": "workspace:*"
+    "@shop/shared": "workspace:*",
+    "socket.io-client": "4.8.4"
   },
   "devDependencies": {
     "vitest": "^3.2.7"
