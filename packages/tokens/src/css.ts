@@ -1,6 +1,9 @@
-import { layout, motion, palette, radius, shadow, spacing, typography, type ColorScheme } from './index';
+import { layout, motion, palette, radius, shadow, typography, type ColorScheme } from './index';
 
+/** 색: surface2 → surface-2 */
 const kebab = (s: string) => s.replace(/([a-z])([A-Z0-9])/g, '$1-$2').toLowerCase();
+/** 타이포: bodyStrong → body-strong, h1 → h1 (숫자는 분리하지 않는다) */
+const kebabType = (s: string) => s.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase();
 
 function colorVars(scheme: ColorScheme, indent: string): string {
   const colors = Object.entries(palette[scheme]).map(([k, v]) => `${indent}--${kebab(k)}: ${v};`);
@@ -24,7 +27,7 @@ export function buildCss(): string {
 
   const text = Object.entries(typography)
     .map(([k, t]) => {
-      const name = kebab(k);
+      const name = kebabType(k);
       return [
         `  --text-${name}: ${t.size}px;`,
         `  --text-${name}--line-height: ${t.lineHeight}px;`,
@@ -42,7 +45,7 @@ export function buildCss(): string {
     .filter(([, t]) => 'mobile' in t)
     .map(([k, t]) => {
       const m = (t as { mobile: { size: number; lineHeight: number } }).mobile;
-      return `    --text-${kebab(k)}: ${m.size}px;\n    --text-${kebab(k)}--line-height: ${m.lineHeight}px;`;
+      return `    --text-${kebabType(k)}: ${m.size}px;\n    --text-${kebabType(k)}--line-height: ${m.lineHeight}px;`;
     })
     .join('\n');
 
@@ -70,7 +73,7 @@ ${colorVars('dark', '    ')}
   --color-current: currentColor;
 ${themeColors}
 
-  --font-sans: var(--font-pretendard), ${'"Pretendard Variable"'}, Pretendard, -apple-system, BlinkMacSystemFont, system-ui, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+  --font-sans: ${'"Pretendard Variable"'}, Pretendard, -apple-system, BlinkMacSystemFont, system-ui, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
 
   --shadow-*: initial;
   --shadow-none: none;
@@ -80,15 +83,12 @@ ${themeColors}
 
 /* inline 이 아닌 @theme — 유틸리티가 var(--text-h1) 을 참조해 아래 모바일 재정의가 적용된다 */
 @theme {
+  /* 간격은 4px 단위 숫자 유틸리티(p-4 = 16px). 이름 있는 간격(sm/xl)은 max-w-* 와 충돌해 정의하지 않는다 */
   --spacing: 4px;
 ${text}
 
   --radius-*: initial;
 ${radii}
-
-${Object.entries(spacing)
-  .map(([k, v]) => `  --spacing-${k}: ${v}px;`)
-  .join('\n')}
 
   --container-page: ${layout.maxWidth}px;
   --breakpoint-md: ${layout.breakpoints.tablet}px;

@@ -127,7 +127,7 @@
   --color-skeleton-base: var(--skeleton-base);
   --color-skeleton-shine: var(--skeleton-shine);
 
-  --font-sans: var(--font-pretendard), "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+  --font-sans: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
 
   --shadow-*: initial;
   --shadow-none: none;
@@ -137,23 +137,24 @@
 
 /* inline 이 아닌 @theme — 유틸리티가 var(--text-h1) 을 참조해 아래 모바일 재정의가 적용된다 */
 @theme {
+  /* 간격은 4px 단위 숫자 유틸리티(p-4 = 16px). 이름 있는 간격(sm/xl)은 max-w-* 와 충돌해 정의하지 않는다 */
   --spacing: 4px;
   --text-display: 40px;
   --text-display--line-height: 48px;
   --text-display--font-weight: 700;
   --text-display--letter-spacing: -0.02em;
-  --text-h-1: 28px;
-  --text-h-1--line-height: 36px;
-  --text-h-1--font-weight: 700;
-  --text-h-1--letter-spacing: -0.015em;
-  --text-h-2: 20px;
-  --text-h-2--line-height: 28px;
-  --text-h-2--font-weight: 700;
-  --text-h-2--letter-spacing: -0.01em;
-  --text-h-3: 17px;
-  --text-h-3--line-height: 24px;
-  --text-h-3--font-weight: 600;
-  --text-h-3--letter-spacing: -0.005em;
+  --text-h1: 28px;
+  --text-h1--line-height: 36px;
+  --text-h1--font-weight: 700;
+  --text-h1--letter-spacing: -0.015em;
+  --text-h2: 20px;
+  --text-h2--line-height: 28px;
+  --text-h2--font-weight: 700;
+  --text-h2--letter-spacing: -0.01em;
+  --text-h3: 17px;
+  --text-h3--line-height: 24px;
+  --text-h3--font-weight: 600;
+  --text-h3--letter-spacing: -0.005em;
   --text-body: 15px;
   --text-body--line-height: 24px;
   --text-body--font-weight: 400;
@@ -190,15 +191,6 @@
   --radius-lg: 10px;
   --radius-full: 9999px;
 
-  --spacing-xs: 4px;
-  --spacing-sm: 8px;
-  --spacing-md: 12px;
-  --spacing-lg: 16px;
-  --spacing-xl: 24px;
-  --spacing-2xl: 32px;
-  --spacing-3xl: 48px;
-  --spacing-4xl: 64px;
-
   --container-page: 1280px;
   --breakpoint-md: 768px;
   --breakpoint-lg: 1024px;
@@ -213,7 +205,7 @@
   :root {
     --text-display: 30px;
     --text-display--line-height: 38px;
-    --text-h-1: 22px;
-    --text-h-1--line-height: 30px;
+    --text-h1: 22px;
+    --text-h1--line-height: 30px;
   }
 }
