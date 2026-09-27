@@ -101,7 +101,7 @@ export const NOTIFICATION_TYPES = e(
 );
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
 
-export const CHAT_MESSAGE_KINDS = e('TEXT', 'IMAGE', 'PRODUCT');
+export const CHAT_MESSAGE_KINDS = e('TEXT', 'IMAGE', 'PRODUCT', 'APPOINTMENT', 'SYSTEM');
 export type ChatMessageKind = (typeof CHAT_MESSAGE_KINDS)[number];
 
 export const REVIEW_DIRECTIONS = e('BUYER_TO_SELLER', 'SELLER_TO_BUYER');

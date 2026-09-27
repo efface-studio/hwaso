@@ -5,6 +5,7 @@ export * from './errors';
 export * from './auction';
 export * from './order';
 export * from './notifications';
+export * from './chat';
 export * from './dto';
 export * from './realtime';
 export * from './schemas/common';
