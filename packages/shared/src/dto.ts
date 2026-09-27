@@ -175,3 +175,77 @@ export interface BidDto {
   isBuyNow: boolean;
   createdAt: string;
 }
+
+export interface ArtistDto extends ArtistSummary {
+  nationality: string | null;
+  bio: string;
+  productCount: number;
+  image: ImageDto | null;
+}
+
+export interface ProductListResponse {
+  items: ProductCardDto[];
+  nextCursor: string | null;
+  total: number;
+}
+
+export interface HomeDto {
+  liveAuctions: ProductCardDto[];
+  endingSoon: ProductCardDto[];
+  upcomingAuctions: ProductCardDto[];
+  popular: ProductCardDto[];
+  newArrivals: ProductCardDto[];
+  popularArtists: ArtistDto[];
+  collections: { category: { slug: string; name: string }; items: ProductCardDto[] }[];
+  notices: { id: string; title: string; publishedAt: string }[];
+}
+
+export interface SuggestDto {
+  products: { id: string; title: string; image: ImageDto | null }[];
+  artists: ArtistSummary[];
+  categories: { slug: string; name: string }[];
+}
+
+export interface FacetsDto {
+  eras: { value: string; count: number }[];
+  materials: { value: string; count: number }[];
+  regions: { value: string; count: number }[];
+  priceRange: { min: number; max: number } | null;
+}
+
+export interface InquiryDto {
+  id: string;
+  question: string;
+  answer: string | null;
+  answeredAt: string | null;
+  createdAt: string;
+  isPrivate: boolean;
+  /** 비밀 문의라 본인·판매자가 아니면 내용이 가려짐 */
+  hidden: boolean;
+  authorNickname: string;
+  isMine: boolean;
+}
+
+export interface PublicProfileDto {
+  id: string;
+  nickname: string;
+  bio: string;
+  avatarKey: string | null;
+  region: string | null;
+  ratingAvg: number;
+  ratingCount: number;
+  tradeCount: number;
+  verified: boolean;
+  isSeller: boolean;
+  followerCount: number;
+  followingCount: number;
+  sellingCount: number;
+  soldCount: number;
+  isFollowing: boolean;
+  joinedAt: string;
+}
+
+/** 판매자 본인 편집용 상세 (비공개 필드 포함) */
+export interface EditableProductDto extends ProductDetailDto {
+  certificateReviewNote: string | null;
+}
