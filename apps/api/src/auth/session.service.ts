@@ -51,7 +51,10 @@ export class SessionService {
     return { accessToken, refreshToken, sessionId: session.id };
   }
 
-  async rotate(refreshToken: string, client: ClientInfo) {
+  async rotate(
+    refreshToken: string,
+    client: ClientInfo,
+  ): Promise<{ accessToken: string; refreshToken: string; sessionId: string; user: User; platform: string }> {
     const hash = sha256(refreshToken);
     const s = await this.prisma.session.findUnique({
       where: { refreshTokenHash: hash },
