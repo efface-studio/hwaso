@@ -6,6 +6,7 @@ import { createApp } from '../src/bootstrap';
 import { AppException } from '../src/common/app-exception';
 import { PortOneClient, type PortOneIdentity } from '../src/identity/identity.service';
 import { MailService, type MailMessage } from '../src/mail/mail.service';
+import { PushService, type PushMessage } from '../src/notifications/push.service';
 import { TossClient, type TossPayment } from '../src/orders/toss.client';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { RedisService } from '../src/redis/redis.service';
@@ -94,6 +95,17 @@ export class FakeToss {
   }
 }
 
+export class FakePush {
+  sent: { userId: string; msg: PushMessage }[] = [];
+  send(userId: string, msg: PushMessage) {
+    this.sent.push({ userId, msg });
+    return Promise.resolve();
+  }
+  webPublicKey() {
+    return null;
+  }
+}
+
 export interface TestContext {
   app: INestApplication;
   http: ReturnType<typeof supertest>;
@@ -103,6 +115,7 @@ export interface TestContext {
   mail: FakeMail;
   portone: FakePortOne;
   toss: FakeToss;
+  push: FakePush;
 }
 
 export async function createTestApp(): Promise<TestContext> {
@@ -110,6 +123,7 @@ export async function createTestApp(): Promise<TestContext> {
   const mail = new FakeMail();
   const portone = new FakePortOne();
   const toss = new FakeToss();
+  const push = new FakePush();
   // AppModule 을 오버라이드한 모듈로 createApp 과 같은 미들웨어 구성을 재사용한다
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
     .overrideProvider(S3Service)
@@ -120,6 +134,8 @@ export async function createTestApp(): Promise<TestContext> {
     .useValue(portone)
     .overrideProvider(TossClient)
     .useValue(toss)
+    .overrideProvider(PushService)
+    .useValue(push)
     .compile();
   const app = await createApp(moduleRef);
   await app.init();
@@ -134,5 +150,6 @@ export async function createTestApp(): Promise<TestContext> {
     mail,
     portone,
     toss,
+    push,
   };
 }
