@@ -223,23 +223,28 @@ NestJS REST API. Base URL `/api/v1`. 모든 요청/응답은 JSON (업로드 제
 | GET         | /notifications/push-config          | -         | {vapidPublicKey} (웹 푸시 구독용, 미설정 시 null)                                  |
 | POST        | /reports                            | U         | {targetType, targetId, reason, detail}                                             |
 
-### Admin (`/admin/*`, 모든 변경은 AuditLog 기록)
+### Admin (`/admin/*`, ADMIN·SUPER_ADMIN, 모든 변경은 AuditLog 기록)
 
-| 경로                                             | 기능                                                 |
-| ------------------------------------------------ | ---------------------------------------------------- |
-| /admin/dashboard                                 | 지표 요약                                            |
-| /admin/users                                     | 목록/검색, 정지·해제, 역할 변경 (ADMIN 부여는 SA 만) |
-| /admin/sellers                                   | 판매자 인증 (VERIFIED_SELLER)                        |
-| /admin/products                                  | 목록, 숨김/정지, 인증서 검수                         |
-| /admin/auctions                                  | 목록, 강제 취소                                      |
-| /admin/auction-policy                            | 연장 정책 조회/수정                                  |
-| /admin/orders                                    | 목록, 상태 변경(사유 필수), 환불                     |
-| /admin/payments                                  | 결제 내역                                            |
-| /admin/settlements                               | 정산 목록, 지급 처리                                 |
-| /admin/reports                                   | 신고 목록/처리                                       |
-| /admin/categories                                | CRUD                                                 |
-| /admin/banners · /admin/notices · /admin/coupons | CRUD                                                 |
-| /admin/audit-logs                                | 조회                                                 |
+목록은 `?page=&size=&q=` 페이지 방식 → `{items, total, page, size}`. 조치에는 `{reason}` 이 필요하다.
+
+| 경로                              | 기능                                                                                                                                                               |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| GET /admin/dashboard              | 회원·판매자·작품·경매·주문·거래액(오늘/30일)·처리 대기(환불 요청·신고·미결제)·정산 예정/보류 + 14일 추이                                                           |
+| /admin/users · /users/:id         | 검색(이메일·닉네임·ID, 역할·상태), 상세, suspend(모든 기기 로그아웃, 로그인 시 사유 안내)·restore, PATCH role(관리자 부여·관리자 대상 조치는 SA 만), reset-strikes |
+| /admin/sellers                    | 인증 대기/완료 필터, verify·unverify (VERIFIED_SELLER)                                                                                                             |
+| /admin/products                   | 검색·상태·검수 필터·미처리 신고 수, hide(SUSPENDED)·restore, DELETE(진행 중 주문 있으면 거부), certificate 검수                                                    |
+| /admin/categories                 | CRUD (2단계, slug 중복·작품/하위 있으면 삭제 거부)                                                                                                                 |
+| /admin/auctions · /auction-policy | 목록·강제 취소 / 연장·결제 기한·기간 정책                                                                                                                          |
+| /admin/orders · /orders/:id       | 검색, 상세, refund: 결제 전후 취소·환불 승인, 배송 이후·구매 확정 분쟁은 강제 환불 + 정산 보류                                                                     |
+| /admin/payments                   | 결제 내역 (상태·수단 필터)                                                                                                                                         |
+| /admin/settlements · /actions     | 목록, 일괄 pay·hold·release                                                                                                                                        |
+| /admin/coupons                    | CRUD (사용된 쿠폰은 코드·방식·금액 변경 불가, 삭제 대신 비활성화)                                                                                                  |
+| /admin/reports · /:id/resolve     | 대상 미리보기·누적 수, 처리 + 조치(작품 비공개·회원 정지·메시지/후기 삭제), 같은 대상 신고 일괄 종료                                                               |
+| /admin/banners · /notices         | CRUD (배너 링크는 사이트 내부 경로만, 공지는 예약 게시)                                                                                                            |
+| POST /admin/broadcast             | 전체/판매자/구매자 운영 알림 (알림함 + 푸시)                                                                                                                       |
+| GET /admin/audit-logs             | 감사 로그 (대상 유형·관리자 필터)                                                                                                                                  |
+
+공개: `GET /notices` (고정 먼저, 게시일 지난 것만) · `GET /notices/:id`.
 
 ## WebSocket (Socket.IO, namespace `/rt`)
 

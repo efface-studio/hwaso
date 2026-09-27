@@ -183,7 +183,11 @@ export class AuthService {
       await this.redis.multi().incr(lockKey).expire(lockKey, LOGIN_LOCK_SEC, 'NX').exec();
       throw new AppException('INVALID_CREDENTIALS');
     }
-    if (user.status === 'SUSPENDED') throw new AppException('ACCOUNT_RESTRICTED');
+    if (user.status === 'SUSPENDED')
+      throw new AppException(
+        'ACCOUNT_RESTRICTED',
+        user.statusReason ? `이용이 제한된 계정입니다. 사유: ${user.statusReason}` : undefined,
+      );
     await this.redis.del(lockKey);
     const issued = await this.sessions.issue(user, input.device, client);
     return { user, issued, platform: input.device.platform };

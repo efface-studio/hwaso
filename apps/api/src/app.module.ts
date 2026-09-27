@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { AccountModule } from './account/account.controller';
+import { AdminModule } from './admin/admin.controller';
 import { AuctionsModule } from './auctions/auctions.controller';
 import { AuthModule } from './auth/auth.controller';
 import { CatalogModule } from './catalog/catalog.controller';
@@ -43,6 +44,7 @@ import { UsersModule } from './users/users.controller';
     SafetyModule,
     ChatModule,
     CommunityModule,
+    AdminModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: HttpExceptionFilter },

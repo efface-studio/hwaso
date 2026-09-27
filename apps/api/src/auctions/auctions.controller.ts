@@ -127,6 +127,6 @@ export class AuctionsController {
   imports: [ProductsModule, IdentityModule, RealtimeGatewayModule],
   controllers: [AuctionsController],
   providers: [AuctionsService, BiddingService, AuctionScheduler],
-  exports: [AuctionScheduler],
+  exports: [AuctionScheduler, AuctionsService],
 })
 export class AuctionsModule {}
