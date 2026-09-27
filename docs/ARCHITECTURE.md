@@ -32,7 +32,7 @@ docs/         설계 문서
 ## 3. 런타임 구성
 
 ```
-                                   CDN (/media/*) ── S3 (로컬: MinIO)
+                                   CDN (/media/*) ── S3 (로컬: RustFS)
                                                         ▲
  Web (Next SSR) ──HTTP──┐                               │
  Mobile (Expo)  ──HTTP──┼──> API (NestJS, N 인스턴스) ───┼──> PostgreSQL
@@ -116,7 +116,7 @@ Client: 서버 이벤트로만 가격 갱신 (낙관적 업데이트 없음)
 
 | 환경  | 구성                                                                                                    |
 | ----- | ------------------------------------------------------------------------------------------------------- |
-| local | `docker compose` (postgres:5433, redis:6380, minio:9000/9001, mailpit:8025) + `pnpm dev`                |
+| local | `docker compose` (postgres:5433, redis:6380, s3(RustFS):9000/9001, mailpit:8025) + `pnpm dev`           |
 | CI    | GitHub Actions 서비스 컨테이너 (postgres, redis)                                                        |
 | prod  | 컨테이너(API/Worker/Web) + 관리형 PostgreSQL/Redis + S3 + CDN. (배포 자동화는 범위 밖, Dockerfile 제공) |
 
