@@ -25,6 +25,7 @@ import { z } from 'zod';
 import { AppException } from '../common/app-exception';
 import { CurrentUser, OptionalAuth, Public, type AuthedRequest, type AuthUser } from '../common/auth';
 import { clientIp, RateLimit } from '../common/rate-limit';
+import { logNotifyError, NotificationEvents } from '../notifications/notification-events';
 import { ZodPipe } from '../common/zod.pipe';
 import { PrismaService } from '../prisma/prisma.service';
 import { cardInclude, PUBLIC_PRODUCT, toCard } from './product.mapper';
@@ -41,6 +42,7 @@ export class ProductsController {
     private readonly products: ProductsService,
     private readonly seller: SellerProductsService,
     private readonly prisma: PrismaService,
+    private readonly events: NotificationEvents,
   ) {}
 
   @OptionalAuth()
@@ -235,10 +237,12 @@ export class ProductsController {
     if (!product) throw new AppException('NOT_FOUND');
     if (product.sellerId === user.id)
       throw new AppException('FORBIDDEN', '본인 상품에는 문의할 수 없습니다.');
-    return this.prisma.inquiry.create({
+    const created = await this.prisma.inquiry.create({
       data: { productId: id, userId: user.id, question: body.question, isPrivate: body.isPrivate },
       select: { id: true },
     });
+    void this.events.inquiryReceived(created.id).catch(logNotifyError);
+    return created;
   }
 
   @Delete('inquiries/:id')
@@ -259,12 +263,13 @@ export class ProductsController {
       select: { product: { select: { sellerId: true } } },
     });
     if (!inquiry || inquiry.product.sellerId !== user.id) throw new AppException('NOT_FOUND');
-    // 알림(INQUIRY_ANSWERED)은 알림 모듈 도입 시 연결
-    return this.prisma.inquiry.update({
+    const updated = await this.prisma.inquiry.update({
       where: { id },
       data: { answer: body.answer, answeredAt: new Date() },
       select: { id: true, answeredAt: true },
     });
+    void this.events.inquiryAnswered(id).catch(logNotifyError);
+    return updated;
   }
 }
 

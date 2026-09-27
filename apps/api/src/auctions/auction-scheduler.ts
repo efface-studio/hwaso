@@ -2,6 +2,7 @@ import { Injectable, Logger, type OnApplicationBootstrap, type OnApplicationShut
 import type { Auction } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeService } from '../realtime/realtime';
+import { logNotifyError, NotificationEvents } from '../notifications/notification-events';
 import { RedisService } from '../redis/redis.service';
 import { finalizeAuction } from './finalize';
 import { HOME_CACHE_KEY } from '../products/products.service';
@@ -24,6 +25,7 @@ export class AuctionScheduler implements OnApplicationBootstrap, OnApplicationSh
     private readonly prisma: PrismaService,
     private readonly realtime: RealtimeService,
     private readonly redis: RedisService,
+    private readonly events: NotificationEvents,
   ) {}
 
   onApplicationBootstrap() {
@@ -68,6 +70,7 @@ export class AuctionScheduler implements OnApplicationBootstrap, OnApplicationSh
     });
     for (const a of started) {
       this.realtime.toAuction(a.id, 'AUCTION_STARTED', { auctionId: a.id, seq: a.version, status: a.status });
+      void this.events.auctionStarted(a.id).catch(logNotifyError);
     }
     if (started.length) await this.redis.del(HOME_CACHE_KEY);
   }
@@ -88,6 +91,7 @@ export class AuctionScheduler implements OnApplicationBootstrap, OnApplicationSh
       });
       if (!ended) break;
       this.announceEnd(ended.auction);
+      void this.events.auctionEnded(ended.auction.id).catch(logNotifyError);
       await this.redis.del(HOME_CACHE_KEY);
     }
   }
@@ -103,14 +107,16 @@ export class AuctionScheduler implements OnApplicationBootstrap, OnApplicationSh
     });
   }
 
-  /** 종료 임박 표시 (알림 발송은 알림 모듈이 이 표시를 기준으로 보낸다) */
+  /** 종료 임박 표시 + 입찰자·관심 사용자 알림 (경매당 한 번) */
   private async markEndingSoon() {
     const policy = await this.prisma.auctionPolicy.findUnique({ where: { id: 'default' } });
     const minutes = policy?.endingSoonMin ?? 10;
-    await this.prisma.$executeRaw`
+    const marked = await this.prisma.$queryRaw<{ id: string }[]>`
       UPDATE "Auction" SET "endingSoonNotifiedAt" = now()
       WHERE status = 'LIVE' AND "endingSoonNotifiedAt" IS NULL
-        AND "endsAt" <= now() + make_interval(mins => ${minutes}::int)`;
+        AND "endsAt" <= now() + make_interval(mins => ${minutes}::int)
+      RETURNING id`;
+    for (const { id } of marked) void this.events.auctionEndingSoon(id, minutes).catch(logNotifyError);
   }
 
   /** 낙찰 후 결제 기한 초과 → 주문 취소, 경매 UNPAID, 낙찰자 미결제 횟수 증가, 상품 재등록 가능 상태로 */

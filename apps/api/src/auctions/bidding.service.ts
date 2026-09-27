@@ -4,6 +4,7 @@ import { checkBidAmount, extendedEndsAt, maskNickname, minNextBid } from '@shop/
 import { AppException } from '../common/app-exception';
 import type { AuthUser } from '../common/auth';
 import { IdentityService } from '../identity/identity.service';
+import { logNotifyError, NotificationEvents } from '../notifications/notification-events';
 import { PrismaService, type Tx } from '../prisma/prisma.service';
 import { RealtimeService } from '../realtime/realtime';
 import { finalizeAuction } from './finalize';
@@ -35,6 +36,7 @@ export class BiddingService {
     private readonly prisma: PrismaService,
     private readonly realtime: RealtimeService,
     private readonly identity: IdentityService,
+    private readonly events: NotificationEvents,
   ) {}
 
   private async assertBidder(user: AuthUser, amount: number) {
@@ -286,6 +288,10 @@ export class BiddingService {
         serverTime: new Date().toISOString(),
       });
     }
+    void this.events
+      .bidPlaced(a.id, bidderId, o.previousHighestBidderId, n(a.currentPrice))
+      .then(() => (o.ended ? this.events.auctionEnded(a.id) : undefined))
+      .catch(logNotifyError);
     if (o.ended) {
       this.realtime.toAuction(a.id, 'AUCTION_ENDED', {
         auctionId: a.id,

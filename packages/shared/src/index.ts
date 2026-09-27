@@ -4,6 +4,7 @@ export * from './format';
 export * from './errors';
 export * from './auction';
 export * from './order';
+export * from './notifications';
 export * from './dto';
 export * from './realtime';
 export * from './schemas/common';

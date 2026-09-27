@@ -55,6 +55,12 @@ const schema = z.object({
   PORTONE_IDENTITY_CHANNEL_KEY: optional,
   TOSS_SECRET_KEY: optional,
   TOSS_CLIENT_KEY: optional,
+  /** Web Push (npx web-push generate-vapid-keys). 비우면 웹 푸시만 끈다 */
+  VAPID_PUBLIC_KEY: optional,
+  VAPID_PRIVATE_KEY: optional,
+  VAPID_SUBJECT: optional,
+  /** Expo 푸시 보안 설정을 켠 경우에만 필요 */
+  EXPO_ACCESS_TOKEN: optional,
 });
 
 export type Env = z.infer<typeof schema>;

@@ -165,6 +165,9 @@ enum NotificationType {
   FAVORITE_ON_SALE
   CHAT_MESSAGE
   SYSTEM
+  INQUIRY_RECEIVED
+  REVIEW_RECEIVED
+  ORDER_UPDATED
 }
 
 enum ChatMessageKind {
@@ -209,24 +212,26 @@ enum CouponType {
 // ───────────────────────── 사용자 · 인증 ─────────────────────────
 
 model User {
-  id              String     @id @default(cuid())
-  email           String     @unique
-  passwordHash    String?
-  emailVerifiedAt DateTime?  @db.Timestamptz
-  role            Role       @default(USER)
-  status          UserStatus @default(ACTIVE)
-  unpaidStrikes   Int        @default(0)
-  marketingOptIn  Boolean    @default(false)
-  termsAgreedAt   DateTime?  @db.Timestamptz
+  id                 String     @id @default(cuid())
+  email              String     @unique
+  passwordHash       String?
+  emailVerifiedAt    DateTime?  @db.Timestamptz
+  role               Role       @default(USER)
+  status             UserStatus @default(ACTIVE)
+  /// 알림 설정: { push: { auction, trade, chat, activity }, quietHours } (docs/API.md)
+  notificationPrefs  Json       @default("{}")
+  unpaidStrikes      Int        @default(0)
+  marketingOptIn     Boolean    @default(false)
+  termsAgreedAt      DateTime?  @db.Timestamptz
   /// 본인인증(PASS) — CI 는 HMAC 해시만 저장해 중복 가입을 막는다
-  identityVerifiedAt DateTime? @db.Timestamptz
-  ciHash             String?   @unique
-  isAdult            Boolean   @default(false)
+  identityVerifiedAt DateTime?  @db.Timestamptz
+  ciHash             String?    @unique
+  isAdult            Boolean    @default(false)
   verifiedNameMasked String?
   phoneMasked        String?
-  createdAt       DateTime   @default(now()) @db.Timestamptz
-  updatedAt       DateTime   @updatedAt @db.Timestamptz
-  deletedAt       DateTime?  @db.Timestamptz
+  createdAt          DateTime   @default(now()) @db.Timestamptz
+  updatedAt          DateTime   @updatedAt @db.Timestamptz
+  deletedAt          DateTime?  @db.Timestamptz
 
   profile        Profile?
   seller         Seller?
