@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
+import { BrandBanner } from '@/components/brand/brand-banner';
 import { Logo } from '@/components/layout/logo';
 
 export const metadata: Metadata = { robots: { index: false, follow: false } };
@@ -12,7 +13,10 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
         <Logo />
       </header>
       <main className="page-x flex flex-1 justify-center pt-6 pb-16 md:pt-12">
-        <div className="w-full max-w-[400px]">{children}</div>
+        <div className="w-full max-w-[400px]">
+          <BrandBanner className="mx-auto mb-8 w-[240px]" />
+          {children}
+        </div>
       </main>
     </div>
   );
