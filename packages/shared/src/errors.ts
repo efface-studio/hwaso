@@ -19,6 +19,13 @@ export const ERROR_MESSAGES = {
   INVALID_TOKEN: '인증 정보가 만료되었습니다. 다시 로그인해주세요.',
   NICKNAME_TAKEN: '이미 사용 중인 닉네임입니다.',
   PROVIDER_NOT_CONFIGURED: '현재 사용할 수 없는 로그인 방식입니다.',
+  SOCIAL_ALREADY_LINKED: '이미 다른 계정에 연결된 소셜 계정입니다.',
+  LAST_LOGIN_METHOD: '마지막 로그인 수단은 해제할 수 없습니다. 비밀번호를 먼저 설정해주세요.',
+  IDENTITY_REQUIRED: '본인인증 후 이용할 수 있습니다.',
+  IDENTITY_ALREADY_USED: '이미 다른 계정에서 본인인증에 사용된 명의입니다.',
+  IDENTITY_FAILED: '본인인증에 실패했습니다. 다시 시도해주세요.',
+  ACCOUNT_HAS_ACTIVE_TRADES:
+    '진행 중인 거래나 경매가 있어 탈퇴할 수 없습니다. 거래를 마친 뒤 다시 시도해주세요.',
 
   SELLER_REQUIRED: '판매자 등록 후 이용할 수 있습니다.',
   PRODUCT_NOT_EDITABLE: '현재 상태에서는 상품 정보를 수정할 수 없습니다.',
