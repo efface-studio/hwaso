@@ -8,6 +8,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 
 export const REFRESH_TTL_DAYS = 30;
+/** 동시 갱신(여러 탭) 허용 시간. 이보다 늦게 재사용되면 탈취로 본다 */
+export const REUSE_GRACE_MS = 30_000;
 
 export interface ClientInfo {
   ip: string;
@@ -56,28 +58,32 @@ export class SessionService {
       include: { user: true },
     });
     if (!s) throw new AppException('INVALID_TOKEN');
+    if (s.expiresAt < new Date() || s.user.status !== 'ACTIVE') throw new AppException('INVALID_TOKEN');
+    const device = { name: s.deviceName, platform: s.platform as DeviceInput['platform'] };
+
     if (s.revokedAt) {
-      // 재사용 탐지: 이미 회전된 토큰 → 같은 family 전부 폐기
-      await this.prisma.session.updateMany({
-        where: { familyId: s.familyId, revokedAt: null },
-        data: { revokedAt: new Date() },
+      // 여러 탭이 동시에 새로고침하면 같은 토큰으로 거의 동시에 갱신한다.
+      // 방금 회전된 토큰(유예 시간 안, family 가 아직 살아 있음)이면 탈취가 아니라 경쟁으로 보고 새 토큰을 준다.
+      const recentlyRotated = Date.now() - s.revokedAt.getTime() < REUSE_GRACE_MS;
+      const familyAlive = await this.prisma.session.count({
+        where: { familyId: s.familyId, revokedAt: null, expiresAt: { gt: new Date() } },
       });
+      if (recentlyRotated && familyAlive) {
+        const next = await this.issue(s.user, device, client, s.familyId);
+        return { ...next, user: s.user, platform: s.platform };
+      }
+      // 재사용 탐지: 오래전에 회전된 토큰 → 탈취로 보고 같은 family 전부 폐기
+      await this.revokeFamily(s.familyId);
       throw new AppException('INVALID_TOKEN');
     }
-    if (s.expiresAt < new Date() || s.user.status !== 'ACTIVE') throw new AppException('INVALID_TOKEN');
 
-    // 동시 요청이 같은 토큰으로 두 번 회전하지 못하게 조건부 폐기
+    // 동시 요청이 같은 토큰으로 두 번 회전하지 못하게 조건부 폐기 (진 쪽은 위의 유예 경로로 처리)
     const revoked = await this.prisma.session.updateMany({
       where: { id: s.id, revokedAt: null },
       data: { revokedAt: new Date(), lastUsedAt: new Date() },
     });
-    if (!revoked.count) throw new AppException('INVALID_TOKEN');
-    const next = await this.issue(
-      s.user,
-      { name: s.deviceName, platform: s.platform as DeviceInput['platform'] },
-      client,
-      s.familyId,
-    );
+    if (!revoked.count) return this.rotate(refreshToken, client);
+    const next = await this.issue(s.user, device, client, s.familyId);
     return { ...next, user: s.user, platform: s.platform };
   }
 

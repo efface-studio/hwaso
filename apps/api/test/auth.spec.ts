@@ -146,16 +146,42 @@ describe('로그인 · 로그아웃 · 토큰 갱신', () => {
     expect(res.body.error.code).toBe('ACCOUNT_LOCKED');
   });
 
-  it('refresh 회전: 새 토큰은 동작하고, 이전 토큰을 재사용하면 family 전체가 폐기된다', async () => {
+  it('refresh 회전: 새 토큰은 동작하고, 오래전에 회전된 토큰이 재사용되면 family 전체가 폐기된다', async () => {
     const { res } = await signup();
     const r1 = res.body.refreshToken;
     const rotated = await t.http.post('/api/v1/auth/refresh').send({ refreshToken: r1 }).expect(200);
     const r2 = rotated.body.refreshToken;
     expect(r2).not.toBe(r1);
-    // 탈취된 이전 토큰 재사용
+    // 유예 시간이 지난 뒤 탈취된 이전 토큰 재사용
+    await t.prisma.session.updateMany({
+      where: { userId: res.body.user.id, revokedAt: { not: null } },
+      data: { revokedAt: new Date(Date.now() - 60_000) },
+    });
     await t.http.post('/api/v1/auth/refresh').send({ refreshToken: r1 }).expect(401);
     // 정상 사용자 토큰도 무효화된다
     await t.http.post('/api/v1/auth/refresh').send({ refreshToken: r2 }).expect(401);
+  });
+
+  it('여러 탭의 동시 갱신은 모두 성공하고 로그아웃되지 않는다', async () => {
+    const { res } = await signup();
+    const token = res.body.refreshToken;
+    const results = await Promise.all(
+      [0, 1, 2].map(() => t.http.post('/api/v1/auth/refresh').send({ refreshToken: token })),
+    );
+    expect(results.map((r) => r.status)).toEqual([200, 200, 200]);
+    // 갱신된 토큰들은 계속 쓸 수 있다
+    await t.http
+      .post('/api/v1/auth/refresh')
+      .send({ refreshToken: results[2]!.body.refreshToken })
+      .expect(200);
+  });
+
+  it('로그아웃한 토큰은 유예 시간 안이어도 재사용할 수 없다', async () => {
+    const { res } = await signup();
+    const r1 = res.body.refreshToken;
+    await t.http.post('/api/v1/auth/refresh').send({ refreshToken: r1 }).expect(200);
+    await t.http.post('/api/v1/auth/logout').send({ refreshToken: r1 }).expect(204);
+    await t.http.post('/api/v1/auth/refresh').send({ refreshToken: r1 }).expect(401);
   });
 
   it('쿠키 refresh 는 CSRF 헤더가 있어야 한다', async () => {
