@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { AUCTION_LIMITS } from '../auction';
-import { id, positiveMoney } from './common';
+import { cursorQuery, id, positiveMoney } from './common';
 
 const isoDateTime = z.iso.datetime({ offset: true });
 
@@ -54,3 +54,9 @@ export const buyNowSchema = z.strictObject({
 export const cancelAuctionSchema = z.strictObject({
   reason: z.string().trim().max(500).default(''),
 });
+
+export const auctionListQuery = cursorQuery.extend({
+  status: z.enum(['live', 'scheduled', 'ended']).default('live'),
+  sort: z.enum(['ending_soon', 'popular', 'latest']).default('ending_soon'),
+});
+export type AuctionListQuery = z.infer<typeof auctionListQuery>;

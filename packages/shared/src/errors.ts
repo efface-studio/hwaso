@@ -45,6 +45,9 @@ export const ERROR_MESSAGES = {
   ALREADY_HIGHEST: '이미 최고 입찰자입니다.',
   BUY_NOW_UNAVAILABLE: '즉시 구매를 할 수 없는 경매입니다.',
   INVALID_TRANSITION: '현재 상태에서 할 수 없는 요청입니다.',
+  AUCTION_EXISTS: '이미 등록된 경매가 있습니다.',
+  AUCTION_SCHEDULE_INVALID: '경매 일정을 확인해주세요.',
+  HIGH_VALUE_IDENTITY_REQUIRED: '1,000만원 이상 입찰은 본인인증 후 가능합니다.',
 
   PAYMENT_AMOUNT_MISMATCH: '결제 금액이 주문 금액과 다릅니다. 결제가 취소되었습니다.',
   PAYMENT_FAILED: '결제에 실패했습니다. 다시 시도해주세요.',
