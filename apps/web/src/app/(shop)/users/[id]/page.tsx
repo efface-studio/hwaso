@@ -1,3 +1,4 @@
+import { ProfileMenu } from '@/components/safety/profile-menu';
 import { ApiError } from '@shop/api-client';
 import type { Metadata } from 'next';
 import Link from 'next/link';
@@ -51,7 +52,7 @@ export default async function UserPage({ params, searchParams }: Props) {
       <header className="flex flex-col gap-5 border-b border-border pb-6 md:flex-row md:items-center md:justify-between">
         <div className="flex items-center gap-4">
           <Avatar avatarKey={u.avatarKey} name={u.nickname} size="lg" />
-          <div>
+          <div className="min-w-0 flex-1">
             <h1 className="flex items-center gap-2 text-h1">
               {u.nickname}
               {u.verified && <Badge tone="primary">인증 판매자</Badge>}
@@ -61,6 +62,7 @@ export default async function UserPage({ params, searchParams }: Props) {
             </p>
             {u.bio && <p className="mt-1 max-w-xl text-body">{u.bio}</p>}
           </div>
+          <ProfileMenu userId={u.id} nickname={u.nickname} />
         </div>
         <dl className="flex gap-6">
           <Stat label="거래" value={u.tradeCount.toLocaleString('ko-KR')} />

@@ -1,6 +1,7 @@
 'use client';
 
 import { X } from 'lucide-react';
+import Link from 'next/link';
 import { cn } from '@/lib/cn';
 import { useToastStore } from '@/stores/toast';
 
@@ -20,7 +21,17 @@ export function Toaster() {
             t.tone === 'destructive' ? 'bg-destructive text-white' : 'bg-secondary text-secondary-foreground',
           )}
         >
-          <span>{t.message}</span>
+          {t.href ? (
+            <Link
+              href={t.href}
+              onClick={() => dismiss(t.id)}
+              className="min-w-0 flex-1 truncate hover:underline"
+            >
+              {t.message}
+            </Link>
+          ) : (
+            <span>{t.message}</span>
+          )}
           <button
             type="button"
             onClick={() => dismiss(t.id)}

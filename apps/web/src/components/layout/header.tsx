@@ -9,6 +9,7 @@ import { cn } from '@/lib/cn';
 import { useAuthStore } from '@/stores/auth';
 import { NAV_CATEGORIES } from '@/lib/categories';
 import { SearchAutocomplete } from '@/components/search/search-autocomplete';
+import { CountBadge, useUnreadCounts } from './badges';
 import { Logo } from './logo';
 
 function CartLink({ className }: { className: string }) {
@@ -17,11 +18,7 @@ function CartLink({ className }: { className: string }) {
   return (
     <Link href="/cart" aria-label={n ? `장바구니 ${n}개` : '장바구니'} className={cn(className, 'relative')}>
       <ShoppingBag className="size-5" aria-hidden />
-      {n > 0 && (
-        <span className="tabular absolute top-1 right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
-          {n > 99 ? '99+' : n}
-        </span>
-      )}
+      <CountBadge n={n} />
     </Link>
   );
 }
@@ -29,7 +26,8 @@ function CartLink({ className }: { className: string }) {
 function AccountLinks() {
   const user = useAuthStore((s) => s.user);
   const ready = useAuthStore((s) => s.ready);
-  const icon = 'inline-flex size-10 items-center justify-center rounded-sm hover:bg-surface-2';
+  const icon = 'relative inline-flex size-10 items-center justify-center rounded-sm hover:bg-surface-2';
+  const unread = useUnreadCounts();
   return (
     <div className="flex items-center gap-1">
       <Link
@@ -39,11 +37,21 @@ function AccountLinks() {
         판매하기
       </Link>
       {user && <CartLink className={icon} />}
-      <Link href="/notifications" aria-label="알림" className={icon}>
+      <Link
+        href="/notifications"
+        aria-label={unread.notifications ? `알림 ${unread.notifications}개 안 읽음` : '알림'}
+        className={icon}
+      >
         <Bell className="size-5" aria-hidden />
+        <CountBadge n={unread.notifications} />
       </Link>
-      <Link href="/chat" aria-label="채팅" className={cn(icon, 'hidden md:inline-flex')}>
+      <Link
+        href="/chat"
+        aria-label={unread.chat ? `채팅 ${unread.chat}개 안 읽음` : '채팅'}
+        className={cn(icon, 'hidden md:inline-flex')}
+      >
         <MessageCircle className="size-5" aria-hidden />
+        <CountBadge n={unread.chat} />
       </Link>
       {ready && !user ? (
         <Link

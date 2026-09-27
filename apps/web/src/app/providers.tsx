@@ -5,6 +5,7 @@ import { ApiError } from '@shop/api-client';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Toaster } from '@/components/ui/toaster';
 import { refreshAccessToken } from '@/lib/api';
+import { RealtimeSync } from '@/lib/realtime-sync';
 import { useAuthStore } from '@/stores/auth';
 import { useThemeStore } from '@/stores/theme';
 
@@ -37,6 +38,7 @@ export function Providers({ children }: { children: ReactNode }) {
   return (
     <QueryClientProvider client={client}>
       <AuthBootstrap />
+      <RealtimeSync />
       {children}
       <Toaster />
     </QueryClientProvider>

@@ -478,11 +478,24 @@ function Settings() {
       <Section id="identity" title="본인인증">
         <IdentitySection />
       </Section>
-      <Section title="배송지">
-        <Link href="/my/settings/addresses" className="flex h-14 items-center justify-between">
-          <span className="text-body">배송지 관리</span>
-          <ChevronRight className="size-4 text-faint" aria-hidden />
-        </Link>
+      <Section title="배송지 · 알림 · 안전">
+        {(
+          [
+            ['/my/settings/addresses', '배송지 관리'],
+            ['/my/settings/notifications', '알림 설정'],
+            ['/my/settings/blocks', '차단한 사용자'],
+            ['/my/reports', '신고 내역'],
+          ] as const
+        ).map(([href, label]) => (
+          <Link
+            key={href}
+            href={href}
+            className="flex h-14 items-center justify-between border-b border-border-soft last:border-0"
+          >
+            <span className="text-body">{label}</span>
+            <ChevronRight className="size-4 text-faint" aria-hidden />
+          </Link>
+        ))}
       </Section>
       <Section title="로그인 · 보안">
         <PasswordSection />

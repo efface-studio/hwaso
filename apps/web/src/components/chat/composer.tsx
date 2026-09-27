@@ -1,0 +1,203 @@
+'use client';
+
+import { ApiError } from '@shop/api-client';
+import { CHAT_MESSAGE_MAX, type SendMessageInput } from '@shop/shared';
+import { CalendarClock, ImagePlus, Package, Plus, Send } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Dialog } from '@/components/ui/dialog';
+import { Field, Input } from '@/components/ui/field';
+import { DropdownMenu } from '@/components/ui/menu';
+import { api } from '@/lib/api';
+import { toast } from '@/stores/toast';
+
+const localNow = (offsetMs: number) => {
+  const d = new Date(Date.now() + offsetMs);
+  d.setMinutes(0, 0, 0);
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
+};
+
+function AppointmentDialog({
+  open,
+  onOpenChange,
+  onSubmit,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  onSubmit: (a: { at: string; place: string }) => void;
+}) {
+  const [at, setAt] = useState(() => localNow(86_400_000));
+  const [place, setPlace] = useState('');
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title="거래 약속 잡기"
+      description="직접 만나 거래할 때는 사람이 많은 곳에서, 결제는 화소 안에서 해주세요."
+      footer={
+        <>
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>
+            취소
+          </Button>
+          <Button
+            disabled={!at || !place.trim()}
+            onClick={() => onSubmit({ at: new Date(at).toISOString(), place: place.trim() })}
+          >
+            약속 보내기
+          </Button>
+        </>
+      }
+    >
+      <div className="flex flex-col gap-4">
+        <Field label="날짜와 시간" required>
+          {(p) => (
+            <Input
+              {...p}
+              type="datetime-local"
+              value={at}
+              min={localNow(0)}
+              onChange={(e) => setAt(e.target.value)}
+            />
+          )}
+        </Field>
+        <Field label="장소" required>
+          {(p) => (
+            <Input
+              {...p}
+              maxLength={100}
+              placeholder="예) 인사동 쌈지길 정문"
+              value={place}
+              onChange={(e) => setPlace(e.target.value)}
+            />
+          )}
+        </Field>
+      </div>
+    </Dialog>
+  );
+}
+
+/** 입력창: Enter 전송(한글 조합 중 제외), Shift+Enter 줄바꿈, 사진·작품·약속 첨부 */
+export function Composer({
+  productId,
+  onSend,
+  onTyping,
+}: {
+  productId: string | null;
+  onSend: (input: Omit<SendMessageInput, 'clientId'>) => void;
+  onTyping: () => void;
+}) {
+  const [text, setText] = useState('');
+  const [appointment, setAppointment] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const file = useRef<HTMLInputElement>(null);
+  const area = useRef<HTMLTextAreaElement>(null);
+
+  const submit = () => {
+    const body = text.trim();
+    if (!body) return;
+    onSend({ kind: 'TEXT', body });
+    setText('');
+    area.current?.focus();
+  };
+
+  const upload = async (f: File | undefined) => {
+    if (!f) return;
+    setUploading(true);
+    try {
+      const img = await api.market.uploadImage(f, f.name);
+      onSend({ kind: 'IMAGE', imageKey: img.key });
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.message : '사진을 올리지 못했습니다.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <div className="flex items-end gap-2 border-t border-border bg-background p-3">
+      <DropdownMenu
+        align="start"
+        trigger={
+          <button
+            type="button"
+            aria-label="첨부"
+            className="inline-flex size-10 shrink-0 items-center justify-center rounded-full hover:bg-surface-2"
+          >
+            <Plus className="size-5" aria-hidden />
+          </button>
+        }
+        items={[
+          {
+            label: '사진',
+            icon: <ImagePlus className="size-4" aria-hidden />,
+            onSelect: () => file.current?.click(),
+          },
+          ...(productId
+            ? [
+                {
+                  label: '이 작품 보내기',
+                  icon: <Package className="size-4" aria-hidden />,
+                  onSelect: () => onSend({ kind: 'PRODUCT', productId }),
+                },
+              ]
+            : []),
+          {
+            label: '거래 약속',
+            icon: <CalendarClock className="size-4" aria-hidden />,
+            onSelect: () => setAppointment(true),
+          },
+        ]}
+      />
+      <textarea
+        ref={area}
+        aria-label="메시지 입력"
+        rows={1}
+        maxLength={CHAT_MESSAGE_MAX}
+        value={text}
+        placeholder={uploading ? '사진을 올리는 중…' : '메시지를 입력하세요'}
+        onChange={(e) => {
+          setText(e.target.value);
+          onTyping();
+          e.target.style.height = 'auto';
+          e.target.style.height = `${Math.min(e.target.scrollHeight, 128)}px`;
+          e.target.style.overflowY = e.target.scrollHeight > 128 ? 'auto' : 'hidden';
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+            e.preventDefault();
+            submit();
+          }
+        }}
+        className="max-h-32 min-h-10 flex-1 resize-none overflow-hidden rounded-md border border-border-strong bg-background px-3 py-2 text-body outline-none focus:border-foreground"
+      />
+      <Button
+        aria-label="보내기"
+        className="size-10 shrink-0 rounded-full px-0"
+        disabled={!text.trim()}
+        onClick={submit}
+      >
+        <Send className="size-4" aria-hidden />
+      </Button>
+      <input
+        ref={file}
+        type="file"
+        accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+        className="hidden"
+        onChange={(e) => {
+          void upload(e.target.files?.[0]);
+          e.target.value = '';
+        }}
+      />
+      {appointment && (
+        <AppointmentDialog
+          open
+          onOpenChange={setAppointment}
+          onSubmit={(a) => {
+            onSend({ kind: 'APPOINTMENT', appointment: a });
+            setAppointment(false);
+          }}
+        />
+      )}
+    </div>
+  );
+}
