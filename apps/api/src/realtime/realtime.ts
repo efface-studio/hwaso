@@ -1,0 +1,165 @@
+import type { INestApplicationContext } from '@nestjs/common';
+import { Global, Injectable, Logger, Module, type OnModuleDestroy } from '@nestjs/common';
+import {
+  ConnectedSocket,
+  MessageBody,
+  type OnGatewayConnection,
+  SubscribeMessage,
+  WebSocketGateway,
+  WebSocketServer,
+} from '@nestjs/websockets';
+import { IoAdapter } from '@nestjs/platform-socket.io';
+import { createAdapter } from '@socket.io/redis-adapter';
+import { Emitter } from '@socket.io/redis-emitter';
+import { rooms, RT_NAMESPACE, type ClientToServerEvents, type ServerToClientEvents } from '@shop/shared';
+import Redis from 'ioredis';
+import type { Namespace, ServerOptions, Socket } from 'socket.io';
+import { verifyAccessToken } from '../common/auth';
+import { env } from '../config/env';
+import { PrismaService } from '../prisma/prisma.service';
+
+type EventName = keyof ServerToClientEvents;
+type Payload<E extends EventName> = Parameters<ServerToClientEvents[E]>[0];
+
+/**
+ * 모든 실시간 이벤트는 Redis emitter 로 보낸다 — API 인스턴스 여러 개와 워커 어디서 발행해도
+ * 모든 인스턴스의 소켓에 전달된다 (docs/ARCHITECTURE.md §3). 반드시 DB 커밋 이후에 호출한다.
+ */
+@Injectable()
+export class RealtimeService implements OnModuleDestroy {
+  private readonly redis = new Redis(env().REDIS_URL, { maxRetriesPerRequest: 3 });
+  private readonly emitter = new Emitter(this.redis).of(RT_NAMESPACE);
+
+  emit<E extends EventName>(room: string, event: E, payload: Payload<E>) {
+    // redis-emitter 의 타입은 이벤트 맵을 모르므로 여기서만 좁혀서 보낸다
+    (this.emitter.to(room) as unknown as { emit: (e: string, p: unknown) => void }).emit(event, payload);
+  }
+
+  toAuction<E extends EventName>(auctionId: string, event: E, payload: Payload<E>) {
+    this.emit(rooms.auction(auctionId), event, payload);
+  }
+
+  toUser<E extends EventName>(userId: string, event: E, payload: Payload<E>) {
+    this.emit(rooms.user(userId), event, payload);
+  }
+
+  async onModuleDestroy() {
+    await this.redis.quit();
+  }
+}
+
+type RtSocket = Socket<
+  ClientToServerEvents,
+  ServerToClientEvents,
+  Record<string, never>,
+  { userId?: string }
+>;
+
+/** 인스턴스 간 브로드캐스트를 위한 Socket.IO Redis adapter */
+export class RedisIoAdapter extends IoAdapter {
+  private pub?: Redis;
+  private sub?: Redis;
+
+  constructor(app: INestApplicationContext) {
+    super(app);
+  }
+
+  override createIOServer(port: number, options?: ServerOptions) {
+    const origins = env()
+      .WEB_ORIGIN.split(',')
+      .map((s) => s.trim());
+    const server = super.createIOServer(port, { ...options, cors: { origin: origins, credentials: true } });
+    this.pub = new Redis(env().REDIS_URL);
+    this.sub = this.pub.duplicate();
+    server.adapter(createAdapter(this.pub, this.sub));
+    return server;
+  }
+
+  override async close(server: unknown) {
+    await super.close(server as never);
+    await Promise.all([this.pub?.quit(), this.sub?.quit()]);
+  }
+}
+
+@WebSocketGateway({ namespace: RT_NAMESPACE })
+export class RealtimeGateway implements OnGatewayConnection {
+  private readonly logger = new Logger(RealtimeGateway.name);
+  @WebSocketServer() private readonly nsp!: Namespace<ClientToServerEvents, ServerToClientEvents>;
+  private readonly watcherTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
+  constructor(private readonly prisma: PrismaService) {}
+
+  /** 토큰이 없거나 틀려도 연결은 허용한다 (경매 관전). 로그인 사용자는 개인 룸에 들어간다 */
+  async handleConnection(socket: RtSocket) {
+    const token = (socket.handshake.auth as { token?: unknown } | undefined)?.token;
+    const user = typeof token === 'string' ? await verifyAccessToken(token) : null;
+    if (user) {
+      socket.data.userId = user.id;
+      await socket.join(rooms.user(user.id));
+    }
+    socket.on('disconnecting', () => {
+      for (const room of socket.rooms) if (room.startsWith('auction:')) this.scheduleWatchers(room);
+    });
+  }
+
+  @SubscribeMessage('auction:join')
+  async joinAuction(@ConnectedSocket() socket: RtSocket, @MessageBody() body: { auctionId?: unknown }) {
+    const auctionId = typeof body?.auctionId === 'string' ? body.auctionId.slice(0, 40) : '';
+    const exists =
+      auctionId && (await this.prisma.auction.count({ where: { id: auctionId, status: { not: 'DRAFT' } } }));
+    // Nest 는 핸들러 반환값을 ack 로 보낸다
+    if (!exists) return { ok: false, code: 'NOT_FOUND' };
+    const room = rooms.auction(auctionId);
+    await socket.join(room);
+    this.scheduleWatchers(room);
+    return { ok: true, data: { serverTime: new Date().toISOString() } };
+  }
+
+  @SubscribeMessage('auction:leave')
+  async leaveAuction(@ConnectedSocket() socket: RtSocket, @MessageBody() body: { auctionId?: unknown }) {
+    if (typeof body?.auctionId !== 'string') return;
+    const room = rooms.auction(body.auctionId);
+    await socket.leave(room);
+    this.scheduleWatchers(room);
+  }
+
+  @SubscribeMessage('time:sync')
+  timeSync() {
+    return { ok: true, data: { serverTime: new Date().toISOString() } };
+  }
+
+  /** 참여자 수는 입·퇴장이 몰릴 때를 대비해 1초에 한 번만 방송한다 */
+  private scheduleWatchers(room: string) {
+    if (this.watcherTimers.has(room)) return;
+    this.watcherTimers.set(
+      room,
+      setTimeout(async () => {
+        this.watcherTimers.delete(room);
+        try {
+          const sockets = await this.nsp.in(room).fetchSockets();
+          this.nsp
+            .to(room)
+            .emit('AUCTION_WATCHERS', { auctionId: room.slice('auction:'.length), watchers: sockets.length });
+        } catch (err) {
+          this.logger.warn({ err }, 'watchers broadcast failed');
+        }
+      }, 1000),
+    );
+  }
+
+  /** 스냅샷 조회용 현재 참여자 수 */
+  async watchers(auctionId: string): Promise<number> {
+    try {
+      return (await this.nsp.in(rooms.auction(auctionId)).fetchSockets()).length;
+    } catch {
+      return 0;
+    }
+  }
+}
+
+@Global()
+@Module({ providers: [RealtimeService], exports: [RealtimeService] })
+export class RealtimeEmitterModule {}
+
+@Module({ providers: [RealtimeGateway], exports: [RealtimeGateway] })
+export class RealtimeGatewayModule {}
