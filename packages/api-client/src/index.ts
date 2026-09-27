@@ -1,4 +1,5 @@
 import { createHttp, type HttpConfig } from './http';
+import { adminApi, noticesApi } from './endpoints/admin';
 import { authApi } from './endpoints/auth';
 import { chatApi, safetyApi } from './endpoints/chat';
 import { communityApi } from './endpoints/community';
@@ -26,6 +27,8 @@ export function createApiClient(config: HttpConfig) {
     chat: chatApi(http),
     safety: safetyApi(http),
     community: communityApi(http),
+    admin: adminApi(http),
+    notices: noticesApi(http),
     time: () => http.get<{ serverTime: string }>('/time'),
   };
 }
