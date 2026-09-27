@@ -18,6 +18,11 @@ export const createReviewSchema = z.strictObject({
 });
 export type CreateReviewInput = z.infer<typeof createReviewSchema>;
 
+export const updateReviewSchema = createReviewSchema;
+
+/** 후기 수정 가능 기간 (작성일로부터) */
+export const REVIEW_EDIT_DAYS = 30;
+
 export const createReportSchema = z.strictObject({
   targetType: z.enum(REPORT_TARGETS),
   targetId: id,

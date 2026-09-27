@@ -5,6 +5,7 @@ import { AuctionsModule } from './auctions/auctions.controller';
 import { AuthModule } from './auth/auth.controller';
 import { CatalogModule } from './catalog/catalog.controller';
 import { ChatModule } from './chat/chat.controller';
+import { CommunityModule } from './community/community.controller';
 import { AuthGuard } from './common/auth';
 import { HttpExceptionFilter } from './common/http-exception.filter';
 import { RateLimitGuard, RateLimitModule } from './common/rate-limit';
@@ -41,6 +42,7 @@ import { UsersModule } from './users/users.controller';
     OrdersModule,
     SafetyModule,
     ChatModule,
+    CommunityModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: HttpExceptionFilter },

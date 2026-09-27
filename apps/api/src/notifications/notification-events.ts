@@ -226,4 +226,30 @@ export class NotificationEvents {
       link: `/products/${productId}`,
     });
   }
+
+  /** 새 작품 최초 게시 → 팔로워 알림 */
+  async newProduct(productId: string) {
+    const p = await this.prisma.product.findUnique({
+      where: { id: productId },
+      select: {
+        title: true,
+        sellerId: true,
+        seller: { select: { profile: { select: { nickname: true } } } },
+      },
+    });
+    if (!p) return;
+    const followers = await this.prisma.follow.findMany({
+      where: { followingId: p.sellerId },
+      select: { followerId: true },
+    });
+    await this.n.notify(
+      followers.map((f) => f.followerId),
+      {
+        type: 'FOLLOWING_NEW_ITEM',
+        title: `${p.seller.profile?.nickname ?? '팔로우한 판매자'}님의 새 작품`,
+        body: p.title,
+        link: `/products/${productId}`,
+      },
+    );
+  }
 }

@@ -305,19 +305,128 @@ async function seedUsers() {
         verifiedAt: s.verified ? now : null,
       },
     });
-    await prisma.profile.update({
-      where: { userId: u.id },
-      data: {
-        ratingAvg: 4.5 + rand(s.nickname) * 0.5,
-        ratingCount: 10 + Math.floor(rand(s.nickname, 'c') * 120),
-        tradeCount: 20 + Math.floor(rand(s.nickname, 't') * 300),
-      },
-    });
     sellers.push(u);
   }
   const buyers = [];
   for (const [i, n] of BUYERS.entries()) buyers.push(await mk(`buyer${i + 1}@shop.local`, n, 'USER'));
   return { sellers, buyers };
+}
+
+const REVIEWS: [number, string][] = [
+  [5, '사진보다 실물이 더 좋아요. 포장도 정말 꼼꼼했습니다.'],
+  [5, '문의에 빠르게 답해주셨고 액자까지 안전하게 도착했어요.'],
+  [4, '상태 설명이 정확했어요. 배송이 하루 늦었지만 만족합니다.'],
+  [5, '감정서와 소장 이력까지 챙겨주셔서 믿고 구매했습니다.'],
+  [4, '좋은 작품 잘 받았습니다. 다음에도 거래하고 싶어요.'],
+];
+
+/**
+ * 거래 기록: 판매 완료 작품마다 구매 확정 주문·정산·상호 후기를 만들고,
+ * 프로필 평점·거래 수는 실제 기록으로 계산한다. 구매자는 판매자 두 명을 팔로우한다.
+ */
+async function seedTrades(sellers: { id: string }[], buyers: { id: string }[]) {
+  const sold = await prisma.product.findMany({
+    where: { status: 'SOLD', saleType: { not: 'AUCTION' } },
+    include: { images: { take: 1 } },
+  });
+  for (const [i, p] of sold.entries()) {
+    const buyer = buyers[i % buyers.length]!;
+    const price = p.price ?? 100_000n;
+    const done = new Date(Date.now() - (10 + i * 3) * 86_400_000);
+    const order = await prisma.order.create({
+      data: {
+        orderNumber: `SEED-${String(i + 1).padStart(4, '0')}`,
+        buyerId: buyer.id,
+        sellerId: p.sellerId,
+        source: 'DIRECT',
+        status: 'COMPLETED',
+        itemsAmount: price,
+        shippingFee: p.shippingFee,
+        totalAmount: price + p.shippingFee,
+        paidAt: done,
+        deliveredAt: done,
+        completedAt: done,
+        createdAt: done,
+        shippingAddress: {
+          recipient: '구매자',
+          phone: '01000000000',
+          zipCode: '03161',
+          address1: '서울 종로구 인사동길 12',
+          address2: '',
+          memo: '',
+        },
+        items: {
+          create: {
+            productId: p.id,
+            titleSnapshot: p.title,
+            imageKeySnapshot: p.images[0]?.key,
+            unitPrice: price,
+            quantity: 1,
+          },
+        },
+        statusLogs: { create: { from: 'DELIVERED', to: 'COMPLETED', reason: '구매 확정', createdAt: done } },
+      },
+    });
+    const fee = BigInt(Math.round(Number(price) * 0.08));
+    await prisma.settlement.create({
+      data: {
+        sellerId: p.sellerId,
+        orderId: order.id,
+        grossAmount: price + p.shippingFee,
+        feeAmount: fee,
+        netAmount: price + p.shippingFee - fee,
+        status: i % 2 ? 'PAID' : 'SCHEDULED',
+        scheduledAt: new Date(done.getTime() + 2 * 86_400_000),
+        paidAt: i % 2 ? new Date(done.getTime() + 2 * 86_400_000) : null,
+      },
+    });
+    const [rating, comment] = REVIEWS[i % REVIEWS.length]!;
+    await prisma.review.create({
+      data: {
+        orderId: order.id,
+        authorId: buyer.id,
+        targetUserId: p.sellerId,
+        direction: 'BUYER_TO_SELLER',
+        rating,
+        comment,
+        createdAt: done,
+      },
+    });
+    if (i % 2 === 0)
+      await prisma.review.create({
+        data: {
+          orderId: order.id,
+          authorId: p.sellerId,
+          targetUserId: buyer.id,
+          direction: 'SELLER_TO_BUYER',
+          rating: 5,
+          comment: '빠른 결제와 친절한 응대 감사합니다.',
+          createdAt: done,
+        },
+      });
+  }
+  for (const u of [...sellers, ...buyers]) {
+    const [agg, trades] = await Promise.all([
+      prisma.review.aggregate({
+        where: { targetUserId: u.id, deletedAt: null },
+        _avg: { rating: true },
+        _count: true,
+      }),
+      prisma.order.count({ where: { status: 'COMPLETED', OR: [{ buyerId: u.id }, { sellerId: u.id }] } }),
+    ]);
+    await prisma.profile.update({
+      where: { userId: u.id },
+      data: { ratingAvg: agg._avg.rating ?? 0, ratingCount: agg._count, tradeCount: trades },
+    });
+  }
+  for (const [i, b] of buyers.entries())
+    await prisma.follow.createMany({
+      data: [sellers[i % sellers.length]!, sellers[(i + 1) % sellers.length]!].map((s) => ({
+        followerId: b.id,
+        followingId: s.id,
+      })),
+      skipDuplicates: true,
+    });
 }
 
 type Plan = { saleType: SaleType; status: ProductStatus; auction?: AuctionPlan };
@@ -669,6 +778,8 @@ async function main() {
       },
     ],
   });
+
+  await seedTrades(sellers, buyers);
 
   // 홈 상단 배너 (예시 작품 이미지 재사용). 운영 중에는 관리자 화면에서 관리한다
   const imageOf = async (title: string) =>

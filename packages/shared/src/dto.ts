@@ -479,3 +479,31 @@ export interface SettlementSummaryDto {
   paid: number;
   items: SettlementDto[];
 }
+
+// ───── 후기 · 팔로우 ─────
+
+export interface ReviewDto {
+  id: string;
+  orderId: string;
+  direction: 'BUYER_TO_SELLER' | 'SELLER_TO_BUYER';
+  rating: number;
+  comment: string;
+  images: ImageDto[];
+  author: UserSummary;
+  productTitle: string;
+  createdAt: string;
+  editable: boolean;
+}
+
+export interface ReviewSummaryDto {
+  ratingAvg: number;
+  ratingCount: number;
+  /** 별점 1~5 개수 (index 0 = 1점) */
+  distribution: [number, number, number, number, number];
+}
+
+export interface FollowUserDto extends UserSummary {
+  bio: string;
+  isFollowing: boolean;
+  sellingCount: number;
+}

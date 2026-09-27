@@ -168,6 +168,7 @@ enum NotificationType {
   INQUIRY_RECEIVED
   REVIEW_RECEIVED
   ORDER_UPDATED
+  FOLLOWING_NEW_ITEM
 }
 
 enum ChatMessageKind {
@@ -869,6 +870,8 @@ model Review {
   rating       Int
   comment      String
   imageKeys    String[]        @default([])
+  /// 사진 크기·대표색 (목록에서 레이아웃 흔들림 없이 표시)
+  imageMeta    Json            @default("[]")
   createdAt    DateTime        @default(now()) @db.Timestamptz
   deletedAt    DateTime?       @db.Timestamptz
 

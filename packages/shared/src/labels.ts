@@ -98,5 +98,6 @@ export const NOTIFICATION_TYPE_LABEL: Record<NotificationType, string> = {
   INQUIRY_RECEIVED: '새 문의',
   REVIEW_RECEIVED: '새 후기',
   ORDER_UPDATED: '주문',
+  FOLLOWING_NEW_ITEM: '팔로우 새 작품',
   SYSTEM: '알림',
 };
