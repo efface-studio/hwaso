@@ -7,17 +7,21 @@ import {
   Heart,
   LogOut,
   Package,
+  MapPin,
   Receipt,
   Settings,
   ShieldCheck,
+  ShoppingBag,
   Store,
   Trophy,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useQuery } from '@tanstack/react-query';
 import { RequireAuth } from '@/components/auth/require-auth';
 import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/display';
+import { api } from '@/lib/api';
 import { logout } from '@/lib/auth';
 import { useAuthStore } from '@/stores/auth';
 
@@ -26,10 +30,12 @@ const MENU = [
     title: '쇼핑',
     items: [
       { href: '/my/purchases', label: '구매 내역', Icon: Receipt },
+      { href: '/cart', label: '장바구니', Icon: ShoppingBag },
       { href: '/my/bids', label: '입찰 내역', Icon: Gavel },
       { href: '/my/wins', label: '낙찰 내역', Icon: Trophy },
       { href: '/my/favorites', label: '관심 작품', Icon: Heart },
       { href: '/my/recent', label: '최근 본 작품', Icon: Clock },
+      { href: '/my/settings/addresses', label: '배송지 관리', Icon: MapPin },
     ],
   },
   {
@@ -41,6 +47,32 @@ const MENU = [
     ],
   },
 ] as const;
+
+/** 주문 현황: 결제 대기 · 배송 준비 · 배송 중 · 배송 완료 */
+function OrderCounts() {
+  const { data } = useQuery({ queryKey: ['orders', 'summary'], queryFn: api.orders.summary });
+  const items = [
+    ['결제 대기', data?.pending, 'pending'],
+    ['배송 준비', data?.paid, 'progress'],
+    ['배송 중', data?.shipping, 'progress'],
+    ['배송 완료', data?.delivered, 'progress'],
+  ] as const;
+  return (
+    <ul className="mt-6 grid grid-cols-4 rounded-sm border border-border">
+      {items.map(([label, n, filter]) => (
+        <li key={label}>
+          <Link
+            href={`/my/purchases?filter=${filter}`}
+            className="flex flex-col items-center gap-1 py-4 hover:bg-background-soft"
+          >
+            <span className={n ? 'tabular text-h3' : 'tabular text-h3 text-faint'}>{n ?? 0}</span>
+            <span className="text-caption text-muted">{label}</span>
+          </Link>
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 function MyHome() {
   const user = useAuthStore((s) => s.user)!;
@@ -62,6 +94,8 @@ function MyHome() {
           내 프로필
         </Link>
       </div>
+
+      <OrderCounts />
 
       {!user.identityVerified && (
         <Link

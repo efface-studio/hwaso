@@ -184,7 +184,11 @@ describe('orders', () => {
       .set(buyer.auth)
       .send({ items: [{ productId: first.product.id, quantity: 1 }], couponCode: code.toLowerCase() })
       .expect(200);
-    expect(quote.body).toMatchObject({ discountAmount: 7_000, totalAmount: 93_000 });
+    expect(quote.body).toMatchObject({
+      discountAmount: 7_000,
+      totalAmount: 93_000,
+      items: [{ productId: first.product.id, quantity: 1, unitPrice: 100_000 }],
+    });
     const res = await order(buyer, addressId, first.product.id, { couponCode: code }).expect(201);
     expect(res.body.totalAmount).toBe(93_000);
     const second = await listing({ price: 100_000 });

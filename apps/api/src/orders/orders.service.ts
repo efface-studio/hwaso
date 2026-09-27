@@ -45,7 +45,7 @@ const FILTER_STATUSES: Record<OrderListQuery['filter'], OrderStatus[] | undefine
 
 type Role = 'buyer' | 'seller' | 'admin';
 interface Line {
-  product: Product & { images: { key: string }[] };
+  product: Product & { images: { key: string; width: number; height: number; dominantColor: string }[] };
   quantity: number;
 }
 
@@ -66,7 +66,13 @@ export class OrdersService {
     for (const i of items) qty.set(i.productId, (qty.get(i.productId) ?? 0) + i.quantity);
     const products = await db.product.findMany({
       where: { id: { in: [...qty.keys()] } },
-      include: { images: { select: { key: true }, orderBy: { sortOrder: 'asc' }, take: 1 } },
+      include: {
+        images: {
+          select: { key: true, width: true, height: true, dominantColor: true },
+          orderBy: { sortOrder: 'asc' },
+          take: 1,
+        },
+      },
     });
     if (products.length !== qty.size) throw new AppException('NOT_FOUND');
     const lines: Line[] = products.map((product) => ({ product, quantity: qty.get(product.id)! }));
@@ -137,6 +143,13 @@ export class OrdersService {
   ): Promise<OrderQuoteDto> {
     const q = await this.price(this.prisma, user.id, input.items, input.couponCode);
     return {
+      items: q.lines.map(({ product: p, quantity }) => ({
+        productId: p.id,
+        title: p.title,
+        image: p.images[0] ?? null,
+        unitPrice: Number(p.price),
+        quantity,
+      })),
       itemsAmount: q.itemsAmount,
       shippingFee: q.shippingFee,
       discountAmount: q.discountAmount,

@@ -1,13 +1,30 @@
 'use client';
 
-import { Bell, MessageCircle, Search, User } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { Bell, MessageCircle, Search, ShoppingBag, User } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { api } from '@/lib/api';
 import { cn } from '@/lib/cn';
 import { useAuthStore } from '@/stores/auth';
 import { NAV_CATEGORIES } from '@/lib/categories';
 import { SearchAutocomplete } from '@/components/search/search-autocomplete';
 import { Logo } from './logo';
+
+function CartLink({ className }: { className: string }) {
+  const { data } = useQuery({ queryKey: ['cart'], queryFn: api.orders.cart, staleTime: 60_000 });
+  const n = data?.length ?? 0;
+  return (
+    <Link href="/cart" aria-label={n ? `장바구니 ${n}개` : '장바구니'} className={cn(className, 'relative')}>
+      <ShoppingBag className="size-5" aria-hidden />
+      {n > 0 && (
+        <span className="tabular absolute top-1 right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
+          {n > 99 ? '99+' : n}
+        </span>
+      )}
+    </Link>
+  );
+}
 
 function AccountLinks() {
   const user = useAuthStore((s) => s.user);
@@ -21,6 +38,7 @@ function AccountLinks() {
       >
         판매하기
       </Link>
+      {user && <CartLink className={icon} />}
       <Link href="/notifications" aria-label="알림" className={icon}>
         <Bell className="size-5" aria-hidden />
       </Link>

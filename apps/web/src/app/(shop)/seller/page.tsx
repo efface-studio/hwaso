@@ -5,8 +5,11 @@ import { AUCTION_STATUS_LABEL, formatPrice, formatRelativeTime, type SellerProdu
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus } from 'lucide-react';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { Suspense, useEffect, useState } from 'react';
 import { RequireAuth } from '@/components/auth/require-auth';
+import { OrderList } from '@/components/order/order-list';
+import { Settlements } from '@/components/order/settlements';
 import { MediaImage } from '@/components/product/media-image';
 import { Button } from '@/components/ui/button';
 import { Badge, EmptyState, Skeleton } from '@/components/ui/display';
@@ -225,8 +228,13 @@ function Products() {
   );
 }
 
+const TABS = ['products', 'orders', 'settlements'];
+
 function Dashboard() {
   const user = useAuthStore((s) => s.user)!;
+  const params = useSearchParams();
+  const [tab, setTab] = useState(TABS.includes(params.get('tab') ?? '') ? params.get('tab')! : 'products');
+  useEffect(() => setTab(TABS.includes(params.get('tab') ?? '') ? params.get('tab')! : 'products'), [params]);
   const stats = useQuery({
     queryKey: ['seller-stats'],
     queryFn: api.market.sellerStats,
@@ -258,16 +266,24 @@ function Dashboard() {
       <div className="mt-6 grid grid-cols-2 gap-2 md:grid-cols-5">
         <Stat label="판매 중" value={s?.selling ?? 0} />
         <Stat label="진행 중 경매" value={s?.liveAuctions ?? 0} />
-        <Stat label="발송 대기 주문" value={s?.ordersToShip ?? 0} />
+        <Stat label="발송 대기 주문" value={s?.ordersToShip ?? 0} href="/seller?tab=orders" />
         <Stat label="미답변 문의" value={s?.unansweredInquiries ?? 0} />
         <Stat label="누적 조회" value={s?.views ?? 0} />
       </div>
-      <Tabs defaultValue="products" className="mt-8">
+      <Tabs value={tab} onValueChange={setTab} className="mt-8">
         <TabsList>
           <TabsTrigger value="products">작품</TabsTrigger>
+          <TabsTrigger value="orders">주문</TabsTrigger>
+          <TabsTrigger value="settlements">정산</TabsTrigger>
         </TabsList>
         <TabsContent value="products" className="pt-4">
           <Products />
+        </TabsContent>
+        <TabsContent value="orders" className="pt-4">
+          <OrderList as="seller" initialFilter="progress" />
+        </TabsContent>
+        <TabsContent value="settlements" className="pt-4">
+          <Settlements />
         </TabsContent>
       </Tabs>
     </div>
@@ -277,7 +293,9 @@ function Dashboard() {
 export default function SellerPage() {
   return (
     <RequireAuth>
-      <Dashboard />
+      <Suspense>
+        <Dashboard />
+      </Suspense>
     </RequireAuth>
   );
 }

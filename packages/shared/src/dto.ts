@@ -372,6 +372,7 @@ export interface CartItemDto {
 }
 
 export interface OrderQuoteDto {
+  items: OrderItemDto[];
   itemsAmount: number;
   shippingFee: number;
   discountAmount: number;
@@ -402,6 +403,8 @@ export interface OrderRowDto {
 
 export interface PaymentDto {
   id: string;
+  /** toss | mock (개발용 모의 결제) */
+  provider: string;
   method: PaymentMethod;
   status: PaymentStatus;
   amount: number;
