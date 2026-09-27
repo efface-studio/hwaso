@@ -83,7 +83,8 @@ export function toCard(p: CardRow, favorites?: Set<string>): ProductCardDto {
   return {
     id: p.id,
     title: p.title,
-    artistName: p.artist?.name ?? p.maker ?? null,
+    // 작가가 없는 고미술·유물은 제작 시대로 대신 표기한다
+    artistName: p.artist?.name ?? p.maker ?? (p.era ? `작자 미상 · ${p.era}` : null),
     image: toImage(p.images[0]),
     saleType: p.saleType,
     status: p.status,

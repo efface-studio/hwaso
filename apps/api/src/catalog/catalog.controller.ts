@@ -45,6 +45,27 @@ export class CatalogController {
     return tree;
   }
 
+  /** 웹 sitemap.xml 용 공개 URL 목록 */
+  @Public()
+  @Get('sitemap')
+  async sitemap() {
+    const [products, categories, artists] = await Promise.all([
+      this.prisma.product.findMany({
+        where: PUBLIC_PRODUCT,
+        select: { id: true, updatedAt: true },
+        orderBy: { updatedAt: 'desc' },
+        take: 45_000,
+      }),
+      this.prisma.category.findMany({ where: { isActive: true }, select: { slug: true } }),
+      this.prisma.artist.findMany({ where: { products: { some: PUBLIC_PRODUCT } }, select: { id: true } }),
+    ]);
+    return {
+      products: products.map((p) => ({ id: p.id, updatedAt: p.updatedAt.toISOString() })),
+      categories: categories.map((c) => c.slug),
+      artists: artists.map((a) => a.id),
+    };
+  }
+
   @Public()
   @Get('artists')
   async artists(@Query(new ZodPipe(artistQuery)) q: { q: string }) {

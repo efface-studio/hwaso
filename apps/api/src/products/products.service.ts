@@ -302,7 +302,9 @@ export class ProductsService {
     });
     if (!exists) throw new AppException('NOT_FOUND');
     const first = await this.redis.set(`view:${id}:${viewerKey}`, '1', 'EX', 1800, 'NX');
-    if (first) await this.prisma.product.update({ where: { id }, data: { viewCount: { increment: 1 } } });
+    // 조회수 증가로 updatedAt(sitemap lastModified 등)이 바뀌지 않도록 직접 갱신한다
+    if (first)
+      await this.prisma.$executeRaw`UPDATE "Product" SET "viewCount" = "viewCount" + 1 WHERE id = ${id}`;
     if (userId) {
       await this.prisma.recentView.upsert({
         where: { userId_productId: { userId, productId: id } },
