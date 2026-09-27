@@ -301,3 +301,40 @@ export interface SellerAuctionDto {
   auction: AuctionDto;
   product: Pick<ProductCardDto, 'id' | 'title' | 'artistName' | 'image'>;
 }
+
+export interface SellerStatsDto {
+  selling: number;
+  draft: number;
+  hidden: number;
+  sold: number;
+  views: number;
+  favorites: number;
+  liveAuctions: number;
+  scheduledAuctions: number;
+  unansweredInquiries: number;
+  ordersToShip: number;
+}
+
+/** 판매자 상품 관리 목록 한 줄 */
+export interface SellerProductRow {
+  id: string;
+  title: string;
+  status: ProductStatus;
+  saleType: SaleType;
+  price: number | null;
+  listPrice: number | null;
+  viewCount: number;
+  favoriteCount: number;
+  verificationStatus: VerificationStatus;
+  updatedAt: string;
+  images: ImageDto[];
+  auction: {
+    id: string;
+    status: AuctionStatus;
+    currentPrice: number;
+    bidCount: number;
+    endsAt: string;
+    startsAt: string;
+  } | null;
+  _count: { inquiries: number };
+}

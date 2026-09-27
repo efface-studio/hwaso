@@ -128,6 +128,11 @@ export class ProductsController {
     return this.seller.remove(user, id);
   }
 
+  @Get('seller/stats')
+  stats(@CurrentUser() user: AuthUser) {
+    return this.seller.stats(user);
+  }
+
   @Get('seller/products')
   mine(@CurrentUser() user: AuthUser, @Query(new ZodPipe(mineQuery)) q: { status: string }) {
     return this.seller.mine(user, q.status);
