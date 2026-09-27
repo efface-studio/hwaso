@@ -12,6 +12,7 @@ import {
   Settings,
   ShieldCheck,
   ShoppingBag,
+  UserPlus,
   Store,
   Trophy,
 } from 'lucide-react';
@@ -34,6 +35,7 @@ const MENU = [
       { href: '/my/bids', label: '입찰 내역', Icon: Gavel },
       { href: '/my/wins', label: '낙찰 내역', Icon: Trophy },
       { href: '/my/favorites', label: '관심 작품', Icon: Heart },
+      { href: '/my/following', label: '팔로잉', Icon: UserPlus },
       { href: '/my/recent', label: '최근 본 작품', Icon: Clock },
       { href: '/my/settings/addresses', label: '배송지 관리', Icon: MapPin },
     ],

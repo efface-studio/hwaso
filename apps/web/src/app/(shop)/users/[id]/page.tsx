@@ -1,3 +1,5 @@
+import { ProfileFollow } from '@/components/community/profile-follow';
+import { ReviewList } from '@/components/community/review-list';
 import { ProfileMenu } from '@/components/safety/profile-menu';
 import { ApiError } from '@shop/api-client';
 import type { Metadata } from 'next';
@@ -25,11 +27,19 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     : { title: '프로필' };
 }
 
-function Stat({ label, value }: { label: string; value: string | number }) {
+function Stat({ label, value, href }: { label: string; value: string | number; href?: string }) {
   return (
     <div className="flex flex-col">
       <dt className="text-caption text-muted">{label}</dt>
-      <dd className="tabular text-body-strong">{value}</dd>
+      <dd className="tabular text-body-strong">
+        {href ? (
+          <Link href={href} className="hover:underline">
+            {value}
+          </Link>
+        ) : (
+          value
+        )}
+      </dd>
     </div>
   );
 }
@@ -37,7 +47,7 @@ function Stat({ label, value }: { label: string; value: string | number }) {
 export default async function UserPage({ params, searchParams }: Props) {
   const { id } = await params;
   const { tab: rawTab } = await searchParams;
-  const tab = rawTab === 'sold' ? 'sold' : 'selling';
+  const tab = rawTab === 'sold' || rawTab === 'reviews' ? rawTab : 'selling';
   let u;
   try {
     u = await serverApi.market.user(id);
@@ -45,7 +55,7 @@ export default async function UserPage({ params, searchParams }: Props) {
     if (e instanceof ApiError && e.status === 404) notFound();
     return <EmptyState title="프로필을 불러오지 못했습니다" description="잠시 후 다시 시도해주세요." />;
   }
-  const items = (await safe(serverApi.market.userProducts(id, tab))) ?? [];
+  const items = tab === 'reviews' ? [] : ((await safe(serverApi.market.userProducts(id, tab))) ?? []);
 
   return (
     <div className="page-x mx-auto max-w-page py-6 md:py-10">
@@ -62,13 +72,14 @@ export default async function UserPage({ params, searchParams }: Props) {
             </p>
             {u.bio && <p className="mt-1 max-w-xl text-body">{u.bio}</p>}
           </div>
+          <ProfileFollow userId={u.id} initial={u.isFollowing} />
           <ProfileMenu userId={u.id} nickname={u.nickname} />
         </div>
         <dl className="flex gap-6">
           <Stat label="거래" value={u.tradeCount.toLocaleString('ko-KR')} />
           <Stat label="평점" value={`${u.ratingAvg.toFixed(1)} (${u.ratingCount})`} />
-          <Stat label="팔로워" value={u.followerCount} />
-          <Stat label="팔로잉" value={u.followingCount} />
+          <Stat label="팔로워" value={u.followerCount} href={`/users/${id}/followers`} />
+          <Stat label="팔로잉" value={u.followingCount} href={`/users/${id}/following`} />
         </dl>
       </header>
 
@@ -77,11 +88,12 @@ export default async function UserPage({ params, searchParams }: Props) {
           [
             ['selling', `판매 중 ${u.sellingCount}`],
             ['sold', `판매 완료 ${u.soldCount}`],
+            ['reviews', `후기 ${u.ratingCount}`],
           ] as const
         ).map(([key, label]) => (
           <Link
             key={key}
-            href={key === 'selling' ? `/users/${id}` : `/users/${id}?tab=sold`}
+            href={key === 'selling' ? `/users/${id}` : `/users/${id}?tab=${key}`}
             aria-current={tab === key ? 'page' : undefined}
             className={cn(
               '-mb-px flex h-11 items-center border-b-2 text-label',
@@ -96,7 +108,9 @@ export default async function UserPage({ params, searchParams }: Props) {
       </nav>
 
       <div className="mt-6">
-        {items.length ? (
+        {tab === 'reviews' ? (
+          <ReviewList userId={id} />
+        ) : items.length ? (
           <ProductGrid items={items} priorityCount={4} />
         ) : (
           <EmptyState title={tab === 'sold' ? '판매 완료된 작품이 없습니다' : '판매 중인 작품이 없습니다'} />

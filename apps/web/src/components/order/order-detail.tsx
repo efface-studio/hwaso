@@ -24,6 +24,7 @@ import { api } from '@/lib/api';
 import { getRealtime } from '@/lib/realtime';
 import { toast } from '@/stores/toast';
 import { StartChatButton } from '@/components/chat/start-chat';
+import { OrderReview } from '@/components/community/order-review';
 import { AddressList, AddressText } from './address';
 import { AmountSummary, OrderItemRow, OrderStatusBadge, OrderSteps } from './order-ui';
 import { PayMethodPicker, usePay } from './pay';
@@ -487,6 +488,9 @@ export function OrderDetail({ id }: { id: string }) {
       )}
 
       <Actions o={o} refresh={refresh} />
+      {o.status === 'COMPLETED' && o.role !== 'admin' && (
+        <OrderReview orderId={o.id} counterpart={counterpart.nickname} />
+      )}
       {o.role === 'buyer' && o.items[0] && (
         <StartChatButton
           productId={o.items[0].productId}
