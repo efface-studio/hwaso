@@ -4,9 +4,9 @@
  * 예시 게시물 원천: The Cleveland Museum of Art Open Access (CC0) — seed/samples.json
  * 가격·판매 방식·경매 상태·인증서 검수 상태 등 거래 정보는 기능 시연을 위한 가상 데이터다.
  *
- * 개발 계정 (모두 같은 비밀번호, SEED_PASSWORD 로 변경 가능 — 운영에서는 실행 불가):
- *   admin@shop.local (SUPER_ADMIN)
- *   seller1~5@shop.local (판매자)   buyer1~4@shop.local (구매자)
+ * 개발 계정 (운영에서는 실행 불가):
+ *   최고 관리자: SEED_ADMIN_EMAIL / SEED_ADMIN_PASSWORD (apps/api/.env, 없으면 SEED_PASSWORD)
+ *   seller1~5@shop.local (판매자)   buyer1~4@shop.local (구매자) — 비밀번호 SEED_PASSWORD (기본값 아래)
  */
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -30,6 +30,8 @@ const prisma = new PrismaClient();
 const s3 = createS3Client();
 const BUCKET = process.env.S3_BUCKET ?? 'shop-media';
 const PASSWORD = process.env.SEED_PASSWORD ?? 'shop1234!';
+const ADMIN_EMAIL = (process.env.SEED_ADMIN_EMAIL || 'admin@shop.local').toLowerCase();
+const ADMIN_PASSWORD = process.env.SEED_ADMIN_PASSWORD || PASSWORD;
 const SEED_DIR = resolve(import.meta.dirname, 'seed');
 const CACHE_DIR = resolve(SEED_DIR, '.cache');
 
@@ -274,19 +276,21 @@ async function seedUsers() {
     email: string,
     nickname: string,
     role: 'USER' | 'SELLER' | 'VERIFIED_SELLER' | 'SUPER_ADMIN',
-    extra: { bio?: string; region?: string } = {},
+    extra: { bio?: string; region?: string; passwordHash?: string } = {},
   ) =>
     prisma.user.create({
       data: {
         email,
-        passwordHash,
+        passwordHash: extra.passwordHash ?? passwordHash,
         emailVerifiedAt: now,
         role,
         profile: { create: { nickname, bio: extra.bio ?? '', region: extra.region ?? null } },
       },
     });
 
-  await mk('admin@shop.local', '운영팀', 'SUPER_ADMIN');
+  await mk(ADMIN_EMAIL, '운영팀', 'SUPER_ADMIN', {
+    passwordHash: await argon2.hash(ADMIN_PASSWORD, { type: argon2.argon2id }),
+  });
   const sellers = [];
   for (const [i, s] of SELLERS.entries()) {
     const u = await mk(`seller${i + 1}@shop.local`, s.nickname, s.verified ? 'VERIFIED_SELLER' : 'SELLER', s);
