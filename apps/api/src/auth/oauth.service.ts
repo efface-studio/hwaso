@@ -113,7 +113,13 @@ export class OAuthService {
       include: { user: true },
     });
     if (linked) {
-      if (linked.user.status === 'SUSPENDED') throw new AppException('ACCOUNT_RESTRICTED');
+      if (linked.user.status === 'SUSPENDED')
+        throw new AppException(
+          'ACCOUNT_RESTRICTED',
+          linked.user.statusReason
+            ? `이용이 제한된 계정입니다. 사유: ${linked.user.statusReason}`
+            : undefined,
+        );
       if (linked.user.status === 'DELETED') throw new AppException('INVALID_CREDENTIALS');
       const issued = await this.sessions.issue(linked.user, device, client);
       return { user: linked.user, issued, isNew: false };
