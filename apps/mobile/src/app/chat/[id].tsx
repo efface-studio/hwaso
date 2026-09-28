@@ -26,6 +26,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppointmentSheet } from '@/components/chat/appointment-sheet';
 import { Bubble, type PendingMessage } from '@/components/chat/bubble';
 import { Empty, Loading } from '@/components/ui/state';
+import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { actionSheet } from '@/lib/action-sheet';
 import { api } from '@/lib/api';
@@ -327,7 +328,7 @@ export default function ChatRoomScreen() {
               onPress={menu}
               hitSlop={10}
             >
-              <Text variant="h3">⋯</Text>
+              <Icon ios="ellipsis.circle" android="more_horiz" />
             </Pressable>
           ),
         }}

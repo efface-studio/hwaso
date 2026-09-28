@@ -10,6 +10,7 @@ import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Chips } from '@/components/ui/chips';
 import { Empty, Loading } from '@/components/ui/state';
+import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { useGrid } from '@/hooks/use-grid';
 import { actionSheet } from '@/lib/action-sheet';
@@ -101,7 +102,7 @@ function Header({ u, tab, setTab }: { u: PublicProfileDto; tab: Tab; setTab: (t:
                     hitSlop={10}
                     onPress={menu}
                   >
-                    <Text variant="h3">⋯</Text>
+                    <Icon ios="ellipsis.circle" android="more_horiz" />
                   </Pressable>
                 ),
         }}

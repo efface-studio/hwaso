@@ -1,4 +1,5 @@
 import { Pressable, ScrollView, StyleSheet } from 'react-native';
+import { selectionHaptic } from '@/lib/haptics';
 import { useTheme } from '@/theme';
 import { Text } from './text';
 
@@ -30,7 +31,10 @@ export function Chips<T extends string>({
             key={o.value}
             accessibilityRole="radio"
             accessibilityState={{ checked: on }}
-            onPress={() => onChange(o.value)}
+            onPress={() => {
+              selectionHaptic();
+              onChange(o.value);
+            }}
             style={[
               styles.chip,
               {

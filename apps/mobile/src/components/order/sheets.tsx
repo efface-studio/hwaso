@@ -1,32 +1,10 @@
 import { CARRIERS } from '@shop/shared';
-import { useState, type ReactNode } from 'react';
-import { Modal, ScrollView, StyleSheet, View } from 'react-native';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
 import { RadioList } from '@/components/ui/radio';
+import { Sheet } from '@/components/ui/sheet';
 import { Text } from '@/components/ui/text';
-import { useTheme } from '@/theme';
-
-function Sheet({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
-  const t = useTheme();
-  return (
-    <Modal visible animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <ScrollView
-        style={{ backgroundColor: t.colors.background }}
-        contentContainerStyle={styles.body}
-        keyboardShouldPersistTaps="handled"
-      >
-        <View style={styles.head}>
-          <Text variant="h2" accessibilityRole="header" style={{ flex: 1 }}>
-            {title}
-          </Text>
-          <Button title="닫기" variant="ghost" size="sm" onPress={onClose} />
-        </View>
-        {children}
-      </ScrollView>
-    </Modal>
-  );
-}
 
 /** 사유 입력 (주문 취소·환불 요청·환불 거절 공용) */
 export function ReasonSheet({
@@ -115,8 +93,3 @@ export function ShipSheet({
     </Sheet>
   );
 }
-
-const styles = StyleSheet.create({
-  body: { padding: 20, gap: 14 },
-  head: { flexDirection: 'row', alignItems: 'center' },
-});

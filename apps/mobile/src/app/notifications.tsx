@@ -3,6 +3,7 @@ import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { router, Stack, type Href } from 'expo-router';
 import { Alert, FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 import { Empty, Loading } from '@/components/ui/state';
+import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
@@ -74,7 +75,7 @@ export default function NotificationsScreen() {
               onPress={menu}
               hitSlop={10}
             >
-              <Text variant="h3">⋯</Text>
+              <Icon ios="ellipsis.circle" android="more_horiz" />
             </Pressable>
           ),
         }}

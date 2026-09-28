@@ -1,14 +1,13 @@
-import * as Haptics from 'expo-haptics';
 import type { ReactNode } from 'react';
 import {
   ActivityIndicator,
-  Platform,
   Pressable,
   StyleSheet,
   View,
   type PressableProps,
   type ViewStyle,
 } from 'react-native';
+import { selectionHaptic } from '@/lib/haptics';
 import { useTheme } from '@/theme';
 import { Text } from './text';
 
@@ -59,7 +58,7 @@ export function Button({
       accessibilityState={{ disabled: !!inactive, busy: !!loading }}
       disabled={inactive}
       onPress={(e) => {
-        if (Platform.OS !== 'web') void Haptics.selectionAsync();
+        selectionHaptic();
         onPress?.(e);
       }}
       style={({ pressed }) => [
