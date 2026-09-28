@@ -5,9 +5,10 @@ import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import { Link, router, Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Alert, Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '@/components/ui/button';
+import { Sheet } from '@/components/ui/sheet';
 import { Empty, Loading } from '@/components/ui/state';
 import { Text } from '@/components/ui/text';
 import { useAuctionLive } from '@/hooks/use-auction-live';
@@ -43,65 +44,53 @@ function Countdown({ a }: { a: AuctionDto }) {
 /** 금액 직접 입력: 호가 단위로만 올리고 내린다 (서버가 최종 검증) */
 function AmountSheet({
   a,
-  visible,
   onClose,
   onBid,
 }: {
   a: AuctionDto;
-  visible: boolean;
   onClose: () => void;
   onBid: (amount: number) => void;
 }) {
-  const t = useTheme();
-  const insets = useSafeAreaInsets();
   const [amount, setAmount] = useState(a.minNextBid);
   const step = a.bidIncrement;
   return (
-    <Modal visible={visible} transparent animationType={t.senior ? 'none' : 'slide'} onRequestClose={onClose}>
-      <Pressable
-        style={[StyleSheet.absoluteFill, { backgroundColor: t.colors.overlay }]}
-        onPress={onClose}
-        accessibilityLabel="닫기"
-      />
-      <View style={[styles.sheet, { backgroundColor: t.colors.surface, paddingBottom: insets.bottom + 16 }]}>
-        <Text variant="h3">입찰 금액</Text>
-        <Text variant="small" color="muted">
-          최소 {formatPrice(a.minNextBid)} · 호가 단위 {formatPrice(step)}
+    <Sheet title="입찰 금액" onClose={onClose}>
+      <Text variant="small" color="muted">
+        최소 {formatPrice(a.minNextBid)} · 호가 단위 {formatPrice(step)}
+      </Text>
+      <View style={styles.stepper}>
+        <Button
+          title="−"
+          variant="outline"
+          size="lg"
+          disabled={amount - step < a.minNextBid}
+          onPress={() => setAmount(amount - step)}
+          accessibilityLabel={`${formatPrice(step)} 내리기`}
+        />
+        <Text variant="priceLg" style={{ flex: 1, textAlign: 'center' }} accessibilityLiveRegion="polite">
+          {formatPrice(amount)}
         </Text>
-        <View style={styles.stepper}>
-          <Button
-            title="−"
-            variant="outline"
-            size="lg"
-            disabled={amount - step < a.minNextBid}
-            onPress={() => setAmount(amount - step)}
-            accessibilityLabel={`${formatPrice(step)} 내리기`}
-          />
-          <Text variant="priceLg" style={{ flex: 1, textAlign: 'center' }} accessibilityLiveRegion="polite">
-            {formatPrice(amount)}
-          </Text>
-          <Button
-            title="+"
-            variant="outline"
-            size="lg"
-            onPress={() => setAmount(amount + step)}
-            accessibilityLabel={`${formatPrice(step)} 올리기`}
-          />
-        </View>
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          {[1, 5, 10].map((n) => (
-            <Button
-              key={n}
-              title={`+${formatPrice(step * n)}`}
-              size="sm"
-              variant="ghost"
-              onPress={() => setAmount(amount + step * n)}
-            />
-          ))}
-        </View>
-        <Button title={`${formatPrice(amount)} 입찰하기`} size="lg" block onPress={() => onBid(amount)} />
+        <Button
+          title="+"
+          variant="outline"
+          size="lg"
+          onPress={() => setAmount(amount + step)}
+          accessibilityLabel={`${formatPrice(step)} 올리기`}
+        />
       </View>
-    </Modal>
+      <View style={{ flexDirection: 'row', gap: 8 }}>
+        {[1, 5, 10].map((n) => (
+          <Button
+            key={n}
+            title={`+${formatPrice(step * n)}`}
+            size="sm"
+            variant="ghost"
+            onPress={() => setAmount(amount + step * n)}
+          />
+        ))}
+      </View>
+      <Button title={`${formatPrice(amount)} 입찰하기`} size="lg" block onPress={() => onBid(amount)} />
+    </Sheet>
   );
 }
 
@@ -311,7 +300,7 @@ export default function AuctionScreen() {
           )}
         </View>
       )}
-      {sheet && <AmountSheet a={a} visible onClose={() => setSheet(false)} onBid={(n) => place(n)} />}
+      {sheet && <AmountSheet a={a} onClose={() => setSheet(false)} onBid={(n) => place(n)} />}
     </View>
   );
 }
@@ -340,16 +329,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingTop: 10,
     borderTopWidth: StyleSheet.hairlineWidth,
-  },
-  sheet: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    padding: 20,
-    gap: 14,
-    borderTopLeftRadius: 12,
-    borderTopRightRadius: 12,
   },
   stepper: { flexDirection: 'row', alignItems: 'center', gap: 12 },
 });
