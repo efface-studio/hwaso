@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import {
   CHAT_TRADE_STATUSES,
+  CHAT_DEFAULT_PHRASES,
   chatPreview,
   looksLikeExternalTrade,
   type ChatMessageDto,
@@ -514,6 +515,21 @@ export class ChatService {
     for (const uid of [user.id, counterpartId])
       this.realtime.toUser(uid, 'CHAT_MESSAGE_DELETED', { roomId, messageId });
     return { ok: true };
+  }
+
+  async phrases(user: AuthUser) {
+    const u = await this.prisma.user.findUniqueOrThrow({
+      where: { id: user.id },
+      select: { chatPhrases: true },
+    });
+    return { phrases: (u.chatPhrases as string[] | null) ?? [...CHAT_DEFAULT_PHRASES] };
+  }
+
+  /** 순서는 그대로, 공백만 다른 중복은 하나로 */
+  async savePhrases(user: AuthUser, phrases: string[]) {
+    const unique = [...new Set(phrases)];
+    await this.prisma.user.update({ where: { id: user.id }, data: { chatPhrases: unique } });
+    return { phrases: unique };
   }
 
   async read(user: AuthUser, roomId: string) {

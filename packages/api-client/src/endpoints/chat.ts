@@ -33,6 +33,9 @@ export const chatApi = (http: Http) => ({
   trade: (roomId: string, status: ChatTradeInput['status']) =>
     http.patch<{ status: ChatTradeInput['status'] }>(`/chat/rooms/${id(roomId)}/trade`, { status }),
   leave: (roomId: string) => http.post<{ ok: true }>(`/chat/rooms/${id(roomId)}/leave`),
+  /** 자주 쓰는 문구 (저장한 적 없으면 기본 문구) */
+  phrases: () => http.get<{ phrases: string[] }>('/chat/phrases'),
+  savePhrases: (phrases: string[]) => http.put<{ phrases: string[] }>('/chat/phrases', { phrases }),
   mute: (roomId: string, muted: boolean) =>
     http.patch<{ muted: boolean }>(`/chat/rooms/${id(roomId)}`, { muted }),
 });
