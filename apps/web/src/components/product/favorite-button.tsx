@@ -85,7 +85,8 @@ export function FavoriteButton({
         type="button"
         onClick={toggle}
         aria-pressed={on}
-        aria-label={label}
+        // 보이는 관심 수도 이름에 넣어야 음성 조작·화면 낭독이 화면과 맞는다
+        aria-label={count !== undefined ? `${label} ${n.toLocaleString('ko-KR')}` : label}
         className={cn(
           'inline-flex h-11 min-w-11 flex-col items-center justify-center gap-0.5 rounded-sm px-2 hover:bg-surface-2',
           className,
