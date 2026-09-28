@@ -3,6 +3,7 @@
 import { CONDITION_LABEL, ITEM_CONDITIONS, PROVENANCE_KINDS, type CategoryNode } from '@shop/shared';
 import { Plus, Trash2 } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { DateTimeInput } from '@/components/ui/date-picker';
 import { RadioGroup } from '@/components/ui/choice';
 import { Field, Input, PriceInput, Textarea } from '@/components/ui/field';
 import { Select } from '@/components/ui/select';
@@ -118,14 +119,7 @@ export function PriceFields({
       )}
       {d.saleType === 'RESERVATION' && (
         <Field label="판매 시작일" required error={errors.availableAt}>
-          {(p) => (
-            <Input
-              {...p}
-              type="datetime-local"
-              value={d.availableAt}
-              onChange={(e) => set('availableAt', e.target.value)}
-            />
-          )}
+          {(p) => <DateTimeInput {...p} value={d.availableAt} onChange={(v) => set('availableAt', v)} />}
         </Field>
       )}
       {d.saleType === 'AUCTION' && (
@@ -291,11 +285,11 @@ export function AuthenticityFields({
           </Field>
           <Field label="발급일">
             {(p) => (
-              <Input
+              <DateTimeInput
                 {...p}
-                type="date"
+                mode="date"
                 value={d.certIssuedAt}
-                onChange={(e) => set('certIssuedAt', e.target.value)}
+                onChange={(v) => set('certIssuedAt', v)}
               />
             )}
           </Field>

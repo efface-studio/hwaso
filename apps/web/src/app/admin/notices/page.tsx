@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Suspense, useState } from 'react';
 import { AdminList, dt, useAdminAction, useAdminList } from '@/components/admin/admin-list';
 import { AdminPage } from '@/components/admin/admin-shell';
+import { DateTimeInput } from '@/components/ui/date-picker';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/choice';
 import { Badge } from '@/components/ui/display';
@@ -80,11 +81,10 @@ function Editor({ initial, onClose }: { initial: NoticeDto | null; onClose: () =
         <div className="flex flex-wrap items-end gap-4">
           <Field label="게시 시각" hint="미래로 정하면 그때 공개돼요.">
             {(p) => (
-              <Input
+              <DateTimeInput
                 {...p}
-                type="datetime-local"
                 value={local(n.publishedAt ?? new Date().toISOString())}
-                onChange={(e) => setN({ ...n, publishedAt: new Date(e.target.value).toISOString() })}
+                onChange={(v) => v && setN({ ...n, publishedAt: new Date(v).toISOString() })}
               />
             )}
           </Field>

@@ -130,32 +130,33 @@
 
 ds.efface.dev 의 컴포넌트 구성(buttons / inputs / form / chips / cards / lists / skeleton / auth / layout / banner)을 기준으로 삼고, 접근성 동작은 Web 은 Radix UI Primitives, Mobile 은 React Native 기본 + `@gorhom/bottom-sheet` 로 구현한다.
 
-| 컴포넌트                  | Web (`apps/web/src/components/ui`)                                                              | Mobile (`apps/mobile/src/components/ui`) | 비고                       |
-| ------------------------- | ----------------------------------------------------------------------------------------------- | ---------------------------------------- | -------------------------- |
-| Button                    | ✓ variant: primary / secondary / outline / ghost / destructive · size: sm(32) / md(40) / lg(48) | ✓ 최소 높이 48                           | 로딩 시 스피너 + 폭 유지   |
-| IconButton                | ✓                                                                                               | ✓                                        | 터치 타깃 44×44 이상       |
-| Input / Textarea          | ✓ 라벨·도움말·오류 슬롯                                                                         | ✓                                        | 오류는 `aria-describedby`  |
-| PriceInput                | ✓ 천 단위 콤마, 정수만                                                                          | ✓ `number-pad`                           |                            |
-| Select / NativeSelect     | Radix Select                                                                                    | 네이티브 Picker 시트                     |                            |
-| Checkbox / Radio / Switch | Radix                                                                                           | ✓                                        |                            |
-| Tabs                      | Radix                                                                                           | 상단 세그먼트                            |                            |
-| Dialog / Modal            | Radix Dialog                                                                                    | RN Modal                                 |                            |
-| Drawer / Bottom Sheet     | Radix Dialog(side)                                                                              | @gorhom/bottom-sheet                     | 모바일 필터 = 바텀시트     |
-| Dropdown / Context Menu   | Radix DropdownMenu                                                                              | ActionSheet                              |                            |
-| Tooltip / Popover         | Radix                                                                                           | —                                        | 모바일은 사용 안 함        |
-| Toast                     | 자체 (Zustand 큐)                                                                               | 자체                                     | 3초, 중요 오류는 수동 닫기 |
-| Alert                     | ✓ info/success/warning/destructive                                                              | ✓                                        |                            |
-| Badge                     | ✓ (LIVE, 판매방식, 검수 상태)                                                                   | ✓                                        |                            |
-| Avatar                    | ✓                                                                                               | ✓                                        |                            |
-| Skeleton                  | ✓ ds skeleton-base/shine                                                                        | ✓                                        | 이미지 비율 유지           |
-| Progress                  | ✓ (업로드)                                                                                      | ✓                                        |                            |
-| Pagination                | ✓ (관리자 표)                                                                                   | —                                        | 사용자 목록은 무한 스크롤  |
-| Breadcrumb                | ✓ (카테고리, 상세)                                                                              | —                                        |                            |
-| Accordion                 | Radix                                                                                           | ✓                                        | 상세 정보 접기             |
-| Carousel                  | 자체 (scroll-snap)                                                                              | FlatList paging                          | 상품 갤러리                |
-| Table                     | ✓ (관리자·판매자)                                                                               | —                                        |                            |
-| Command / Search          | 자체 검색 + 자동완성 (listbox 패턴)                                                             | 검색 화면                                |                            |
-| DatePicker                | `<input type="datetime-local">`                                                                 | 네이티브 DateTimePicker                  | 경매 시작/종료             |
+| 컴포넌트                  | Web (`apps/web/src/components/ui`)                                                              | Mobile (`apps/mobile/src/components/ui`)               | 비고                       |
+| ------------------------- | ----------------------------------------------------------------------------------------------- | ------------------------------------------------------ | -------------------------- |
+| Button                    | ✓ variant: primary / secondary / outline / ghost / destructive · size: sm(32) / md(40) / lg(48) | ✓ 최소 높이 48                                         | 로딩 시 스피너 + 폭 유지   |
+| IconButton                | ✓                                                                                               | ✓                                                      | 터치 타깃 44×44 이상       |
+| Input / Textarea          | ✓ 라벨·도움말·오류 슬롯                                                                         | ✓                                                      | 오류는 `aria-describedby`  |
+| PriceInput                | ✓ 천 단위 콤마, 정수만                                                                          | ✓ `number-pad`                                         |                            |
+| Select / NativeSelect     | Radix Select                                                                                    | 네이티브 Picker 시트                                   |                            |
+| DateTimeInput             | 커스텀 캘린더 팝오버 + 오전/오후·시·분 선택 (브라우저 기본 date/datetime 입력 금지)             | OS 기본 DateTimePicker(iOS compact·Android 다이얼로그) | 값은 `YYYY-MM-DD[THH:mm]`  |
+| Checkbox / Radio / Switch | Radix                                                                                           | ✓                                                      |                            |
+| Tabs                      | Radix                                                                                           | 상단 세그먼트                                          |                            |
+| Dialog / Modal            | Radix Dialog                                                                                    | RN Modal                                               |                            |
+| Drawer / Bottom Sheet     | Radix Dialog(side)                                                                              | @gorhom/bottom-sheet                                   | 모바일 필터 = 바텀시트     |
+| Dropdown / Context Menu   | Radix DropdownMenu                                                                              | ActionSheet                                            |                            |
+| Tooltip / Popover         | Radix                                                                                           | —                                                      | 모바일은 사용 안 함        |
+| Toast                     | 자체 (Zustand 큐)                                                                               | 자체                                                   | 3초, 중요 오류는 수동 닫기 |
+| Alert                     | ✓ info/success/warning/destructive                                                              | ✓                                                      |                            |
+| Badge                     | ✓ (LIVE, 판매방식, 검수 상태)                                                                   | ✓                                                      |                            |
+| Avatar                    | ✓                                                                                               | ✓                                                      |                            |
+| Skeleton                  | ✓ ds skeleton-base/shine                                                                        | ✓                                                      | 이미지 비율 유지           |
+| Progress                  | ✓ (업로드)                                                                                      | ✓                                                      |                            |
+| Pagination                | ✓ (관리자 표)                                                                                   | —                                                      | 사용자 목록은 무한 스크롤  |
+| Breadcrumb                | ✓ (카테고리, 상세)                                                                              | —                                                      |                            |
+| Accordion                 | Radix                                                                                           | ✓                                                      | 상세 정보 접기             |
+| Carousel                  | 자체 (scroll-snap)                                                                              | FlatList paging                                        | 상품 갤러리                |
+| Table                     | ✓ (관리자·판매자)                                                                               | —                                                      |                            |
+| Command / Search          | 자체 검색 + 자동완성 (listbox 패턴)                                                             | 검색 화면                                              |                            |
+| DatePicker                | `<input type="datetime-local">`                                                                 | 네이티브 DateTimePicker                                | 경매 시작/종료             |
 
 도메인 컴포넌트: `ProductCard`, `ProductGrid`, `AuctionCountdown`, `BidPanel`, `BidHistory`, `PriceTag`, `SaleTypeBadge`, `VerificationBadge`, `SellerSummary`, `ImageGallery`(+Zoom), `FilterPanel`/`FilterSheet`, `SortSelect`, `ImageUploader`, `EmptyState`.
 

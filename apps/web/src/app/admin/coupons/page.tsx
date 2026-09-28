@@ -5,6 +5,7 @@ import { Plus } from 'lucide-react';
 import { Suspense, useState } from 'react';
 import { AdminList, dt, useAdminAction, useAdminList } from '@/components/admin/admin-list';
 import { AdminPage } from '@/components/admin/admin-shell';
+import { DateTimeInput } from '@/components/ui/date-picker';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/choice';
 import { Badge } from '@/components/ui/display';
@@ -116,21 +117,19 @@ function CouponForm({ initial, onClose }: { initial: AdminCouponRow | null; onCl
         </Field>
         <Field label="시작" error={errors.startsAt}>
           {(p) => (
-            <Input
+            <DateTimeInput
               {...p}
-              type="datetime-local"
               value={local(c.startsAt)}
-              onChange={(e) => set({ startsAt: new Date(e.target.value).toISOString() })}
+              onChange={(v) => v && set({ startsAt: new Date(v).toISOString() })}
             />
           )}
         </Field>
         <Field label="종료" error={errors.endsAt}>
           {(p) => (
-            <Input
+            <DateTimeInput
               {...p}
-              type="datetime-local"
               value={local(c.endsAt)}
-              onChange={(e) => set({ endsAt: new Date(e.target.value).toISOString() })}
+              onChange={(v) => v && set({ endsAt: new Date(v).toISOString() })}
             />
           )}
         </Field>

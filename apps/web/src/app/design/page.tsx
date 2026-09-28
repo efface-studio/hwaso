@@ -7,6 +7,7 @@ import { ThemeSelect } from '@/components/layout/theme-select';
 import { Avatar } from '@/components/ui/avatar';
 import { Button, IconButton } from '@/components/ui/button';
 import { Checkbox, RadioGroup, Switch } from '@/components/ui/choice';
+import { DateTimeInput } from '@/components/ui/date-picker';
 import { Dialog, Sheet } from '@/components/ui/dialog';
 import { Alert, Badge, EmptyState, Progress, Skeleton } from '@/components/ui/display';
 import { Field, Input, PriceInput, Textarea } from '@/components/ui/field';
@@ -44,6 +45,8 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 export default function DesignPage() {
   const [price, setPrice] = useState<number | null>(1_050_000);
+  const [when, setWhen] = useState('2026-09-30T14:30');
+  const [day, setDay] = useState('');
   const [checked, setChecked] = useState(true);
   const [on, setOn] = useState(false);
   const [sale, setSale] = useState<'FIXED' | 'AUCTION'>('AUCTION');
@@ -120,6 +123,12 @@ export default function DesignPage() {
           </Field>
           <Field label="판매 가격" required>
             {(p) => <PriceInput {...p} value={price} onValueChange={setPrice} />}
+          </Field>
+          <Field label="날짜와 시간" hint="브라우저 기본 대신 커스텀 피커">
+            {(p) => <DateTimeInput {...p} value={when} onChange={setWhen} />}
+          </Field>
+          <Field label="날짜">
+            {(p) => <DateTimeInput {...p} mode="date" value={day} onChange={setDay} />}
           </Field>
           <Field label="정렬">
             {(p) => (
