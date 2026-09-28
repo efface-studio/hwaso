@@ -3,13 +3,12 @@
 import { useQuery } from '@tanstack/react-query';
 import { Bell, MessageCircle, Search, ShoppingBag, User } from 'lucide-react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/cn';
 import { useAuthStore } from '@/stores/auth';
-import { NAV_CATEGORIES } from '@/lib/categories';
 import { SearchAutocomplete } from '@/components/search/search-autocomplete';
 import { CountBadge, useUnreadCounts } from './badges';
+import { CategoryNav } from './category-nav';
 import { Logo } from './logo';
 
 function CartLink({ className }: { className: string }) {
@@ -81,7 +80,6 @@ function AccountLinks() {
 }
 
 export function Header() {
-  const pathname = usePathname();
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background">
       <div className="page-x mx-auto flex h-14 max-w-page items-center gap-4 md:h-16 md:gap-8">
@@ -98,30 +96,7 @@ export function Header() {
           <AccountLinks />
         </div>
       </div>
-      <nav aria-label="카테고리" className="page-x mx-auto max-w-page">
-        <ul className="-mb-px flex gap-5 overflow-x-auto [scrollbar-width:none] md:gap-7">
-          {NAV_CATEGORIES.map((c) => {
-            const active = pathname === c.href || pathname.startsWith(`${c.href}/`);
-            return (
-              <li key={c.href} className="shrink-0">
-                <Link
-                  href={c.href}
-                  aria-current={active ? 'page' : undefined}
-                  className={cn(
-                    'flex h-10 items-center border-b-2 text-label transition-colors',
-                    active
-                      ? 'border-foreground text-foreground'
-                      : 'border-transparent text-muted hover:text-foreground',
-                    c.href === '/auctions' && 'font-semibold text-foreground',
-                  )}
-                >
-                  {c.label}
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-      </nav>
+      <CategoryNav />
     </header>
   );
 }
