@@ -11,7 +11,7 @@ export function ProductCard({ p, width }: { p: ProductCardDto; width: number }) 
   const t = useTheme();
   const price = p.auction ? p.auction.currentPrice : p.price;
   return (
-    <Link href={`/products/${p.id}`} asChild>
+    <Link href={{ pathname: '/products/[id]', params: { id: p.id } }} asChild>
       <Pressable
         accessibilityRole="link"
         accessibilityLabel={`${p.title}, ${price != null ? formatPrice(price) : '가격 문의'}`}

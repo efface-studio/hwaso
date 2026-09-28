@@ -47,7 +47,12 @@ function Navigation() {
       <Stack screenOptions={{ headerBackButtonDisplayMode: 'minimal', headerTitleStyle: t.type('h3') }}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="login" options={{ presentation: 'modal', title: '로그인' }} />
-        <Stack.Screen name="products/[id]" options={{ title: '' }} />
+        <Stack.Screen name="products/[id]/index" options={{ title: '' }} />
+        <Stack.Screen
+          name="products/[id]/viewer"
+          options={{ presentation: 'fullScreenModal', headerShown: false }}
+        />
+        <Stack.Screen name="search" options={{ title: '검색' }} />
       </Stack>
     </ThemeProvider>
   );
