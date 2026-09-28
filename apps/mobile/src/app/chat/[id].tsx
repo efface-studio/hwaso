@@ -3,6 +3,7 @@ import {
   CHAT_IMAGES_MAX,
   CHAT_TRADE_STATUSES,
   chatPreview,
+  presenceLabel,
   formatPrice,
   PRODUCT_STATUS_LABEL,
   type ChatMessageDto,
@@ -56,7 +57,13 @@ export default function ChatRoomScreen() {
   const me = useAuthStore((s) => s.user);
   const roomKey = ['chat', 'room', id];
   const msgKey = ['chat', 'messages', id];
-  const room = useQuery({ queryKey: roomKey, queryFn: () => api.chat.room(id), enabled: !!me });
+  // 접속 상태를 보여주려고 1분마다 다시 불러온다
+  const room = useQuery({
+    queryKey: roomKey,
+    queryFn: () => api.chat.room(id),
+    enabled: !!me,
+    refetchInterval: 60_000,
+  });
   const msgs = useInfiniteQuery({
     queryKey: msgKey,
     queryFn: ({ pageParam }) => api.chat.messages(id, pageParam),
@@ -151,7 +158,12 @@ export default function ChatRoomScreen() {
     socket.on('CHAT_TYPING', onTyping);
     socket.on('connect', onConnect);
     markRead();
-    const app = AppState.addEventListener('change', (s) => s === 'active' && markRead());
+    // 백그라운드로 가면 방에서 나가 푸시를 받고, 돌아오면 다시 들어와 읽음 처리
+    const app = AppState.addEventListener('change', (s) => {
+      if (s !== 'active') return void socket.emit('chat:leave', { roomId: id });
+      join();
+      markRead();
+    });
     return () => {
       socket.emit('chat:leave', { roomId: id });
       socket.off('CHAT_MESSAGE', onMessage);
@@ -171,6 +183,7 @@ export default function ChatRoomScreen() {
   if (room.isPending || msgs.isPending) return <Loading />;
   const r = room.data;
   if (!r) return <Empty title="대화를 찾을 수 없어요" />;
+  const presence = presenceLabel(r.counterpart);
 
   const deliver = (m: PendingMessage, input: SendMessageInput) =>
     api.chat
@@ -385,6 +398,18 @@ export default function ChatRoomScreen() {
       <Stack.Screen
         options={{
           title: r.counterpart.nickname,
+          headerTitle: () => (
+            <View style={{ alignItems: 'center' }}>
+              <Text variant="bodyStrong" numberOfLines={1}>
+                {r.counterpart.nickname}
+              </Text>
+              {presence && (
+                <Text variant="caption" color={r.counterpart.online ? 'primary' : 'faint'}>
+                  {presence}
+                </Text>
+              )}
+            </View>
+          ),
           headerRight: () => (
             <Pressable
               accessibilityRole="button"
