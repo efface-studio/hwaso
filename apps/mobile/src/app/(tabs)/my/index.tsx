@@ -1,5 +1,5 @@
-import { router } from 'expo-router';
-import { Alert, ScrollView, StyleSheet, Switch, View } from 'react-native';
+import { Link, router, type Href } from 'expo-router';
+import { Alert, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { logout } from '@/lib/api';
@@ -60,6 +60,27 @@ export default function MyScreen() {
           <Text variant="h3">로그인하고 입찰·구매·채팅을 시작하세요</Text>
           <Button title="로그인" onPress={() => router.push('/login')} block style={{ marginTop: 12 }} />
         </View>
+      )}
+      {user && (
+        <>
+          <Text variant="label" color="muted" style={styles.group}>
+            쇼핑
+          </Text>
+          {(
+            [
+              ['/my/favorites', '관심 작품'],
+              ['/my/recent', '최근 본 작품'],
+            ] as [Href, string][]
+          ).map(([href, label]) => (
+            <Link key={label} href={href} asChild>
+              <Pressable accessibilityRole="link">
+                <Row label={label}>
+                  <Text color="faint">›</Text>
+                </Row>
+              </Pressable>
+            </Link>
+          ))}
+        </>
       )}
       <Text variant="label" color="muted" style={styles.group}>
         화면

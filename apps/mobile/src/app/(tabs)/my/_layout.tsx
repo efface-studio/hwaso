@@ -9,6 +9,7 @@ export default function Layout() {
         headerLargeTitle: true,
         headerTitleStyle: t.type('h3'),
         headerLargeTitleShadowVisible: false,
+        headerBackButtonDisplayMode: 'minimal',
       }}
     >
       <Stack.Screen name="index" options={{ title: '마이' }} />
