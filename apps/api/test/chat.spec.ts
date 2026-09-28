@@ -209,3 +209,61 @@ describe('spam (도배 제한)', () => {
     await text(buyer, roomId, '다음 메시지').expect(201);
   });
 });
+
+describe('trade status & system messages (거래 상태·주문 진행)', () => {
+  const trade = (u: U, roomId: string, status: string) =>
+    t.http.patch(`/api/v1/chat/rooms/${roomId}/trade`).set(u.auth).send({ status });
+  const systemEvents = async (u: U, roomId: string) => {
+    const res = await t.http.get(`/api/v1/chat/rooms/${roomId}/messages`).set(u.auth).expect(200);
+    return (res.body.items as { kind: string; system: { event: string } | null }[])
+      .filter((m) => m.kind === 'SYSTEM')
+      .map((m) => m.system?.event);
+  };
+
+  it('판매자가 예약 중 → 거래 완료 → 판매 중으로 바꾸고, 방에 시스템 메시지가 남는다', async () => {
+    const { seller, buyer, product, roomId } = await setup();
+    await trade(buyer, roomId, 'RESERVED').expect(403);
+    await trade(seller, roomId, 'RESERVED').expect(200);
+    expect((await t.prisma.product.findUniqueOrThrow({ where: { id: product.id } })).status).toBe('RESERVED');
+    await trade(seller, roomId, 'SOLD').expect(200);
+    await trade(seller, roomId, 'ACTIVE').expect(200);
+    await trade(seller, roomId, 'HIDDEN').expect(400);
+    expect(await systemEvents(buyer, roomId)).toEqual(['TRADE_ACTIVE', 'TRADE_SOLD', 'TRADE_RESERVED']);
+    const rooms = await t.http.get('/api/v1/chat/rooms').set(buyer.auth).expect(200);
+    expect(rooms.body[0].lastMessage.preview).toContain('판매 중');
+  });
+
+  it('결제가 끝나면 대화방에 결제 완료 안내가 남고, 진행 중 주문이 있으면 상태를 바꿀 수 없다', async () => {
+    const { seller, buyer, product, roomId } = await setup();
+    await t.prisma.product.update({ where: { id: product.id }, data: { stock: 1 } });
+    const addr = await t.http
+      .post('/api/v1/me/addresses')
+      .set(buyer.auth)
+      .send({
+        recipient: '홍길동',
+        phone: '010-1234-5678',
+        zipCode: '03161',
+        address1: '서울 종로구 인사동길 12',
+        address2: '3층',
+      })
+      .expect(201);
+    const created = await t.http
+      .post('/api/v1/orders')
+      .set(buyer.auth)
+      .send({ items: [{ productId: product.id, quantity: 1 }], addressId: addr.body.id })
+      .expect(201);
+    const prep = await t.http
+      .post(`/api/v1/orders/${created.body.id}/payments`)
+      .set(buyer.auth)
+      .send({ method: 'CARD' })
+      .expect(201);
+    await t.http
+      .post('/api/v1/payments/confirm')
+      .set(buyer.auth)
+      .send({ paymentId: prep.body.paymentId, paymentKey: `pk_chat_${Date.now()}`, amount: prep.body.amount })
+      .expect(200);
+    expect(await systemEvents(seller, roomId)).toContain('ORDER_PAID');
+    const res = await trade(seller, roomId, 'ACTIVE').expect(409);
+    expect(res.body.error.code).toBe('INVALID_TRANSITION');
+  });
+});
