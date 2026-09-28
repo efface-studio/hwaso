@@ -19,7 +19,7 @@ export function Footer() {
       <div className="page-x mx-auto flex max-w-page flex-col gap-6 py-10">
         <div className="flex flex-col gap-6 md:flex-row md:justify-between">
           <div className="flex flex-col gap-3">
-            <BrandBanner transparent className="-ml-3 w-[220px]" />
+            <BrandBanner className="w-[170px]" />
             <div className="text-small">
               <p className="text-body-strong">
                 고객센터{' '}
