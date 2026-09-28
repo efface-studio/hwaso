@@ -50,11 +50,12 @@ scheme `hwaso://`, universal link `https://hwaso.kr` (`APP_LINK_HOST`). 파일 �
 
 1. 앱이 `/orders/:id/payments` 로 결제를 준비 → `PaymentRequestDto`
 2. `{WEB}/app-bridge/pay?r=<요청 JSON>&return=hwaso://bridge` 를 연다 → 토스 결제창 (카드사 앱 전환도 브라우저가 처리)
-3. 결제창 복귀 → `/app-bridge/pay/done` 이 결과 쿼리(`paymentKey·orderId·amount` 또는 `code·message`)를 `hwaso://bridge` 로 넘긴다
+3. 결제창 복귀 → `/app-bridge/done` 이 결과 쿼리(`paymentKey·orderId·amount` 또는 `code·message`)를 `hwaso://bridge` 로 넘긴다
 4. 앱이 `/payments/confirm` 으로 승인 요청 — 금액 대조·승인은 서버가 한다
 5. 키가 없는 개발 환경(mock)은 결제창 없이 바로 승인한다
 
 우편번호는 `/app-bridge/postcode?return=hwaso://bridge` → `zipCode·address1` 을 돌려받는다.
+본인인증(PASS)은 앱이 `/identity/prepare` 로 인증 ID 를 받아 `/app-bridge/identity?storeId&channelKey&id&return` 을 열고, 돌아온 `identityVerificationId` 로 `/identity/complete` 를 요청한다 (서버가 포트원에 다시 조회해 검증).
 복귀 주소는 앱 스킴(`NEXT_PUBLIC_APP_SCHEME`, 기본 `hwaso`)만 허용한다 — 개발 중에만 Expo Go(`exp://`)·`http://localhost` 도 허용.
 
 ## 3. 네이티브 기능
