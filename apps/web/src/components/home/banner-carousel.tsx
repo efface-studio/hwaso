@@ -47,7 +47,8 @@ export function BannerCarousel({ banners }: { banners: BannerDto[] }) {
         ref={track}
         onScroll={(e) => setIndex(Math.round(e.currentTarget.scrollLeft / e.currentTarget.clientWidth))}
         onPointerDown={() => setPlaying(false)}
-        className="flex snap-x snap-mandatory overflow-x-auto [scrollbar-width:none]"
+        // relative: 슬라이드 안 sr-only(absolute)가 트랙 밖 section 을 기준 삼아 페이지 폭을 늘리지 않게
+        className="relative flex snap-x snap-mandatory overflow-x-auto [scrollbar-width:none]"
       >
         {banners.map((b, i) => (
           <Link
