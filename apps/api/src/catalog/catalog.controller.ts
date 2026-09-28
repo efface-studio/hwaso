@@ -5,12 +5,12 @@ import { AppException } from '../common/app-exception';
 import { Public } from '../common/auth';
 import { ZodPipe } from '../common/zod.pipe';
 import { PrismaService } from '../prisma/prisma.service';
-import { PUBLIC_PRODUCT } from '../products/product.mapper';
+import { imageSelect, PUBLIC_PRODUCT } from '../products/product.mapper';
 import { ProductsModule } from '../products/products.controller';
 import { ProductsService } from '../products/products.service';
 import { RedisService } from '../redis/redis.service';
 
-export const CATEGORY_CACHE_KEY = 'categories:v1';
+export const CATEGORY_CACHE_KEY = 'categories:v2';
 
 const artistQuery = z.object({ q: z.string().trim().max(50).default('') });
 
@@ -33,13 +33,37 @@ export class CatalogController {
       orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
       select: { id: true, slug: true, name: true, group: true, parentId: true },
     });
-    const node = (r: (typeof rows)[number]): CategoryNode => ({
-      id: r.id,
-      slug: r.slug,
-      name: r.name,
-      group: r.group,
-      children: rows.filter((c) => c.parentId === r.id).map(node),
+    const counts = await this.prisma.product.groupBy({
+      by: ['categoryId'],
+      where: PUBLIC_PRODUCT,
+      _count: { _all: true },
     });
+    const countOf = new Map(counts.map((c) => [c.categoryId, c._count._all]));
+    // ponytail: 카테고리마다 findFirst 한 번 (소분류 20여 개, 60초 캐시). 카테고리가 수백 개가 되면 DISTINCT ON 한 번으로
+    const covers = new Map(
+      await Promise.all(
+        rows.map(async (r) => {
+          const p = await this.prisma.product.findFirst({
+            where: { ...PUBLIC_PRODUCT, categoryId: r.id },
+            orderBy: [{ favoriteCount: 'desc' }, { createdAt: 'desc' }],
+            select: { images: { select: imageSelect, orderBy: { sortOrder: 'asc' }, take: 1 } },
+          });
+          return [r.id, p?.images[0] ?? null] as const;
+        }),
+      ),
+    );
+    const node = (r: (typeof rows)[number]): CategoryNode => {
+      const children = rows.filter((c) => c.parentId === r.id).map(node);
+      return {
+        id: r.id,
+        slug: r.slug,
+        name: r.name,
+        group: r.group,
+        productCount: (countOf.get(r.id) ?? 0) + children.reduce((s, c) => s + c.productCount, 0),
+        coverImage: covers.get(r.id) ?? children.find((c) => c.coverImage)?.coverImage ?? null,
+        children,
+      };
+    };
     const tree = rows.filter((r) => !r.parentId).map(node);
     await this.redis.set(CATEGORY_CACHE_KEY, JSON.stringify(tree), 'EX', 60);
     return tree;
