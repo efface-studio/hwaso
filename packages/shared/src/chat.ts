@@ -29,7 +29,9 @@ export interface ChatMessageDto {
   senderId: string;
   kind: ChatMessageKind;
   body: string | null;
+  /** 첫 사진 (구버전 앱 호환) — 여러 장이면 images */
   image: ImageDto | null;
+  images: ImageDto[];
   product: {
     id: string;
     title: string;
@@ -74,11 +76,16 @@ export const CHAT_MESSAGE_MAX = 1000;
 
 export const createChatRoomSchema = z.strictObject({ productId: id });
 
+/** 한 메시지에 보낼 수 있는 사진 수 */
+export const CHAT_IMAGES_MAX = 10;
+
 export const sendMessageSchema = z
   .strictObject({
     kind: z.enum(['TEXT', 'IMAGE', 'PRODUCT', 'APPOINTMENT']),
     body: z.string().trim().max(CHAT_MESSAGE_MAX).optional(),
     imageKey: z.string().max(200).optional(),
+    /** 사진 여러 장 (최대 CHAT_IMAGES_MAX). imageKey 한 장도 계속 받는다 */
+    imageKeys: z.array(z.string().max(200)).min(1).max(CHAT_IMAGES_MAX).optional(),
     productId: id.optional(),
     appointment: z
       .strictObject({ at: z.iso.datetime({ offset: true }), place: z.string().trim().min(1).max(100) })
@@ -88,7 +95,7 @@ export const sendMessageSchema = z
   .refine(
     (v) =>
       (v.kind === 'TEXT' && !!v.body) ||
-      (v.kind === 'IMAGE' && !!v.imageKey) ||
+      (v.kind === 'IMAGE' && (!!v.imageKey || !!v.imageKeys?.length)) ||
       (v.kind === 'PRODUCT' && !!v.productId) ||
       (v.kind === 'APPOINTMENT' && !!v.appointment),
     { message: '메시지 내용을 확인해주세요.' },
@@ -103,11 +110,16 @@ const EXTERNAL_TRADE =
 
 export const looksLikeExternalTrade = (text: string) => EXTERNAL_TRADE.test(text);
 
-export function chatPreview(m: { kind: ChatMessageKind; body: string | null; deleted: boolean }): string {
+export function chatPreview(m: {
+  kind: ChatMessageKind;
+  body: string | null;
+  deleted: boolean;
+  imageCount?: number;
+}): string {
   if (m.deleted) return '삭제된 메시지입니다.';
   switch (m.kind) {
     case 'IMAGE':
-      return '사진을 보냈어요.';
+      return (m.imageCount ?? 1) > 1 ? `사진 ${m.imageCount}장을 보냈어요.` : '사진을 보냈어요.';
     case 'PRODUCT':
       return '작품을 공유했어요.';
     case 'APPOINTMENT':
