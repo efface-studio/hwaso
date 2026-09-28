@@ -292,3 +292,39 @@ describe('multiple images (사진 여러 장)', () => {
     expect(res.body.images).toHaveLength(1);
   });
 });
+
+describe('reply (답장)', () => {
+  it('같은 방 메시지에 답장하면 인용이 붙고, 원문이 지워지면 인용도 지워진 것으로 보인다', async () => {
+    const { seller, buyer, roomId } = await setup();
+    const q = await text(buyer, roomId, '액자 포함인가요?').expect(201);
+    const a = await say(seller, roomId, {
+      kind: 'TEXT',
+      body: '네, 포함이에요',
+      replyToId: q.body.id,
+    }).expect(201);
+    expect(a.body.replyTo).toEqual({
+      id: q.body.id,
+      senderId: buyer.id,
+      kind: 'TEXT',
+      preview: '액자 포함인가요?',
+      deleted: false,
+    });
+
+    await t.http.delete(`/api/v1/chat/rooms/${roomId}/messages/${q.body.id}`).set(buyer.auth).expect(200);
+    const msgs = await t.http.get(`/api/v1/chat/rooms/${roomId}/messages`).set(seller.auth).expect(200);
+    expect(msgs.body.items[0].replyTo).toMatchObject({
+      id: q.body.id,
+      deleted: true,
+      preview: '삭제된 메시지입니다.',
+    });
+    // 지워진 메시지에는 새로 답장할 수 없다
+    await say(seller, roomId, { kind: 'TEXT', body: '다시', replyToId: q.body.id }).expect(404);
+  });
+
+  it('다른 방 메시지에는 답장할 수 없다', async () => {
+    const a = await setup();
+    const b = await setup();
+    const other = await text(b.buyer, b.roomId, '다른 방').expect(201);
+    await say(a.buyer, a.roomId, { kind: 'TEXT', body: '몰래', replyToId: other.body.id }).expect(404);
+  });
+});

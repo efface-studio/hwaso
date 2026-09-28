@@ -119,12 +119,33 @@ function SystemLine({ m }: { m: PendingMessage }) {
   );
 }
 
-/** 말풍선: 내 메시지 오른쪽, 사진·작품·약속은 카드. 길게 눌러 삭제·신고 */
+/** 답장 인용 (원문 작성자 · 요약). ponytail: 원문으로 스크롤은 웹만 — 앱은 필요하면 scrollToIndex 로 */
+function Quote({ reply, author }: { reply: NonNullable<PendingMessage['replyTo']>; author: string }) {
+  const t = useTheme();
+  return (
+    <View style={[styles.quote, { borderColor: t.colors.borderStrong }]}>
+      <Text variant="caption" color="muted">
+        ↳ {author}에게 답장
+      </Text>
+      <Text
+        variant="caption"
+        color="faint"
+        numberOfLines={2}
+        style={reply.deleted ? { fontStyle: 'italic' } : undefined}
+      >
+        {reply.preview}
+      </Text>
+    </View>
+  );
+}
+
+/** 말풍선: 내 메시지 오른쪽, 사진·작품·약속은 카드. 길게 눌러 답장·삭제·신고 */
 export function Bubble({
   m,
   mine,
   showTime,
   read,
+  replyAuthor,
   onLongPress,
   onRetry,
 }: {
@@ -132,6 +153,8 @@ export function Bubble({
   mine: boolean;
   showTime: boolean;
   read: boolean;
+  /** 답장 원문을 쓴 사람 ('나' 또는 상대 닉네임) */
+  replyAuthor: string | null;
   onLongPress: () => void;
   onRetry: () => void;
 }) {
@@ -157,6 +180,7 @@ export function Bubble({
             m.pending === 'sending' && { opacity: 0.6 },
           ]}
         >
+          {m.replyTo && replyAuthor && <Quote reply={m.replyTo} author={replyAuthor} />}
           <Body m={m} />
         </Pressable>
         <View style={{ alignItems: mine ? 'flex-end' : 'flex-start' }}>
@@ -192,6 +216,7 @@ export function Bubble({
 }
 
 const styles = StyleSheet.create({
+  quote: { borderLeftWidth: 2, paddingLeft: 8, marginBottom: 6 },
   grid: { width: 204, flexDirection: 'row', flexWrap: 'wrap', gap: 4 },
   cell: { width: 100, height: 100, borderRadius: 6, overflow: 'hidden' },
   more: { alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.45)' },

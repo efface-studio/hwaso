@@ -3,6 +3,7 @@
 import { ApiError } from '@shop/api-client';
 import {
   CHAT_TRADE_STATUSES,
+  chatPreview,
   formatPrice,
   PRODUCT_STATUS_LABEL,
   type ChatMessageDto,
@@ -121,6 +122,7 @@ export function ChatRoom({ roomId }: { roomId: string }) {
   const [pending, setPending] = useState<PendingMessage[]>([]);
   const [typing, setTyping] = useState(false);
   const [report, setReport] = useState<{ type: 'USER' | 'MESSAGE'; id: string } | null>(null);
+  const [replying, setReplying] = useState<PendingMessage | null>(null);
   const typingTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const lastTypingEmit = useRef(0);
   const older = useRef<HTMLDivElement>(null);
@@ -238,6 +240,7 @@ export function ChatRoom({ roomId }: { roomId: string }) {
         ...input,
         ...(m.product ? { productId: m.product.id } : {}),
         ...(m.images.length ? { imageKeys: m.images.map((i) => i.key) } : {}),
+        ...(m.replyTo ? { replyToId: m.replyTo.id } : {}),
       })
       .then((saved) => {
         upsert(saved);
@@ -270,6 +273,15 @@ export function ChatRoom({ roomId }: { roomId: string }) {
       product: input.productId && room.data?.product ? { ...room.data.product, id: input.productId } : null,
       appointment: input.appointment ?? null,
       system: null,
+      replyTo: replying
+        ? {
+            id: replying.id,
+            senderId: replying.senderId,
+            kind: replying.kind,
+            preview: chatPreview({ ...replying, imageCount: replying.images.length }),
+            deleted: false,
+          }
+        : null,
       warning: false,
       clientId,
       deleted: false,
@@ -277,6 +289,7 @@ export function ChatRoom({ roomId }: { roomId: string }) {
       pending: 'sending',
     };
     setPending((ps) => [...ps, draft]);
+    setReplying(null);
     void deliver(draft);
   };
 
@@ -381,6 +394,8 @@ export function ChatRoom({ roomId }: { roomId: string }) {
                 mine={m.senderId === me.id}
                 showTime={showTime}
                 read={m.id === lastReadMine}
+                replyAuthor={m.replyTo && (m.replyTo.senderId === me.id ? '나' : r.counterpart.nickname)}
+                onReply={() => setReplying(m)}
                 onDelete={() =>
                   confirm('메시지를 삭제할까요? 상대방에게도 삭제된 메시지로 보여요.') &&
                   act.mutate(() => api.chat.deleteMessage(roomId, m.id).then(() => markDeleted(m.id)))
@@ -411,7 +426,18 @@ export function ChatRoom({ roomId }: { roomId: string }) {
       </div>
 
       {canSend ? (
-        <Composer productId={r.product?.id ?? null} onSend={send} onTyping={emitTyping} />
+        <Composer
+          productId={r.product?.id ?? null}
+          onSend={send}
+          onTyping={emitTyping}
+          replying={
+            replying && {
+              author: replying.senderId === me.id ? '나' : r.counterpart.nickname,
+              preview: chatPreview({ ...replying, imageCount: replying.images.length }),
+            }
+          }
+          onCancelReply={() => setReplying(null)}
+        />
       ) : (
         <div className="flex items-center justify-center gap-3 border-t border-border p-4 text-small text-muted">
           {r.counterpart.left

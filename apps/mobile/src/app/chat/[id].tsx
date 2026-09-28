@@ -2,6 +2,7 @@ import { ApiError } from '@shop/api-client';
 import {
   CHAT_IMAGES_MAX,
   CHAT_TRADE_STATUSES,
+  chatPreview,
   formatPrice,
   PRODUCT_STATUS_LABEL,
   type ChatMessageDto,
@@ -25,6 +26,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppointmentSheet } from '@/components/chat/appointment-sheet';
 import { Bubble, type PendingMessage } from '@/components/chat/bubble';
@@ -65,6 +67,8 @@ export default function ChatRoomScreen() {
   const [text, setText] = useState('');
   const [typing, setTyping] = useState(false);
   const [appointment, setAppointment] = useState(false);
+  const [replying, setReplying] = useState<PendingMessage | null>(null);
+  const inputRef = useRef<TextInput>(null);
   const typingTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const lastTyping = useRef(0);
 
@@ -181,8 +185,18 @@ export default function ChatRoomScreen() {
         Alert.alert('보내지 못했어요', errMsg(e));
       });
 
+  const replyPreview = (m: PendingMessage) => chatPreview({ ...m, imageCount: m.images.length });
+  const authorOf = (senderId: string) => (senderId === me.id ? '나' : r.counterpart.nickname);
+
   const send = (input: Omit<SendMessageInput, 'clientId'>, preview?: Partial<ChatMessageDto>) => {
     const clientId = uuid();
+    const replyTo = replying && {
+      id: replying.id,
+      senderId: replying.senderId,
+      kind: replying.kind,
+      preview: replyPreview(replying),
+      deleted: false,
+    };
     const draft: PendingMessage = {
       id: clientId,
       roomId: id,
@@ -194,6 +208,7 @@ export default function ChatRoomScreen() {
       product: null,
       appointment: input.appointment ?? null,
       system: null,
+      replyTo,
       warning: false,
       clientId,
       deleted: false,
@@ -202,7 +217,8 @@ export default function ChatRoomScreen() {
       ...preview,
     };
     setPending((ps) => [...ps, draft]);
-    void deliver(draft, { ...input, clientId });
+    setReplying(null);
+    void deliver(draft, { ...input, clientId, ...(replyTo ? { replyToId: replyTo.id } : {}) });
   };
 
   const sendText = () => {
@@ -290,8 +306,16 @@ export default function ChatRoomScreen() {
 
   const onLongPress = (m: PendingMessage) => {
     if (m.pending || m.deleted) return;
+    const reply = {
+      label: '답장',
+      onPress: () => {
+        setReplying(m);
+        inputRef.current?.focus();
+      },
+    };
     if (m.senderId === me.id)
       actionSheet('메시지', [
+        reply,
         {
           label: '삭제',
           destructive: true,
@@ -304,6 +328,7 @@ export default function ChatRoomScreen() {
       ]);
     else
       actionSheet('메시지', [
+        reply,
         {
           label: '신고',
           destructive: true,
@@ -426,6 +451,7 @@ export default function ChatRoomScreen() {
               mine={item.senderId === me.id}
               showTime={showTime}
               read={item.id === lastRead}
+              replyAuthor={item.replyTo && authorOf(item.replyTo.senderId)}
               onLongPress={() => onLongPress(item)}
               onRetry={() => {
                 if (!item.retry) return;
@@ -452,6 +478,28 @@ export default function ChatRoomScreen() {
           ) : null
         }
       />
+      {canSend && replying && (
+        <Animated.View
+          entering={FadeInDown.duration(160)}
+          style={[styles.replyBar, { borderColor: t.colors.border }]}
+        >
+          <View style={{ flex: 1 }}>
+            <Text variant="caption">{authorOf(replying.senderId)}에게 답장</Text>
+            <Text variant="caption" color="muted" numberOfLines={1}>
+              {replyPreview(replying)}
+            </Text>
+          </View>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="답장 취소"
+            onPress={() => setReplying(null)}
+            hitSlop={8}
+            style={[styles.round, { width: t.touch, height: t.touch }]}
+          >
+            <Text color="muted">✕</Text>
+          </Pressable>
+        </Animated.View>
+      )}
       {canSend ? (
         <View
           style={[
@@ -468,6 +516,7 @@ export default function ChatRoomScreen() {
             <Text variant="h2">＋</Text>
           </Pressable>
           <TextInput
+            ref={inputRef}
             accessibilityLabel="메시지 입력"
             placeholder="메시지를 입력하세요"
             placeholderTextColor={t.colors.faint}
@@ -550,6 +599,14 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingHorizontal: 8,
     paddingTop: 8,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  replyBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingLeft: 16,
+    paddingRight: 8,
     borderTopWidth: StyleSheet.hairlineWidth,
   },
   round: { borderRadius: 999, alignItems: 'center', justifyContent: 'center' },

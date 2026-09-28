@@ -829,6 +829,10 @@ model ChatMessage {
   data      Json?
   /// 클라이언트 전송 ID — 재전송 시 중복 메시지 방지
   clientId  String?
+  /// 답장한 원문 (같은 방 메시지)
+  replyToId String?
+  replyTo   ChatMessage?    @relation("ChatReply", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies   ChatMessage[]   @relation("ChatReply")
   createdAt DateTime        @default(now()) @db.Timestamptz
   deletedAt DateTime?       @db.Timestamptz
 

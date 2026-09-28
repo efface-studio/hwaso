@@ -2,8 +2,8 @@
 
 import { ApiError } from '@shop/api-client';
 import { CHAT_IMAGES_MAX, CHAT_MESSAGE_MAX, type SendMessageInput } from '@shop/shared';
-import { CalendarClock, ImagePlus, Package, Plus, Send } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { CalendarClock, CornerDownRight, ImagePlus, Package, Plus, Send, X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { DateTimeInput } from '@/components/ui/date-picker';
 import { Button } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
@@ -74,16 +74,24 @@ export function Composer({
   productId,
   onSend,
   onTyping,
+  replying,
+  onCancelReply,
 }: {
   productId: string | null;
   onSend: (input: Omit<SendMessageInput, 'clientId'>) => void;
   onTyping: () => void;
+  /** 답장 중인 원문 (보내거나 취소하면 null) */
+  replying: { author: string; preview: string } | null;
+  onCancelReply: () => void;
 }) {
   const [text, setText] = useState('');
   const [appointment, setAppointment] = useState(false);
   const [uploading, setUploading] = useState(false);
   const file = useRef<HTMLInputElement>(null);
   const area = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    if (replying) area.current?.focus();
+  }, [replying]);
 
   const submit = () => {
     const body = text.trim();
@@ -112,91 +120,110 @@ export function Composer({
   };
 
   return (
-    <div className="flex items-end gap-2 border-t border-border bg-background p-3">
-      <DropdownMenu
-        align="start"
-        trigger={
+    <div className="border-t border-border bg-background">
+      {replying && (
+        <div className="flex animate-overlay-in items-center gap-2 border-b border-border px-4 py-2 text-caption">
+          <CornerDownRight className="size-4 shrink-0 text-muted" aria-hidden />
+          <p className="min-w-0 flex-1">
+            <span className="font-medium">{replying.author}에게 답장</span>
+            <span className="block truncate text-muted">{replying.preview}</span>
+          </p>
           <button
             type="button"
-            aria-label="첨부"
-            className="inline-flex size-10 shrink-0 items-center justify-center rounded-full hover:bg-surface-2"
+            aria-label="답장 취소"
+            onClick={onCancelReply}
+            className="rounded-full p-1.5 text-muted hover:bg-surface-2"
           >
-            <Plus className="size-5" aria-hidden />
+            <X className="size-4" aria-hidden />
           </button>
-        }
-        items={[
-          {
-            label: '사진',
-            icon: <ImagePlus className="size-4" aria-hidden />,
-            onSelect: () => file.current?.click(),
-          },
-          ...(productId
-            ? [
-                {
-                  label: '이 작품 보내기',
-                  icon: <Package className="size-4" aria-hidden />,
-                  onSelect: () => onSend({ kind: 'PRODUCT', productId }),
-                },
-              ]
-            : []),
-          {
-            label: '거래 약속',
-            icon: <CalendarClock className="size-4" aria-hidden />,
-            onSelect: () => setAppointment(true),
-          },
-        ]}
-      />
-      <textarea
-        ref={area}
-        aria-label="메시지 입력"
-        rows={1}
-        maxLength={CHAT_MESSAGE_MAX}
-        value={text}
-        placeholder={uploading ? '사진을 올리는 중…' : '메시지를 입력하세요'}
-        onChange={(e) => {
-          setText(e.target.value);
-          onTyping();
-          e.target.style.height = 'auto';
-          e.target.style.height = `${Math.min(e.target.scrollHeight, 128)}px`;
-          e.target.style.overflowY = e.target.scrollHeight > 128 ? 'auto' : 'hidden';
-        }}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
-            e.preventDefault();
-            submit();
+        </div>
+      )}
+      <div className="flex items-end gap-2 p-3">
+        <DropdownMenu
+          align="start"
+          trigger={
+            <button
+              type="button"
+              aria-label="첨부"
+              className="inline-flex size-10 shrink-0 items-center justify-center rounded-full hover:bg-surface-2"
+            >
+              <Plus className="size-5" aria-hidden />
+            </button>
           }
-        }}
-        className="max-h-32 min-h-10 flex-1 resize-none overflow-hidden rounded-md border border-border-strong bg-background px-3 py-2 text-body outline-none focus:border-foreground"
-      />
-      <Button
-        aria-label="보내기"
-        className="size-10 shrink-0 rounded-full px-0"
-        disabled={!text.trim()}
-        onClick={submit}
-      >
-        <Send className="size-4" aria-hidden />
-      </Button>
-      <input
-        ref={file}
-        type="file"
-        accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
-        multiple
-        className="hidden"
-        onChange={(e) => {
-          void upload(e.target.files);
-          e.target.value = '';
-        }}
-      />
-      {appointment && (
-        <AppointmentDialog
-          open
-          onOpenChange={setAppointment}
-          onSubmit={(a) => {
-            onSend({ kind: 'APPOINTMENT', appointment: a });
-            setAppointment(false);
+          items={[
+            {
+              label: '사진',
+              icon: <ImagePlus className="size-4" aria-hidden />,
+              onSelect: () => file.current?.click(),
+            },
+            ...(productId
+              ? [
+                  {
+                    label: '이 작품 보내기',
+                    icon: <Package className="size-4" aria-hidden />,
+                    onSelect: () => onSend({ kind: 'PRODUCT', productId }),
+                  },
+                ]
+              : []),
+            {
+              label: '거래 약속',
+              icon: <CalendarClock className="size-4" aria-hidden />,
+              onSelect: () => setAppointment(true),
+            },
+          ]}
+        />
+        <textarea
+          ref={area}
+          aria-label="메시지 입력"
+          rows={1}
+          maxLength={CHAT_MESSAGE_MAX}
+          value={text}
+          placeholder={uploading ? '사진을 올리는 중…' : '메시지를 입력하세요'}
+          onChange={(e) => {
+            setText(e.target.value);
+            onTyping();
+            e.target.style.height = 'auto';
+            e.target.style.height = `${Math.min(e.target.scrollHeight, 128)}px`;
+            e.target.style.overflowY = e.target.scrollHeight > 128 ? 'auto' : 'hidden';
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+              e.preventDefault();
+              submit();
+            }
+          }}
+          className="max-h-32 min-h-10 flex-1 resize-none overflow-hidden rounded-md border border-border-strong bg-background px-3 py-2 text-body outline-none focus:border-foreground"
+        />
+        <Button
+          aria-label="보내기"
+          className="size-10 shrink-0 rounded-full px-0"
+          disabled={!text.trim()}
+          onClick={submit}
+        >
+          <Send className="size-4" aria-hidden />
+        </Button>
+        <input
+          ref={file}
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+          multiple
+          className="hidden"
+          onChange={(e) => {
+            void upload(e.target.files);
+            e.target.value = '';
           }}
         />
-      )}
+        {appointment && (
+          <AppointmentDialog
+            open
+            onOpenChange={setAppointment}
+            onSubmit={(a) => {
+              onSend({ kind: 'APPOINTMENT', appointment: a });
+              setAppointment(false);
+            }}
+          />
+        )}
+      </div>
     </div>
   );
 }

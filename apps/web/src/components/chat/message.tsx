@@ -1,7 +1,7 @@
 'use client';
 
 import { formatPrice, type ChatMessageDto } from '@shop/shared';
-import { CalendarClock, MapPin, MoreHorizontal, TriangleAlert } from 'lucide-react';
+import { CalendarClock, CornerDownRight, MapPin, MoreHorizontal, TriangleAlert } from 'lucide-react';
 import Link from 'next/link';
 import { MediaImage } from '@/components/product/media-image';
 import { DropdownMenu } from '@/components/ui/menu';
@@ -126,12 +126,33 @@ function SystemLine({ m }: { m: PendingMessage }) {
   );
 }
 
+/** 답장 인용: 누르면 원문으로 스크롤 (불러온 범위 안에 있을 때) */
+function Quote({ reply, author }: { reply: NonNullable<PendingMessage['replyTo']>; author: string }) {
+  return (
+    <button
+      type="button"
+      onClick={() =>
+        document.getElementById(`msg-${reply.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      }
+      className="mb-1.5 block w-full border-l-2 border-border-strong pl-2 text-left text-caption"
+    >
+      <span className="flex items-center gap-1 font-medium text-muted">
+        <CornerDownRight className="size-3" aria-hidden />
+        {author}에게 답장
+      </span>
+      <span className={cn('line-clamp-2 text-faint', reply.deleted && 'italic')}>{reply.preview}</span>
+    </button>
+  );
+}
+
 /** 말풍선: 내 메시지 오른쪽, 사진·작품·약속은 카드. 외부 거래 유도 문구에는 안전 안내를 붙인다 */
 export function MessageBubble({
   m,
   mine,
   showTime,
   read,
+  replyAuthor,
+  onReply,
   onDelete,
   onReport,
   onRetry,
@@ -140,6 +161,9 @@ export function MessageBubble({
   mine: boolean;
   showTime: boolean;
   read: boolean;
+  /** 답장 원문을 쓴 사람 ('나' 또는 상대 닉네임) */
+  replyAuthor: string | null;
+  onReply: () => void;
   onDelete: () => void;
   onReport: () => void;
   onRetry: () => void;
@@ -147,7 +171,7 @@ export function MessageBubble({
   if (m.kind === 'SYSTEM') return <SystemLine m={m} />;
   const card = m.kind !== 'TEXT' && !m.deleted;
   return (
-    <div className={cn('group flex flex-col gap-1', mine ? 'items-end' : 'items-start')}>
+    <div id={`msg-${m.id}`} className={cn('group flex flex-col gap-1', mine ? 'items-end' : 'items-start')}>
       <div className={cn('flex max-w-[80%] items-end gap-1.5', mine && 'flex-row-reverse')}>
         <div
           className={cn(
@@ -157,6 +181,7 @@ export function MessageBubble({
             m.pending === 'sending' && 'opacity-60',
           )}
         >
+          {m.replyTo && replyAuthor && <Quote reply={m.replyTo} author={replyAuthor} />}
           <Body m={m} mine={mine} />
         </div>
         <div
@@ -186,8 +211,14 @@ export function MessageBubble({
             }
             items={
               mine
-                ? [{ label: '삭제', destructive: true, onSelect: onDelete }]
-                : [{ label: '신고', destructive: true, onSelect: onReport }]
+                ? [
+                    { label: '답장', onSelect: onReply },
+                    { label: '삭제', destructive: true, onSelect: onDelete },
+                  ]
+                : [
+                    { label: '답장', onSelect: onReply },
+                    { label: '신고', destructive: true, onSelect: onReport },
+                  ]
             }
           />
         )}

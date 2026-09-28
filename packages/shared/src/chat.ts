@@ -42,6 +42,14 @@ export interface ChatMessageDto {
   appointment: { at: string; place: string } | null;
   /** SYSTEM 메시지: 거래 상태 변경·주문 진행 안내 (본문은 body) */
   system: { event: ChatSystemEvent; orderId: string | null } | null;
+  /** 답장한 원문 요약. 원문이 지워지면 deleted 로 보인다 */
+  replyTo: {
+    id: string;
+    senderId: string;
+    kind: ChatMessageKind;
+    preview: string;
+    deleted: boolean;
+  } | null;
   /** 외부 연락처·계좌 등 외부 거래 유도로 보이는 메시지 */
   warning: boolean;
   clientId: string | null;
@@ -91,6 +99,8 @@ export const sendMessageSchema = z
       .strictObject({ at: z.iso.datetime({ offset: true }), place: z.string().trim().min(1).max(100) })
       .optional(),
     clientId: z.string().min(8).max(64).optional(),
+    /** 답장할 같은 방 메시지 */
+    replyToId: id.optional(),
   })
   .refine(
     (v) =>
