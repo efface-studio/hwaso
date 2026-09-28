@@ -151,6 +151,17 @@ async function loadImage(s: Sample): Promise<Buffer> {
   throw new Error(`이미지 다운로드 실패: ${s.image.url}`);
 }
 
+/**
+ * 오프라인 시드(SEED_OFFLINE=1): 이미지 다운로드·S3 업로드 없이 고정 키를 쓴다 (CI E2E 용 — 사진은 보이지 않는다)
+ */
+const OFFLINE = process.env.SEED_OFFLINE === '1';
+const offlineImage = (s: Sample) => ({
+  key: `seed/${s.accession.replace(/[^\w.-]/g, '_')}`,
+  width: 800,
+  height: 1000,
+  dominantColor: '#D9D4CC',
+});
+
 async function uploadImage(buffer: Buffer) {
   const img = await processImage(buffer);
   await Promise.all([
@@ -624,7 +635,7 @@ async function main() {
       }
     }
 
-    const img = await uploadImage(await loadImage(s));
+    const img = OFFLINE ? offlineImage(s) : await uploadImage(await loadImage(s));
     const price = priceFor(s);
     const plan = planFor(i);
     const seller = sellers[SELLER_BY_CATEGORY[s.category] ?? 0]!;
