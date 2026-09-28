@@ -1,8 +1,17 @@
-import { ActionSheetIOS, Alert, Platform } from 'react-native';
+import { ActionSheetIOS, Platform } from 'react-native';
+import { create } from 'zustand';
 
 export type SheetOption = { label: string; destructive?: boolean; onPress: () => void };
 
-/** OS 기본 선택 메뉴: iOS 액션 시트 / Android 대화상자 */
+/** Android·웹에서 띄울 선택 메뉴 — 루트의 ActionSheetHost 가 그린다 */
+export const useActionSheet = create<{ sheet: { title: string; options: SheetOption[] } | null }>(() => ({
+  sheet: null,
+}));
+
+/**
+ * 선택 메뉴: iOS 는 OS 액션 시트, Android·웹은 하단 시트(ActionSheetHost).
+ * Android Alert 는 버튼이 3개까지라 쓰지 않는다
+ */
 export function actionSheet(title: string, options: SheetOption[]) {
   if (Platform.OS === 'ios') {
     const labels = [...options.map((o) => o.label), '취소'];
@@ -17,12 +26,5 @@ export function actionSheet(title: string, options: SheetOption[]) {
     );
     return;
   }
-  Alert.alert(title, undefined, [
-    ...options.map((o) => ({
-      text: o.label,
-      style: o.destructive ? ('destructive' as const) : ('default' as const),
-      onPress: o.onPress,
-    })),
-    { text: '취소', style: 'cancel' as const },
-  ]);
+  useActionSheet.setState({ sheet: { title, options } });
 }
