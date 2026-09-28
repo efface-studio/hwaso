@@ -58,7 +58,12 @@ export function BidHistory({ wins }: { wins: boolean }) {
         <ul className="divide-y divide-border-soft border-y border-border-soft">
           {data.map((b) => (
             <li key={b.auction.id} className="flex gap-4 py-4">
-              <Link href={`/auctions/${b.auction.id}`} className="size-20 shrink-0 bg-background-soft">
+              <Link
+                href={`/auctions/${b.auction.id}`}
+                className="size-20 shrink-0 bg-background-soft"
+                tabIndex={-1}
+                aria-hidden
+              >
                 <MediaImage image={b.product.image} alt="" sizes="80px" className="p-1.5" />
               </Link>
               <div className="flex min-w-0 flex-1 flex-col gap-1">

@@ -108,7 +108,12 @@ function Products() {
         <ul className="divide-y divide-border-soft border-y border-border-soft">
           {data.map((p) => (
             <li key={p.id} className="flex items-center gap-3 py-3">
-              <Link href={`/sell/${p.id}/edit`} className="size-16 shrink-0 bg-background-soft">
+              <Link
+                href={`/sell/${p.id}/edit`}
+                className="size-16 shrink-0 bg-background-soft"
+                tabIndex={-1}
+                aria-hidden
+              >
                 <MediaImage image={p.images[0] ?? null} alt="" sizes="64px" className="p-1" />
               </Link>
               <div className="min-w-0 flex-1">
