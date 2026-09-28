@@ -6,7 +6,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { Toaster } from '@/components/ui/toaster';
 import { refreshAccessToken } from '@/lib/api';
 import { RealtimeSync } from '@/lib/realtime-sync';
-import { useAuthStore } from '@/stores/auth';
+import { hasSessionHint, useAuthStore } from '@/stores/auth';
 import { useSeniorStore } from '@/stores/senior';
 import { useThemeStore } from '@/stores/theme';
 
@@ -27,8 +27,10 @@ function makeQueryClient() {
 /** 앱 부팅 시 refresh 쿠키로 access 토큰을 복구한다 */
 function AuthBootstrap() {
   useEffect(() => {
-    if (!useAuthStore.getState().ready)
-      void refreshAccessToken().finally(() => useAuthStore.getState().markReady());
+    if (useAuthStore.getState().ready) return;
+    // 로그인한 적 없는 브라우저는 refresh 쿠키도 없으므로 요청하지 않는다
+    if (!hasSessionHint()) return useAuthStore.getState().markReady();
+    void refreshAccessToken().finally(() => useAuthStore.getState().markReady());
   }, []);
   return null;
 }
