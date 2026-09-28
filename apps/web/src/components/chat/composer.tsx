@@ -2,7 +2,16 @@
 
 import { ApiError } from '@shop/api-client';
 import { CHAT_IMAGES_MAX, CHAT_MESSAGE_MAX, type SendMessageInput } from '@shop/shared';
-import { CalendarClock, CornerDownRight, ImagePlus, Package, Plus, Send, X } from 'lucide-react';
+import {
+  CalendarClock,
+  CornerDownRight,
+  ImagePlus,
+  MessageSquareText,
+  Package,
+  Plus,
+  Send,
+  X,
+} from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { DateTimeInput } from '@/components/ui/date-picker';
 import { Button } from '@/components/ui/button';
@@ -11,6 +20,7 @@ import { Field, Input } from '@/components/ui/field';
 import { DropdownMenu } from '@/components/ui/menu';
 import { api } from '@/lib/api';
 import { toast } from '@/stores/toast';
+import { PhrasesDialog } from './phrases-dialog';
 
 const localNow = (offsetMs: number) => {
   const d = new Date(Date.now() + offsetMs);
@@ -86,6 +96,7 @@ export function Composer({
 }) {
   const [text, setText] = useState('');
   const [appointment, setAppointment] = useState(false);
+  const [phrases, setPhrases] = useState(false);
   const [uploading, setUploading] = useState(false);
   const file = useRef<HTMLInputElement>(null);
   const area = useRef<HTMLTextAreaElement>(null);
@@ -166,6 +177,11 @@ export function Composer({
                 ]
               : []),
             {
+              label: '자주 쓰는 문구',
+              icon: <MessageSquareText className="size-4" aria-hidden />,
+              onSelect: () => setPhrases(true),
+            },
+            {
               label: '거래 약속',
               icon: <CalendarClock className="size-4" aria-hidden />,
               onSelect: () => setAppointment(true),
@@ -213,6 +229,17 @@ export function Composer({
             e.target.value = '';
           }}
         />
+        {phrases && (
+          <PhrasesDialog
+            open
+            onOpenChange={setPhrases}
+            onPick={(p) => {
+              setText((t) => (t.trim() ? `${t.trimEnd()} ${p}` : p));
+              setPhrases(false);
+              requestAnimationFrame(() => area.current?.focus());
+            }}
+          />
+        )}
         {appointment && (
           <AppointmentDialog
             open
