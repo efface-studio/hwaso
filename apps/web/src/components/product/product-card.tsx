@@ -34,6 +34,7 @@ export function ProductCard({ product: p, priority, sizes, className }: ProductC
             alt=""
             sizes={sizes}
             priority={priority}
+            thumb
             className="p-3 transition-transform duration-200 group-hover:scale-[1.02] md:p-4"
           />
         </Link>
