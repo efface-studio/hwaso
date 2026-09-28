@@ -40,21 +40,23 @@ scheme `hwaso://`, universal link `https://hwaso.kr` (`APP_LINK_HOST`). 파일 �
 | `/notifications`           | Notifications    |
 | `/auth/callback/:provider` | 소셜 로그인 복귀 |
 
-푸시 알림의 `data.link` 는 위 경로를 그대로 담고, 탭 시 `Linking` 으로 이동한다.
+푸시 알림의 `data.link` 는 위 경로를 그대로 담고, 탭 시 `router.push(link)` 로 이동한다 (앱이 꺼져 있었으면 마지막 알림 응답으로 이동). 지금 보고 있는 화면과 같은 링크의 알림은 배너를 띄우지 않는다.
+
+`/report?type=USER|PRODUCT|REVIEW|MESSAGE&id=` 는 공용 신고 모달이다.
 
 ## 3. 네이티브 기능
 
-| 기능                   | 패키지                                                 | 사용                                                                             |
-| ---------------------- | ------------------------------------------------------ | -------------------------------------------------------------------------------- |
-| Push                   | `expo-notifications`                                   | 로그인 후 권한 요청(첫 입찰/관심 등록 시점), Expo push token → `/me/push-tokens` |
-| Camera / Photo Library | `expo-image-picker` (카메라 + 앨범, 다중 선택 최대 20) | 상품 등록, 채팅 이미지                                                           |
-| 이미지 압축            | `expo-image-manipulator`                               | 업로드 전 긴 변 2400px, JPEG 0.85 (서버에서 재처리)                              |
-| Share                  | RN `Share`                                             | 상품/경매 공유 (웹 URL)                                                          |
-| Secure Storage         | `expo-secure-store`                                    | refresh 토큰                                                                     |
-| Biometric              | `expo-local-authentication`                            | 앱 잠금 해제 (설정)                                                              |
-| Browser Auth           | `expo-web-browser` + `expo-auth-session`               | 소셜 로그인                                                                      |
-| Haptics                | `expo-haptics`                                         | 입찰 성공/실패                                                                   |
-| Image                  | `expo-image`                                           | 캐시, placeholder 색                                                             |
+| 기능                   | 패키지                                                 | 사용                                                                          |
+| ---------------------- | ------------------------------------------------------ | ----------------------------------------------------------------------------- |
+| Push                   | `expo-notifications`                                   | 로그인 직후 권한 요청, Expo push token → `/me/push-tokens` (로그아웃 시 해제) |
+| Camera / Photo Library | `expo-image-picker` (카메라 + 앨범, 다중 선택 최대 20) | 상품 등록, 채팅 이미지                                                        |
+| 이미지 압축            | `expo-image-manipulator`                               | 업로드 전 긴 변 2400px, JPEG 0.85 (서버에서 재처리)                           |
+| Share                  | RN `Share`                                             | 상품/경매 공유 (웹 URL)                                                       |
+| Secure Storage         | `expo-secure-store`                                    | refresh 토큰                                                                  |
+| Biometric              | `expo-local-authentication`                            | 앱 잠금 해제 (설정)                                                           |
+| Browser Auth           | `expo-web-browser` + `expo-auth-session`               | 소셜 로그인                                                                   |
+| Haptics                | `expo-haptics`                                         | 입찰 성공/실패                                                                |
+| Image                  | `expo-image`                                           | 캐시, placeholder 색                                                          |
 
 ## 4. Mobile UX
 
