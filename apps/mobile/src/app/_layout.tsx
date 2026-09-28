@@ -8,6 +8,7 @@ import { useEffect, useState } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AppLock } from '@/components/app-lock';
+import { OfflineBanner } from '@/components/offline-banner';
 import { refreshAccessToken } from '@/lib/api';
 import { AppSync } from '@/lib/realtime-sync';
 import { useAuthStore } from '@/stores/auth';
@@ -117,6 +118,7 @@ export default function RootLayout() {
         <QueryClientProvider client={client}>
           <Navigation />
           <AppSync />
+          <OfflineBanner />
           <AppLock />
         </QueryClientProvider>
       </SafeAreaProvider>
