@@ -48,10 +48,7 @@ export function assetLinks(env: Env) {
   if (!fingerprints.length) return null;
   return [
     {
-      relation: [
-        'delegate_permission/common.handle_all_urls',
-        'delegate_permission/common.get_login_creds',
-      ],
+      relation: ['delegate_permission/common.handle_all_urls', 'delegate_permission/common.get_login_creds'],
       target: {
         namespace: 'android_app',
         package_name: env.APP_BUNDLE_ID || DEFAULT_BUNDLE_ID,
