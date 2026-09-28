@@ -76,3 +76,15 @@ test('브랜드 배너는 배경 상자 없이 페이지 위에 놓인다', asyn
     expect(await banners.locator('rect[width="580"], rect[width="180"]').count(), path).toBe(0);
   }
 });
+
+test('헤더 실제 높이와 --header-h 가 같다 (헤더 아래 고정 요소가 겹치지 않게)', async ({ page }) => {
+  for (const width of [390, 1280]) {
+    await page.setViewportSize({ width, height: 844 });
+    await page.goto('/');
+    const [actual, token] = await page.evaluate(() => [
+      document.querySelector('header')!.getBoundingClientRect().height,
+      parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--header-h')),
+    ]);
+    expect(token, `${width}px`).toBe(actual);
+  }
+});

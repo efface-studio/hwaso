@@ -82,7 +82,7 @@ function AccountLinks() {
 export function Header() {
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background">
-      <div className="page-x mx-auto flex h-14 max-w-page items-center gap-4 md:h-16 md:gap-8">
+      <div className="page-x mx-auto flex h-14 max-w-page items-center gap-4 md:h-[72px] md:gap-8">
         <Logo />
         <SearchAutocomplete className="hidden max-w-xl flex-1 md:block" />
         <div className="ml-auto flex items-center">
