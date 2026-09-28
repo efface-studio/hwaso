@@ -1,5 +1,6 @@
 import { ApiError } from '@shop/api-client';
 import {
+  CHAT_IMAGES_MAX,
   CHAT_TRADE_STATUSES,
   formatPrice,
   PRODUCT_STATUS_LABEL,
@@ -189,6 +190,7 @@ export default function ChatRoomScreen() {
       kind: input.kind,
       body: input.body ?? null,
       image: null,
+      images: [],
       product: null,
       appointment: input.appointment ?? null,
       system: null,
@@ -221,11 +223,12 @@ export default function ChatRoomScreen() {
     ]);
 
   const sendPhoto = async (source: 'camera' | 'library') => {
-    const [asset] = await pickImages(source, 1);
-    if (!asset) return;
+    // 앨범은 여러 장(최대 CHAT_IMAGES_MAX)을 한 메시지로, 카메라는 한 장
+    const assets = await pickImages(source, CHAT_IMAGES_MAX);
+    if (!assets.length) return;
     try {
-      const img = await uploadAsset(asset);
-      send({ kind: 'IMAGE', imageKey: img.key }, { image: img });
+      const imgs = await Promise.all(assets.slice(0, CHAT_IMAGES_MAX).map((a) => uploadAsset(a)));
+      send({ kind: 'IMAGE', imageKeys: imgs.map((i) => i.key) }, { image: imgs[0], images: imgs });
     } catch (e) {
       Alert.alert('사진을 올리지 못했어요', errMsg(e));
     }
