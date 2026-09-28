@@ -14,6 +14,7 @@ import { useEffect, useState } from 'react';
 import { Alert, Pressable, ScrollView, Share, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Rail } from '@/components/home/rail';
+import { Button } from '@/components/ui/button';
 import { Gallery } from '@/components/product/gallery';
 import { Avatar } from '@/components/ui/avatar';
 import { Empty, Loading } from '@/components/ui/state';
@@ -103,6 +104,21 @@ function BottomBar({ p }: { p: ProductDetailDto }) {
       >
         <Text variant="bodyStrong">공유</Text>
       </Pressable>
+      {p.auction &&
+        (p.auction.status === 'LIVE' || p.auction.status === 'SCHEDULED' || p.auction.status === 'ENDED') && (
+          <Button
+            title={
+              p.auction.status === 'LIVE'
+                ? '경매 참여하기'
+                : p.auction.status === 'SCHEDULED'
+                  ? '경매 예정 보기'
+                  : '경매 결과 보기'
+            }
+            size="lg"
+            style={{ flex: 1 }}
+            onPress={() => router.push({ pathname: '/auctions/[id]', params: { id: p.auction!.id } })}
+          />
+        )}
     </View>
   );
 }

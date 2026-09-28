@@ -57,6 +57,7 @@ function Navigation() {
           options={{ presentation: 'fullScreenModal', headerShown: false }}
         />
         <Stack.Screen name="search" options={{ title: '검색' }} />
+        <Stack.Screen name="auctions/[id]" options={{ title: '경매' }} />
       </Stack>
     </ThemeProvider>
   );
