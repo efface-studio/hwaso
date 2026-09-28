@@ -44,6 +44,19 @@ scheme `hwaso://`, universal link `https://hwaso.kr` (`APP_LINK_HOST`). 파일 �
 
 `/report?type=USER|PRODUCT|REVIEW|MESSAGE&id=` 는 공용 신고 모달이다.
 
+### 결제·주소 검색 (웹 브리지)
+
+토스페이먼츠 결제창과 카카오 우편번호는 웹 JS SDK 라서, 앱은 인앱 브라우저(iOS ASWebAuthenticationSession · Android Custom Tabs)로 웹의 브리지 페이지를 연다.
+
+1. 앱이 `/orders/:id/payments` 로 결제를 준비 → `PaymentRequestDto`
+2. `{WEB}/app-bridge/pay?r=<요청 JSON>&return=hwaso://bridge` 를 연다 → 토스 결제창 (카드사 앱 전환도 브라우저가 처리)
+3. 결제창 복귀 → `/app-bridge/pay/done` 이 결과 쿼리(`paymentKey·orderId·amount` 또는 `code·message`)를 `hwaso://bridge` 로 넘긴다
+4. 앱이 `/payments/confirm` 으로 승인 요청 — 금액 대조·승인은 서버가 한다
+5. 키가 없는 개발 환경(mock)은 결제창 없이 바로 승인한다
+
+우편번호는 `/app-bridge/postcode?return=hwaso://bridge` → `zipCode·address1` 을 돌려받는다.
+복귀 주소는 앱 스킴(`NEXT_PUBLIC_APP_SCHEME`, 기본 `hwaso`)만 허용한다 — 개발 중에만 Expo Go(`exp://`)·`http://localhost` 도 허용.
+
 ## 3. 네이티브 기능
 
 | 기능                   | 패키지                                                 | 사용                                                                          |
@@ -54,7 +67,7 @@ scheme `hwaso://`, universal link `https://hwaso.kr` (`APP_LINK_HOST`). 파일 �
 | Share                  | RN `Share`                                             | 상품/경매 공유 (웹 URL)                                                       |
 | Secure Storage         | `expo-secure-store`                                    | refresh 토큰                                                                  |
 | Biometric              | `expo-local-authentication`                            | 앱 잠금 해제 (설정)                                                           |
-| Browser Auth           | `expo-web-browser` + `expo-auth-session`               | 소셜 로그인                                                                   |
+| Browser Auth           | `expo-web-browser` + `expo-auth-session`               | 소셜 로그인, 결제·우편번호 웹 브리지                                          |
 | Haptics                | `expo-haptics`                                         | 입찰 성공/실패                                                                |
 | Image                  | `expo-image`                                           | 캐시, placeholder 색                                                          |
 
