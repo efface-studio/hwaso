@@ -112,6 +112,21 @@ export const sendMessageSchema = z
   );
 export type SendMessageInput = z.infer<typeof sendMessageSchema>;
 
+/** 채팅 자주 쓰는 문구 — 저장한 적 없으면 기본 문구를 준다 */
+export const CHAT_PHRASES_MAX = 20;
+export const CHAT_PHRASE_MAX = 100;
+export const CHAT_DEFAULT_PHRASES = [
+  '안녕하세요, 작품 아직 판매 중인가요?',
+  '네, 아직 판매 중이에요.',
+  '작품 상태와 뒷면 사진을 더 볼 수 있을까요?',
+  '택배 거래는 안전결제로 부탁드려요.',
+  '확인하고 다시 연락드릴게요. 감사합니다!',
+] as const;
+export const chatPhrasesSchema = z.strictObject({
+  phrases: z.array(z.string().trim().min(1).max(CHAT_PHRASE_MAX)).max(CHAT_PHRASES_MAX),
+});
+export type ChatPhrasesInput = z.infer<typeof chatPhrasesSchema>;
+
 export const chatRoomSettingsSchema = z.strictObject({ muted: z.boolean() });
 
 /** 외부 거래 유도 표현 (메신저 아이디·계좌·전화번호). 차단하지 않고 안전 안내만 띄운다 */

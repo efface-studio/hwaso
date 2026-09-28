@@ -1,9 +1,23 @@
-import { Body, Controller, Delete, Get, HttpCode, Module, Param, Patch, Post, Query } from '@nestjs/common';
 import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  Module,
+  Param,
+  Patch,
+  Post,
+  Put,
+  Query,
+} from '@nestjs/common';
+import {
+  chatPhrasesSchema,
   chatRoomSettingsSchema,
   chatTradeSchema,
   createChatRoomSchema,
   sendMessageSchema,
+  type ChatPhrasesInput,
   type ChatTradeInput,
   type SendMessageInput,
 } from '@shop/shared';
@@ -73,6 +87,16 @@ export class ChatController {
     @Body(new ZodPipe(chatTradeSchema)) body: ChatTradeInput,
   ) {
     return this.chat.setTradeStatus(u, id, body);
+  }
+
+  @Get('phrases')
+  phrases(@CurrentUser() u: AuthUser) {
+    return this.chat.phrases(u);
+  }
+
+  @Put('phrases')
+  savePhrases(@CurrentUser() u: AuthUser, @Body(new ZodPipe(chatPhrasesSchema)) body: ChatPhrasesInput) {
+    return this.chat.savePhrases(u, body.phrases);
   }
 
   @Post('rooms/:id/read')

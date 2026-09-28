@@ -225,6 +225,8 @@ model User {
   /// 정지 사유 등 운영 조치 사유 (회원에게 로그인 시 안내)
   statusReason       String?
   notificationPrefs  Json       @default("{}")
+  /// 채팅 자주 쓰는 문구 — null 이면 저장한 적 없음(기본 문구)
+  chatPhrases        Json?
   unpaidStrikes      Int        @default(0)
   marketingOptIn     Boolean    @default(false)
   termsAgreedAt      DateTime?  @db.Timestamptz

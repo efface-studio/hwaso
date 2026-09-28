@@ -28,6 +28,14 @@ test('작품에서 판매자와 채팅을 시작하고 메시지를 보낸다', 
   await expect(replied.getByRole('button', { name: /나에게 답장/ })).toContainText(text);
   await expect(page.getByRole('button', { name: '답장 취소' })).toHaveCount(0);
 
+  // 자주 쓰는 문구: 첨부 → 자주 쓰는 문구 → 누르면 입력창에 들어간다 (처음엔 기본 문구)
+  await page.getByRole('button', { name: '첨부' }).click();
+  await page.getByRole('menuitem', { name: '자주 쓰는 문구' }).click();
+  const phrase = '작품 상태와 뒷면 사진을 더 볼 수 있을까요?';
+  await page.getByRole('dialog', { name: '자주 쓰는 문구' }).getByRole('button', { name: phrase }).click();
+  await expect(page.getByLabel('메시지 입력')).toHaveValue(phrase);
+  await page.getByLabel('메시지 입력').fill('');
+
   // 거래 약속: 모달 안에서 커스텀 날짜 피커(브라우저 기본 UI 아님)로 날짜를 고른다
   await page.getByRole('button', { name: '첨부' }).click();
   await page.getByRole('menuitem', { name: '거래 약속' }).click();
