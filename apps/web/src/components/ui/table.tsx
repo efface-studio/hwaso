@@ -28,7 +28,8 @@ export function Table<T>({ columns, rows, rowKey, empty }: TableProps<T>) {
                 scope="col"
                 className={cn('h-10 px-3 font-medium whitespace-nowrap', c.className)}
               >
-                {c.header}
+                {/* 빈 머리글(작업 버튼 열)도 칸마다 머리글이 있어야 보조기기가 읽는다 */}
+                {c.header || <span className="sr-only">작업</span>}
               </th>
             ))}
           </tr>

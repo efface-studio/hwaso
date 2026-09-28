@@ -81,12 +81,20 @@ function Trend({ series }: { series: { date: string; signups: number; orders: nu
         ))}
       </div>
       <table className="sr-only">
+        <caption>최근 14일 일별 거래액</caption>
+        <thead>
+          <tr>
+            <th scope="col">날짜</th>
+            <th scope="col">거래액</th>
+            <th scope="col">결제 건수</th>
+          </tr>
+        </thead>
         <tbody>
           {series.map((s) => (
             <tr key={s.date}>
               <td>{s.date}</td>
-              <td>{s.gmv}</td>
-              <td>{s.orders}</td>
+              <td>{formatPrice(s.gmv)}</td>
+              <td>{s.orders}건</td>
             </tr>
           ))}
         </tbody>
