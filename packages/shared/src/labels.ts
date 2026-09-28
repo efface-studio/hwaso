@@ -1,5 +1,6 @@
 import type {
   AuctionStatus,
+  AuthProvider,
   ItemCondition,
   NotificationType,
   OrderStatus,
@@ -8,6 +9,8 @@ import type {
   ProductStatus,
   ProvenanceKind,
   ReportReason,
+  ReportStatus,
+  ReportTarget,
   SettlementStatus,
   SaleType,
   VerificationStatus,
@@ -126,4 +129,25 @@ export const SETTLEMENT_STATUS_LABEL: Record<SettlementStatus, string> = {
   SCHEDULED: '지급 예정',
   PAID: '지급 완료',
   HELD: '보류',
+};
+
+export const AUTH_PROVIDER_LABEL: Record<AuthProvider, string> = {
+  KAKAO: '카카오',
+  NAVER: '네이버',
+  GOOGLE: 'Google',
+  APPLE: 'Apple',
+};
+
+export const REPORT_TARGET_LABEL: Record<ReportTarget, string> = {
+  PRODUCT: '작품',
+  USER: '사용자',
+  REVIEW: '후기',
+  MESSAGE: '메시지',
+};
+
+export const REPORT_STATUS_LABEL: Record<ReportStatus, string> = {
+  OPEN: '접수',
+  IN_REVIEW: '확인 중',
+  RESOLVED: '조치 완료',
+  REJECTED: '반려',
 };
