@@ -8,6 +8,7 @@ export * from './notifications';
 export * from './chat';
 export * from './admin';
 export * from './sell';
+export * from './company';
 export * from './dto';
 export * from './realtime';
 export * from './schemas/common';

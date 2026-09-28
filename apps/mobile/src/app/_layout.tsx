@@ -86,6 +86,12 @@ function Navigation() {
         <Stack.Screen name="settings/blocks" options={{ title: '차단한 사용자' }} />
         <Stack.Screen name="settings/reports" options={{ title: '신고 내역' }} />
         <Stack.Screen name="settings/delete" options={{ title: '회원 탈퇴' }} />
+        <Stack.Screen name="users/[id]/index" options={{ title: '' }} />
+        <Stack.Screen name="users/[id]/follows" options={{ title: '팔로워' }} />
+        <Stack.Screen name="notices/index" options={{ title: '공지사항' }} />
+        <Stack.Screen name="notices/[id]" options={{ title: '공지사항' }} />
+        <Stack.Screen name="support" options={{ title: '고객센터' }} />
+        <Stack.Screen name="feed" options={{ title: '팔로잉 새 작품' }} />
       </Stack>
     </ThemeProvider>
   );
