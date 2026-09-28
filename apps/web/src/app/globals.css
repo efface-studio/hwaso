@@ -137,3 +137,16 @@
     display: block !important;
   }
 }
+
+/*
+ * iOS 사파리는 16px 미만 입력창에 포커스하면 화면을 확대하고 되돌리지 않는다 (좌우 여백이 사라져 보임).
+ * 터치 기기에서만 입력 글자를 16px 이상으로. 레이어 밖에 두어 text-* 유틸리티보다 우선한다.
+ * maximum-scale 로 확대를 막지 않는다 — 사용자의 손가락 확대까지 막는 접근성 위반.
+ */
+@media (hover: none) and (pointer: coarse) {
+  input,
+  textarea,
+  select {
+    font-size: max(16px, 1em);
+  }
+}
