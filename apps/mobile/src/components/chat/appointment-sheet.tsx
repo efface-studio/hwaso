@@ -7,7 +7,13 @@ import { Text } from '@/components/ui/text';
 import { useTheme } from '@/theme';
 
 const fmt = (d: Date) =>
-  d.toLocaleString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short', hour: 'numeric', minute: '2-digit' });
+  d.toLocaleString('ko-KR', {
+    month: 'long',
+    day: 'numeric',
+    weekday: 'short',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
 
 /** 거래 약속 제안: 날짜·시간(OS 기본 선택기) + 장소 */
 export function AppointmentSheet({
@@ -60,7 +66,11 @@ export function AppointmentSheet({
           />
         ) : Platform.OS === 'android' ? (
           <View style={styles.row}>
-            <Button title={at.toLocaleDateString('ko-KR')} variant="outline" onPress={() => openAndroid('date')} />
+            <Button
+              title={at.toLocaleDateString('ko-KR')}
+              variant="outline"
+              onPress={() => openAndroid('date')}
+            />
             <Button
               title={at.toLocaleTimeString('ko-KR', { hour: 'numeric', minute: '2-digit' })}
               variant="outline"
@@ -81,7 +91,13 @@ export function AppointmentSheet({
         <Text variant="small" color="muted">
           {fmt(at)}
         </Text>
-        <Field label="장소" placeholder="예) 인사동 쌈지길 정문" maxLength={100} value={place} onChangeText={setPlace} />
+        <Field
+          label="장소"
+          placeholder="예) 인사동 쌈지길 정문"
+          maxLength={100}
+          value={place}
+          onChangeText={setPlace}
+        />
         <Button
           title="약속 보내기"
           disabled={!valid}

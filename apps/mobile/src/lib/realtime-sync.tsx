@@ -28,12 +28,14 @@ export function AppSync() {
       void qc.invalidateQueries({ queryKey: ['chat', 'rooms'] });
       void qc.invalidateQueries({ queryKey: ['chat', 'unread'] });
     };
-    const read: ServerToClientEvents['CHAT_READ'] = () => void qc.invalidateQueries({ queryKey: ['chat', 'unread'] });
+    const read: ServerToClientEvents['CHAT_READ'] = () =>
+      void qc.invalidateQueries({ queryKey: ['chat', 'unread'] });
     const noti: ServerToClientEvents['NOTIFICATION'] = ({ unreadCount }) => {
       qc.setQueryData(['notifications', 'unread'], { unreadCount });
       void qc.invalidateQueries({ queryKey: ['notifications', 'list'] });
     };
-    const order: ServerToClientEvents['ORDER_STATUS_UPDATED'] = () => void qc.invalidateQueries({ queryKey: ['orders'] });
+    const order: ServerToClientEvents['ORDER_STATUS_UPDATED'] = () =>
+      void qc.invalidateQueries({ queryKey: ['orders'] });
     socket.on('CHAT_MESSAGE', chat);
     socket.on('CHAT_READ', read);
     socket.on('NOTIFICATION', noti);

@@ -12,7 +12,10 @@ function denied(what: string) {
 }
 
 /** 앨범에서 고르기 또는 촬영. 취소하면 빈 배열 */
-export async function pickImages(source: 'library' | 'camera', max = 1): Promise<ImagePicker.ImagePickerAsset[]> {
+export async function pickImages(
+  source: 'library' | 'camera',
+  max = 1,
+): Promise<ImagePicker.ImagePickerAsset[]> {
   if (source === 'camera') {
     const perm = await ImagePicker.requestCameraPermissionsAsync();
     if (!perm.granted) {

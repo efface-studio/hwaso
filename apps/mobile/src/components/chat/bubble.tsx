@@ -8,7 +8,8 @@ import { useTheme } from '@/theme';
 
 export type PendingMessage = ChatMessageDto & { pending?: 'sending' | 'failed'; retry?: SendMessageInput };
 
-const time = (iso: string) => new Date(iso).toLocaleTimeString('ko-KR', { hour: 'numeric', minute: '2-digit' });
+const time = (iso: string) =>
+  new Date(iso).toLocaleTimeString('ko-KR', { hour: 'numeric', minute: '2-digit' });
 
 function Body({ m }: { m: PendingMessage }) {
   const t = useTheme();
@@ -23,7 +24,11 @@ function Body({ m }: { m: PendingMessage }) {
       <Image
         accessibilityLabel="보낸 사진"
         source={mediaUrl(m.image.key, 800)}
-        style={{ width: 200, aspectRatio: m.image.width / m.image.height || 1, backgroundColor: m.image.dominantColor }}
+        style={{
+          width: 200,
+          aspectRatio: m.image.width / m.image.height || 1,
+          backgroundColor: m.image.dominantColor,
+        }}
         contentFit="cover"
       />
     );
@@ -33,7 +38,11 @@ function Body({ m }: { m: PendingMessage }) {
         <Pressable accessibilityRole="link" style={styles.row}>
           <View style={[styles.thumb, { backgroundColor: t.colors.background }]}>
             {m.product.image && (
-              <Image source={mediaUrl(m.product.image.key, 400)} style={StyleSheet.absoluteFill} contentFit="contain" />
+              <Image
+                source={mediaUrl(m.product.image.key, 400)}
+                style={StyleSheet.absoluteFill}
+                contentFit="contain"
+              />
             )}
           </View>
           <View style={{ flex: 1 }}>
