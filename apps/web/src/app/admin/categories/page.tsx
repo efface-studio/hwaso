@@ -13,6 +13,7 @@ import { Dialog } from '@/components/ui/dialog';
 import { Field, Input } from '@/components/ui/field';
 import { Select } from '@/components/ui/select';
 import { api } from '@/lib/api';
+import { cn } from '@/lib/cn';
 
 const GROUP = { ART: '미술', HISTORICAL: '고미술·역사', COLLECTIBLES: '컬렉터블' } as const;
 
@@ -120,14 +121,17 @@ export default function AdminCategoriesPage() {
   const del = useAdminAction((id: string) => api.admin.deleteCategory(id), '삭제했어요', ['categories']);
   const parents = data?.filter((c) => !c.parentId) ?? [];
   const Row = ({ c, child }: { c: AdminCategoryRow; child?: boolean }) => (
-    <li className="flex items-center gap-3 border-t border-border-soft px-4 py-2.5 first:border-0">
-      <span className={child ? 'pl-6 text-muted' : 'font-semibold'}>
-        {child ? '└ ' : ''}
-        {c.name}
-      </span>
-      <span className="text-caption text-faint">/{c.slug}</span>
-      {!c.isActive && <Badge tone="outline">숨김</Badge>}
-      <span className="ml-auto text-caption text-muted">작품 {c.productCount}</span>
+    <li className="flex items-center gap-3 border-t border-border-soft py-2.5 pr-2 pl-4 first:border-0">
+      {/* 좁은 화면: 이름·슬러그는 왼쪽에서 줄바꿈, 작품 수·버튼은 오른쪽에 고정 */}
+      <div className={cn('min-w-0 flex-1', child && 'pl-4 md:pl-6')}>
+        <span className={cn('mr-2', child ? 'text-muted' : 'font-semibold')}>
+          {child ? '└ ' : ''}
+          {c.name}
+        </span>
+        {!c.isActive && <Badge tone="outline">숨김</Badge>}
+        <span className="block text-caption break-all text-faint md:inline">/{c.slug}</span>
+      </div>
+      <span className="shrink-0 text-caption whitespace-nowrap text-muted">작품 {c.productCount}</span>
       <Button size="sm" variant="ghost" onClick={() => setEdit(c)}>
         수정
       </Button>

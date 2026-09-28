@@ -2,6 +2,7 @@
 
 import {
   BarChart3,
+  Menu,
   Bell,
   Box,
   CreditCard,
@@ -19,9 +20,10 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { RequireAuth } from '@/components/auth/require-auth';
 import { Logo } from '@/components/layout/logo';
+import { Sheet } from '@/components/ui/dialog';
 import { EmptyState } from '@/components/ui/display';
 import { cn } from '@/lib/cn';
 import { useAuthStore } from '@/stores/auth';
@@ -73,52 +75,80 @@ function Guard({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
-/** 관리자 콘솔: 데스크톱 사이드바 / 모바일 가로 스크롤 메뉴. 쇼핑 화면과 헤더를 공유하지 않는다 */
+function NavList({ active, onPick }: { active: (href: string) => boolean; onPick?: () => void }) {
+  return (
+    <>
+      {NAV.map((g) => (
+        <div key={g.group} className="flex flex-col gap-1">
+          <p className="px-2 text-caption text-faint">{g.group}</p>
+          {g.items.map(({ href, label, Icon }) => (
+            <Link
+              key={href}
+              href={href}
+              onClick={onPick}
+              aria-current={active(href) ? 'page' : undefined}
+              className={cn(
+                'flex h-10 items-center gap-2 rounded-sm px-2 text-label whitespace-nowrap md:h-9',
+                active(href)
+                  ? 'bg-surface-2 text-foreground'
+                  : 'text-muted hover:bg-surface-2 hover:text-foreground',
+              )}
+            >
+              <Icon className="size-4" aria-hidden />
+              {label}
+            </Link>
+          ))}
+        </div>
+      ))}
+      <Link
+        href="/"
+        onClick={onPick}
+        className="flex h-10 items-center px-2 text-label text-muted hover:text-foreground md:h-9"
+      >
+        ← 사이트로 돌아가기
+      </Link>
+    </>
+  );
+}
+
+/** 관리자 콘솔: 데스크톱 사이드바 / 모바일 "메뉴" 시트. 쇼핑 화면과 헤더를 공유하지 않는다 */
 export function AdminShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const [menu, setMenu] = useState(false);
   const active = (href: string) => (href === '/admin' ? pathname === '/admin' : pathname.startsWith(href));
+  const current = NAV.flatMap((g): readonly { href: string; label: string }[] => g.items).find((i) =>
+    active(i.href),
+  );
   return (
     <RequireAuth>
       <Guard>
         <div className="min-h-dvh bg-background-soft md:grid md:grid-cols-[220px_1fr]">
           <aside className="sticky top-0 z-30 border-b border-border bg-background md:h-dvh md:overflow-y-auto md:border-r md:border-b-0">
-            <div className="flex h-14 items-center justify-between px-4">
+            <div className="flex h-14 items-center justify-between gap-2 px-4">
               <Logo />
-              <span className="text-caption font-semibold text-muted">관리자</span>
-            </div>
-            <nav
-              aria-label="관리자 메뉴"
-              className="flex gap-1 overflow-x-auto px-2 pb-2 md:flex-col md:gap-4 md:px-3 md:pb-6"
-            >
-              {NAV.map((g) => (
-                <div key={g.group} className="flex gap-1 md:flex-col">
-                  <p className="hidden px-2 text-caption text-faint md:block">{g.group}</p>
-                  {g.items.map(({ href, label, Icon }) => (
-                    <Link
-                      key={href}
-                      href={href}
-                      aria-current={active(href) ? 'page' : undefined}
-                      className={cn(
-                        'flex h-9 shrink-0 items-center gap-2 rounded-sm px-2 text-label whitespace-nowrap',
-                        active(href)
-                          ? 'bg-surface-2 text-foreground'
-                          : 'text-muted hover:bg-surface-2 hover:text-foreground',
-                      )}
-                    >
-                      <Icon className="size-4" aria-hidden />
-                      {label}
-                    </Link>
-                  ))}
-                </div>
-              ))}
-              <Link
-                href="/"
-                className="hidden h-9 items-center px-2 text-label text-muted hover:text-foreground md:flex"
+              <span className="hidden text-caption font-semibold text-muted md:inline">관리자</span>
+              {/* 모바일: 15개 메뉴를 가로로 늘어놓지 않고 현재 화면 이름 + 메뉴 시트 */}
+              <button
+                type="button"
+                onClick={() => setMenu(true)}
+                aria-haspopup="dialog"
+                aria-expanded={menu}
+                className="-mr-2 flex h-10 min-w-0 items-center gap-1.5 rounded-sm px-2 text-label font-semibold hover:bg-surface-2 md:hidden"
               >
-                ← 사이트로 돌아가기
-              </Link>
+                <span className="truncate">{current?.label ?? '관리자'}</span>
+                <Menu className="size-5 shrink-0" aria-hidden />
+                <span className="sr-only">관리자 메뉴 열기</span>
+              </button>
+            </div>
+            <nav aria-label="관리자 메뉴" className="hidden flex-col gap-4 px-3 pb-6 md:flex">
+              <NavList active={active} />
             </nav>
           </aside>
+          <Sheet open={menu} onOpenChange={setMenu} title="관리자 메뉴" side="left">
+            <nav aria-label="관리자 메뉴" className="flex flex-col gap-4">
+              <NavList active={active} onPick={() => setMenu(false)} />
+            </nav>
+          </Sheet>
           <main className="min-w-0 p-4 md:p-8">{children}</main>
         </div>
       </Guard>
