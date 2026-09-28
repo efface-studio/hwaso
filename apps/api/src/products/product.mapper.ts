@@ -21,7 +21,7 @@ export const VISIBLE_PRODUCT: Prisma.ProductWhereInput = {
   status: { in: ['ACTIVE', 'RESERVED', 'SOLD'] },
 };
 
-const imageSelect = { key: true, width: true, height: true, dominantColor: true } as const;
+export const imageSelect = { key: true, width: true, height: true, dominantColor: true } as const;
 const auctionSummarySelect = {
   id: true,
   status: true,

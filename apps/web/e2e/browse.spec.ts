@@ -40,3 +40,14 @@ test('폰 폭에서 가로로 넘치지 않는다 (하단 탭바가 밀리지 �
     expect(overflow, path).toBeLessThanOrEqual(0);
   }
 });
+
+test('상단 카테고리 시트에서 분류를 골라 이동한다', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: '카테고리' }).click();
+  const sheet = page.getByRole('dialog', { name: '카테고리' });
+  const tile = sheet.locator('a[href^="/category/"]').nth(1);
+  const href = await tile.getAttribute('href');
+  await tile.click();
+  await expect(page).toHaveURL(new RegExp(`${href}$`));
+  await expect(sheet).toBeHidden();
+});

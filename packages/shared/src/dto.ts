@@ -73,6 +73,10 @@ export interface CategoryNode {
   slug: string;
   name: string;
   group: CategoryGroup;
+  /** 공개 작품 수 (대분류는 하위 합계) */
+  productCount: number;
+  /** 대표 작품 이미지 (관심 많은 순 첫 작품). 카테고리 시트 타일용 */
+  coverImage: ImageDto | null;
   children: CategoryNode[];
 }
 

@@ -1,3 +1,4 @@
+import { CATEGORY_CACHE_KEY } from '../src/catalog/catalog.controller';
 import { createTestApp, type TestContext } from './app';
 import { createCategory, createProduct, createUser, fakeUpload } from './fixtures';
 
@@ -263,5 +264,23 @@ describe('관심상품 · 최근 본 상품 · 문의', () => {
     expect(JSON.stringify(profile.body)).not.toContain('@');
     const sold = await t.http.get(`/api/v1/users/${seller.id}/products?tab=sold`).expect(200);
     expect(sold.body).toHaveLength(1);
+  });
+});
+
+describe('카테고리 트리 (GET /categories)', () => {
+  it('소분류마다 공개 작품 수와 대표 이미지를, 대분류는 합계를 준다', async () => {
+    const seller = await createUser(t, 'SELLER');
+    const { parent, child } = await createCategory(t);
+    await createProduct(t, { sellerId: seller.id, categoryId: child.id });
+    await createProduct(t, { sellerId: seller.id, categoryId: child.id });
+    await createProduct(t, { sellerId: seller.id, categoryId: child.id, status: 'DRAFT' }); // 비공개는 세지 않는다
+    await t.redis.del(CATEGORY_CACHE_KEY);
+
+    const res = await t.http.get('/api/v1/categories').expect(200);
+    const root = res.body.find((c: { id: string }) => c.id === parent.id);
+    const leaf = root.children.find((c: { id: string }) => c.id === child.id);
+    expect(leaf.productCount).toBe(2);
+    expect(leaf.coverImage).toMatchObject({ key: expect.stringMatching(/^img\/test\//), width: 800 });
+    expect(root.productCount).toBe(2);
   });
 });

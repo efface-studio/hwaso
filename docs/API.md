@@ -95,12 +95,12 @@ NestJS REST API. Base URL `/api/v1`. 모든 요청/응답은 JSON (업로드 제
 
 ### Catalog
 
-| Method | Path             | 권한 | 설명            |
-| ------ | ---------------- | ---- | --------------- |
-| GET    | /categories      | -    | 트리 (캐시 60s) |
-| GET    | /artists?q=      | -    | 작가 검색       |
-| GET    | /artists/popular | -    | 인기 작가       |
-| GET    | /artists/:id     | -    | 작가 + 작품     |
+| Method | Path             | 권한 | 설명                                                                                    |
+| ------ | ---------------- | ---- | --------------------------------------------------------------------------------------- |
+| GET    | /categories      | -    | 트리 + 공개 작품 수(`productCount`, 대분류는 합계)·대표 이미지(`coverImage`) (캐시 60s) |
+| GET    | /artists?q=      | -    | 작가 검색                                                                               |
+| GET    | /artists/popular | -    | 인기 작가                                                                               |
+| GET    | /artists/:id     | -    | 작가 + 작품                                                                             |
 
 ### Products
 
