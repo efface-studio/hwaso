@@ -851,6 +851,8 @@ model ChatReadState {
   /// 나가기: 이 시각 이후 새 메시지가 오면 다시 목록에 보인다
   hiddenAt   DateTime? @db.Timestamptz
   muted      Boolean   @default(false)
+  /// 상단 고정 (목록에서 먼저, 최근에 고정한 순)
+  pinnedAt   DateTime? @db.Timestamptz
 
   @@id([roomId, userId])
 }

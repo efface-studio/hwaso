@@ -37,7 +37,10 @@ export const chatApi = (http: Http) => ({
   phrases: () => http.get<{ phrases: string[] }>('/chat/phrases'),
   savePhrases: (phrases: string[]) => http.put<{ phrases: string[] }>('/chat/phrases', { phrases }),
   mute: (roomId: string, muted: boolean) =>
-    http.patch<{ muted: boolean }>(`/chat/rooms/${id(roomId)}`, { muted }),
+    http.patch<{ muted: boolean; pinned: boolean }>(`/chat/rooms/${id(roomId)}`, { muted }),
+  /** 상단 고정 / 해제 */
+  pin: (roomId: string, pinned: boolean) =>
+    http.patch<{ muted: boolean; pinned: boolean }>(`/chat/rooms/${id(roomId)}`, { pinned }),
 });
 
 export const safetyApi = (http: Http) => ({
