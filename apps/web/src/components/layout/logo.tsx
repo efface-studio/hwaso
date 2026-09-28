@@ -1,19 +1,19 @@
 import Link from 'next/link';
 
-/** 헤더 로고: 앱 아이콘 + 화소 워드마크. 아이콘은 테마에 맞는 배경 버전을 쓴다 */
+/** 헤더 로고: 아이콘 마크 + 화소 워드마크. 페이지 위에 얹으므로 앱 아이콘 타일 없는 마크를 쓴다 (테마별 색) */
 export function Logo() {
   return (
     <Link href="/" className="inline-flex shrink-0 items-center gap-2">
       <span className="size-7 shrink-0">
         <img
-          src="/brand/hwaso-logo-white.svg"
+          src="/brand/hwaso-mark-white.svg"
           alt=""
           width={28}
           height={28}
           className="theme-light-only size-7"
         />
         <img
-          src="/brand/hwaso-logo-black.svg"
+          src="/brand/hwaso-mark-black.svg"
           alt=""
           width={28}
           height={28}

@@ -14,7 +14,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
       </header>
       <main className="page-x flex flex-1 justify-center pt-6 pb-16 md:pt-12">
         <div className="w-full max-w-[400px]">
-          <BrandBanner className="mx-auto mb-8 w-[240px]" />
+          <BrandBanner className="mx-auto mb-8 w-[190px]" />
           {children}
         </div>
       </main>
