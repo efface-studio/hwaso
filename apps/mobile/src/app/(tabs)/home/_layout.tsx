@@ -18,7 +18,12 @@ function HeaderActions() {
   const unread = q.data?.unreadCount ?? 0;
   return (
     <View style={styles.row}>
-      <Pressable accessibilityRole="button" accessibilityLabel="검색" onPress={() => router.push('/search')} hitSlop={10}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="검색"
+        onPress={() => router.push('/search')}
+        hitSlop={10}
+      >
         <Text variant="bodyStrong">검색</Text>
       </Pressable>
       <Pressable
@@ -56,7 +61,7 @@ export default function Layout() {
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 16, marginRight: 8 },
   badge: {
     position: 'absolute',
     top: -8,

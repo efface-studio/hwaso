@@ -38,16 +38,27 @@ export default function NotificationsScreen() {
   const remove = (n: NotificationDto) =>
     Alert.alert('알림을 삭제할까요?', undefined, [
       { text: '취소', style: 'cancel' },
-      { text: '삭제', style: 'destructive', onPress: () => void api.notifications.remove(n.id).then(refresh) },
+      {
+        text: '삭제',
+        style: 'destructive',
+        onPress: () => void api.notifications.remove(n.id).then(refresh),
+      },
     ]);
   const menu = () =>
     Alert.alert('알림함', undefined, [
       { text: '모두 읽음', onPress: () => void api.notifications.read({ all: true }).then(refresh) },
-      { text: '읽은 알림 삭제', style: 'destructive', onPress: () => void api.notifications.clearRead().then(refresh) },
+      {
+        text: '읽은 알림 삭제',
+        style: 'destructive',
+        onPress: () => void api.notifications.clearRead().then(refresh),
+      },
       { text: '취소', style: 'cancel' },
     ]);
 
-  if (!me) return <Empty title="로그인이 필요해요" action={{ title: '로그인', onPress: () => router.push('/login') }} />;
+  if (!me)
+    return (
+      <Empty title="로그인이 필요해요" action={{ title: '로그인', onPress: () => router.push('/login') }} />
+    );
   if (q.isPending) return <Loading />;
   const items = q.data?.pages.flatMap((p) => p.items) ?? [];
 
@@ -57,7 +68,12 @@ export default function NotificationsScreen() {
         options={{
           title: '알림',
           headerRight: () => (
-            <Pressable accessibilityRole="button" accessibilityLabel="알림함 메뉴" onPress={menu} hitSlop={10}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="알림함 메뉴"
+              onPress={menu}
+              hitSlop={10}
+            >
               <Text variant="h3">⋯</Text>
             </Pressable>
           ),
@@ -70,7 +86,9 @@ export default function NotificationsScreen() {
         keyExtractor={(n) => n.id}
         refreshControl={<RefreshControl refreshing={q.isRefetching} onRefresh={() => void q.refetch()} />}
         onEndReached={() => q.hasNextPage && !q.isFetchingNextPage && void q.fetchNextPage()}
-        ListEmptyComponent={<Empty title="새 알림이 없어요" description="입찰·주문·채팅 소식을 여기서 알려드려요." />}
+        ListEmptyComponent={
+          <Empty title="새 알림이 없어요" description="입찰·주문·채팅 소식을 여기서 알려드려요." />
+        }
         ItemSeparatorComponent={() => (
           <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: t.colors.border }} />
         )}
@@ -81,7 +99,10 @@ export default function NotificationsScreen() {
             accessibilityHint="길게 눌러 삭제"
             onPress={() => void open(n)}
             onLongPress={() => remove(n)}
-            style={[styles.row, { minHeight: t.touch, backgroundColor: n.readAt ? undefined : t.colors.primarySoft }]}
+            style={[
+              styles.row,
+              { minHeight: t.touch, backgroundColor: n.readAt ? undefined : t.colors.primarySoft },
+            ]}
           >
             <View style={{ flex: 1, gap: 2 }}>
               <Text variant="bodyStrong">{n.title}</Text>
@@ -93,7 +114,10 @@ export default function NotificationsScreen() {
               </Text>
             </View>
             {!n.readAt && (
-              <View accessibilityLabel="읽지 않음" style={[styles.dot, { backgroundColor: t.colors.primary }]} />
+              <View
+                accessibilityLabel="읽지 않음"
+                style={[styles.dot, { backgroundColor: t.colors.primary }]}
+              />
             )}
           </Pressable>
         )}
