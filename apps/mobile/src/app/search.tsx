@@ -1,8 +1,9 @@
 import { SORT_LABEL, type ProductSort } from '@shop/shared';
 import { useQuery } from '@tanstack/react-query';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import type { SearchBarCommands } from 'react-native-screens';
 import { EMPTY_FILTERS, FilterButton, filterParams, type Filters } from '@/components/product/filter-sheet';
 import { ProductGrid } from '@/components/product/product-grid';
 import { Chips } from '@/components/ui/chips';
@@ -12,6 +13,9 @@ import { secure } from '@/lib/secure';
 import { useTheme } from '@/theme';
 
 const RECENT_KEY = 'hwaso.recentSearches';
+/** iOS·Android 는 OS 기본 헤더 검색창, 웹 미리보기는 헤더 검색창이 없어 입력창을 직접 그린다 */
+const NATIVE_SEARCH = Platform.OS !== 'web';
+const PLACEHOLDER = '작품, 작가, 시대를 검색해보세요';
 const SORTS: ProductSort[] = ['relevance', 'latest', 'price_asc', 'price_desc', 'popular', 'ending_soon'];
 
 /** 검색: 입력 중 자동완성, 제출하면 결과 그리드 (정렬·상세 필터) */
@@ -23,6 +27,7 @@ export default function SearchScreen() {
   const [sort, setSort] = useState<ProductSort>('relevance');
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const [recent, setRecent] = useState<string[]>([]);
+  const searchBar = useRef<SearchBarCommands>(null);
   const typing = text.trim() && text.trim() !== q;
   const suggest = useQuery({
     queryKey: ['suggest', text.trim()],
@@ -34,11 +39,27 @@ export default function SearchScreen() {
     void secure.get(RECENT_KEY).then((v) => setRecent(v ? (JSON.parse(v) as string[]) : []));
   }, []);
 
+  // 헤더 검색창은 첫 렌더 뒤에 붙고 초기값 prop 이 없어, 붙을 때까지 몇 프레임 기다렸다 채운다
+  useEffect(() => {
+    const initial = params.q;
+    if (!NATIVE_SEARCH || !initial) return;
+    let frame = 0;
+    const fill = (tries: number) => {
+      if (searchBar.current) searchBar.current.setText(initial);
+      else if (tries > 0) frame = requestAnimationFrame(() => fill(tries - 1));
+    };
+    fill(30);
+    return () => cancelAnimationFrame(frame);
+  }, [params.q]);
+
   const submit = (value: string) => {
     const v = value.trim();
     if (!v) return;
     setText(v);
     setQ(v);
+    // 최근 검색어를 눌렀을 때도 헤더 검색창에 보이게
+    searchBar.current?.setText(v);
+    searchBar.current?.blur();
     const next = [v, ...recent.filter((r) => r !== v)].slice(0, 10);
     setRecent(next);
     void secure.set(RECENT_KEY, JSON.stringify(next));
@@ -46,31 +67,48 @@ export default function SearchScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: t.colors.background }}>
-      <Stack.Screen options={{ title: '검색' }} />
-      <View style={[styles.bar, { borderColor: t.colors.border }]}>
-        <TextInput
-          autoFocus={!params.q}
-          accessibilityLabel="작품, 작가 검색"
-          placeholder="작품, 작가, 시대를 검색해보세요"
-          placeholderTextColor={t.colors.faint}
-          returnKeyType="search"
-          value={text}
-          onChangeText={setText}
-          onSubmitEditing={() => submit(text)}
-          style={[
-            t.type('body'),
-            styles.input,
-            {
-              color: t.colors.foreground,
-              backgroundColor: t.colors.surface2,
-              minHeight: t.controlHeight,
-              borderRadius: t.radius.md,
-            },
-          ]}
-        />
-      </View>
+      <Stack.Screen
+        options={{
+          title: '검색',
+          headerSearchBarOptions: NATIVE_SEARCH
+            ? {
+                ref: searchBar,
+                placeholder: PLACEHOLDER,
+                autoFocus: !params.q,
+                hideWhenScrolling: false,
+                onChangeText: (e) => setText(e.nativeEvent.text),
+                onSearchButtonPress: (e) => submit(e.nativeEvent.text),
+                onCancelButtonPress: () => setText(q),
+              }
+            : undefined,
+        }}
+      />
+      {!NATIVE_SEARCH && (
+        <View style={[styles.bar, { borderColor: t.colors.border }]}>
+          <TextInput
+            autoFocus={!params.q}
+            accessibilityLabel="작품, 작가 검색"
+            placeholder={PLACEHOLDER}
+            placeholderTextColor={t.colors.faint}
+            returnKeyType="search"
+            value={text}
+            onChangeText={setText}
+            onSubmitEditing={() => submit(text)}
+            style={[
+              t.type('body'),
+              styles.input,
+              {
+                color: t.colors.foreground,
+                backgroundColor: t.colors.surface2,
+                minHeight: t.controlHeight,
+                borderRadius: t.radius.md,
+              },
+            ]}
+          />
+        </View>
+      )}
       {typing ? (
-        <ScrollView keyboardShouldPersistTaps="handled">
+        <ScrollView keyboardShouldPersistTaps="handled" contentInsetAdjustmentBehavior="automatic">
           <Pressable onPress={() => submit(text)} style={[styles.item, { minHeight: t.touch }]}>
             <Text>‘{text.trim()}’ 검색</Text>
           </Pressable>
@@ -131,7 +169,11 @@ export default function SearchScreen() {
           }
         />
       ) : (
-        <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 16, gap: 8 }}>
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          contentInsetAdjustmentBehavior="automatic"
+          contentContainerStyle={{ padding: 16, gap: 8 }}
+        >
           {recent.length > 0 && (
             <View style={styles.recentHead}>
               <Text variant="label" color="muted">
