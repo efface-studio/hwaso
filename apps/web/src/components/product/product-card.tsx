@@ -80,19 +80,27 @@ export function ProductCard({ product: p, priority, sizes, className }: ProductC
   );
 }
 
+/**
+ * 작품 격자. 카드 제목이 h3 이므로 화면 낭독용 h2 를 함께 내서 페이지 제목(h1) 아래 단계가 건너뛰지 않게 한다.
+ */
 export function ProductGrid({
   items,
   priorityCount = 0,
+  label = '작품 목록',
 }: {
   items: ProductCardDto[];
   priorityCount?: number;
+  label?: string;
 }) {
   return (
-    <div className="grid grid-cols-2 gap-x-2 gap-y-6 md:grid-cols-3 md:gap-x-4 md:gap-y-8 lg:grid-cols-4">
-      {items.map((p, i) => (
-        <ProductCard key={p.id} product={p} priority={i < priorityCount} />
-      ))}
-    </div>
+    <section>
+      <h2 className="sr-only">{label}</h2>
+      <div className="grid grid-cols-2 gap-x-2 gap-y-6 md:grid-cols-3 md:gap-x-4 md:gap-y-8 lg:grid-cols-4">
+        {items.map((p, i) => (
+          <ProductCard key={p.id} product={p} priority={i < priorityCount} />
+        ))}
+      </div>
+    </section>
   );
 }
 
