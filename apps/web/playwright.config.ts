@@ -4,7 +4,7 @@ const CI = !!process.env.CI;
 
 /**
  * 핵심 흐름 E2E. 로컬은 이미 떠 있는 API(4000)·웹(3000)을 쓰고,
- * CI 는 빌드한 API·웹을 여기서 띄운다 (시드는 워크플로가 SEED_OFFLINE=1 로 넣는다).
+ * CI 는 워크플로가 API 를 먼저 띄우고(시드 SEED_OFFLINE=1 → 웹 빌드) 여기서는 웹만 띄운다.
  * 시드 데이터를 공유하므로 순서대로 한 개씩 실행한다.
  */
 export default defineConfig({
@@ -30,6 +30,8 @@ export default defineConfig({
           command: 'node --enable-source-maps dist/main.js',
           cwd: '../api',
           url: 'http://localhost:4000/api/v1/health',
+          // CI 는 웹 빌드 전에 API 를 먼저 띄우므로 떠 있으면 그대로 쓴다
+          reuseExistingServer: true,
           timeout: 60_000,
           stdout: 'pipe',
         },
