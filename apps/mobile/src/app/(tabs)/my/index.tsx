@@ -75,6 +75,7 @@ export default function MyScreen() {
               ['/my/recent', '최근 본 작품'],
               ['/addresses', '배송지 관리'],
               ['/notifications', '알림'],
+              ['/settings', '설정'],
             ] as [Href, string][]
           ).map(([href, label]) => (
             <Link key={label} href={href} asChild>

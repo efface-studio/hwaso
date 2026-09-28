@@ -107,8 +107,8 @@ export default function SellerRegisterScreen() {
       {needsIdentity ? (
         <Empty
           title="본인인증이 필요해요"
-          description="판매 대금 정산을 위해 먼저 마이 › 계정 설정에서 휴대폰 본인인증을 해주세요."
-          action={{ title: '마이로 가기', onPress: () => router.push('/my') }}
+          description="판매 대금 정산을 위해 먼저 휴대폰 본인인증을 해주세요."
+          action={{ title: '본인인증 하러 가기', onPress: () => router.push('/settings/identity') }}
         />
       ) : (
         <>

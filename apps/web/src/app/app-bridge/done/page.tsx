@@ -4,7 +4,7 @@ import { useSearchParams } from 'next/navigation';
 import { Suspense, useEffect } from 'react';
 import { appReturnUrl, withParams } from '@/lib/app-bridge';
 
-/** 토스 결제창 복귀(성공: paymentKey·orderId·amount / 실패: code·message)를 그대로 앱으로 넘긴다 */
+/** 결제창·본인인증 복귀 쿼리(성공 값 또는 code·message)를 그대로 앱으로 넘긴다 */
 function Done() {
   const sp = useSearchParams();
   const ret = appReturnUrl(sp.get('return'));
@@ -31,7 +31,7 @@ function Done() {
   );
 }
 
-export default function AppPayDonePage() {
+export default function AppBridgeDonePage() {
   return (
     <main className="page-x mx-auto flex min-h-dvh max-w-md items-center justify-center">
       <Suspense>

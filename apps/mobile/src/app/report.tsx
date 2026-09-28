@@ -3,8 +3,8 @@ import {
   REPORT_REASONS,
   REPORT_REASON_LABEL,
   REPORT_TARGETS,
+  REPORT_TARGET_LABEL,
   type ReportReason,
-  type ReportTarget,
 } from '@shop/shared';
 import { useMutation } from '@tanstack/react-query';
 import { Stack, useLocalSearchParams } from 'expo-router';
@@ -18,13 +18,6 @@ import { Text } from '@/components/ui/text';
 import { api } from '@/lib/api';
 import { goBack } from '@/lib/nav';
 import { useTheme } from '@/theme';
-
-const TARGET: Record<ReportTarget, string> = {
-  PRODUCT: '작품',
-  USER: '사용자',
-  REVIEW: '후기',
-  MESSAGE: '메시지',
-};
 
 /** 신고: 작품·사용자·후기·메시지 공용 모달. 처리 결과는 신고 내역에서 확인한다 */
 export default function ReportScreen() {
@@ -45,7 +38,7 @@ export default function ReportScreen() {
 
   return (
     <ScrollView style={{ backgroundColor: t.colors.background }} contentContainerStyle={styles.body}>
-      <Stack.Screen options={{ title: `${TARGET[target]} 신고` }} />
+      <Stack.Screen options={{ title: `${REPORT_TARGET_LABEL[target]} 신고` }} />
       <Text variant="label">신고 사유</Text>
       <RadioList
         label="신고 사유"
