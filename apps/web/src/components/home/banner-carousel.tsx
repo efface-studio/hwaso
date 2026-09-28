@@ -54,7 +54,6 @@ export function BannerCarousel({ banners }: { banners: BannerDto[] }) {
             key={b.id}
             href={b.link}
             aria-roledescription="slide"
-            aria-label={`${i + 1} / ${count}: ${b.title}`}
             className="grid w-full shrink-0 snap-center grid-rows-[auto_auto] bg-background-soft md:h-[360px] md:grid-cols-[2fr_3fr] md:grid-rows-1"
           >
             <div className="order-2 flex flex-col justify-center gap-2 px-4 py-5 md:order-1 md:px-10">
@@ -62,6 +61,10 @@ export function BannerCarousel({ banners }: { banners: BannerDto[] }) {
               {b.subtitle && <p className="text-body text-muted">{b.subtitle}</p>}
               <span className="mt-2 hidden text-label font-semibold underline underline-offset-4 md:inline">
                 자세히 보기
+              </span>
+              {/* 이름은 보이는 글자에서 나오게 두고, 몇 번째 배너인지만 덧붙인다 */}
+              <span className="sr-only">
+                ({i + 1} / {count})
               </span>
             </div>
             <div className="order-1 aspect-[4/3] md:order-2 md:aspect-auto md:h-[360px]">

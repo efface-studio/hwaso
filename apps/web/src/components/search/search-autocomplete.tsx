@@ -153,6 +153,7 @@ export function SearchAutocomplete({
       <input
         ref={inputRef}
         type="search"
+        name="q"
         role="combobox"
         aria-expanded={showList}
         aria-controls={listId}
