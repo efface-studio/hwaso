@@ -328,3 +328,33 @@ describe('reply (답장)', () => {
     await say(a.buyer, a.roomId, { kind: 'TEXT', body: '몰래', replyToId: other.body.id }).expect(404);
   });
 });
+
+describe('phrases (자주 쓰는 문구)', () => {
+  it('저장한 적 없으면 기본 문구, 저장하면 내 문구 (공백·중복 정리, 20개·100자 제한)', async () => {
+    const u = await createUser(t);
+    const first = await t.http.get('/api/v1/chat/phrases').set(u.auth).expect(200);
+    expect(first.body.phrases.length).toBeGreaterThan(0);
+
+    const saved = await t.http
+      .put('/api/v1/chat/phrases')
+      .set(u.auth)
+      .send({ phrases: [' 아직 판매 중이에요 ', '택배 거래만 가능해요', '아직 판매 중이에요'] })
+      .expect(200);
+    expect(saved.body.phrases).toEqual(['아직 판매 중이에요', '택배 거래만 가능해요']);
+    const again = await t.http.get('/api/v1/chat/phrases').set(u.auth).expect(200);
+    expect(again.body.phrases).toEqual(saved.body.phrases);
+
+    // 모두 지우면 빈 목록 그대로 (기본 문구로 돌아가지 않는다)
+    await t.http.put('/api/v1/chat/phrases').set(u.auth).send({ phrases: [] }).expect(200);
+    expect((await t.http.get('/api/v1/chat/phrases').set(u.auth)).body.phrases).toEqual([]);
+
+    const many = Array.from({ length: 21 }, (_, i) => `문구 ${i}`);
+    await t.http.put('/api/v1/chat/phrases').set(u.auth).send({ phrases: many }).expect(400);
+    await t.http
+      .put('/api/v1/chat/phrases')
+      .set(u.auth)
+      .send({ phrases: ['가'.repeat(101)] })
+      .expect(400);
+    await t.http.get('/api/v1/chat/phrases').expect(401);
+  });
+});
