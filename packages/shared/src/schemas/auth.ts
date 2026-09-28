@@ -48,8 +48,11 @@ export const signupSchema = z.strictObject({
 });
 export type SignupInput = z.infer<typeof signupSchema>;
 
+/** 로그인 아이디: 가입은 이메일이지만 데모 지정 계정(test1 등)은 이메일 형식이 아니다 */
+export const loginIdSchema = z.string().trim().toLowerCase().min(1, '이메일을 입력해주세요.').max(254);
+
 export const loginSchema = z.strictObject({
-  email: emailSchema,
+  email: loginIdSchema,
   password: z.string().min(1, '비밀번호를 입력해주세요.').max(72),
   device: deviceSchema,
 });
