@@ -189,7 +189,7 @@ export function SearchAutocomplete({
         </button>
       )}
       {showList && (
-        <div className="absolute inset-x-0 top-full z-50 mt-1 max-h-[70vh] overflow-y-auto rounded-md border border-border bg-surface shadow-md">
+        <div className="absolute inset-x-0 top-full z-50 mt-1 max-h-[70vh] origin-top animate-pop-in overflow-y-auto rounded-md border border-border bg-surface shadow-md">
           {!term && (
             <div className="flex items-center justify-between px-3 pt-3 pb-1">
               <span className="text-caption font-semibold text-muted">최근 검색어</span>
