@@ -6,6 +6,8 @@ export const ERROR_MESSAGES = {
   NOT_FOUND: '요청한 정보를 찾을 수 없습니다.',
   CONFLICT: '이미 처리되었거나 현재 상태에서 할 수 없는 요청입니다.',
   RATE_LIMITED: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.',
+  CHAT_TOO_FAST: '메시지를 너무 빨리 보내고 있어요. 잠시 후 다시 보내주세요.',
+  CHAT_DUPLICATE: '같은 메시지를 반복해서 보낼 수 없어요.',
   INTERNAL: '잠시 문제가 발생했습니다. 다시 시도해주세요.',
   DEMO_DISABLED: '데모에서는 사용할 수 없는 기능이에요.',
 
