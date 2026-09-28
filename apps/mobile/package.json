@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@expo/metro-runtime": "~57.0.16",
+    "@react-native-community/datetimepicker": "9.1.0",
     "@shop/api-client": "workspace:*",
     "@shop/shared": "workspace:*",
     "@shop/tokens": "workspace:*",

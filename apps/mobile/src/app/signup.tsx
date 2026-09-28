@@ -1,7 +1,6 @@
 import { ApiError } from '@shop/api-client';
 import { nicknameSchema, passwordSchema } from '@shop/shared';
 import * as WebBrowser from 'expo-web-browser';
-import { router } from 'expo-router';
 import { useState } from 'react';
 import {
   KeyboardAvoidingView,
@@ -17,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
 import { Text } from '@/components/ui/text';
 import { api } from '@/lib/api';
+import { goBack } from '@/lib/nav';
 import { appDevice } from '@/lib/device';
 import { env } from '@/lib/env';
 import { useAuthStore } from '@/stores/auth';
@@ -52,7 +52,7 @@ export default function SignupScreen() {
         device: appDevice(),
       });
       await useAuthStore.getState().setSession(tokens);
-      router.back();
+      goBack();
     } catch (e) {
       if (e instanceof ApiError && e.code === 'NICKNAME_TAKEN') setErrors({ nickname: e.message });
       else setErrors({ form: e instanceof ApiError ? e.message : '가입하지 못했어요.' });

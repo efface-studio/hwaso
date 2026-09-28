@@ -8,6 +8,7 @@ import { useEffect, useState } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { refreshAccessToken } from '@/lib/api';
+import { AppSync } from '@/lib/realtime-sync';
 import { useAuthStore } from '@/stores/auth';
 import { usePrefs } from '@/stores/prefs';
 import { useTheme } from '@/theme';
@@ -57,6 +58,9 @@ function Navigation() {
         />
         <Stack.Screen name="search" options={{ title: '검색' }} />
         <Stack.Screen name="auctions/[id]" options={{ title: '경매' }} />
+        <Stack.Screen name="chat/[id]" options={{ title: '채팅' }} />
+        <Stack.Screen name="notifications" options={{ title: '알림' }} />
+        <Stack.Screen name="report" options={{ presentation: 'modal', title: '신고' }} />
       </Stack>
     </ThemeProvider>
   );
@@ -81,6 +85,7 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <QueryClientProvider client={client}>
           <Navigation />
+          <AppSync />
         </QueryClientProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
