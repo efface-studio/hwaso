@@ -30,3 +30,13 @@ test('화면마다 고유한 제목을 가진다 (WCAG 2.4.2)', async ({ request
     expect(html, path).toContain(`<title>${title}</title>`);
   }
 });
+
+test('폰 폭에서 가로로 넘치지 않는다 (하단 탭바가 밀리지 않게)', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  for (const path of ['/', '/auctions', '/search?q=%EB%B0%B1%EC%9E%90', '/notices']) {
+    await page.goto(path);
+    await page.waitForLoadState('networkidle');
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - innerWidth);
+    expect(overflow, path).toBeLessThanOrEqual(0);
+  }
+});
