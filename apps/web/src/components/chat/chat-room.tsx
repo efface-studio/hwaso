@@ -237,7 +237,7 @@ export function ChatRoom({ roomId }: { roomId: string }) {
       .send(roomId, {
         ...input,
         ...(m.product ? { productId: m.product.id } : {}),
-        ...(m.image ? { imageKey: m.image.key } : {}),
+        ...(m.images.length ? { imageKeys: m.images.map((i) => i.key) } : {}),
       })
       .then((saved) => {
         upsert(saved);
@@ -252,13 +252,21 @@ export function ChatRoom({ roomId }: { roomId: string }) {
 
   const send = (input: Omit<SendMessageInput, 'clientId'>) => {
     const clientId = crypto.randomUUID();
+    // 올리는 중 자리 표시 (실제 크기는 서버 응답으로 바뀐다)
+    const images = (input.imageKeys ?? (input.imageKey ? [input.imageKey] : [])).map((key) => ({
+      key,
+      width: 1,
+      height: 1,
+      dominantColor: '#ddd',
+    }));
     const draft: PendingMessage = {
       id: clientId,
       roomId,
       senderId: me.id,
       kind: input.kind,
       body: input.body ?? null,
-      image: input.imageKey ? { key: input.imageKey, width: 1, height: 1, dominantColor: '#ddd' } : null,
+      image: images[0] ?? null,
+      images,
       product: input.productId && room.data?.product ? { ...room.data.product, id: input.productId } : null,
       appointment: input.appointment ?? null,
       system: null,

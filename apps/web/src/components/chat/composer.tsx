@@ -1,7 +1,7 @@
 'use client';
 
 import { ApiError } from '@shop/api-client';
-import { CHAT_MESSAGE_MAX, type SendMessageInput } from '@shop/shared';
+import { CHAT_IMAGES_MAX, CHAT_MESSAGE_MAX, type SendMessageInput } from '@shop/shared';
 import { CalendarClock, ImagePlus, Package, Plus, Send } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { DateTimeInput } from '@/components/ui/date-picker';
@@ -93,12 +93,17 @@ export function Composer({
     area.current?.focus();
   };
 
-  const upload = async (f: File | undefined) => {
-    if (!f) return;
+  /** 여러 장을 올려 한 메시지로 보낸다 (최대 CHAT_IMAGES_MAX) */
+  const upload = async (list: FileList | null) => {
+    const files = [...(list ?? [])];
+    if (!files.length) return;
+    if (files.length > CHAT_IMAGES_MAX) toast.show(`사진은 한 번에 ${CHAT_IMAGES_MAX}장까지 보낼 수 있어요.`);
     setUploading(true);
     try {
-      const img = await api.market.uploadImage(f, f.name);
-      onSend({ kind: 'IMAGE', imageKey: img.key });
+      const imgs = await Promise.all(
+        files.slice(0, CHAT_IMAGES_MAX).map((f) => api.market.uploadImage(f, f.name)),
+      );
+      onSend({ kind: 'IMAGE', imageKeys: imgs.map((i) => i.key) });
     } catch (e) {
       toast.error(e instanceof ApiError ? e.message : '사진을 올리지 못했습니다.');
     } finally {
@@ -175,9 +180,10 @@ export function Composer({
         ref={file}
         type="file"
         accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+        multiple
         className="hidden"
         onChange={(e) => {
-          void upload(e.target.files?.[0]);
+          void upload(e.target.files);
           e.target.value = '';
         }}
       />
