@@ -1,40 +1,32 @@
 # MOBILE NAVIGATION
 
-Expo (React Native) + React Navigation 7 (`@react-navigation/native-stack`, `@react-navigation/bottom-tabs`). 코드: `apps/mobile/src/navigation`.
+Expo SDK 57 + **Expo Router** (React Navigation 7 기반 파일 라우팅). 코드: `apps/mobile/src/app` (화면), `apps/mobile/src/{components,lib,stores,theme}` (그 외).
 
 ## 1. 구조
 
 ```
-RootStack (native-stack)
-├─ MainTabs (bottom-tabs)
-│  ├─ HomeTab      → HomeStack:    Home
-│  ├─ SearchTab    → SearchStack:  Search → SearchResults
-│  ├─ SellTab      → (탭 누르면 SellFlow 모달을 연다, 자체 화면 없음)
-│  ├─ AuctionTab   → AuctionStack: AuctionList
-│  └─ MyTab        → MyStack:      My → Purchases / Sales / Bids / Wins / Favorites / Recent / Following / Settings / Devices / SellerDashboard / SellerOrders
-├─ ProductDetail   {id}
-├─ AuctionLive     {id}
-├─ ArtistDetail    {id}
-├─ UserProfile     {id}
-├─ Category        {slug}
-├─ ChatList
-├─ ChatRoom        {roomId}
-├─ Notifications
-├─ OrderDetail     {id}
-├─ Checkout        {orderIds}
-├─ PaymentWebView  {…}            (PG 결제창)
-├─ SellFlow        (modal, native-stack 중첩) Photos → Basics → Price → Details(선택) → Review
-├─ AuthFlow        (modal) Login → SignupEmail → SignupCode → SignupPassword → SignupProfile · ForgotPassword
-└─ ImageViewer     {images, index} (fullScreenModal, 핀치 줌)
+src/app
+├─ _layout.tsx            Root Stack (테마·쿼리·로그인 복구·스플래시)
+├─ index.tsx              → /home 으로 이동
+├─ (tabs)/_layout.tsx     NativeTabs — iOS 26 Liquid Glass / Android Material 3 탭 바
+│  ├─ home/               Stack: 홈
+│  ├─ auctions/           Stack: 진행 중 경매
+│  ├─ sell/               Stack: 작품 등록
+│  ├─ chat/               Stack: 채팅 목록 (탭 배지 = 안 읽은 수)
+│  └─ my/                 Stack: 마이 · 설정(테마·시니어 모드)
+├─ products/[id].tsx      작품 상세
+├─ login.tsx              로그인 (modal)
+└─ +not-found.tsx
 ```
 
-- 탭: 홈 · 검색 · 판매 · 경매 · 마이 (lucide 아이콘 + 라벨, 높이 56 + safe-area).
-- 헤더 우측: 알림(배지), 채팅.
-- 로그인이 필요한 화면 진입 시 `AuthFlow` 모달을 띄우고 성공 후 원래 화면으로 복귀.
+- 탭 순서는 웹 하단 탭과 같다: 홈 · 경매 · 판매 · 채팅 · 마이 (검색은 홈 헤더).
+- 각 탭 안에 native Stack 을 두어 큰 제목(iOS large title)·뒤로 가기를 OS 기본 동작으로 쓴다.
+- 로그인이 필요한 화면은 `/login` 모달을 띄우고 성공하면 닫힌다.
+- 웹 미리보기(`pnpm --filter @shop/mobile web`)에서는 탭이 기본 구현으로 대체된다.
 
 ## 2. Deep Linking
 
-scheme `shop://`, universal link `https://shop.efface.dev`. (웹 경로와 동일하게 맞춘다)
+scheme `hwaso://`, universal link `https://hwaso.kr` (`APP_LINK_HOST`). 파일 경로가 곧 웹 경로와 같은 딥링크가 된다.
 
 | URL                        | 화면             |
 | -------------------------- | ---------------- |
