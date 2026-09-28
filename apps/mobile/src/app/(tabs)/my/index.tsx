@@ -1,4 +1,4 @@
-import { Link, router, type Href } from 'expo-router';
+import { router, type Href } from 'expo-router';
 import { Alert, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
@@ -61,33 +61,55 @@ export default function MyScreen() {
           <Button title="로그인" onPress={() => router.push('/login')} block style={{ marginTop: 12 }} />
         </View>
       )}
-      {user && (
-        <>
-          <Text variant="label" color="muted" style={styles.group}>
-            쇼핑
-          </Text>
-          {(
+      {user &&
+        (
+          [
             [
-              ['/orders', '구매 내역'],
-              ['/my/bids', '입찰·낙찰 내역'],
-              ['/cart', '장바구니'],
-              ['/my/favorites', '관심 작품'],
-              ['/my/recent', '최근 본 작품'],
-              ['/addresses', '배송지 관리'],
-              ['/notifications', '알림'],
-              ['/settings', '설정'],
-            ] as [Href, string][]
-          ).map(([href, label]) => (
-            <Link key={label} href={href} asChild>
-              <Pressable accessibilityRole="link">
+              '쇼핑',
+              [
+                ['/orders', '구매 내역'],
+                ['/my/bids', '입찰·낙찰 내역'],
+                ['/cart', '장바구니'],
+                ['/my/favorites', '관심 작품'],
+                ['/my/recent', '최근 본 작품'],
+              ],
+            ],
+            [
+              '커뮤니티',
+              [
+                ['/feed', '팔로잉 새 작품'],
+                [{ pathname: '/users/[id]/follows', params: { id: user.id, type: 'following' } }, '팔로잉'],
+                [{ pathname: '/users/[id]', params: { id: user.id } }, '내 프로필 · 받은 후기'],
+              ],
+            ],
+            [
+              '계정',
+              [
+                ['/notifications', '알림'],
+                ['/addresses', '배송지 관리'],
+                ['/settings', '설정'],
+              ],
+            ],
+          ] as [string, [Href, string][]][]
+        ).map(([group, rows]) => (
+          <View key={group}>
+            <Text variant="label" color="muted" style={styles.group}>
+              {group}
+            </Text>
+            {rows.map(([href, label]) => (
+              <Pressable key={label} accessibilityRole="link" onPress={() => router.push(href)}>
                 <Row label={label}>
                   <Text color="faint">›</Text>
                 </Row>
               </Pressable>
-            </Link>
-          ))}
-        </>
-      )}
+            ))}
+          </View>
+        ))}
+      <Pressable accessibilityRole="link" onPress={() => router.push('/support')}>
+        <Row label="고객센터 · 약관">
+          <Text color="faint">›</Text>
+        </Row>
+      </Pressable>
       <Text variant="label" color="muted" style={styles.group}>
         화면
       </Text>
