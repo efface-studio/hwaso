@@ -4,6 +4,7 @@ import { ApiError } from '@shop/api-client';
 import {
   CHAT_TRADE_STATUSES,
   chatPreview,
+  presenceLabel,
   formatPrice,
   PRODUCT_STATUS_LABEL,
   type ChatMessageDto,
@@ -30,6 +31,7 @@ import { Alert, Skeleton } from '@/components/ui/display';
 import { DropdownMenu } from '@/components/ui/menu';
 import { Select } from '@/components/ui/select';
 import { api } from '@/lib/api';
+import { cn } from '@/lib/cn';
 import { getRealtime } from '@/lib/realtime';
 import { CHAT_ROOMS_KEY, CHAT_UNREAD_KEY } from '@/lib/realtime-sync';
 import { useAuthStore } from '@/stores/auth';
@@ -112,7 +114,12 @@ export function ChatRoom({ roomId }: { roomId: string }) {
   const me = useAuthStore((s) => s.user)!;
   const roomKey = ['chat', 'room', roomId];
   const msgKey = ['chat', 'messages', roomId];
-  const room = useQuery({ queryKey: roomKey, queryFn: () => api.chat.room(roomId) });
+  // 접속 상태를 보여주려고 1분마다 다시 불러온다
+  const room = useQuery({
+    queryKey: roomKey,
+    queryFn: () => api.chat.room(roomId),
+    refetchInterval: 60_000,
+  });
   const msgs = useInfiniteQuery({
     queryKey: msgKey,
     queryFn: ({ pageParam }) => api.chat.messages(roomId, pageParam),
@@ -204,6 +211,13 @@ export function ChatRoom({ roomId }: { roomId: string }) {
     socket.on('connect', onReconnect);
     markRead();
     window.addEventListener('focus', markRead);
+    // 다른 탭으로 가면 방에서 나가 푸시를 받고, 돌아오면 다시 들어온다
+    const onVisibility = () => {
+      if (document.hidden) return void socket.emit('chat:leave', { roomId });
+      join();
+      markRead();
+    };
+    document.addEventListener('visibilitychange', onVisibility);
     return () => {
       socket.emit('chat:leave', { roomId });
       socket.off('CHAT_MESSAGE', onMessage);
@@ -212,6 +226,7 @@ export function ChatRoom({ roomId }: { roomId: string }) {
       socket.off('CHAT_TYPING', onTyping);
       socket.off('connect', onReconnect);
       window.removeEventListener('focus', markRead);
+      document.removeEventListener('visibilitychange', onVisibility);
       clearTimeout(typingTimer.current);
     };
   }, [roomId, me.id, qc, upsert, markDeleted, markRead]);
@@ -319,6 +334,7 @@ export function ChatRoom({ roomId }: { roomId: string }) {
     );
 
   const r = room.data;
+  const presence = presenceLabel(r.counterpart);
   const server = (msgs.data?.pages.flatMap((p) => p.items) ?? []) as PendingMessage[];
   const serverClientIds = new Set(server.map((m) => m.clientId));
   const items = [...pending.filter((p) => !serverClientIds.has(p.clientId)).reverse(), ...server];
@@ -339,7 +355,14 @@ export function ChatRoom({ roomId }: { roomId: string }) {
           className="flex min-w-0 flex-1 items-center gap-2 hover:underline"
         >
           <Avatar avatarKey={r.counterpart.avatarKey} name={r.counterpart.nickname} size="sm" />
-          <span className="truncate text-body-strong">{r.counterpart.nickname}</span>
+          <span className="flex min-w-0 flex-col">
+            <span className="truncate text-body-strong">{r.counterpart.nickname}</span>
+            {presence && (
+              <span className={cn('text-caption', r.counterpart.online ? 'text-primary' : 'text-faint')}>
+                {presence}
+              </span>
+            )}
+          </span>
         </Link>
         <DropdownMenu
           trigger={

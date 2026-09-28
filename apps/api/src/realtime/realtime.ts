@@ -17,6 +17,7 @@ import type { Namespace, ServerOptions, Socket } from 'socket.io';
 import { verifyAccessToken } from '../common/auth';
 import { env } from '../config/env';
 import { PrismaService } from '../prisma/prisma.service';
+import { PresenceService } from './presence';
 
 type EventName = keyof ServerToClientEvents;
 type Payload<E extends EventName> = Parameters<ServerToClientEvents[E]>[0];
@@ -98,7 +99,10 @@ export class RealtimeGateway implements OnGatewayConnection {
   @WebSocketServer() private readonly nsp!: Namespace<ClientToServerEvents, ServerToClientEvents>;
   private readonly watcherTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly presence: PresenceService,
+  ) {}
 
   /** 토큰이 없거나 틀려도 연결은 허용한다 (경매 관전). 로그인 사용자는 개인 룸에 들어간다 */
   async handleConnection(socket: RtSocket) {
@@ -107,9 +111,16 @@ export class RealtimeGateway implements OnGatewayConnection {
     if (user) {
       socket.data.userId = user.id;
       await socket.join(rooms.user(user.id));
+      await this.presence.connect(user.id, socket.id);
     }
     socket.on('disconnecting', () => {
       for (const room of socket.rooms) if (room.startsWith('auction:')) this.scheduleWatchers(room);
+      const userId = socket.data.userId;
+      if (!userId) return;
+      const chatRooms = [...socket.rooms].filter((r) => r.startsWith('chat:')).map((r) => r.slice(5));
+      void this.presence
+        .disconnect(userId, socket.id, chatRooms)
+        .catch((err: unknown) => this.logger.warn({ err }, 'presence disconnect failed'));
     });
   }
 
@@ -147,12 +158,16 @@ export class RealtimeGateway implements OnGatewayConnection {
       }));
     if (!member) return { ok: false, code: 'NOT_FOUND' };
     await socket.join(rooms.chat(roomId));
+    // 보고 있는 방에는 푸시를 보내지 않는다
+    await this.presence.enterRoom(roomId, userId, socket.id);
     return { ok: true, data: null };
   }
 
   @SubscribeMessage('chat:leave')
   async leaveChat(@ConnectedSocket() socket: RtSocket, @MessageBody() body: { roomId?: unknown }) {
-    if (typeof body?.roomId === 'string') await socket.leave(rooms.chat(body.roomId));
+    if (typeof body?.roomId !== 'string') return;
+    await socket.leave(rooms.chat(body.roomId));
+    if (socket.data.userId) await this.presence.leaveRoom(body.roomId, socket.data.userId, socket.id);
   }
 
   /** 입력 중: 입장한 방에만, 소켓당 방별 1초에 한 번 */
@@ -203,7 +218,7 @@ export class RealtimeGateway implements OnGatewayConnection {
 }
 
 @Global()
-@Module({ providers: [RealtimeService], exports: [RealtimeService] })
+@Module({ providers: [RealtimeService, PresenceService], exports: [RealtimeService, PresenceService] })
 export class RealtimeEmitterModule {}
 
 @Module({ providers: [RealtimeGateway], exports: [RealtimeGateway] })

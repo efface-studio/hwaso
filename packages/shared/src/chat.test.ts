@@ -3,6 +3,7 @@ import {
   chatPreview,
   filterChatRooms,
   looksLikeExternalTrade,
+  presenceLabel,
   sendMessageSchema,
   type ChatRoomDto,
   type ChatRoomFilter,
@@ -64,5 +65,15 @@ describe('filterChatRooms', () => {
     expect(ids('all', '항아리')).toEqual(['a', 'b']);
     expect(ids('buying', '수집')).toEqual(['c']);
     expect(ids('all', '없는말')).toEqual([]);
+  });
+});
+
+describe('presenceLabel', () => {
+  const now = new Date('2026-09-29T12:00:00Z');
+  it('접속 중 · N분 전 접속 · 기록 없음 · 탈퇴', () => {
+    expect(presenceLabel({ online: true, lastSeenAt: null }, now)).toBe('접속 중');
+    expect(presenceLabel({ online: false, lastSeenAt: '2026-09-29T11:55:00Z' }, now)).toBe('5분 전 접속');
+    expect(presenceLabel({ online: false, lastSeenAt: null }, now)).toBeNull();
+    expect(presenceLabel({ online: true, lastSeenAt: null, left: true }, now)).toBeNull();
   });
 });

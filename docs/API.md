@@ -253,20 +253,20 @@ NestJS REST API. Base URL `/api/v1`. 모든 요청/응답은 JSON (업로드 제
 
 연결: `io(API_ORIGIN + "/rt", { auth: { token } })`. 토큰 없이도 연결 가능 (경매 관전). 토큰이 유효하지 않으면 익명으로 취급한다.
 
-| 방향 | 이벤트                           | payload                                                                                                                 |
-| ---- | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| C→S  | `auction:join` / `auction:leave` | {auctionId} → ack {snapshot, serverTime}                                                                                |
-| C→S  | `chat:join`                      | {roomId} (참여자 검증)                                                                                                  |
-| C→S  | `time:sync`                      | ack {serverTime}                                                                                                        |
-| S→C  | `AUCTION_BID`                    | {auctionId, seq, bid:{id, amount, bidderMasked, createdAt}}                                                             |
-| S→C  | `AUCTION_PRICE_UPDATED`          | {auctionId, seq, currentPrice, minNextBid, bidCount, bidderCount, highestBidderId}                                      |
-| S→C  | `AUCTION_TIMER_UPDATED`          | {auctionId, seq, endsAt, serverTime}                                                                                    |
-| S→C  | `AUCTION_EXTENDED`               | {auctionId, seq, endsAt, extendedBySec}                                                                                 |
-| S→C  | `AUCTION_STARTED`                | {auctionId, seq, status}                                                                                                |
-| S→C  | `AUCTION_ENDED`                  | {auctionId, seq, result, winnerId, finalPrice}                                                                          |
-| S→C  | `CHAT_MESSAGE`                   | {roomId, message}                                                                                                       |
-| S→C  | `CHAT_READ`                      | {roomId, userId, lastReadAt}                                                                                            |
-| S→C  | `NOTIFICATION`                   | {notification, unreadCount} (room `user:{id}`) — 상위 입찰·종료 임박·낙찰/유찰·경매 시작(관심)·주문 상태·문의·가격 인하 |
-| S→C  | `ORDER_STATUS_UPDATED`           | {orderId, status} (room `user:{id}`)                                                                                    |
+| 방향 | 이벤트                           | payload                                                                                                                                                                                                         |
+| ---- | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| C→S  | `auction:join` / `auction:leave` | {auctionId} → ack {snapshot, serverTime}                                                                                                                                                                        |
+| C→S  | `chat:join`                      | {roomId} (참여자 검증) — 들어가 있는 동안은 "보고 있음"이라 그 방 새 메시지 푸시를 보내지 않는다 (앱 백그라운드·웹 탭 숨김이면 `chat:leave`). 로그인 소켓 접속·해제로 `counterpart.online`·`lastSeenAt` (Redis) |
+| C→S  | `time:sync`                      | ack {serverTime}                                                                                                                                                                                                |
+| S→C  | `AUCTION_BID`                    | {auctionId, seq, bid:{id, amount, bidderMasked, createdAt}}                                                                                                                                                     |
+| S→C  | `AUCTION_PRICE_UPDATED`          | {auctionId, seq, currentPrice, minNextBid, bidCount, bidderCount, highestBidderId}                                                                                                                              |
+| S→C  | `AUCTION_TIMER_UPDATED`          | {auctionId, seq, endsAt, serverTime}                                                                                                                                                                            |
+| S→C  | `AUCTION_EXTENDED`               | {auctionId, seq, endsAt, extendedBySec}                                                                                                                                                                         |
+| S→C  | `AUCTION_STARTED`                | {auctionId, seq, status}                                                                                                                                                                                        |
+| S→C  | `AUCTION_ENDED`                  | {auctionId, seq, result, winnerId, finalPrice}                                                                                                                                                                  |
+| S→C  | `CHAT_MESSAGE`                   | {roomId, message}                                                                                                                                                                                               |
+| S→C  | `CHAT_READ`                      | {roomId, userId, lastReadAt}                                                                                                                                                                                    |
+| S→C  | `NOTIFICATION`                   | {notification, unreadCount} (room `user:{id}`) — 상위 입찰·종료 임박·낙찰/유찰·경매 시작(관심)·주문 상태·문의·가격 인하                                                                                         |
+| S→C  | `ORDER_STATUS_UPDATED`           | {orderId, status} (room `user:{id}`)                                                                                                                                                                            |
 
 `seq` = `Auction.version`. 클라이언트는 `seq` 가 건너뛰면 `GET /auctions/:id` 로 재동기화한다. 재연결 시 룸 재가입 + 스냅샷 재조회는 항상 수행한다.
