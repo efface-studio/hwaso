@@ -1,5 +1,6 @@
 import { createTestApp, type TestContext } from './app';
 import { createCategory, createProduct, createUser, fakeUpload } from './fixtures';
+import { PresenceService } from '../src/realtime/presence';
 
 let t: TestContext;
 let seq = 0;
@@ -390,5 +391,46 @@ describe('pin (상단 고정)', () => {
     await t.http.patch(`/api/v1/chat/rooms/${older}`).set(buyer.auth).send({ pinned: false }).expect(200);
     expect((await order())[0]).toEqual([newer, false]);
     await t.http.patch(`/api/v1/chat/rooms/${older}`).set(buyer.auth).send({}).expect(400);
+  });
+});
+
+describe('presence (접속 상태·보고 있는 방)', () => {
+  const pushedTo = async (userId: string) => {
+    await new Promise((r) => setTimeout(r, 300));
+    return t.push.sent.some((p) => p.userId === userId);
+  };
+
+  it('대화방을 보고 있으면 푸시를 보내지 않고, 나가면 보낸다', async () => {
+    const presence = t.app.get(PresenceService);
+    const { seller, buyer, roomId } = await setup();
+    await presence.connect(seller.id, 's1');
+    await presence.enterRoom(roomId, seller.id, 's1');
+    await text(buyer, roomId, '보고 계세요?').expect(201);
+    expect(await pushedTo(seller.id)).toBe(false);
+
+    await presence.leaveRoom(roomId, seller.id, 's1');
+    await text(buyer, roomId, '이제는요?').expect(201);
+    expect(await pushedTo(seller.id)).toBe(true);
+  });
+
+  it('상대가 접속 중인지, 마지막 접속 시각을 알려준다', async () => {
+    const presence = t.app.get(PresenceService);
+    const { seller, buyer, roomId } = await setup();
+    const counterpart = async () =>
+      (await t.http.get(`/api/v1/chat/rooms/${roomId}`).set(buyer.auth).expect(200)).body.counterpart;
+    expect(await counterpart()).toMatchObject({ online: false, lastSeenAt: null });
+
+    await presence.connect(seller.id, 'a');
+    await presence.connect(seller.id, 'b');
+    expect(await counterpart()).toMatchObject({ online: true });
+    await presence.disconnect(seller.id, 'a', []);
+    expect(await counterpart()).toMatchObject({ online: true });
+    await presence.disconnect(seller.id, 'b', []);
+    const after = await counterpart();
+    expect(after.online).toBe(false);
+    expect(Date.now() - Date.parse(after.lastSeenAt)).toBeLessThan(5_000);
+
+    const list = await t.http.get('/api/v1/chat/rooms').set(buyer.auth).expect(200);
+    expect(list.body.find((r: { id: string }) => r.id === roomId).counterpart.online).toBe(false);
   });
 });
