@@ -51,3 +51,18 @@ test('상단 카테고리 시트에서 분류를 골라 이동한다', async ({ 
   await expect(page).toHaveURL(new RegExp(`${href}$`));
   await expect(sheet).toBeHidden();
 });
+
+test.describe('터치 폰', () => {
+  test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+
+  test('입력창 글자가 16px 이상이라 iOS 가 포커스 때 확대하지 않는다', async ({ page }) => {
+    for (const path of ['/login', '/search']) {
+      await page.goto(path);
+      const sizes = await page
+        .locator('input:visible, textarea:visible, select:visible')
+        .evaluateAll((els) => els.map((e) => parseFloat(getComputedStyle(e).fontSize)));
+      expect(sizes.length, path).toBeGreaterThan(0);
+      for (const s of sizes) expect(s, path).toBeGreaterThanOrEqual(16);
+    }
+  });
+});
