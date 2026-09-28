@@ -7,6 +7,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { ActionSheetHost } from '@/components/action-sheet-host';
 import { AppLock } from '@/components/app-lock';
 import { OfflineBanner } from '@/components/offline-banner';
 import { refreshAccessToken } from '@/lib/api';
@@ -119,6 +120,7 @@ export default function RootLayout() {
           <Navigation />
           <AppSync />
           <OfflineBanner />
+          <ActionSheetHost />
           <AppLock />
         </QueryClientProvider>
       </SafeAreaProvider>
