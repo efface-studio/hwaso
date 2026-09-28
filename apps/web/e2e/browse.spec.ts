@@ -17,9 +17,16 @@ test('검색 결과에서 작품을 찾는다', async ({ page }) => {
 });
 
 test('화면마다 고유한 제목을 가진다 (WCAG 2.4.2)', async ({ request }) => {
-  const titles = { '/login': '로그인', '/auctions': '경매', '/cart': '장바구니', '/my/bids': '입찰 내역' };
+  const titles = {
+    '/login': '로그인 | 화소',
+    '/auctions': '경매 | 화소',
+    '/cart': '장바구니 | 화소',
+    '/my/bids': '입찰 내역 | 화소',
+    '/admin': '관리자 대시보드 | 화소',
+    '/admin/orders': '주문 | 화소 관리자',
+  };
   for (const [path, title] of Object.entries(titles)) {
     const html = await (await request.get(path)).text();
-    expect(html, path).toContain(`<title>${title} | 화소</title>`);
+    expect(html, path).toContain(`<title>${title}</title>`);
   }
 });
