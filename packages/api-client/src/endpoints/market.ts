@@ -70,6 +70,8 @@ export const marketApi = (http: Http) => ({
   userProducts: (userId: string, tab: 'selling' | 'sold') =>
     http.get<ProductCardDto[]>(`/users/${id(userId)}/products`, { tab }),
 
+  /** React Native: FormData 에 { uri, name, type } 파일을 담아 보낸다 */
+  uploadImageForm: (form: FormData) => http.post<UploadedImage>('/media/images', form),
   uploadImage: (file: Blob, filename = 'image.jpg') => {
     const form = new FormData();
     form.append('file', file, filename);
