@@ -9,6 +9,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { RequireAuth } from '@/components/auth/require-auth';
 import { PROVIDER_LABEL, useAuthProviders } from '@/components/auth/social-buttons';
+import { SeniorSwitch } from '@/components/layout/senior-toggle';
 import { ThemeSelect } from '@/components/layout/theme-select';
 import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -473,6 +474,9 @@ function Settings() {
         <div className="flex items-center justify-between">
           <span className="text-body">테마</span>
           <ThemeSelect />
+        </div>
+        <div className="mt-5">
+          <SeniorSwitch />
         </div>
       </Section>
       <Section id="identity" title="본인인증">

@@ -207,7 +207,7 @@ export function AuctionLive({ initial }: { initial: AuctionSnapshot }) {
 
       {/* 모바일: 하단 고정 입찰 바 + 입찰 바텀시트 */}
       {a.status === 'LIVE' && (
-        <div className="fixed inset-x-0 bottom-[calc(56px+env(safe-area-inset-bottom))] z-30 flex items-center gap-3 border-t border-border bg-background px-4 py-2 md:hidden">
+        <div className="fixed inset-x-0 bottom-[calc(var(--tabbar-h)+env(safe-area-inset-bottom))] z-30 flex items-center gap-3 border-t border-border bg-background px-4 py-2 md:hidden">
           <div className="min-w-0 flex-1">
             <p className="text-caption text-muted">최소 입찰가</p>
             <p className="tabular text-price">{formatPrice(a.minNextBid)}</p>

@@ -7,6 +7,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { refreshAccessToken } from '@/lib/api';
 import { RealtimeSync } from '@/lib/realtime-sync';
 import { useAuthStore } from '@/stores/auth';
+import { useSeniorStore } from '@/stores/senior';
 import { useThemeStore } from '@/stores/theme';
 
 function makeQueryClient() {
@@ -34,7 +35,10 @@ function AuthBootstrap() {
 
 export function Providers({ children }: { children: ReactNode }) {
   const [client] = useState(makeQueryClient);
-  useEffect(() => useThemeStore.getState().hydrate(), []);
+  useEffect(() => {
+    useThemeStore.getState().hydrate();
+    useSeniorStore.getState().hydrate();
+  }, []);
   return (
     <QueryClientProvider client={client}>
       <AuthBootstrap />

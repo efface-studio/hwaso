@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { BrandBanner } from '@/components/brand/brand-banner';
+import { SeniorQuickToggle } from './senior-toggle';
 import { ThemeSelect } from './theme-select';
 
 // 전자상거래법 표시 사항. 실제 사업자 정보가 나오면 여기 값만 바꾼다 (현재는 임시 값)
@@ -60,7 +61,10 @@ export function Footer() {
                 </Link>
               ))}
             </nav>
-            <ThemeSelect />
+            <div className="flex flex-wrap items-center gap-2">
+              <SeniorQuickToggle />
+              <ThemeSelect />
+            </div>
           </div>
         </div>
 

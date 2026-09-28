@@ -4,6 +4,52 @@
 
 @custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
 
+/* 모바일 하단 탭 높이 — 고정 바·토스트가 이 값 위에 뜬다 */
+:root {
+  --tabbar-h: 56px;
+}
+:root[data-senior] {
+  --tabbar-h: 68px;
+}
+
+/* 시니어 모드: 글자·색은 tokens.css, 여기서는 컨트롤 크기·움직임·보조 표시 */
+:root[data-senior] [data-slot='button'] {
+  min-height: 52px;
+}
+:root[data-senior] [data-slot='button'][data-size='sm'] {
+  min-height: 44px;
+}
+/* 여백·글자는 :where 로 낮은 우선순위 — 아이콘 버튼(px-0 등)에 직접 준 클래스가 이긴다 */
+:where(:root[data-senior] [data-slot='button']) {
+  padding-inline: 20px;
+  font-size: var(--text-body-strong);
+}
+:where(:root[data-senior] [data-slot='button'][data-size='sm']) {
+  padding-inline: 14px;
+  font-size: var(--text-label);
+}
+:root[data-senior] :is(input:not([type='checkbox'], [type='radio']), select, textarea, [role='combobox']) {
+  min-height: 52px;
+  font-size: var(--text-body);
+}
+:root[data-senior] *,
+:root[data-senior] ::before,
+:root[data-senior] ::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+:root[data-senior] nav[aria-label='주요 메뉴'] a {
+  font-size: var(--text-small);
+}
+:root[data-senior] .senior-hide {
+  display: none !important;
+}
+:root:not([data-senior]) .senior-only {
+  display: none !important;
+}
+
 @layer base {
   html {
     -webkit-text-size-adjust: 100%;

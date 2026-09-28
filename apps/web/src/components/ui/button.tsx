@@ -34,6 +34,8 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
   return (
     <Comp
       ref={ref}
+      data-slot="button"
+      data-size={size}
       className={cn(
         'inline-flex shrink-0 select-none items-center justify-center gap-2 rounded-sm font-semibold whitespace-nowrap transition-colors disabled:pointer-events-none disabled:opacity-40',
         variants[variant],

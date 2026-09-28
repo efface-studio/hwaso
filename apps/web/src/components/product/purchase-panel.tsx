@@ -218,7 +218,7 @@ export function PurchasePanel({ product: p }: { product: ProductDetailDto }) {
       {reporting && <ReportDialog open onOpenChange={setReporting} targetType="PRODUCT" targetId={p.id} />}
 
       {/* 모바일 하단 고정 CTA 바 (탭 바 위) */}
-      <div className="fixed inset-x-0 bottom-[calc(56px+env(safe-area-inset-bottom))] z-30 flex items-center gap-2 border-t border-border bg-background px-4 py-2 md:hidden">
+      <div className="fixed inset-x-0 bottom-[calc(var(--tabbar-h)+env(safe-area-inset-bottom))] z-30 flex items-center gap-2 border-t border-border bg-background px-4 py-2 md:hidden">
         <FavoriteButton productId={p.id} initial={p.isFavorite} count={p.favoriteCount} variant="plain" />
         <button
           type="button"
@@ -228,15 +228,7 @@ export function PurchasePanel({ product: p }: { product: ProductDetailDto }) {
         >
           <Share2 className="size-5" aria-hidden />
         </button>
-        {!p.isMine && (
-          <StartChatButton
-            productId={p.id}
-            label=""
-            aria-label="판매자와 채팅"
-            variant="ghost"
-            className="size-11 px-0"
-          />
-        )}
+        {!p.isMine && <StartChatButton productId={p.id} label="" aria-label="판매자와 채팅" />}
         <div className="flex-1">
           <Cta p={p} compact />
         </div>

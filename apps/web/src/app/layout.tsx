@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
 import { env } from '@/lib/env';
+import { seniorInitScript } from '@/stores/senior';
 import { themeInitScript } from '@/stores/theme';
 import './globals.css';
 import { Providers } from './providers';
@@ -28,7 +29,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="ko" suppressHydrationWarning>
       <head>
         {/* 저장된 테마를 첫 페인트 전에 적용 (깜빡임 방지) */}
-        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript + seniorInitScript }} />
       </head>
       <body>
         <Providers>{children}</Providers>

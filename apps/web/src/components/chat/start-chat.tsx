@@ -30,6 +30,19 @@ export function StartChatButton({
       setBusy(false);
     }
   };
+  // 라벨 없는 아이콘 버튼 (모바일 하단 바)
+  if (!label)
+    return (
+      <button
+        type="button"
+        aria-label={props['aria-label'] ?? '채팅하기'}
+        disabled={busy}
+        onClick={() => void start()}
+        className="inline-flex size-11 shrink-0 items-center justify-center rounded-sm disabled:opacity-40"
+      >
+        <MessageCircle className="size-5" aria-hidden />
+      </button>
+    );
   return (
     <Button variant="outline" loading={busy} onClick={() => void start()} {...props}>
       <MessageCircle className="size-4" aria-hidden />

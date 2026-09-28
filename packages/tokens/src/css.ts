@@ -1,4 +1,14 @@
-import { layout, motion, palette, radius, shadow, typography, type ColorScheme } from './index';
+import {
+  layout,
+  motion,
+  palette,
+  radius,
+  senior,
+  seniorTypography,
+  shadow,
+  typography,
+  type ColorScheme,
+} from './index';
 
 /** 색: surface2 → surface-2 */
 const kebab = (s: string) => s.replace(/([a-z])([A-Z0-9])/g, '$1-$2').toLowerCase();
@@ -48,6 +58,17 @@ export function buildCss(): string {
       return `    --text-${kebabType(k)}: ${m.size}px;\n    --text-${kebabType(k)}--line-height: ${m.lineHeight}px;`;
     })
     .join('\n');
+
+  const seniorVars = (mobile: boolean) =>
+    Object.entries(seniorTypography)
+      .filter(([, t]) => !mobile || t.mobile)
+      .map(([k, t]) => {
+        const v = mobile ? t.mobile! : t;
+        return `    --text-${kebabType(k)}: ${v.size}px;\n    --text-${kebabType(k)}--line-height: ${v.lineHeight}px;`;
+      })
+      .join('\n');
+  const seniorColors = (mode: 'light' | 'dark') =>
+    `    --muted: ${senior.colors[mode].muted};\n    --faint: ${senior.colors[mode].faint};`;
 
   return `/* 자동 생성 파일 — packages/tokens/src 를 수정한 뒤 \`pnpm --filter @shop/tokens build:css\` 를 실행하세요. */
 
@@ -103,6 +124,25 @@ ${radii}
 @media (max-width: ${layout.breakpoints.tablet - 1}px) {
   :root {
 ${mobileText}
+  }
+}
+
+/* 시니어 모드 (html[data-senior]) */
+:root[data-senior] {
+${seniorVars(false)}
+${seniorColors('light')}
+}
+:root[data-senior][data-theme='dark'] {
+${seniorColors('dark')}
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-senior]:not([data-theme='light']) {
+${seniorColors('dark')}
+  }
+}
+@media (max-width: ${layout.breakpoints.tablet - 1}px) {
+  :root[data-senior] {
+${seniorVars(true)}
   }
 }
 `;

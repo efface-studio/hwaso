@@ -100,6 +100,37 @@ export const typography = {
 
 export type TypographyToken = keyof typeof typography;
 
+/**
+ * 시니어 모드 글자 크기 (웹·앱 공통). 본문 18px 이상, 줄 간격 넉넉하게.
+ * 굵기·자간은 기본 토큰을 그대로 쓴다.
+ */
+export const seniorTypography: Record<
+  TypographyToken,
+  { size: number; lineHeight: number; mobile?: { size: number; lineHeight: number } }
+> = {
+  display: { size: 44, lineHeight: 52, mobile: { size: 34, lineHeight: 42 } },
+  h1: { size: 32, lineHeight: 40, mobile: { size: 27, lineHeight: 35 } },
+  h2: { size: 24, lineHeight: 32 },
+  h3: { size: 21, lineHeight: 29 },
+  body: { size: 18, lineHeight: 28 },
+  bodyStrong: { size: 18, lineHeight: 28 },
+  small: { size: 16, lineHeight: 24 },
+  caption: { size: 15, lineHeight: 22 },
+  label: { size: 16, lineHeight: 22 },
+  price: { size: 20, lineHeight: 28 },
+  priceLg: { size: 30, lineHeight: 38 },
+};
+
+/** 시니어 모드: 흐린 글자를 더 진하게 (대비 7:1 이상), 터치 영역 56px */
+export const senior = {
+  colors: {
+    light: { muted: '#3D3D3D', faint: '#5C5C5C' },
+    dark: { muted: '#D2D2D8', faint: '#A8A8B1' },
+  },
+  touchTarget: 56,
+  controlHeight: 52,
+} as const;
+
 export const spacing = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, '2xl': 32, '3xl': 48, '4xl': 64 } as const;
 
 export const radius = { none: 0, sm: 4, md: 6, lg: 10, full: 9999 } as const;
