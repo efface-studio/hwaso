@@ -2,7 +2,8 @@
  * 유니버설 링크(iOS)·앱 링크(Android) 검증 파일. 웹 주소를 누르면 설치된 앱의 같은 화면이 열린다.
  * 팀 ID·서명 지문이 설정되지 않으면 파일을 내지 않는다 (앱 출시 전에는 웹만 열린다).
  */
-type Env = Partial<Record<'APPLE_TEAM_ID' | 'ANDROID_CERT_SHA256' | 'APP_BUNDLE_ID', string>>;
+// process.env 를 그대로 받는다 (필요한 키: APPLE_TEAM_ID · ANDROID_CERT_SHA256 · APP_BUNDLE_ID)
+type Env = Record<string, string | undefined>;
 
 const DEFAULT_BUNDLE_ID = 'dev.efface.hwaso';
 
