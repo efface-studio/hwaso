@@ -1,31 +1,22 @@
 import { ApiError } from '@shop/api-client';
-import { router } from 'expo-router';
+import { Link, router } from 'expo-router';
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { SocialButtons } from '@/components/auth/social-buttons';
 import { Button } from '@/components/ui/button';
+import { Field } from '@/components/ui/field';
 import { Text } from '@/components/ui/text';
 import { api } from '@/lib/api';
 import { appDevice } from '@/lib/device';
 import { useAuthStore } from '@/stores/auth';
 import { useTheme } from '@/theme';
 
-/** 이메일 로그인 (회원가입·소셜 로그인은 인증 화면 PR 에서) */
 export default function LoginScreen() {
   const t = useTheme();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const input = [
-    styles.input,
-    t.type('body'),
-    {
-      color: t.colors.foreground,
-      borderColor: t.colors.borderStrong,
-      minHeight: t.controlHeight,
-      borderRadius: t.radius.sm,
-    },
-  ];
 
   const submit = async () => {
     setBusy(true);
@@ -49,36 +40,26 @@ export default function LoginScreen() {
       <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
         <Text variant="h2">화소에 오신 걸 환영해요</Text>
         <Text color="muted">작품을 저장하고, 입찰하고, 판매해 보세요.</Text>
-        <View style={{ gap: 12, marginTop: 24 }}>
-          <TextInput
-            accessibilityLabel="이메일"
-            placeholder="이메일"
-            placeholderTextColor={t.colors.faint}
+        <View style={{ gap: 14, marginTop: 20 }}>
+          <Field
+            label="이메일"
             autoCapitalize="none"
             autoComplete="email"
             keyboardType="email-address"
             textContentType="username"
             value={email}
             onChangeText={setEmail}
-            style={input}
           />
-          <TextInput
-            accessibilityLabel="비밀번호"
-            placeholder="비밀번호"
-            placeholderTextColor={t.colors.faint}
+          <Field
+            label="비밀번호"
             secureTextEntry
             autoComplete="current-password"
             textContentType="password"
             value={password}
             onChangeText={setPassword}
             onSubmitEditing={() => void submit()}
-            style={input}
+            error={error}
           />
-          {error && (
-            <Text variant="small" color="destructive" accessibilityRole="alert">
-              {error}
-            </Text>
-          )}
           <Button
             title="로그인"
             size="lg"
@@ -87,13 +68,29 @@ export default function LoginScreen() {
             disabled={!email || !password}
             onPress={() => void submit()}
           />
+          <View style={styles.links}>
+            <Link href="/forgot-password" replace>
+              <Text variant="small" color="muted">
+                비밀번호 찾기
+              </Text>
+            </Link>
+            <Link href="/signup" replace>
+              <Text variant="small" color="primary">
+                이메일로 가입하기
+              </Text>
+            </Link>
+          </View>
         </View>
+        <Text variant="caption" color="muted" style={{ textAlign: 'center', marginVertical: 20 }}>
+          간편 로그인
+        </Text>
+        <SocialButtons onDone={() => router.back()} />
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  body: { padding: 20, gap: 4 },
-  input: { borderWidth: StyleSheet.hairlineWidth * 2, paddingHorizontal: 14 },
+  body: { padding: 20, gap: 4, paddingBottom: 40 },
+  links: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 },
 });

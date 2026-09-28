@@ -47,6 +47,9 @@ function Navigation() {
       <Stack screenOptions={{ headerBackButtonDisplayMode: 'minimal', headerTitleStyle: t.type('h3') }}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="login" options={{ presentation: 'modal', title: '로그인' }} />
+        <Stack.Screen name="signup" options={{ presentation: 'modal', title: '회원가입' }} />
+        <Stack.Screen name="forgot-password" options={{ presentation: 'modal', title: '비밀번호 찾기' }} />
+        <Stack.Screen name="auth/callback" options={{ headerShown: false }} />
         <Stack.Screen name="products/[id]/index" options={{ title: '' }} />
         <Stack.Screen
           name="products/[id]/viewer"
