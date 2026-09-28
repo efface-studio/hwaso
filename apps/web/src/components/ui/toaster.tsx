@@ -17,7 +17,7 @@ export function Toaster() {
           key={t.id}
           role={t.tone === 'destructive' ? 'alert' : 'status'}
           className={cn(
-            'pointer-events-auto flex w-full max-w-sm items-center justify-between gap-3 rounded-md px-4 py-3 text-body shadow-md',
+            'pointer-events-auto flex w-full max-w-sm animate-toast-in items-center justify-between gap-3 rounded-md px-4 py-3 text-body shadow-md',
             t.tone === 'destructive' ? 'bg-destructive text-white' : 'bg-secondary text-secondary-foreground',
           )}
         >
