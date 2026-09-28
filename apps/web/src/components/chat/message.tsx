@@ -75,6 +75,21 @@ function Body({ m, mine }: { m: PendingMessage; mine: boolean }) {
   return <p className={cn('text-body break-words whitespace-pre-wrap', mine && 'text-left')}>{m.body}</p>;
 }
 
+/** 거래 안내(판매자 상태 변경·주문 진행): 가운데 한 줄, 주문이 있으면 바로가기 */
+function SystemLine({ m }: { m: PendingMessage }) {
+  const orderId = m.system?.orderId;
+  return (
+    <p className="mx-auto flex max-w-[90%] flex-wrap items-center justify-center gap-x-2 rounded-full bg-surface-2 px-3.5 py-1.5 text-center text-caption text-muted">
+      <span>{m.body}</span>
+      {orderId && (
+        <Link href={`/orders/${orderId}`} className="font-semibold text-foreground hover:underline">
+          주문 보기
+        </Link>
+      )}
+    </p>
+  );
+}
+
 /** 말풍선: 내 메시지 오른쪽, 사진·작품·약속은 카드. 외부 거래 유도 문구에는 안전 안내를 붙인다 */
 export function MessageBubble({
   m,
@@ -93,6 +108,7 @@ export function MessageBubble({
   onReport: () => void;
   onRetry: () => void;
 }) {
+  if (m.kind === 'SYSTEM') return <SystemLine m={m} />;
   const card = m.kind !== 'TEXT' && !m.deleted;
   return (
     <div className={cn('group flex flex-col gap-1', mine ? 'items-end' : 'items-start')}>

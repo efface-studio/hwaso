@@ -2,7 +2,9 @@
 
 import { ApiError } from '@shop/api-client';
 import {
+  CHAT_TRADE_STATUSES,
   formatPrice,
+  PRODUCT_STATUS_LABEL,
   type ChatMessageDto,
   type ChatRoomDto,
   type Page,
@@ -25,6 +27,7 @@ import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Alert, Skeleton } from '@/components/ui/display';
 import { DropdownMenu } from '@/components/ui/menu';
+import { Select } from '@/components/ui/select';
 import { api } from '@/lib/api';
 import { getRealtime } from '@/lib/realtime';
 import { CHAT_ROOMS_KEY, CHAT_UNREAD_KEY } from '@/lib/realtime-sync';
@@ -42,6 +45,7 @@ function ProductBar({ room }: { room: ChatRoomDto }) {
   const p = room.product;
   if (!p) return null;
   const buyable = room.role === 'buyer' && p.status === 'ACTIVE' && p.saleType !== 'AUCTION';
+  const tradable = p.saleType !== 'AUCTION' && (CHAT_TRADE_STATUSES as readonly string[]).includes(p.status);
   return (
     <div className="flex items-center gap-3 border-b border-border px-4 py-2.5">
       <Link
@@ -69,12 +73,35 @@ function ProductBar({ room }: { room: ChatRoomDto }) {
           <Link href={`/checkout?productId=${p.id}`}>구매하기</Link>
         </Button>
       )}
-      {room.role === 'seller' && (
+      {room.role === 'seller' && tradable && <TradeStatus room={room} status={p.status as TradeStatus} />}
+      {room.role === 'seller' && !tradable && (
         <Button asChild size="sm" variant="outline">
           <Link href={`/sell/${p.id}/edit`}>작품 관리</Link>
         </Button>
       )}
     </div>
+  );
+}
+
+type TradeStatus = (typeof CHAT_TRADE_STATUSES)[number];
+
+/** 판매자: 채팅에서 거래 상태 변경 — 바꾸면 방에 안내가 남는다 */
+function TradeStatus({ room, status }: { room: ChatRoomDto; status: TradeStatus }) {
+  const qc = useQueryClient();
+  const change = useMutation({
+    mutationFn: (s: TradeStatus) => api.chat.trade(room.id, s),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['chat', 'room', room.id] }),
+    onError: (e) => toast.error(errMsg(e)),
+  });
+  return (
+    <Select
+      size="sm"
+      aria-label="거래 상태"
+      className="w-28 shrink-0"
+      value={status}
+      onValueChange={(s) => s !== status && change.mutate(s)}
+      options={CHAT_TRADE_STATUSES.map((s) => ({ value: s, label: PRODUCT_STATUS_LABEL[s] }))}
+    />
   );
 }
 
@@ -141,6 +168,8 @@ export function ChatRoom({ roomId }: { roomId: string }) {
       if (p.roomId !== roomId) return;
       upsert(p.message);
       setPending((ps) => ps.filter((x) => x.clientId !== p.message.clientId));
+      // 거래 상태 안내가 오면 상품 바(상태)를 새로 불러온다
+      if (p.message.kind === 'SYSTEM') void qc.invalidateQueries({ queryKey: ['chat', 'room', roomId] });
       if (p.message.senderId !== me.id) {
         setTyping(false);
         markRead();
@@ -232,6 +261,7 @@ export function ChatRoom({ roomId }: { roomId: string }) {
       image: input.imageKey ? { key: input.imageKey, width: 1, height: 1, dominantColor: '#ddd' } : null,
       product: input.productId && room.data?.product ? { ...room.data.product, id: input.productId } : null,
       appointment: input.appointment ?? null,
+      system: null,
       warning: false,
       clientId,
       deleted: false,
