@@ -41,7 +41,7 @@ function Bridge() {
       setError('잘못된 결제 요청이에요. 앱에서 다시 시도해주세요.');
       return;
     }
-    const done = `${window.location.origin}/app-bridge/pay/done?${new URLSearchParams({ return: ret })}`;
+    const done = `${window.location.origin}/app-bridge/done?${new URLSearchParams({ return: ret })}`;
     startPayment(req, { successUrl: done, failUrl: done }).catch((e: unknown) => {
       const code = isUserCancel(e) ? 'USER_CANCEL' : ((e as { code?: string }).code ?? 'PAY_ERROR');
       window.location.replace(withParams(ret, { code, message: (e as Error).message ?? '' }));
