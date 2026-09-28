@@ -7,6 +7,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { AppLock } from '@/components/app-lock';
 import { refreshAccessToken } from '@/lib/api';
 import { AppSync } from '@/lib/realtime-sync';
 import { useAuthStore } from '@/stores/auth';
@@ -75,6 +76,16 @@ function Navigation() {
         <Stack.Screen name="seller/register" options={{ title: '판매자 등록' }} />
         <Stack.Screen name="seller/products" options={{ title: '내 작품' }} />
         <Stack.Screen name="seller/settlements" options={{ title: '정산' }} />
+        <Stack.Screen name="settings/index" options={{ title: '설정' }} />
+        <Stack.Screen name="settings/profile" options={{ title: '프로필' }} />
+        <Stack.Screen name="settings/password" options={{ title: '비밀번호' }} />
+        <Stack.Screen name="settings/identity" options={{ title: '본인인증' }} />
+        <Stack.Screen name="settings/social" options={{ title: '연결된 소셜 계정' }} />
+        <Stack.Screen name="settings/devices" options={{ title: '로그인 기기' }} />
+        <Stack.Screen name="settings/notifications" options={{ title: '알림 설정' }} />
+        <Stack.Screen name="settings/blocks" options={{ title: '차단한 사용자' }} />
+        <Stack.Screen name="settings/reports" options={{ title: '신고 내역' }} />
+        <Stack.Screen name="settings/delete" options={{ title: '회원 탈퇴' }} />
       </Stack>
     </ThemeProvider>
   );
@@ -100,6 +111,7 @@ export default function RootLayout() {
         <QueryClientProvider client={client}>
           <Navigation />
           <AppSync />
+          <AppLock />
         </QueryClientProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
