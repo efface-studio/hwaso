@@ -18,7 +18,7 @@ export class OAuthCancelled extends Error {}
  * 카카오·네이버·구글(·Android Apple): 인앱 브라우저로 로그인 → API 가 code 를 앱 딥링크로 중계 → 앱이 교환.
  * PKCE·state 는 서버가 보관·검증한다.
  */
-export async function socialLogin(provider: AuthProvider): Promise<AuthTokens & { isNewUser: boolean }> {
+async function authorizeInBrowser(provider: AuthProvider) {
   const appRedirect = Linking.createURL('auth/callback');
   const { url } = await api.auth.oauthUrl(provider, { appRedirect });
   const result = await WebBrowser.openAuthSessionAsync(url, appRedirect);
@@ -28,14 +28,19 @@ export async function socialLogin(provider: AuthProvider): Promise<AuthTokens & 
   const code = params.get('code');
   const state = params.get('state');
   if (error || !code || !state) throw new Error(error || '로그인이 취소되었어요.');
-  const tokens = await api.auth.oauthCallback(provider, {
-    code,
-    state,
-    redirectUri: relayUri(provider),
-    device: appDevice(),
-  });
+  return { code, state, redirectUri: relayUri(provider) };
+}
+
+export async function socialLogin(provider: AuthProvider): Promise<AuthTokens & { isNewUser: boolean }> {
+  const grant = await authorizeInBrowser(provider);
+  const tokens = await api.auth.oauthCallback(provider, { ...grant, device: appDevice() });
   await useAuthStore.getState().setSession(tokens);
   return tokens;
+}
+
+/** 로그인한 계정에 소셜 계정 연결 (설정 › 연결된 소셜 계정) */
+export async function linkSocial(provider: AuthProvider): Promise<void> {
+  await api.auth.linkSocial(provider, await authorizeInBrowser(provider));
 }
 
 /** iOS: 시스템 Sign in with Apple — identityToken 을 서버가 Apple 공개키로 검증 */
