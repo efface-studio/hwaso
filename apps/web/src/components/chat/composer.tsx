@@ -4,6 +4,7 @@ import { ApiError } from '@shop/api-client';
 import { CHAT_MESSAGE_MAX, type SendMessageInput } from '@shop/shared';
 import { CalendarClock, ImagePlus, Package, Plus, Send } from 'lucide-react';
 import { useRef, useState } from 'react';
+import { DateTimeInput } from '@/components/ui/date-picker';
 import { Button } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
 import { Field, Input } from '@/components/ui/field';
@@ -50,15 +51,7 @@ function AppointmentDialog({
     >
       <div className="flex flex-col gap-4">
         <Field label="날짜와 시간" required>
-          {(p) => (
-            <Input
-              {...p}
-              type="datetime-local"
-              value={at}
-              min={localNow(0)}
-              onChange={(e) => setAt(e.target.value)}
-            />
-          )}
+          {(p) => <DateTimeInput {...p} value={at} min={localNow(0)} onChange={(v) => setAt(v)} />}
         </Field>
         <Field label="장소" required>
           {(p) => (

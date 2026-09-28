@@ -1,8 +1,9 @@
 'use client';
 
 import { formatPrice, suggestIncrement } from '@shop/shared';
+import { DateTimeInput } from '@/components/ui/date-picker';
 import { Switch } from '@/components/ui/choice';
-import { Field, Input, PriceInput, Textarea } from '@/components/ui/field';
+import { Field, PriceInput, Textarea } from '@/components/ui/field';
 
 // 폼 상태·변환은 앱과 함께 쓴다 (@shop/shared/sell)
 import type { AuctionDraft } from '@shop/shared';
@@ -50,24 +51,10 @@ export function AuctionFields({
       </Field>
       <div className="grid gap-4 md:grid-cols-2">
         <Field label="시작" required error={errors.startsAt}>
-          {(p) => (
-            <Input
-              {...p}
-              type="datetime-local"
-              value={a.startsAt}
-              onChange={(e) => set({ startsAt: e.target.value })}
-            />
-          )}
+          {(p) => <DateTimeInput {...p} value={a.startsAt} onChange={(v) => set({ startsAt: v })} />}
         </Field>
         <Field label="종료" required error={errors.endsAt}>
-          {(p) => (
-            <Input
-              {...p}
-              type="datetime-local"
-              value={a.endsAt}
-              onChange={(e) => set({ endsAt: e.target.value })}
-            />
-          )}
+          {(p) => <DateTimeInput {...p} value={a.endsAt} onChange={(v) => set({ endsAt: v })} />}
         </Field>
       </div>
       <Switch

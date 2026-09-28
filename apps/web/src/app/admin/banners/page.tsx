@@ -7,6 +7,7 @@ import { Plus } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { dt, useAdminAction } from '@/components/admin/admin-list';
 import { AdminPage } from '@/components/admin/admin-shell';
+import { DateTimeInput } from '@/components/ui/date-picker';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/choice';
 import { Badge, Skeleton } from '@/components/ui/display';
@@ -134,21 +135,19 @@ function Form({ initial, onClose }: { initial: AdminBannerRow | null; onClose: (
           </Field>
           <Field label="시작" error={errors.startsAt}>
             {(p) => (
-              <Input
+              <DateTimeInput
                 {...p}
-                type="datetime-local"
                 value={local(b.startsAt)}
-                onChange={(e) => set({ startsAt: new Date(e.target.value).toISOString() })}
+                onChange={(v) => v && set({ startsAt: new Date(v).toISOString() })}
               />
             )}
           </Field>
           <Field label="종료" error={errors.endsAt}>
             {(p) => (
-              <Input
+              <DateTimeInput
                 {...p}
-                type="datetime-local"
                 value={local(b.endsAt)}
-                onChange={(e) => set({ endsAt: new Date(e.target.value).toISOString() })}
+                onChange={(v) => v && set({ endsAt: new Date(v).toISOString() })}
               />
             )}
           </Field>
