@@ -19,10 +19,12 @@ import { Gallery } from '@/components/product/gallery';
 import { Inquiries } from '@/components/product/inquiries';
 import { Avatar } from '@/components/ui/avatar';
 import { Empty, Loading } from '@/components/ui/state';
+import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { actionSheet } from '@/lib/action-sheet';
 import { api } from '@/lib/api';
 import { env } from '@/lib/env';
+import { selectionHaptic } from '@/lib/haptics';
 import { useAuthStore } from '@/stores/auth';
 import { useTheme } from '@/theme';
 
@@ -175,12 +177,17 @@ function BottomBar({ p }: { p: ProductDetailDto }) {
         accessibilityRole="button"
         accessibilityState={{ selected: fav.on }}
         accessibilityLabel={fav.on ? '관심 해제' : '관심 작품에 추가'}
-        onPress={() => void toggle()}
+        onPress={() => {
+          selectionHaptic();
+          void toggle();
+        }}
         style={[styles.icon, { minHeight: t.touch, minWidth: t.touch }]}
       >
-        <Text variant="h3" color={fav.on ? 'destructive' : 'foreground'}>
-          {fav.on ? '♥' : '♡'}
-        </Text>
+        <Icon
+          ios={fav.on ? 'heart.fill' : 'heart'}
+          android="favorite"
+          color={fav.on ? 'destructive' : 'foreground'}
+        />
         <Text variant="caption" color="muted">
           {fav.count}
         </Text>
@@ -193,7 +200,7 @@ function BottomBar({ p }: { p: ProductDetailDto }) {
         }
         style={[styles.icon, { minHeight: t.touch, minWidth: t.touch }]}
       >
-        <Text variant="bodyStrong">공유</Text>
+        <Icon ios="square.and.arrow.up" android="share" />
       </Pressable>
       {!p.isMine && p.status !== 'SOLD' && (
         <Pressable
@@ -268,7 +275,7 @@ export default function ProductScreen() {
                 ])
               }
             >
-              <Text variant="h3">⋯</Text>
+              <Icon ios="ellipsis.circle" android="more_horiz" />
             </Pressable>
           ),
         }}

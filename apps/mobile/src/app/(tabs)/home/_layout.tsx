@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { router, Stack } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
+import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
@@ -24,7 +25,7 @@ function HeaderActions() {
         onPress={() => router.push('/search')}
         hitSlop={10}
       >
-        <Text variant="bodyStrong">검색</Text>
+        <Icon ios="magnifyingglass" android="search" />
       </Pressable>
       <Pressable
         accessibilityRole="button"
@@ -32,7 +33,7 @@ function HeaderActions() {
         onPress={() => router.push(signedIn ? '/notifications' : '/login')}
         hitSlop={10}
       >
-        <Text variant="bodyStrong">알림</Text>
+        <Icon ios="bell" android="notifications" />
         {unread > 0 && (
           <View style={[styles.badge, { backgroundColor: t.colors.destructive }]}>
             <Text variant="caption" style={{ color: '#fff', fontSize: 10, lineHeight: 14 }}>
