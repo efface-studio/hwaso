@@ -1,4 +1,4 @@
-import type { PaymentMethod } from '@shop/shared';
+import type { IdentityStatusDto, PaymentMethod } from '@shop/shared';
 import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
 import { api } from './api';
@@ -45,6 +45,25 @@ export async function payOrder(orderId: string, method: PaymentMethod, addressId
     paymentKey: p.get('paymentKey') ?? '',
     amount: Number(p.get('amount')),
   });
+}
+
+/**
+ * PASS 본인인증: 서버가 인증 ID 를 준비 → 포트원 인증창 → 서버가 포트원에 결과를 다시 조회해 확정한다.
+ * 창을 닫으면 BridgeCancelled.
+ */
+export async function verifyIdentity(): Promise<IdentityStatusDto> {
+  const prep = await api.auth.prepareIdentity();
+  const p = await openBridge('identity', {
+    storeId: prep.storeId,
+    channelKey: prep.channelKey,
+    id: prep.identityVerificationId,
+  });
+  if (p.get('code')) {
+    const message = p.get('message');
+    if (!message) throw new BridgeCancelled();
+    throw new Error(message);
+  }
+  return api.auth.completeIdentity(p.get('identityVerificationId') ?? prep.identityVerificationId);
 }
 
 /** 우편번호 검색 → { zipCode, address1 } (닫으면 null) */
