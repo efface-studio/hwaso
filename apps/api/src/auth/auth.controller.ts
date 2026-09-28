@@ -45,6 +45,7 @@ import { env, isProd } from '../config/env';
 import { IdentityModule } from '../identity/identity.controller';
 import { IdentityService } from '../identity/identity.service';
 import { AuthService } from './auth.service';
+import { DemoAccountsService, DemoBlocked } from './demo';
 import { OAuthService, providerFromParam } from './oauth.service';
 import { type ClientInfo, REFRESH_TTL_DAYS, SessionService } from './session.service';
 
@@ -109,6 +110,7 @@ export class AuthController {
   }
 
   @Public()
+  @DemoBlocked()
   @Post('email/send-code')
   @HttpCode(200)
   @RateLimit({ name: 'otp-ip', limit: 20, windowSec: 3600, by: 'ip' })
@@ -117,6 +119,7 @@ export class AuthController {
   }
 
   @Public()
+  @DemoBlocked()
   @Post('email/verify-code')
   @HttpCode(200)
   @RateLimit({ name: 'otp-verify', limit: 30, windowSec: 600, by: 'ip' })
@@ -125,6 +128,7 @@ export class AuthController {
   }
 
   @Public()
+  @DemoBlocked()
   @Post('signup')
   @RateLimit({ name: 'signup', limit: 10, windowSec: 3600, by: 'ip' })
   async signup(
@@ -188,12 +192,14 @@ export class AuthController {
   }
 
   @Public()
+  @DemoBlocked()
   @Post('password/reset')
   @HttpCode(204)
   resetPassword(@Body(new ZodPipe(resetPasswordSchema)) body: ResetPasswordInput) {
     return this.auth.resetPassword(body);
   }
 
+  @DemoBlocked()
   @Post('password/change')
   @HttpCode(204)
   changePassword(
@@ -229,6 +235,7 @@ export class AuthController {
     await this.sessions.revokeAll(user.id, await this.sessions.familyOf(user.sessionId));
   }
 
+  @DemoBlocked()
   @Delete('account')
   @HttpCode(204)
   async deleteAccount(
@@ -243,6 +250,7 @@ export class AuthController {
   // ───── 소셜 로그인 ─────
 
   @Public()
+  @DemoBlocked()
   @Get('oauth/:provider/url')
   oauthUrl(@Param('provider') p: string, @Query(new ZodPipe(urlQuery)) q: z.infer<typeof urlQuery>) {
     if (!q.redirectUri && !q.appRedirect) throw new AppException('VALIDATION_FAILED');
@@ -251,6 +259,7 @@ export class AuthController {
 
   /** 모바일 앱 중계: provider 가 돌려준 code/state 를 앱 딥링크로 넘긴다 */
   @Public()
+  @DemoBlocked()
   @Get('oauth/:provider/redirect')
   async relay(@Param('provider') p: string, @Query() q: Record<string, string>, @Res() res: Response) {
     providerFromParam(p);
@@ -264,6 +273,7 @@ export class AuthController {
   }
 
   @Public()
+  @DemoBlocked()
   @Post('oauth/:provider/callback')
   @HttpCode(200)
   @RateLimit({ name: 'oauth', limit: 30, windowSec: 600, by: 'ip' })
@@ -280,6 +290,7 @@ export class AuthController {
   }
 
   @Public()
+  @DemoBlocked()
   @Post('oauth/apple/native')
   @HttpCode(200)
   @RateLimit({ name: 'oauth', limit: 30, windowSec: 600, by: 'ip' })
@@ -294,6 +305,7 @@ export class AuthController {
 
   // ───── 소셜 계정 연결 ↔ 해제 ─────
 
+  @DemoBlocked()
   @Post('social/:provider')
   @HttpCode(204)
   async link(
@@ -306,6 +318,7 @@ export class AuthController {
     await this.oauth.link(user.id, provider, profile);
   }
 
+  @DemoBlocked()
   @Delete('social/:provider')
   @HttpCode(204)
   unlink(@CurrentUser() user: AuthUser, @Param('provider') p: string) {
@@ -316,7 +329,7 @@ export class AuthController {
 @Module({
   imports: [IdentityModule],
   controllers: [AuthController],
-  providers: [AuthService, SessionService, OAuthService],
+  providers: [AuthService, SessionService, OAuthService, DemoAccountsService],
   exports: [SessionService],
 })
 export class AuthModule {}

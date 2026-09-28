@@ -14,10 +14,11 @@ import { AppException } from '../common/app-exception';
 import { invalidateUserStatus, signPurposeToken, verifyPurposeToken } from '../common/auth';
 import { hmac, otpCode, randomToken, safeEqual } from '../common/crypto';
 import { RateLimitService } from '../common/rate-limit';
-import { env } from '../config/env';
+import { env, isDemo } from '../config/env';
 import { MailService } from '../mail/mail.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
+import { isDemoLogin } from './demo';
 import { type ClientInfo, SessionService } from './session.service';
 
 const CODE_TTL_MIN = 10;
@@ -170,8 +171,11 @@ export class AuthService {
   }
 
   async login(input: LoginInput, client: ClientInfo) {
+    // 공개 데모: 지정 계정만 로그인하고, 누구나 아는 계정이 잠기지 않게 실패 잠금을 쓰지 않는다
+    const demo = isDemo();
+    if (demo && !isDemoLogin(input.email)) throw new AppException('INVALID_CREDENTIALS');
     const lockKey = `login:fail:${input.email}`;
-    const failures = Number((await this.redis.get(lockKey)) ?? 0);
+    const failures = demo ? 0 : Number((await this.redis.get(lockKey)) ?? 0);
     if (failures >= LOGIN_MAX_FAILURES) throw new AppException('ACCOUNT_LOCKED');
 
     const user = await this.prisma.user.findUnique({ where: { email: input.email } });
@@ -180,7 +184,7 @@ export class AuthService {
       .verify(user?.passwordHash ?? (await dummyHash), input.password)
       .catch(() => false);
     if (!user || !user.passwordHash || !ok || user.status === 'DELETED') {
-      await this.redis.multi().incr(lockKey).expire(lockKey, LOGIN_LOCK_SEC, 'NX').exec();
+      if (!demo) await this.redis.multi().incr(lockKey).expire(lockKey, LOGIN_LOCK_SEC, 'NX').exec();
       throw new AppException('INVALID_CREDENTIALS');
     }
     if (user.status === 'SUSPENDED')

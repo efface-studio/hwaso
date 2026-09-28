@@ -17,6 +17,7 @@ import { IdentityService } from '../identity/identity.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 import { AuthModule } from '../auth/auth.controller';
+import { DemoBlocked } from '../auth/demo';
 import { SessionService } from '../auth/session.service';
 
 @Controller()
@@ -77,6 +78,7 @@ export class AccountController {
     };
   }
 
+  @DemoBlocked()
   @Post('me/seller')
   @HttpCode(201)
   async registerSeller(
@@ -105,6 +107,7 @@ export class AccountController {
     return this.sessions.me(user.id);
   }
 
+  @DemoBlocked()
   @Patch('me/seller')
   async updateSeller(
     @CurrentUser() user: AuthUser,

@@ -61,6 +61,8 @@ const schema = z.object({
   VAPID_SUBJECT: optional,
   /** Expo 푸시 보안 설정을 켠 경우에만 필요 */
   EXPO_ACCESS_TOKEN: optional,
+  /** 공개 데모: 이 계정들만 로그인한다. JSON [{login,password,role,nickname?}] — 깃에 두지 않는다 (auth/demo.ts) */
+  DEMO_ACCOUNTS: optional,
 });
 
 export type Env = z.infer<typeof schema>;
@@ -83,3 +85,4 @@ export function env(): Env {
 }
 
 export const isProd = () => env().NODE_ENV === 'production';
+export const isDemo = () => !!env().DEMO_ACCOUNTS;
