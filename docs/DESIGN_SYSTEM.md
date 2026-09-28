@@ -17,7 +17,7 @@
 | `foreground`           | `#0A0A0A`   | `#F6F6F7`   | 본문·제목                              |
 | `foreground-2`         | `#171717`   | `#EDEDEF`   | 보조 제목                              |
 | `muted`                | `#5C5C5C`   | `#9B9BA4`   | 설명, 메타 정보 (AA 대비 충족)         |
-| `faint`                | `#8A8A8A`   | `#6A6A73`   | placeholder, 비활성 (본문에 쓰지 않음) |
+| `faint`                | `#707070`   | `#8A8A93`   | placeholder, 비활성 (본문에 쓰지 않음) |
 | `border`               | `#E5E5E5`   | `#FFFFFF17` | 기본 구분선                            |
 | `border-soft`          | `#F0F0F0`   | `#FFFFFF0D` | 리스트 구분                            |
 | `border-strong`        | `#D4D4D4`   | `#FFFFFF29` | 입력 테두리, 포커스 전                 |
@@ -27,10 +27,10 @@
 | `primary-foreground`   | `#FFFFFF`   | `#07140E`   | primary 위 텍스트                      |
 | `secondary`            | `#0A0A0A`   | `#F6F6F7`   | 보조 강조 버튼(검정/흰색)              |
 | `secondary-foreground` | `#FFFFFF`   | `#0A0A0B`   |                                        |
-| `destructive`          | `#DC2626`   | `#F0443A`   | 삭제, 오류, **경매 마감 임박**         |
+| `destructive`          | `#B91C1C`   | `#F0443A`   | 삭제, 오류, **경매 마감 임박**         |
 | `success`              | `#1F8A4C`   | `#4CC38A`   | 완료 상태                              |
 | `warning`              | `#B45309`   | `#F5A524`   | 주의                                   |
-| `live`                 | `#DC2626`   | `#F0443A`   | LIVE 배지 (destructive 와 동일 값)     |
+| `live`                 | `#B91C1C`   | `#F0443A`   | LIVE 배지 (destructive 와 동일 값)     |
 | `focus-ring`           | `#2F7A58`   | `#5FAE86`   | 2px outline + 2px offset               |
 
 - 초록은 **너무 진하지도(#0B3D2A 류) 쨍하지도(#22C55E 류) 않은** 중채도 톤. `primary` on `background` 대비: Light 5.2:1, Dark 7.4:1 (WCAG AA).
