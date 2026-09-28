@@ -35,8 +35,6 @@ export default function DeleteAccountScreen() {
     setPending(true);
     setError(null);
     try {
-      // 푸시 토큰은 계정이 있는 동안 해제해야 한다
-      await unregisterPush();
       if (user.hasPassword) {
         await api.auth.deleteAccount({ password });
       } else {
@@ -47,6 +45,8 @@ export default function DeleteAccountScreen() {
         });
         await api.auth.deleteAccount({ verificationToken });
       }
+      // 탈퇴가 확정된 뒤에만 이 기기의 토큰을 정리한다 (서버 쪽 토큰은 탈퇴와 함께 삭제된다)
+      await unregisterPush();
       await useAuthStore.getState().clear();
       router.replace('/home');
       Alert.alert('탈퇴가 완료되었어요', '그동안 화소를 이용해 주셔서 감사합니다.');
