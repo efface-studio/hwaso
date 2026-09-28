@@ -21,6 +21,7 @@ const config: ExpoConfig = {
     bundleIdentifier: 'dev.efface.hwaso',
     buildNumber: '1',
     supportsTablet: true,
+    usesAppleSignIn: true,
     associatedDomains: [`applinks:${APP_LINK_HOST}`],
     config: { usesNonExemptEncryption: false },
     infoPlist: {
@@ -72,6 +73,7 @@ const config: ExpoConfig = {
     'expo-image',
     'expo-font',
     'expo-web-browser',
+    'expo-apple-authentication',
     [
       'expo-image-picker',
       {

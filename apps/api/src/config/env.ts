@@ -40,7 +40,7 @@ const schema = z.object({
   APPLE_BUNDLE_ID: optional,
   /** 모바일 OAuth 가 브라우저에서 돌아올 때 거치는 API 공개 주소 */
   API_PUBLIC_URL: z.string().default('http://localhost:4000'),
-  APP_SCHEME: z.string().default('shop'),
+  APP_SCHEME: z.string().default('hwaso'),
   OAUTH_REDIRECT_ALLOWLIST: z
     .string()
     .default('http://localhost:3000/auth/callback')
