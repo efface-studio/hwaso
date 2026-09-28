@@ -63,10 +63,11 @@ const config: ExpoConfig = {
     [
       'expo-splash-screen',
       {
+        // 타일 없는 마크 (웹 헤더와 같은 원본). 앱 아이콘 타일을 그대로 쓰면 배경 위에 상자로 보인다
         image: './assets/splash-icon.png',
-        imageWidth: 120,
+        imageWidth: 160,
         backgroundColor: '#FFFFFF',
-        dark: { image: './assets/splash-icon.png', backgroundColor: '#0A0A0B' },
+        dark: { image: './assets/splash-icon-dark.png', backgroundColor: '#0A0A0B' },
       },
     ],
     'expo-secure-store',
