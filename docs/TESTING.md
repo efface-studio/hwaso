@@ -7,7 +7,7 @@
 | Unit              | Vitest                                         | `packages/*/src/**/*.test.ts`   | 도메인 규칙 (최소 입찰가, 상태 전이표, 가격 포맷, zod 스키마) |
 | Integration (API) | Vitest + supertest + **실제 PostgreSQL/Redis** | `apps/api/test/*.spec.ts`       | 엔드포인트, 트랜잭션, 동시성                                  |
 | Component (Web)   | Vitest + Testing Library                       | `apps/web/src/**/*.test.tsx`    | 입찰 패널, 폼 검증, 카운트다운                                |
-| E2E (Web)         | Playwright                                     | `apps/web/e2e`                  | 가입→로그인, 상품 등록→구매, 경매 입찰 두 브라우저 동기화     |
+| E2E (Web)         | Playwright (Chromium)                          | `apps/web/e2e`                  | 둘러보기·검색, 즉시 구매→모의 결제, 경매 입찰, 채팅, 관리자   |
 | Mobile            | Jest (jest-expo) + RN Testing Library          | `apps/mobile/src/**/*.test.tsx` | 핵심 컴포넌트/훅                                              |
 
 API 통합 테스트는 **모킹하지 않은 DB** 로 돈다. 동시성·잠금·제약은 모킹으로 검증할 수 없기 때문이다. 외부 연동(PG, 메일, 소셜, S3)만 테스트 더블(Mock provider)로 교체한다.
@@ -54,8 +54,14 @@ API 통합 테스트는 **모킹하지 않은 DB** 로 돈다. 동시성·잠금
 - Buy now 동시 2건 → 1건 성공, 경매 ENDED
 - 낙찰 결제 → SETTLED, 미결제 기한 초과 → UNPAID
 
+## E2E
+
+- 로컬: API(4000)·웹(3000)을 띄운 상태에서 `pnpm --filter @shop/web e2e`. 시드 계정(buyer1~4, seller1~5)을 쓰며, 관리자 테스트는 시드 기본 관리자(`admin@shop.local`)가 있어야 통과한다.
+- CI(`e2e` 잡): 빌드 → `prisma migrate deploy` → `SEED_OFFLINE=1` 시드(이미지 다운로드·S3 없이 고정 키) → Playwright 가 API·웹을 띄워 실행. 실패하면 리포트·트레이스를 아티팩트로 올린다.
+- 시드 데이터를 공유하므로 한 워커로 순서대로 돈다. 데이터 준비(배송지·입찰 가능한 경매 찾기)는 API 로 한다.
+
 ## 기준
 
-- CI 에서 typecheck · lint · test · build 전부 통과해야 병합.
+- CI 에서 format · typecheck · lint · test · build · E2E 전부 통과해야 병합.
 - `packages/shared` 도메인 로직 커버리지 90%+, API 서비스 80%+ 목표.
 - 버그 수정은 재현 테스트 먼저.
