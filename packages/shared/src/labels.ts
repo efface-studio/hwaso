@@ -5,7 +5,10 @@ import type {
   OrderStatus,
   PaymentMethod,
   ProductSort,
+  ProductStatus,
+  ProvenanceKind,
   ReportReason,
+  SettlementStatus,
   SaleType,
   VerificationStatus,
 } from './enums';
@@ -100,4 +103,27 @@ export const NOTIFICATION_TYPE_LABEL: Record<NotificationType, string> = {
   ORDER_UPDATED: '주문',
   FOLLOWING_NEW_ITEM: '팔로우 새 작품',
   SYSTEM: '알림',
+};
+
+export const PRODUCT_STATUS_LABEL: Record<ProductStatus, string> = {
+  DRAFT: '임시 저장',
+  PENDING_REVIEW: '검수 중',
+  ACTIVE: '판매 중',
+  RESERVED: '거래 중',
+  SOLD: '판매 완료',
+  SUSPENDED: '운영 정지',
+  HIDDEN: '판매 중지',
+};
+
+export const PROVENANCE_KIND_LABEL: Record<ProvenanceKind, string> = {
+  OWNERSHIP: '소장',
+  EXHIBITION: '전시',
+  PUBLICATION: '출판',
+};
+
+export const SETTLEMENT_STATUS_LABEL: Record<SettlementStatus, string> = {
+  PENDING: '정산 대기',
+  SCHEDULED: '지급 예정',
+  PAID: '지급 완료',
+  HELD: '보류',
 };

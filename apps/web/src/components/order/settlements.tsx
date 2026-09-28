@@ -1,17 +1,10 @@
 'use client';
 
-import { formatPrice, type SettlementStatus } from '@shop/shared';
+import { SETTLEMENT_STATUS_LABEL as STATUS, formatPrice } from '@shop/shared';
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { Badge, EmptyState, Skeleton } from '@/components/ui/display';
 import { api } from '@/lib/api';
-
-const STATUS: Record<SettlementStatus, string> = {
-  PENDING: '정산 대기',
-  SCHEDULED: '지급 예정',
-  PAID: '지급 완료',
-  HELD: '보류',
-};
 
 /** 판매자 정산: 구매 확정 후 수수료를 뺀 금액이 지급 예정으로 쌓인다 */
 export function Settlements() {
