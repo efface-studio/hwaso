@@ -23,7 +23,7 @@
 | `border-strong`        | `#D4D4D4`   | `#FFFFFF29` | 입력 테두리, 포커스 전                 |
 | `primary`              | `#2F7A58`   | `#5FAE86`   | 주요 CTA, 선택 상태, 링크              |
 | `primary-hover`        | `#276849`   | `#74BD97`   |                                        |
-| `primary-soft`         | `#2F7A5814` | `#5FAE8624` | 선택된 칩 배경                         |
+| `primary-soft`         | `#2F7A5812` | `#5FAE8624` | 선택된 칩 배경                         |
 | `primary-foreground`   | `#FFFFFF`   | `#07140E`   | primary 위 텍스트                      |
 | `secondary`            | `#0A0A0A`   | `#F6F6F7`   | 보조 강조 버튼(검정/흰색)              |
 | `secondary-foreground` | `#FFFFFF`   | `#0A0A0B`   |                                        |

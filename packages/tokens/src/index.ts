@@ -18,7 +18,7 @@ export const palette = {
     borderStrong: '#D4D4D4',
     primary: '#2F7A58',
     primaryHover: '#276849',
-    primarySoft: '#2F7A5814',
+    primarySoft: '#2F7A5812',
     primaryForeground: '#FFFFFF',
     secondary: '#0A0A0A',
     secondaryForeground: '#FFFFFF',

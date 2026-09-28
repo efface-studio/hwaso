@@ -35,6 +35,10 @@ describe.each(['light', 'dark'] as const)('%s 글자 명도 대비', (mode) => {
   it.each(TEXT.flatMap((t) => GROUNDS.map((g) => [t, g] as const)))('%s / %s ≥ 4.5', (t, g) => {
     expect(contrast(p[t], p[g])).toBeGreaterThanOrEqual(4.5);
   });
+  it.each(['background', 'backgroundSoft'] as const)('primary 배지(primarySoft 바탕) / %s ≥ 4.5', (g) => {
+    const alpha = parseInt(p.primarySoft.slice(7, 9), 16) / 255;
+    expect(contrast(p.primary, tint(p.primarySoft.slice(0, 7), p[g], alpha))).toBeGreaterThanOrEqual(4.5);
+  });
   it('경고 배지(destructive 글자 / 10% 바탕) ≥ 4.5', () => {
     expect(contrast(p.destructive, tint(p.destructive, p.background, 0.1))).toBeGreaterThanOrEqual(4.5);
   });
