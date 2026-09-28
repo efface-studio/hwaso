@@ -38,7 +38,7 @@ export function ProductCard({ product: p, priority, sizes, className }: ProductC
           />
         </Link>
         {a?.status === 'LIVE' && (
-          <span className="pointer-events-none absolute top-2 left-2 inline-flex h-5 items-center rounded-sm bg-live px-1.5 text-caption font-semibold text-white">
+          <span className="pointer-events-none absolute top-2 left-2 inline-flex h-5 items-center rounded-sm bg-live px-1.5 text-caption font-semibold text-live-foreground">
             LIVE
           </span>
         )}

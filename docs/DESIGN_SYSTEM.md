@@ -8,30 +8,31 @@
 
 라이트/다크 두 테마. Web 은 `prefers-color-scheme` 기본 + 사용자 선택(`data-theme`) 저장, Mobile 은 시스템 설정 + 앱 설정.
 
-| Token                  | Light       | Dark        | 용도                                   |
-| ---------------------- | ----------- | ----------- | -------------------------------------- |
-| `background`           | `#FFFFFF`   | `#0A0A0B`   | 페이지 배경                            |
-| `background-soft`      | `#FAFAFA`   | `#101013`   | 섹션 구분 배경, 이미지 로딩 영역       |
-| `surface`              | `#FFFFFF`   | `#141418`   | 시트·다이얼로그·팝오버                 |
-| `surface-2`            | `#F5F5F5`   | `#1B1B21`   | 입력 배경(filled), hover               |
-| `foreground`           | `#0A0A0A`   | `#F6F6F7`   | 본문·제목                              |
-| `foreground-2`         | `#171717`   | `#EDEDEF`   | 보조 제목                              |
-| `muted`                | `#5C5C5C`   | `#9B9BA4`   | 설명, 메타 정보 (AA 대비 충족)         |
-| `faint`                | `#707070`   | `#8A8A93`   | placeholder, 비활성 (본문에 쓰지 않음) |
-| `border`               | `#E5E5E5`   | `#FFFFFF17` | 기본 구분선                            |
-| `border-soft`          | `#F0F0F0`   | `#FFFFFF0D` | 리스트 구분                            |
-| `border-strong`        | `#D4D4D4`   | `#FFFFFF29` | 입력 테두리, 포커스 전                 |
-| `primary`              | `#2F7A58`   | `#5FAE86`   | 주요 CTA, 선택 상태, 링크              |
-| `primary-hover`        | `#276849`   | `#74BD97`   |                                        |
-| `primary-soft`         | `#2F7A5812` | `#5FAE8624` | 선택된 칩 배경                         |
-| `primary-foreground`   | `#FFFFFF`   | `#07140E`   | primary 위 텍스트                      |
-| `secondary`            | `#0A0A0A`   | `#F6F6F7`   | 보조 강조 버튼(검정/흰색)              |
-| `secondary-foreground` | `#FFFFFF`   | `#0A0A0B`   |                                        |
-| `destructive`          | `#B91C1C`   | `#F0443A`   | 삭제, 오류, **경매 마감 임박**         |
-| `success`              | `#1F8A4C`   | `#4CC38A`   | 완료 상태                              |
-| `warning`              | `#B45309`   | `#F5A524`   | 주의                                   |
-| `live`                 | `#B91C1C`   | `#F0443A`   | LIVE 배지 (destructive 와 동일 값)     |
-| `focus-ring`           | `#2F7A58`   | `#5FAE86`   | 2px outline + 2px offset               |
+| Token                  | Light       | Dark        | 용도                                             |
+| ---------------------- | ----------- | ----------- | ------------------------------------------------ |
+| `background`           | `#FFFFFF`   | `#0A0A0B`   | 페이지 배경                                      |
+| `background-soft`      | `#FAFAFA`   | `#101013`   | 섹션 구분 배경, 이미지 로딩 영역                 |
+| `surface`              | `#FFFFFF`   | `#141418`   | 시트·다이얼로그·팝오버                           |
+| `surface-2`            | `#F5F5F5`   | `#1B1B21`   | 입력 배경(filled), hover                         |
+| `foreground`           | `#0A0A0A`   | `#F6F6F7`   | 본문·제목                                        |
+| `foreground-2`         | `#171717`   | `#EDEDEF`   | 보조 제목                                        |
+| `muted`                | `#5C5C5C`   | `#9B9BA4`   | 설명, 메타 정보 (AA 대비 충족)                   |
+| `faint`                | `#707070`   | `#8A8A93`   | placeholder, 비활성 (본문에 쓰지 않음)           |
+| `border`               | `#E5E5E5`   | `#FFFFFF17` | 기본 구분선                                      |
+| `border-soft`          | `#F0F0F0`   | `#FFFFFF0D` | 리스트 구분                                      |
+| `border-strong`        | `#D4D4D4`   | `#FFFFFF29` | 입력 테두리, 포커스 전                           |
+| `primary`              | `#2F7A58`   | `#5FAE86`   | 주요 CTA, 선택 상태, 링크                        |
+| `primary-hover`        | `#276849`   | `#74BD97`   |                                                  |
+| `primary-soft`         | `#2F7A5812` | `#5FAE8624` | 선택된 칩 배경                                   |
+| `primary-foreground`   | `#FFFFFF`   | `#07140E`   | primary 위 텍스트                                |
+| `secondary`            | `#0A0A0A`   | `#F6F6F7`   | 보조 강조 버튼(검정/흰색)                        |
+| `secondary-foreground` | `#FFFFFF`   | `#0A0A0B`   |                                                  |
+| `destructive`          | `#B91C1C`   | `#F0443A`   | 삭제, 오류, **경매 마감 임박**                   |
+| `success`              | `#1F8A4C`   | `#4CC38A`   | 완료 상태                                        |
+| `warning`              | `#B45309`   | `#F5A524`   | 주의                                             |
+| `live`                 | `#B91C1C`   | `#F0443A`   | LIVE 배지 (destructive 와 동일 값)               |
+| `live-foreground`      | `#FFFFFF`   | `#0A0A0B`   | LIVE 배지 글자 (다크는 밝은 채움 위 어두운 글자) |
+| `focus-ring`           | `#2F7A58`   | `#5FAE86`   | 2px outline + 2px offset                         |
 
 - 초록은 **너무 진하지도(#0B3D2A 류) 쨍하지도(#22C55E 류) 않은** 중채도 톤. `primary` on `background` 대비: Light 5.2:1, Dark 7.4:1 (WCAG AA).
 - 색은 의미가 있을 때만: CTA · 선택 · 상태. 장식 목적의 색면·그라디언트 금지.
