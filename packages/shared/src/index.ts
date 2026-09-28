@@ -1,3 +1,5 @@
+// 스키마보다 먼저 실행돼야 한다 (브라우저 zod JIT 끄기)
+import './zod-config';
 export * from './enums';
 export * from './labels';
 export * from './format';
