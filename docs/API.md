@@ -195,18 +195,20 @@ NestJS REST API. Base URL `/api/v1`. 모든 요청/응답은 JSON (업로드 제
 
 ### Chat · 차단 · 신고
 
-| Method      | Path                                | 권한      | 설명                                                                                                                                                                |
-| ----------- | ----------------------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| POST        | /chat/rooms                         | U         | {productId} 방 생성/재사용 (본인 작품·차단 관계 불가)                                                                                                               |
-| GET         | /chat/rooms · /chat/rooms/:id       | U(참여자) | 목록(최근 100, 안 읽은 수·마지막 메시지·상대 읽음 시각·차단 여부) / 단건                                                                                            |
-| GET         | /chat/unread-count                  | U         | 전체 안 읽은 수 (알림 끈 방 제외)                                                                                                                                   |
-| GET         | /chat/rooms/:id/messages            | U(참여자) | 최신순 50개, `before` 커서. 나간 뒤에는 그 이후 메시지만                                                                                                            |
-| POST        | /chat/rooms/:id/messages            | U(참여자) | {kind: TEXT·IMAGE·PRODUCT·APPOINTMENT, body?, imageKey?, productId?, appointment?, clientId?} — clientId 재전송은 같은 메시지 반환, 외부 거래 유도 문구는 `warning` |
-| DELETE      | /chat/rooms/:id/messages/:messageId | U(보낸이) | "삭제된 메시지"로 표시                                                                                                                                              |
-| POST        | /chat/rooms/:id/read · /leave       | U(참여자) | 읽음(상대에게 `CHAT_READ`) / 나가기(새 메시지 오면 다시 보임)                                                                                                       |
-| PATCH       | /chat/rooms/:id                     | U(참여자) | {muted} 알림 끄기                                                                                                                                                   |
-| POST/DELETE | /users/:id/block                    | U         | 차단/해제 — 차단 관계에서는 채팅 생성·전송 불가                                                                                                                     |
-| GET         | /me/blocks · /me/reports            | U         | 차단 목록 / 내 신고 내역                                                                                                                                            |
+| Method      | Path                                | 권한      | 설명                                                                                                                                                                                                    |
+| ----------- | ----------------------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| POST        | /chat/rooms                         | U         | {productId} 방 생성/재사용 (본인 작품·차단 관계 불가)                                                                                                                                                   |
+| GET         | /chat/rooms · /chat/rooms/:id       | U(참여자) | 목록(최근 100, 안 읽은 수·마지막 메시지·상대 읽음 시각·차단 여부) / 단건                                                                                                                                |
+| GET         | /chat/unread-count                  | U         | 전체 안 읽은 수 (알림 끈 방 제외)                                                                                                                                                                       |
+| GET         | /chat/rooms/:id/messages            | U(참여자) | 최신순 50개, `before` 커서. 나간 뒤에는 그 이후 메시지만                                                                                                                                                |
+| POST        | /chat/rooms/:id/messages            | U(참여자) | {kind: TEXT·IMAGE·PRODUCT·APPOINTMENT, body?, imageKey?, productId?, appointment?, clientId?} — clientId 재전송은 같은 메시지 반환, 외부 거래 유도 문구는 `warning`                                     |
+| DELETE      | /chat/rooms/:id/messages/:messageId | U(보낸이) | "삭제된 메시지"로 표시                                                                                                                                                                                  |
+| POST        | /chat/rooms/:id/read · /leave       | U(참여자) | 읽음(상대에게 `CHAT_READ`) / 나가기(새 메시지 오면 다시 보임)                                                                                                                                           |
+| PATCH       | /chat/rooms/:id                     | U(참여자) | {muted} 알림 끄기                                                                                                                                                                                       |
+| PATCH       | /chat/rooms/:id/trade               | U(판매자) | {status: ACTIVE·RESERVED·SOLD} 채팅에서 거래 상태 변경 (경매·주문 걸린 작품은 `INVALID_TRANSITION`). 방에 SYSTEM 메시지 `TRADE_*`                                                                       |
+| —           | (SYSTEM 메시지)                     | —         | 주문 상태 전환 시 그 작품의 구매자·판매자 방에 `ORDER_PAID`·`ORDER_SHIPPED`·`ORDER_DELIVERED`·`ORDER_COMPLETED`·`ORDER_CANCELLED`·`ORDER_REFUND_REQUESTED`·`ORDER_REFUNDED` (`system {event, orderId}`) |
+| POST/DELETE | /users/:id/block                    | U         | 차단/해제 — 차단 관계에서는 채팅 생성·전송 불가                                                                                                                                                         |
+| GET         | /me/blocks · /me/reports            | U         | 차단 목록 / 내 신고 내역                                                                                                                                                                                |
 
 ### Reviews / Notifications / Reports
 
