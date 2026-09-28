@@ -211,9 +211,15 @@ export default function AuctionScreen() {
             </Text>
           )}
           {won && (
-            <Text variant="bodyStrong" color="primary">
-              낙찰되었어요! 결제 기한 안에 주문을 결제해주세요.
-            </Text>
+            <View style={{ gap: 8 }}>
+              <Text variant="bodyStrong" color="primary">
+                낙찰되었어요! 결제 기한 안에 주문을 결제해주세요.
+              </Text>
+              <Button
+                title="결제하러 가기"
+                onPress={() => router.push({ pathname: '/orders', params: { filter: 'pending' } })}
+              />
+            </View>
           )}
           {live.notice && (
             <Text variant="small" color="warning" accessibilityLiveRegion="assertive">

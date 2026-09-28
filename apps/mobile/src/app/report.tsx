@@ -9,9 +9,10 @@ import {
 import { useMutation } from '@tanstack/react-query';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet } from 'react-native';
 import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
+import { RadioList } from '@/components/ui/radio';
 import { Empty } from '@/components/ui/state';
 import { Text } from '@/components/ui/text';
 import { api } from '@/lib/api';
@@ -46,28 +47,12 @@ export default function ReportScreen() {
     <ScrollView style={{ backgroundColor: t.colors.background }} contentContainerStyle={styles.body}>
       <Stack.Screen options={{ title: `${TARGET[target]} 신고` }} />
       <Text variant="label">신고 사유</Text>
-      <View accessibilityRole="radiogroup" style={{ gap: 4 }}>
-        {REPORT_REASONS.map((r) => {
-          const on = r === reason;
-          return (
-            <Pressable
-              key={r}
-              accessibilityRole="radio"
-              accessibilityState={{ checked: on }}
-              onPress={() => setReason(r)}
-              style={[
-                styles.option,
-                { minHeight: t.touch, borderColor: on ? t.colors.primary : t.colors.border },
-              ]}
-            >
-              <View style={[styles.dot, { borderColor: on ? t.colors.primary : t.colors.borderStrong }]}>
-                {on && <View style={[styles.inner, { backgroundColor: t.colors.primary }]} />}
-              </View>
-              <Text>{REPORT_REASON_LABEL[r]}</Text>
-            </Pressable>
-          );
-        })}
-      </View>
+      <RadioList
+        label="신고 사유"
+        value={reason}
+        onChange={setReason}
+        options={REPORT_REASONS.map((r) => ({ value: r, label: REPORT_REASON_LABEL[r] }))}
+      />
       <Field
         label="자세한 내용 (선택)"
         multiline
@@ -84,21 +69,4 @@ export default function ReportScreen() {
 
 const styles = StyleSheet.create({
   body: { padding: 20, gap: 12 },
-  option: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 12,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 8,
-  },
-  dot: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  inner: { width: 10, height: 10, borderRadius: 5 },
 });
