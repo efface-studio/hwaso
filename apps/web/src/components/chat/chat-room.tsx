@@ -44,7 +44,12 @@ function ProductBar({ room }: { room: ChatRoomDto }) {
   const buyable = room.role === 'buyer' && p.status === 'ACTIVE' && p.saleType !== 'AUCTION';
   return (
     <div className="flex items-center gap-3 border-b border-border px-4 py-2.5">
-      <Link href={`/products/${p.id}`} className="size-12 shrink-0 bg-background-soft">
+      <Link
+        href={`/products/${p.id}`}
+        className="size-12 shrink-0 bg-background-soft"
+        tabIndex={-1}
+        aria-hidden
+      >
         <MediaImage image={p.image} alt="" sizes="48px" className="p-0.5" />
       </Link>
       <Link href={`/products/${p.id}`} className="min-w-0 flex-1 hover:underline">

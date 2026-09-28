@@ -75,7 +75,12 @@ function Cart() {
             <ul className="divide-y divide-border-soft">
               {group.map((i) => (
                 <li key={i.productId} className={cn('flex gap-3 p-4', !i.available && 'opacity-60')}>
-                  <Link href={`/products/${i.productId}`} className="size-20 shrink-0 bg-background-soft">
+                  <Link
+                    href={`/products/${i.productId}`}
+                    className="size-20 shrink-0 bg-background-soft"
+                    tabIndex={-1}
+                    aria-hidden
+                  >
                     <MediaImage image={i.product.image} alt="" sizes="80px" className="p-1" />
                   </Link>
                   <div className="min-w-0 flex-1">
