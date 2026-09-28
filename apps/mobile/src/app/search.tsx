@@ -1,8 +1,9 @@
-import { SALE_TYPE_LABEL, SORT_LABEL, type ProductSort, type SaleType } from '@shop/shared';
+import { SORT_LABEL, type ProductSort } from '@shop/shared';
 import { useQuery } from '@tanstack/react-query';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { EMPTY_FILTERS, FilterButton, filterParams, type Filters } from '@/components/product/filter-sheet';
 import { ProductGrid } from '@/components/product/product-grid';
 import { Chips } from '@/components/ui/chips';
 import { Text } from '@/components/ui/text';
@@ -12,16 +13,15 @@ import { useTheme } from '@/theme';
 
 const RECENT_KEY = 'hwaso.recentSearches';
 const SORTS: ProductSort[] = ['relevance', 'latest', 'price_asc', 'price_desc', 'popular', 'ending_soon'];
-type TypeFilter = 'all' | SaleType;
 
-/** 검색: 입력 중 자동완성, 제출하면 결과 그리드 (정렬·판매 방식) */
+/** 검색: 입력 중 자동완성, 제출하면 결과 그리드 (정렬·상세 필터) */
 export default function SearchScreen() {
   const t = useTheme();
   const params = useLocalSearchParams<{ q?: string }>();
   const [text, setText] = useState(params.q ?? '');
   const [q, setQ] = useState(params.q ?? '');
   const [sort, setSort] = useState<ProductSort>('relevance');
-  const [type, setType] = useState<TypeFilter>('all');
+  const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const [recent, setRecent] = useState<string[]>([]);
   const typing = text.trim() && text.trim() !== q;
   const suggest = useQuery({
@@ -115,27 +115,18 @@ export default function SearchScreen() {
         </ScrollView>
       ) : q ? (
         <ProductGrid
-          params={{ q, sort, saleType: type === 'all' ? undefined : type }}
+          params={{ q, sort, ...filterParams(filters) }}
           header={
-            <View>
-              <Chips
-                label="정렬"
-                value={sort}
-                onChange={setSort}
-                options={SORTS.map((s) => ({ value: s, label: SORT_LABEL[s] }))}
-              />
-              <Chips
-                label="판매 방식"
-                value={type}
-                onChange={setType}
-                options={[
-                  { value: 'all' as TypeFilter, label: '전체' },
-                  ...(['FIXED', 'AUCTION', 'RESERVATION'] as SaleType[]).map((s) => ({
-                    value: s as TypeFilter,
-                    label: SALE_TYPE_LABEL[s],
-                  })),
-                ]}
-              />
+            <View style={styles.tools}>
+              <View style={{ flex: 1 }}>
+                <Chips
+                  label="정렬"
+                  value={sort}
+                  onChange={setSort}
+                  options={SORTS.map((s) => ({ value: s, label: SORT_LABEL[s] }))}
+                />
+              </View>
+              <FilterButton value={filters} onChange={setFilters} />
             </View>
           }
         />
@@ -184,4 +175,5 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   recentHead: { flexDirection: 'row', justifyContent: 'space-between' },
+  tools: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingRight: 16 },
 });
