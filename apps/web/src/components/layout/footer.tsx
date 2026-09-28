@@ -1,21 +1,8 @@
+import { COMPANY } from '@shop/shared';
 import Link from 'next/link';
 import { BrandBanner } from '@/components/brand/brand-banner';
 import { SeniorQuickToggle } from './senior-toggle';
 import { ThemeSelect } from './theme-select';
-
-// 전자상거래법 표시 사항. 실제 사업자 정보가 나오면 여기 값만 바꾼다 (현재는 임시 값)
-const COMPANY = {
-  name: '주식회사 화소',
-  ceo: '홍길동',
-  address: '서울특별시 종로구 인사동길 12, 3층 (관훈동)',
-  bizNo: '123-45-67890',
-  mailOrderNo: '제2026-서울종로-0123호',
-  phone: '1588-0000',
-  hours: '평일 10:00–18:00 (점심 12:30–13:30, 주말·공휴일 휴무)',
-  email: 'help@hwaso.kr',
-  privacyOfficer: '김화소',
-  hosting: 'Amazon Web Services, Inc.',
-} as const;
 
 const FOOTER_LINKS = [
   ['/notices', '공지사항'],
