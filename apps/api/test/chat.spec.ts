@@ -267,3 +267,28 @@ describe('trade status & system messages (거래 상태·주문 진행)', () => 
     expect(res.body.error.code).toBe('INVALID_TRANSITION');
   });
 });
+
+describe('multiple images (사진 여러 장)', () => {
+  it('한 메시지에 여러 장, 남의 사진이 섞이면 거부, 10장까지', async () => {
+    const { seller, buyer, roomId } = await setup();
+    const mine = await Promise.all([1, 2, 3].map(() => fakeUpload(t, buyer.id)));
+    const res = await say(buyer, roomId, { kind: 'IMAGE', imageKeys: mine }).expect(201);
+    expect(res.body.images.map((i: { key: string }) => i.key)).toEqual(mine);
+    expect(res.body.image.key).toBe(mine[0]);
+
+    const theirs = await fakeUpload(t, seller.id);
+    await say(buyer, roomId, { kind: 'IMAGE', imageKeys: [mine[0], theirs] }).expect(400);
+    const eleven = await Promise.all(Array.from({ length: 11 }, () => fakeUpload(t, buyer.id)));
+    await say(buyer, roomId, { kind: 'IMAGE', imageKeys: eleven }).expect(400);
+
+    const rooms = await t.http.get('/api/v1/chat/rooms').set(seller.auth).expect(200);
+    expect(rooms.body[0].lastMessage.preview).toBe('사진 3장을 보냈어요.');
+  });
+
+  it('예전 방식(imageKey 한 장)도 그대로 받는다', async () => {
+    const { buyer, roomId } = await setup();
+    const key = await fakeUpload(t, buyer.id);
+    const res = await say(buyer, roomId, { kind: 'IMAGE', imageKey: key }).expect(201);
+    expect(res.body.images).toHaveLength(1);
+  });
+});
