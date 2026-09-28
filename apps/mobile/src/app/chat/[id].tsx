@@ -30,6 +30,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppointmentSheet } from '@/components/chat/appointment-sheet';
 import { Bubble, type PendingMessage } from '@/components/chat/bubble';
+import { PhrasesSheet } from '@/components/chat/phrases-sheet';
 import { Button } from '@/components/ui/button';
 import { Empty, Loading } from '@/components/ui/state';
 import { Icon } from '@/components/ui/icon';
@@ -67,6 +68,7 @@ export default function ChatRoomScreen() {
   const [text, setText] = useState('');
   const [typing, setTyping] = useState(false);
   const [appointment, setAppointment] = useState(false);
+  const [phrases, setPhrases] = useState(false);
   const [replying, setReplying] = useState<PendingMessage | null>(null);
   const inputRef = useRef<TextInput>(null);
   const typingTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -235,6 +237,7 @@ export default function ChatRoomScreen() {
       ...(r.product
         ? [{ label: '이 작품 보내기', onPress: () => send({ kind: 'PRODUCT', productId: r.product!.id }) }]
         : []),
+      { label: '자주 쓰는 문구', onPress: () => setPhrases(true) },
       { label: '거래 약속 잡기', onPress: () => setAppointment(true) },
     ]);
 
@@ -570,6 +573,16 @@ export default function ChatRoomScreen() {
                 : '지금은 이 사용자와 대화할 수 없어요.'}
           </Text>
         </View>
+      )}
+      {phrases && (
+        <PhrasesSheet
+          onClose={() => setPhrases(false)}
+          onPick={(p) => {
+            setText((v) => (v.trim() ? `${v.trimEnd()} ${p}` : p));
+            setPhrases(false);
+            inputRef.current?.focus();
+          }}
+        />
       )}
       {appointment && (
         <AppointmentSheet
