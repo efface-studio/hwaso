@@ -8,6 +8,7 @@ import { useEffect, useState } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { refreshAccessToken } from '@/lib/api';
+import { AppSync } from '@/lib/realtime-sync';
 import { useAuthStore } from '@/stores/auth';
 import { usePrefs } from '@/stores/prefs';
 import { useTheme } from '@/theme';
@@ -80,6 +81,7 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <QueryClientProvider client={client}>
           <Navigation />
+          <AppSync />
         </QueryClientProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

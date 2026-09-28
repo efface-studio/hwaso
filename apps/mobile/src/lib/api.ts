@@ -37,6 +37,8 @@ export const api = createApiClient({
 });
 
 export async function logout() {
+  // 이 기기 푸시 해제 (순환 참조를 피해 동적 import)
+  await import('./push').then((m) => m.unregisterPush()).catch(() => undefined);
   const token = await secure.get(REFRESH_KEY);
   await api.auth.logout(token ?? undefined).catch(() => undefined);
   await useAuthStore.getState().clear();
