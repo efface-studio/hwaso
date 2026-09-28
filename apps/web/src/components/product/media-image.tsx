@@ -11,6 +11,8 @@ interface MediaImageProps {
   /** 작품은 잘리지 않게 contain 이 기본 (작품의 형태 보존) */
   fit?: 'contain' | 'cover';
   priority?: boolean;
+  /** 작은 카드 썸네일: 모바일 폭에서는 w400 WebP 로 충분하다 (DPR 3 에서도 약 2.5배 밀도) */
+  thumb?: boolean;
 }
 
 /**
@@ -24,6 +26,7 @@ export function MediaImage({
   className,
   fit = 'contain',
   priority,
+  thumb,
 }: MediaImageProps) {
   if (!image) {
     return (
@@ -36,6 +39,8 @@ export function MediaImage({
   }
   return (
     <picture className={cn('block size-full', className)}>
+      {/* 모바일은 큰 AVIF 디코딩이 스크롤을 끊는다 — 가벼운 파생본을 먼저 고르게 한다 */}
+      {thumb && <source media="(max-width: 767px)" type="image/webp" srcSet={mediaUrl(image.key, 400)} />}
       <source type="image/avif" srcSet={mediaSrcSet(image.key, 'avif')} sizes={sizes} />
       <img
         src={mediaUrl(image.key, 800)}
