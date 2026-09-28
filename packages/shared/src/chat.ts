@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { ChatMessageKind, ProductStatus, SaleType } from './enums';
 import type { ImageDto, UserSummary } from './dto';
+import { formatRelativeTime } from './format';
 import { id } from './schemas/common';
 
 /** 채팅방에 남는 거래 안내 (판매자의 상태 변경 · 주문 진행) */
@@ -68,7 +69,8 @@ export interface ChatRoomDto {
     status: ProductStatus;
     saleType: SaleType;
   } | null;
-  counterpart: UserSummary & { left: boolean };
+  /** online: 지금 접속 중, lastSeenAt: 마지막 접속 (접속 기록이 없으면 null) */
+  counterpart: UserSummary & { left: boolean; online: boolean; lastSeenAt: string | null };
   /** 내가 차단 / 상대가 나를 차단 */
   blocked: boolean;
   blockedMe: boolean;
@@ -185,4 +187,14 @@ export function filterChatRooms<
         (filter === 'unread' && r.unreadCount > 0)) &&
       (!q || `${r.counterpart.nickname} ${r.product?.title ?? ''}`.toLowerCase().includes(q)),
   );
+}
+
+/** 대화 상대 접속 상태 문구: "접속 중" · "5분 전 접속" · 기록 없으면 null */
+export function presenceLabel(
+  c: { online: boolean; lastSeenAt: string | null; left?: boolean },
+  now: Date = new Date(),
+): string | null {
+  if (c.left) return null;
+  if (c.online) return '접속 중';
+  return c.lastSeenAt ? `${formatRelativeTime(c.lastSeenAt, now)} 접속` : null;
 }

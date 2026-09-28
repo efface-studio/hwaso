@@ -22,6 +22,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { isUniqueViolation } from '../orders/order-state';
 import { PrismaService } from '../prisma/prisma.service';
 import { mediaOwnerKey } from '../products/seller-products.service';
+import { PresenceService } from '../realtime/presence';
 import { RealtimeService } from '../realtime/realtime';
 import { RedisService } from '../redis/redis.service';
 import { SafetyService } from '../safety/safety.controller';
@@ -140,6 +141,7 @@ export class ChatService {
     private readonly safety: SafetyService,
     private readonly notifications: NotificationsService,
     private readonly limiter: RateLimitService,
+    private readonly presence: PresenceService,
   ) {}
 
   private async member(user: AuthUser, roomId: string) {
@@ -209,6 +211,7 @@ export class ChatService {
     userId: string,
     unread: number,
     blocks: { blocked: Set<string>; blockedMe: Set<string> },
+    presence: Map<string, { online: boolean; lastSeenAt: string | null }>,
   ): ChatRoomDto {
     const isBuyer = r.buyerId === userId;
     const other = isBuyer ? r.seller : r.buyer;
@@ -232,6 +235,8 @@ export class ChatService {
         nickname: other.profile?.nickname ?? '탈퇴한 회원',
         avatarKey: other.profile?.avatarKey ?? null,
         left: other.status === 'DELETED',
+        online: presence.get(other.id)?.online ?? false,
+        lastSeenAt: presence.get(other.id)?.lastSeenAt ?? null,
       },
       blocked: blocks.blocked.has(other.id),
       blockedMe: blocks.blockedMe.has(other.id),
@@ -268,29 +273,31 @@ export class ChatService {
       if (!last) return r.buyerId === user.id && !mine?.hiddenAt; // 빈 방은 연 사람에게만
       return !mine?.hiddenAt || last.createdAt > mine.hiddenAt;
     });
-    const [unread, blocks] = await Promise.all([
+    const [unread, blocks, presence] = await Promise.all([
       this.unreadByRoom(
         user.id,
         visible.map((r) => r.id),
       ),
       this.blockSets(user.id),
+      this.presence.of(visible.map((r) => (r.buyerId === user.id ? r.sellerId : r.buyerId))),
     ]);
     // 고정한 방이 먼저(최근에 고정한 순), 나머지는 최근 대화 순
     // ponytail: 최근 100개 안에서만 정렬 — 오래된 고정 방이 밀려나면 고정 방을 따로 불러온다
     const pinnedAt = (r: RoomRow) => r.readStates.find((s) => s.userId === user.id)?.pinnedAt?.getTime() ?? 0;
     return visible
       .toSorted((a, b) => pinnedAt(b) - pinnedAt(a))
-      .map((r) => this.toRoom(r, user.id, unread.get(r.id) ?? 0, blocks));
+      .map((r) => this.toRoom(r, user.id, unread.get(r.id) ?? 0, blocks, presence));
   }
 
   async room(user: AuthUser, roomId: string): Promise<ChatRoomDto> {
     await this.member(user, roomId);
     const r = await this.prisma.chatRoom.findUniqueOrThrow({ where: { id: roomId }, include: roomInclude });
-    const [unread, blocks] = await Promise.all([
+    const [unread, blocks, presence] = await Promise.all([
       this.unreadByRoom(user.id, [roomId]),
       this.blockSets(user.id),
+      this.presence.of([r.buyerId === user.id ? r.sellerId : r.buyerId]),
     ]);
-    return this.toRoom(r, user.id, unread.get(roomId) ?? 0, blocks);
+    return this.toRoom(r, user.id, unread.get(roomId) ?? 0, blocks, presence);
   }
 
   /** 하단 탭·헤더 배지: 알림을 끈 방은 제외 */
@@ -498,6 +505,8 @@ export class ChatService {
       where: { roomId_userId: { roomId, userId: to } },
     });
     if (state?.muted) return;
+    // 그 방을 보고 있으면 화면에 바로 뜨므로 푸시는 보내지 않는다
+    if (await this.presence.isViewing(roomId, to)) return;
     const sender = await this.prisma.profile.findUnique({
       where: { userId: senderId },
       select: { nickname: true },
