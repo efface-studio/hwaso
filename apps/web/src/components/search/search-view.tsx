@@ -190,6 +190,8 @@ export function SearchView({ categories, fixedCategory, title }: SearchViewProps
           </div>
 
           <div className="mt-4">
+            {/* 카드 제목(h3) 앞 단계 — 화면 낭독기 제목 탐색용 */}
+            <h2 className="sr-only">작품 목록</h2>
             {query.isPending ? (
               <ProductGridSkeleton />
             ) : query.isError ? (
