@@ -1,6 +1,10 @@
 packages:
   - apps/*
   - packages/*
+# React 는 앱(Expo 가 고정한 버전)과 웹이 같은 버전을 써야 한다 (중복 React 는 런타임 오류)
+overrides:
+  react: 19.2.3
+  react-dom: 19.2.3
 allowBuilds:
   '@prisma/client': true
   '@prisma/engines': true

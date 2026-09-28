@@ -19,3 +19,28 @@ Web(Next.js) · iOS/Android(Expo) · API(NestJS) 모노레포.
 | [MOBILE_NAVIGATION](docs/MOBILE_NAVIGATION.md) | 모바일 내비게이션, 딥링크, 네이티브 기능                |
 | [SECURITY](docs/SECURITY.md)                   | 위협별 대응                                             |
 | [TESTING](docs/TESTING.md)                     | 테스트 계층과 필수 케이스                               |
+
+## 로컬 실행
+
+필요: Node 22+, pnpm 11, Docker.
+
+```bash
+pnpm install
+pnpm infra:up                                   # PostgreSQL 5433 · Redis 6380 · RustFS 9000 · Mailpit 8025
+cp apps/api/.env.example apps/api/.env          # 값 채우기 (키가 없는 연동은 개발용 모의 동작)
+pnpm --filter @shop/api exec prisma migrate deploy
+pnpm --filter @shop/api db:seed                 # 예시 작품·경매·계정
+pnpm --filter @shop/api dev                     # API http://localhost:4000/api/v1
+pnpm --filter @shop/web dev                     # 웹 http://localhost:3000
+```
+
+앱(Expo):
+
+```bash
+pnpm --filter @shop/mobile start                # Expo 개발 서버 — 개발 빌드 또는 에뮬레이터에서 열기
+pnpm --filter @shop/mobile web                  # 브라우저 미리보기 (API WEB_ORIGIN 에 http://localhost:8081 추가)
+```
+
+앱은 개발 중 Metro 가 떠 있는 PC 주소로 API 를 찾는다. 배포 빌드는 `EXPO_PUBLIC_API_URL` 등을 EAS 프로필에 넣는다.
+
+검사: `pnpm typecheck` · `pnpm lint` · `pnpm test` · `pnpm build`
