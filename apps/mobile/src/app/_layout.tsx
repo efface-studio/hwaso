@@ -69,6 +69,12 @@ function Navigation() {
         <Stack.Screen name="addresses/index" options={{ title: '배송지 관리' }} />
         <Stack.Screen name="addresses/edit" options={{ presentation: 'modal', title: '배송지' }} />
         <Stack.Screen name="bridge" options={{ headerShown: false, animation: 'none' }} />
+        <Stack.Screen name="sell/new" options={{ presentation: 'fullScreenModal', title: '작품 등록' }} />
+        <Stack.Screen name="sell/[id]/edit" options={{ title: '작품 수정' }} />
+        <Stack.Screen name="sell/[id]/auction" options={{ title: '경매 등록' }} />
+        <Stack.Screen name="seller/register" options={{ title: '판매자 등록' }} />
+        <Stack.Screen name="seller/products" options={{ title: '내 작품' }} />
+        <Stack.Screen name="seller/settlements" options={{ title: '정산' }} />
       </Stack>
     </ThemeProvider>
   );

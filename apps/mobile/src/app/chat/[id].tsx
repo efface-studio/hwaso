@@ -12,7 +12,6 @@ import { Image } from 'expo-image';
 import { Link, router, Stack, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  ActionSheetIOS,
   Alert,
   AppState,
   FlatList,
@@ -28,6 +27,7 @@ import { AppointmentSheet } from '@/components/chat/appointment-sheet';
 import { Bubble, type PendingMessage } from '@/components/chat/bubble';
 import { Empty, Loading } from '@/components/ui/state';
 import { Text } from '@/components/ui/text';
+import { actionSheet } from '@/lib/action-sheet';
 import { api } from '@/lib/api';
 import { goBack } from '@/lib/nav';
 import { mediaUrl } from '@/lib/media';
@@ -39,31 +39,6 @@ import { useTheme } from '@/theme';
 type Pages = InfiniteData<Page<ChatMessageDto>>;
 const errMsg = (e: unknown) => (e instanceof ApiError ? e.message : '처리하지 못했어요.');
 const uuid = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
-
-/** OS 기본 선택 메뉴: iOS 액션 시트 / Android 대화상자 */
-function choose(title: string, options: { label: string; destructive?: boolean; onPress: () => void }[]) {
-  if (Platform.OS === 'ios') {
-    const labels = [...options.map((o) => o.label), '취소'];
-    ActionSheetIOS.showActionSheetWithOptions(
-      {
-        title,
-        options: labels,
-        cancelButtonIndex: labels.length - 1,
-        destructiveButtonIndex: options.map((o, i) => (o.destructive ? i : -1)).filter((i) => i >= 0),
-      },
-      (i) => options[i]?.onPress(),
-    );
-  } else {
-    Alert.alert(title, undefined, [
-      ...options.map((o) => ({
-        text: o.label,
-        style: o.destructive ? ('destructive' as const) : ('default' as const),
-        onPress: o.onPress,
-      })),
-      { text: '취소', style: 'cancel' as const },
-    ]);
-  }
-}
 
 export default function ChatRoomScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -229,7 +204,7 @@ export default function ChatRoomScreen() {
   };
 
   const attach = () =>
-    choose('보내기', [
+    actionSheet('보내기', [
       { label: '사진 찍기', onPress: () => void sendPhoto('camera') },
       { label: '앨범에서 선택', onPress: () => void sendPhoto('library') },
       ...(r.product
@@ -250,7 +225,7 @@ export default function ChatRoomScreen() {
   };
 
   const menu = () =>
-    choose(r.counterpart.nickname, [
+    actionSheet(r.counterpart.nickname, [
       {
         label: r.muted ? '알림 켜기' : '알림 끄기',
         onPress: () =>
@@ -306,7 +281,7 @@ export default function ChatRoomScreen() {
   const onLongPress = (m: PendingMessage) => {
     if (m.pending || m.deleted) return;
     if (m.senderId === me.id)
-      choose('메시지', [
+      actionSheet('메시지', [
         {
           label: '삭제',
           destructive: true,
@@ -318,7 +293,7 @@ export default function ChatRoomScreen() {
         },
       ]);
     else
-      choose('메시지', [
+      actionSheet('메시지', [
         {
           label: '신고',
           destructive: true,

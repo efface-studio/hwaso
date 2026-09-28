@@ -74,7 +74,16 @@ function Cta({ p }: { p: ProductDetailDto }) {
     onError: (e) => Alert.alert(e instanceof ApiError ? e.message : '담지 못했어요.'),
   });
   const disabled = (title: string) => <Button title={title} size="lg" disabled block />;
-  if (p.isMine) return disabled('내가 등록한 작품');
+  if (p.isMine)
+    return (
+      <Button
+        title="내 작품 관리"
+        variant="outline"
+        size="lg"
+        block
+        onPress={() => router.push({ pathname: '/sell/[id]/edit', params: { id: p.id } })}
+      />
+    );
   if (p.status === 'SOLD') return disabled('판매 완료');
   if (p.status === 'RESERVED') return disabled('거래 진행 중');
   if (p.saleType === 'AUCTION' && p.auction) {
