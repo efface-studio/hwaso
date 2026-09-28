@@ -7,6 +7,7 @@ export const ERROR_MESSAGES = {
   CONFLICT: '이미 처리되었거나 현재 상태에서 할 수 없는 요청입니다.',
   RATE_LIMITED: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.',
   INTERNAL: '잠시 문제가 발생했습니다. 다시 시도해주세요.',
+  DEMO_DISABLED: '데모에서는 사용할 수 없는 기능이에요.',
 
   INVALID_CREDENTIALS: '이메일 또는 비밀번호가 올바르지 않습니다.',
   ACCOUNT_LOCKED: '로그인 시도가 많아 잠시 잠겼습니다. 15분 후 다시 시도해주세요.',

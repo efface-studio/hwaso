@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { AppException } from '../common/app-exception';
-import { env, isProd } from '../config/env';
+import { env, isDemo, isProd } from '../config/env';
 
 /** 토스페이먼츠 결제 객체 중 사용하는 필드 (https://docs.tosspayments.com/reference#payment-객체) */
 export interface TossPayment {
@@ -77,8 +77,8 @@ export class TossClient {
   }
 }
 
-/** 키가 없는 개발 환경용 모의 결제. 운영에서는 절대 쓰지 않는다 */
-export const mockPaymentsAllowed = () => !isProd();
+/** 키가 없는 개발 환경용 모의 결제. 운영에서는 공개 데모일 때만 쓴다 (실제 돈이 오가지 않게) */
+export const mockPaymentsAllowed = () => !isProd() || isDemo();
 
 export function mockPayment(
   orderId: string,
