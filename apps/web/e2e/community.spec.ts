@@ -13,6 +13,21 @@ test('작품에서 판매자와 채팅을 시작하고 메시지를 보낸다', 
   await page.getByRole('button', { name: '보내기' }).click();
   await expect(page.getByText(text)).toBeVisible();
 
+  // 답장: 메시지 메뉴 → 답장 → 입력창 위 대상 표시 → 보내면 말풍선에 인용
+  await page
+    .locator('[id^="msg-"]')
+    .filter({ hasText: text })
+    .getByRole('button', { name: '메시지 메뉴' })
+    .click();
+  await page.getByRole('menuitem', { name: '답장' }).click();
+  await expect(page.getByRole('button', { name: '답장 취소' })).toBeVisible();
+  const reply = `추가로 액자도 포함인가요? ${Date.now()}`;
+  await page.getByLabel('메시지 입력').fill(reply);
+  await page.getByRole('button', { name: '보내기' }).click();
+  const replied = page.locator('[id^="msg-"]').filter({ hasText: reply });
+  await expect(replied.getByRole('button', { name: /나에게 답장/ })).toContainText(text);
+  await expect(page.getByRole('button', { name: '답장 취소' })).toHaveCount(0);
+
   // 거래 약속: 모달 안에서 커스텀 날짜 피커(브라우저 기본 UI 아님)로 날짜를 고른다
   await page.getByRole('button', { name: '첨부' }).click();
   await page.getByRole('menuitem', { name: '거래 약속' }).click();
