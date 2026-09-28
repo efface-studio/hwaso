@@ -3,6 +3,26 @@ import type { ChatMessageKind, ProductStatus, SaleType } from './enums';
 import type { ImageDto, UserSummary } from './dto';
 import { id } from './schemas/common';
 
+/** 채팅방에 남는 거래 안내 (판매자의 상태 변경 · 주문 진행) */
+export const CHAT_SYSTEM_TEXT = {
+  TRADE_ACTIVE: '판매자가 판매 중으로 바꿨어요.',
+  TRADE_RESERVED: '판매자가 예약 중으로 바꿨어요.',
+  TRADE_SOLD: '판매자가 거래 완료로 바꿨어요.',
+  ORDER_PAID: '결제가 완료됐어요. 판매자가 발송을 준비해요.',
+  ORDER_SHIPPED: '작품이 발송됐어요.',
+  ORDER_DELIVERED: '배송이 완료됐어요. 작품을 확인하고 구매를 확정해주세요.',
+  ORDER_COMPLETED: '구매가 확정됐어요. 거래 후기를 남겨주세요.',
+  ORDER_CANCELLED: '주문이 취소됐어요.',
+  ORDER_REFUND_REQUESTED: '환불이 요청됐어요.',
+  ORDER_REFUNDED: '환불이 완료됐어요.',
+} as const;
+export type ChatSystemEvent = keyof typeof CHAT_SYSTEM_TEXT;
+
+/** 판매자가 채팅에서 바꿀 수 있는 거래 상태 */
+export const CHAT_TRADE_STATUSES = ['ACTIVE', 'RESERVED', 'SOLD'] as const;
+export const chatTradeSchema = z.strictObject({ status: z.enum(CHAT_TRADE_STATUSES) });
+export type ChatTradeInput = z.infer<typeof chatTradeSchema>;
+
 export interface ChatMessageDto {
   id: string;
   roomId: string;
@@ -18,6 +38,8 @@ export interface ChatMessageDto {
     status: ProductStatus;
   } | null;
   appointment: { at: string; place: string } | null;
+  /** SYSTEM 메시지: 거래 상태 변경·주문 진행 안내 (본문은 body) */
+  system: { event: ChatSystemEvent; orderId: string | null } | null;
   /** 외부 연락처·계좌 등 외부 거래 유도로 보이는 메시지 */
   warning: boolean;
   clientId: string | null;
