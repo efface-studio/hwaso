@@ -23,3 +23,8 @@ android/
 .claude/
 apps/api/prisma/seed/.cache/
 next-env.d.ts
+
+# Playwright
+**/test-results/
+**/playwright-report/
+**/blob-report/
