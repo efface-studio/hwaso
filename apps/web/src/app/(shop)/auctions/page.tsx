@@ -46,9 +46,7 @@ function AuctionList() {
   const items = query.data?.pages.flatMap((p) => p.items) ?? [];
 
   return (
-    <div className="page-x mx-auto max-w-page py-6 md:py-10">
-      <h1 className="text-h1">경매</h1>
-      <p className="mt-1 text-body text-muted">실시간으로 입찰하고, 마감 직전 입찰 시 자동으로 연장돼요.</p>
+    <>
       <nav aria-label="경매 상태" className="mt-6 flex gap-6 border-b border-border">
         {TABS.map((t) => (
           <Link
@@ -84,14 +82,36 @@ function AuctionList() {
           </>
         )}
       </div>
-    </div>
+    </>
+  );
+}
+
+/** 탭(쿼리스트링)을 읽기 전 서버 HTML — 목록과 같은 자리를 잡아 두어 레이아웃이 흔들리지 않게 한다 */
+function ListFallback() {
+  return (
+    <>
+      <div className="mt-6 flex gap-6 border-b border-border" aria-hidden>
+        {TABS.map((t) => (
+          <span key={t.key} className="flex h-11 items-center text-label text-muted">
+            {t.label}
+          </span>
+        ))}
+      </div>
+      <div className="mt-6">
+        <ProductGridSkeleton />
+      </div>
+    </>
   );
 }
 
 export default function AuctionsPage() {
   return (
-    <Suspense>
-      <AuctionList />
-    </Suspense>
+    <div className="page-x mx-auto max-w-page py-6 md:py-10">
+      <h1 className="text-h1">경매</h1>
+      <p className="mt-1 text-body text-muted">실시간으로 입찰하고, 마감 직전 입찰 시 자동으로 연장돼요.</p>
+      <Suspense fallback={<ListFallback />}>
+        <AuctionList />
+      </Suspense>
+    </div>
   );
 }
