@@ -1,6 +1,7 @@
 import { Prisma, type Order, type OrderStatus } from '@prisma/client';
 import { SETTLEMENT_DELAY_DAYS, canTransitionOrder, settlementAmounts } from '@shop/shared';
 import { AppException } from '../common/app-exception';
+import { postOrderEvent } from '../chat/system';
 import type { Tx } from '../prisma/prisma.service';
 
 /**
@@ -35,6 +36,8 @@ export async function setStatus(
   });
   const updated = await tx.order.update({ where: { id: order.id }, data: { ...opts.data, status: to } });
   order.status = to;
+  // 구매자·판매자 대화방에 진행 안내 (결제 완료·발송·구매 확정 등)
+  await postOrderEvent(tx, order.id, to);
   return updated;
 }
 

@@ -1,8 +1,10 @@
 import { Body, Controller, Delete, Get, HttpCode, Module, Param, Patch, Post, Query } from '@nestjs/common';
 import {
   chatRoomSettingsSchema,
+  chatTradeSchema,
   createChatRoomSchema,
   sendMessageSchema,
+  type ChatTradeInput,
   type SendMessageInput,
 } from '@shop/shared';
 import { z } from 'zod';
@@ -61,6 +63,16 @@ export class ChatController {
   @Delete('rooms/:id/messages/:messageId')
   deleteMessage(@CurrentUser() u: AuthUser, @Param('id') id: string, @Param('messageId') messageId: string) {
     return this.chat.deleteMessage(u, id, messageId);
+  }
+
+  /** 판매자: 채팅에서 거래 상태 변경 (판매 중·예약 중·거래 완료) */
+  @Patch('rooms/:id/trade')
+  trade(
+    @CurrentUser() u: AuthUser,
+    @Param('id') id: string,
+    @Body(new ZodPipe(chatTradeSchema)) body: ChatTradeInput,
+  ) {
+    return this.chat.setTradeStatus(u, id, body);
   }
 
   @Post('rooms/:id/read')

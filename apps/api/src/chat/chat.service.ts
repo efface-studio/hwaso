@@ -1,10 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import {
+  CHAT_TRADE_STATUSES,
   chatPreview,
   looksLikeExternalTrade,
   type ChatMessageDto,
   type ChatRoomDto,
+  type ChatTradeInput,
   type ImageDto,
   type Page,
   type SendMessageInput,
@@ -21,6 +23,7 @@ import { mediaOwnerKey } from '../products/seller-products.service';
 import { RealtimeService } from '../realtime/realtime';
 import { RedisService } from '../redis/redis.service';
 import { SafetyService } from '../safety/safety.controller';
+import { postSystemMessage } from './system';
 
 const PAGE = 50;
 const ROOM_LIMIT = 100;
@@ -44,7 +47,12 @@ const messageInclude = {
 } satisfies Prisma.ChatMessageInclude;
 
 type MessageRow = Prisma.ChatMessageGetPayload<{ include: typeof messageInclude }>;
-type MessageData = { image?: ImageDto; appointment?: { at: string; place: string }; warning?: boolean };
+type MessageData = {
+  image?: ImageDto;
+  appointment?: { at: string; place: string };
+  warning?: boolean;
+  system?: ChatMessageDto['system'];
+};
 
 export function toMessageDto(m: MessageRow): ChatMessageDto {
   const deleted = !!m.deletedAt;
@@ -67,6 +75,7 @@ export function toMessageDto(m: MessageRow): ChatMessageDto {
             status: m.product.status,
           },
     appointment: deleted ? null : (data.appointment ?? null),
+    system: data.system ?? null,
     warning: !deleted && !!data.warning,
     clientId: m.clientId,
     deleted,
@@ -401,6 +410,44 @@ export class ChatService {
     const key = `chat-dup:u:${userId}:${roomId}:${createHash('sha256').update(normalized).digest('hex').slice(0, 16)}`;
     if (await this.limiter.exceeded(key, CHAT_DUPLICATE_LIMIT, CHAT_DUPLICATE_WINDOW_SEC))
       throw new AppException('CHAT_DUPLICATE');
+  }
+
+  /**
+   * 판매자가 채팅에서 거래 상태를 바꾼다 (판매 중 ↔ 예약 중 → 거래 완료). 직거래용이라
+   * 경매 작품이나 주문이 걸린 작품(취소·환불 외)은 주문 흐름이 상태를 정하므로 막는다.
+   */
+  async setTradeStatus(user: AuthUser, roomId: string, input: ChatTradeInput) {
+    const { room, counterpartId } = await this.member(user, roomId);
+    if (room.sellerId !== user.id)
+      throw new AppException('FORBIDDEN', '판매자만 거래 상태를 바꿀 수 있어요.');
+    const product = room.productId
+      ? await this.prisma.product.findUnique({
+          where: { id: room.productId },
+          select: { id: true, status: true, saleType: true, deletedAt: true },
+        })
+      : null;
+    if (!product || product.deletedAt) throw new AppException('NOT_FOUND');
+    if (
+      product.saleType === 'AUCTION' ||
+      !(CHAT_TRADE_STATUSES as readonly string[]).includes(product.status)
+    )
+      throw new AppException('INVALID_TRANSITION', '이 작품은 채팅에서 거래 상태를 바꿀 수 없어요.');
+    const ordered = await this.prisma.orderItem.count({
+      where: { productId: product.id, order: { status: { notIn: ['CANCELLED', 'REFUNDED'] } } },
+    });
+    if (ordered)
+      throw new AppException('INVALID_TRANSITION', '주문이 진행 중인 작품은 주문 화면에서 처리해주세요.');
+    if (product.status === input.status) return { status: input.status };
+
+    const message = await this.prisma.$transaction(async (tx) => {
+      await tx.product.update({ where: { id: product.id }, data: { status: input.status } });
+      const m = await postSystemMessage(tx, room, `TRADE_${input.status}`);
+      return tx.chatMessage.findUniqueOrThrow({ where: { id: m.id }, include: messageInclude });
+    });
+    const dto = toMessageDto(message);
+    for (const uid of [user.id, counterpartId])
+      this.realtime.toUser(uid, 'CHAT_MESSAGE', { roomId, message: dto });
+    return { status: input.status };
   }
 
   private async pushToCounterpart(senderId: string, to: string, roomId: string, m: ChatMessageDto) {
