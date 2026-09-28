@@ -107,11 +107,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # API 는 기동할 때 버킷을 확인·생성한다 — 로컬 S3 호환 저장소를 띄운다
-      - name: Start S3 (MinIO)
+      # API 는 기동할 때 버킷을 확인·생성한다 — 로컬과 같은 S3 호환 저장소(RustFS)를 띄운다
+      - name: Start S3 (RustFS)
         run: |
-          docker run -d --name minio -p 9000:9000 -e MINIO_ROOT_USER=$S3_ACCESS_KEY -e MINIO_ROOT_PASSWORD=$S3_SECRET_KEY minio/minio server /data
-          for i in $(seq 1 30); do curl -sf http://localhost:9000/minio/health/live && break; sleep 1; done
+          docker run -d --name s3 -p 9000:9000 -e RUSTFS_ACCESS_KEY=$S3_ACCESS_KEY -e RUSTFS_SECRET_KEY=$S3_SECRET_KEY rustfs/rustfs:latest
+          for i in $(seq 1 30); do [ "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:9000)" != "000" ] && break; sleep 1; done
 
       - name: Build
         run: pnpm build
