@@ -42,7 +42,13 @@ export async function ensureAddress(request: APIRequestContext, token: string) {
   expect(res.ok()).toBeTruthy();
 }
 
-type Card = { id: string; saleType: string; price: number | null; auction: { id: string } | null };
+type Card = {
+  id: string;
+  title: string;
+  saleType: string;
+  price: number | null;
+  auction: { id: string } | null;
+};
 
 export async function firstProduct(request: APIRequestContext, query: string) {
   const res = await request.get(`${API}/${query}`);

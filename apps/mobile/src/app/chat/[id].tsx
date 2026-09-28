@@ -261,6 +261,14 @@ export default function ChatRoomScreen() {
           void api.chat.mute(id, !r.muted).then(() => qc.invalidateQueries({ queryKey: roomKey })),
       },
       {
+        label: r.pinned ? '상단 고정 해제' : '상단 고정',
+        onPress: () =>
+          void api.chat.pin(id, !r.pinned).then(() => {
+            void qc.invalidateQueries({ queryKey: roomKey });
+            void qc.invalidateQueries({ queryKey: ['chat', 'rooms'] });
+          }),
+      },
+      {
         label: '신고하기',
         onPress: () => router.push({ pathname: '/report', params: { type: 'USER', id: r.counterpart.id } }),
       },

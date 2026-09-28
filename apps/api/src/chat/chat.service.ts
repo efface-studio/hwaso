@@ -7,6 +7,7 @@ import {
   looksLikeExternalTrade,
   type ChatMessageDto,
   type ChatRoomDto,
+  type ChatRoomSettingsInput,
   type ChatTradeInput,
   type ImageDto,
   type Page,
@@ -246,6 +247,7 @@ export class ChatService {
       },
       unreadCount: unread,
       muted: mine?.muted ?? false,
+      pinned: !!mine?.pinnedAt,
       lastMessageAt: r.lastMessageAt.toISOString(),
       counterpartLastReadAt: theirs?.lastReadAt.toISOString() ?? null,
     };
@@ -273,7 +275,12 @@ export class ChatService {
       ),
       this.blockSets(user.id),
     ]);
-    return visible.map((r) => this.toRoom(r, user.id, unread.get(r.id) ?? 0, blocks));
+    // 고정한 방이 먼저(최근에 고정한 순), 나머지는 최근 대화 순
+    // ponytail: 최근 100개 안에서만 정렬 — 오래된 고정 방이 밀려나면 고정 방을 따로 불러온다
+    const pinnedAt = (r: RoomRow) => r.readStates.find((s) => s.userId === user.id)?.pinnedAt?.getTime() ?? 0;
+    return visible
+      .toSorted((a, b) => pinnedAt(b) - pinnedAt(a))
+      .map((r) => this.toRoom(r, user.id, unread.get(r.id) ?? 0, blocks));
   }
 
   async room(user: AuthUser, roomId: string): Promise<ChatRoomDto> {
@@ -558,13 +565,17 @@ export class ChatService {
     return { ok: true };
   }
 
-  async settings(user: AuthUser, roomId: string, muted: boolean) {
+  async settings(user: AuthUser, roomId: string, input: ChatRoomSettingsInput) {
     await this.member(user, roomId);
-    await this.prisma.chatReadState.upsert({
+    const data = {
+      muted: input.muted,
+      pinnedAt: input.pinned === undefined ? undefined : input.pinned ? new Date() : null,
+    };
+    const s = await this.prisma.chatReadState.upsert({
       where: { roomId_userId: { roomId, userId: user.id } },
-      create: { roomId, userId: user.id, muted },
-      update: { muted },
+      create: { roomId, userId: user.id, ...data },
+      update: data,
     });
-    return { muted };
+    return { muted: s.muted, pinned: !!s.pinnedAt };
   }
 }

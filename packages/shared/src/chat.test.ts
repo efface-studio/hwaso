@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { chatPreview, looksLikeExternalTrade, sendMessageSchema } from './chat';
+import {
+  chatPreview,
+  filterChatRooms,
+  looksLikeExternalTrade,
+  sendMessageSchema,
+  type ChatRoomDto,
+  type ChatRoomFilter,
+} from './chat';
 
 describe('chat', () => {
   it('flags external trade phrases', () => {
@@ -24,5 +31,38 @@ describe('chat', () => {
   it('previews', () => {
     expect(chatPreview({ kind: 'IMAGE', body: null, deleted: false })).toBe('사진을 보냈어요.');
     expect(chatPreview({ kind: 'TEXT', body: '안녕', deleted: true })).toBe('삭제된 메시지입니다.');
+  });
+});
+
+const room = (id: string, over: object = {}) =>
+  ({
+    id,
+    role: 'buyer',
+    unreadCount: 0,
+    counterpart: { nickname: '미술관옆집' },
+    product: { title: '달항아리' },
+    ...over,
+  }) as unknown as ChatRoomDto;
+
+describe('filterChatRooms', () => {
+  const rooms = [
+    room('a'),
+    room('b', { role: 'seller', unreadCount: 2, counterpart: { nickname: 'Collector' } }),
+    room('c', { product: null, counterpart: { nickname: '수집가' } }),
+  ];
+  const ids = (f: ChatRoomFilter, q = '') => filterChatRooms(rooms, f, q).map((r) => r.id);
+
+  it('구매·판매·안 읽음으로 나눈다', () => {
+    expect(ids('all')).toEqual(['a', 'b', 'c']);
+    expect(ids('buying')).toEqual(['a', 'c']);
+    expect(ids('selling')).toEqual(['b']);
+    expect(ids('unread')).toEqual(['b']);
+  });
+
+  it('닉네임·작품명으로 찾는다 (대소문자·앞뒤 공백 무시, 작품 없는 방도 안전)', () => {
+    expect(ids('all', ' collector ')).toEqual(['b']);
+    expect(ids('all', '항아리')).toEqual(['a', 'b']);
+    expect(ids('buying', '수집')).toEqual(['c']);
+    expect(ids('all', '없는말')).toEqual([]);
   });
 });

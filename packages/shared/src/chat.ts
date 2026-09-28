@@ -75,6 +75,8 @@ export interface ChatRoomDto {
   lastMessage: { kind: ChatMessageKind; preview: string; senderId: string; createdAt: string } | null;
   unreadCount: number;
   muted: boolean;
+  /** 상단 고정 */
+  pinned: boolean;
   lastMessageAt: string;
   /** 읽음 표시용: 상대가 마지막으로 읽은 시각 */
   counterpartLastReadAt: string | null;
@@ -127,7 +129,11 @@ export const chatPhrasesSchema = z.strictObject({
 });
 export type ChatPhrasesInput = z.infer<typeof chatPhrasesSchema>;
 
-export const chatRoomSettingsSchema = z.strictObject({ muted: z.boolean() });
+/** 방 설정: 알림 끄기·상단 고정 (둘 중 하나 이상) */
+export const chatRoomSettingsSchema = z
+  .strictObject({ muted: z.boolean().optional(), pinned: z.boolean().optional() })
+  .refine((v) => v.muted !== undefined || v.pinned !== undefined, { message: '바꿀 설정이 없습니다.' });
+export type ChatRoomSettingsInput = z.infer<typeof chatRoomSettingsSchema>;
 
 /** 외부 거래 유도 표현 (메신저 아이디·계좌·전화번호). 차단하지 않고 안전 안내만 띄운다 */
 const EXTERNAL_TRADE =
@@ -152,4 +158,31 @@ export function chatPreview(m: {
     default:
       return (m.body ?? '').slice(0, 80);
   }
+}
+
+/** 채팅 목록 필터 */
+export const CHAT_ROOM_FILTERS = [
+  ['all', '전체'],
+  ['buying', '구매'],
+  ['selling', '판매'],
+  ['unread', '안 읽음'],
+] as const;
+export type ChatRoomFilter = (typeof CHAT_ROOM_FILTERS)[number][0];
+
+/** 채팅 목록 거르기: 구매·판매·안 읽음 + 상대 닉네임·작품명 검색 (웹·앱 공용) */
+export function filterChatRooms<
+  R extends Pick<ChatRoomDto, 'role' | 'unreadCount'> & {
+    counterpart: { nickname: string };
+    product: { title: string } | null;
+  },
+>(rooms: readonly R[], filter: ChatRoomFilter, query: string): R[] {
+  const q = query.trim().toLowerCase();
+  return rooms.filter(
+    (r) =>
+      (filter === 'all' ||
+        (filter === 'buying' && r.role === 'buyer') ||
+        (filter === 'selling' && r.role === 'seller') ||
+        (filter === 'unread' && r.unreadCount > 0)) &&
+      (!q || `${r.counterpart.nickname} ${r.product?.title ?? ''}`.toLowerCase().includes(q)),
+  );
 }

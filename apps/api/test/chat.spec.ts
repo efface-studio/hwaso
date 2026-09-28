@@ -358,3 +358,37 @@ describe('phrases (자주 쓰는 문구)', () => {
     await t.http.get('/api/v1/chat/phrases').expect(401);
   });
 });
+
+describe('pin (상단 고정)', () => {
+  it('고정한 방이 최근 대화보다 먼저 오고, 해제하면 최근순으로 돌아간다', async () => {
+    const buyer = await createUser(t);
+    const open = async () => {
+      const seller = await createUser(t, 'SELLER');
+      const { child } = await createCategory(t);
+      const product = await createProduct(t, { sellerId: seller.id, categoryId: child.id });
+      const room = await t.http.post('/api/v1/chat/rooms').set(buyer.auth).send({ productId: product.id });
+      await text(buyer, room.body.id, `안녕하세요 ${++seq}`).expect(201);
+      return room.body.id as string;
+    };
+    const older = await open();
+    const newer = await open();
+    const order = async () =>
+      (await t.http.get('/api/v1/chat/rooms').set(buyer.auth).expect(200)).body.map(
+        (r: { id: string; pinned: boolean }) => [r.id, r.pinned],
+      );
+    expect(await order()).toEqual([
+      [newer, false],
+      [older, false],
+    ]);
+
+    await t.http.patch(`/api/v1/chat/rooms/${older}`).set(buyer.auth).send({ pinned: true }).expect(200);
+    expect(await order()).toEqual([
+      [older, true],
+      [newer, false],
+    ]);
+
+    await t.http.patch(`/api/v1/chat/rooms/${older}`).set(buyer.auth).send({ pinned: false }).expect(200);
+    expect((await order())[0]).toEqual([newer, false]);
+    await t.http.patch(`/api/v1/chat/rooms/${older}`).set(buyer.auth).send({}).expect(400);
+  });
+});

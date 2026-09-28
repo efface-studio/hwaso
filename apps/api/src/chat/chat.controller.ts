@@ -18,6 +18,7 @@ import {
   createChatRoomSchema,
   sendMessageSchema,
   type ChatPhrasesInput,
+  type ChatRoomSettingsInput,
   type ChatTradeInput,
   type SendMessageInput,
 } from '@shop/shared';
@@ -115,9 +116,9 @@ export class ChatController {
   settings(
     @CurrentUser() u: AuthUser,
     @Param('id') id: string,
-    @Body(new ZodPipe(chatRoomSettingsSchema)) body: { muted: boolean },
+    @Body(new ZodPipe(chatRoomSettingsSchema)) body: ChatRoomSettingsInput,
   ) {
-    return this.chat.settings(u, id, body.muted);
+    return this.chat.settings(u, id, body);
   }
 }
 

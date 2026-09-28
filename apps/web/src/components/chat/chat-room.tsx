@@ -352,6 +352,10 @@ export function ChatRoom({ roomId }: { roomId: string }) {
               label: r.muted ? '알림 켜기' : '알림 끄기',
               onSelect: () => act.mutate(() => api.chat.mute(roomId, !r.muted)),
             },
+            {
+              label: r.pinned ? '상단 고정 해제' : '상단 고정',
+              onSelect: () => act.mutate(() => api.chat.pin(roomId, !r.pinned)),
+            },
             { label: '신고하기', onSelect: () => setReport({ type: 'USER', id: r.counterpart.id }) },
             r.blocked
               ? { label: '차단 해제', onSelect: () => act.mutate(() => api.safety.unblock(r.counterpart.id)) }
