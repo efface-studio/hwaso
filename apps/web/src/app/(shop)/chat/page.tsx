@@ -1,4 +1,7 @@
+import type { Metadata } from 'next';
 import { MessageCircle } from 'lucide-react';
+
+export const metadata: Metadata = { title: '채팅', robots: { index: false } };
 
 export default function ChatIndexPage() {
   return (
