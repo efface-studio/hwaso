@@ -54,6 +54,7 @@ export async function unregisterPush() {
 
 /** 알림을 눌러 앱이 열리면 알림의 link 로 이동 */
 export function listenNotificationTaps() {
+  if (Platform.OS === 'web') return undefined;
   const open = (r: Notifications.NotificationResponse | null) => {
     const link = (r?.notification.request.content.data as { link?: string } | undefined)?.link;
     if (link?.startsWith('/')) router.push(link as Href);
