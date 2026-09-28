@@ -66,3 +66,13 @@ test.describe('터치 폰', () => {
     }
   });
 });
+
+test('브랜드 배너는 배경 상자 없이 페이지 위에 놓인다', async ({ page }) => {
+  for (const path of ['/login', '/']) {
+    await page.goto(path);
+    const banners = page.locator('svg[aria-label^="화소 畫所"]');
+    expect(await banners.count(), path).toBeGreaterThan(0);
+    // 배경 사각형(580×240)·아이콘 타일(180×180)이 없어야 한다
+    expect(await banners.locator('rect[width="580"], rect[width="180"]').count(), path).toBe(0);
+  }
+});
