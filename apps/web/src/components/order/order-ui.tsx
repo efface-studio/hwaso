@@ -47,19 +47,28 @@ export function OrderSteps({ status }: { status: OrderStatus }) {
   );
 }
 
+/** compact 는 주문 카드(전체가 링크) 안에서 쓰므로 작품 링크를 걸지 않는다 — 링크 중첩 금지 */
 export function OrderItemRow({ item, compact }: { item: OrderItemDto; compact?: boolean }) {
+  const href = `/products/${item.productId}`;
   return (
     <div className="flex items-center gap-3">
-      <Link
-        href={`/products/${item.productId}`}
-        className={cn('shrink-0 bg-background-soft', compact ? 'size-14' : 'size-20')}
-      >
-        <MediaImage image={item.image} alt="" sizes="80px" className="p-1" />
-      </Link>
-      <div className="min-w-0 flex-1">
-        <Link href={`/products/${item.productId}`} className="line-clamp-2 text-body hover:underline">
-          {item.title}
+      {compact ? (
+        <span className="size-14 shrink-0 bg-background-soft">
+          <MediaImage image={item.image} alt="" sizes="80px" className="p-1" />
+        </span>
+      ) : (
+        <Link href={href} className="size-20 shrink-0 bg-background-soft" tabIndex={-1} aria-hidden>
+          <MediaImage image={item.image} alt="" sizes="80px" className="p-1" />
         </Link>
+      )}
+      <div className="min-w-0 flex-1">
+        {compact ? (
+          <p className="line-clamp-2 text-body">{item.title}</p>
+        ) : (
+          <Link href={href} className="line-clamp-2 text-body hover:underline">
+            {item.title}
+          </Link>
+        )}
         <p className="tabular mt-0.5 text-small text-muted">
           {formatPrice(item.unitPrice)}
           {item.quantity > 1 && ` × ${item.quantity}`}
