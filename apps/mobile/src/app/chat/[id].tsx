@@ -1,6 +1,8 @@
 import { ApiError } from '@shop/api-client';
 import {
+  CHAT_TRADE_STATUSES,
   formatPrice,
+  PRODUCT_STATUS_LABEL,
   type ChatMessageDto,
   type ChatRoomDto,
   type Page,
@@ -25,6 +27,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppointmentSheet } from '@/components/chat/appointment-sheet';
 import { Bubble, type PendingMessage } from '@/components/chat/bubble';
+import { Button } from '@/components/ui/button';
 import { Empty, Loading } from '@/components/ui/state';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
@@ -109,6 +112,8 @@ export default function ChatRoomScreen() {
       if (p.roomId !== id) return;
       upsert(p.message);
       setPending((ps) => ps.filter((x) => x.clientId !== p.message.clientId));
+      // 거래 상태 안내가 오면 상품 바(상태)를 새로 불러온다
+      if (p.message.kind === 'SYSTEM') void qc.invalidateQueries({ queryKey: roomKey });
       if (p.message.senderId !== me.id) {
         setTyping(false);
         markRead();
@@ -186,6 +191,7 @@ export default function ChatRoomScreen() {
       image: null,
       product: null,
       appointment: input.appointment ?? null,
+      system: null,
       warning: false,
       clientId,
       deleted: false,
@@ -312,6 +318,25 @@ export default function ChatRoomScreen() {
   )?.id;
   const canSend = !r.blocked && !r.blockedMe && !r.counterpart.left;
 
+  const buyable = r.role === 'buyer' && r.product?.status === 'ACTIVE' && r.product.saleType !== 'AUCTION';
+  const tradable =
+    !!r.product &&
+    r.product.saleType !== 'AUCTION' &&
+    (CHAT_TRADE_STATUSES as readonly string[]).includes(r.product.status);
+  /** 판매자: 거래 상태 변경 — 바꾸면 방에 안내가 남는다 */
+  const changeTrade = () =>
+    actionSheet(
+      '거래 상태',
+      CHAT_TRADE_STATUSES.filter((s) => s !== r.product?.status).map((s) => ({
+        label: PRODUCT_STATUS_LABEL[s],
+        onPress: () =>
+          void api.chat
+            .trade(r.id, s)
+            .then(() => qc.invalidateQueries({ queryKey: roomKey }))
+            .catch((e: unknown) => Alert.alert('바꾸지 못했어요', errMsg(e))),
+      })),
+    );
+
   return (
     <KeyboardAvoidingView
       style={{ flex: 1, backgroundColor: t.colors.background }}
@@ -355,13 +380,28 @@ export default function ChatRoomScreen() {
                 {r.product.title}
               </Text>
               <Text variant="bodyStrong">
-                {r.product.status === 'SOLD'
-                  ? '판매 완료'
+                {r.product.status === 'SOLD' || r.product.status === 'RESERVED'
+                  ? PRODUCT_STATUS_LABEL[r.product.status]
                   : r.product.price != null
                     ? formatPrice(r.product.price)
                     : '경매'}
               </Text>
             </View>
+            {buyable && (
+              <Button
+                title="구매하기"
+                size="sm"
+                onPress={() => router.push({ pathname: '/checkout', params: { productId: r.product!.id } })}
+              />
+            )}
+            {r.role === 'seller' && tradable && (
+              <Button
+                title={PRODUCT_STATUS_LABEL[r.product.status]}
+                size="sm"
+                variant="outline"
+                onPress={changeTrade}
+              />
+            )}
           </Pressable>
         </Link>
       )}

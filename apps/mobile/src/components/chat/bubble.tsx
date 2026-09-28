@@ -74,6 +74,28 @@ function Body({ m }: { m: PendingMessage }) {
   return <Text selectable>{m.body}</Text>;
 }
 
+/** 거래 안내(판매자 상태 변경·주문 진행): 가운데 한 줄, 주문이 있으면 바로가기 */
+function SystemLine({ m }: { m: PendingMessage }) {
+  const t = useTheme();
+  const orderId = m.system?.orderId;
+  return (
+    <View style={[styles.system, { backgroundColor: t.colors.surface2 }]}>
+      <Text variant="caption" color="muted" style={{ textAlign: 'center' }}>
+        {m.body}
+      </Text>
+      {orderId && (
+        <Link href={{ pathname: '/orders/[id]', params: { id: orderId } }} asChild>
+          <Pressable accessibilityRole="link" hitSlop={8}>
+            <Text variant="caption" style={{ fontWeight: '600' }}>
+              주문 보기
+            </Text>
+          </Pressable>
+        </Link>
+      )}
+    </View>
+  );
+}
+
 /** 말풍선: 내 메시지 오른쪽, 사진·작품·약속은 카드. 길게 눌러 삭제·신고 */
 export function Bubble({
   m,
@@ -91,6 +113,7 @@ export function Bubble({
   onRetry: () => void;
 }) {
   const t = useTheme();
+  if (m.kind === 'SYSTEM') return <SystemLine m={m} />;
   const card = m.kind !== 'TEXT' && !m.deleted;
   return (
     <View style={{ alignItems: mine ? 'flex-end' : 'flex-start', gap: 4 }}>
@@ -146,6 +169,17 @@ export function Bubble({
 }
 
 const styles = StyleSheet.create({
+  system: {
+    alignSelf: 'center',
+    maxWidth: '90%',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    columnGap: 8,
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+  },
   line: { flexDirection: 'row', alignItems: 'flex-end', gap: 6, maxWidth: '80%' },
   bubble: { borderRadius: 16, paddingHorizontal: 14, paddingVertical: 8, overflow: 'hidden', flexShrink: 1 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 10, width: 220 },
