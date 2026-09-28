@@ -1,7 +1,13 @@
 import { ApiError } from '@shop/api-client';
-import { REPORT_REASONS, REPORT_REASON_LABEL, REPORT_TARGETS, type ReportReason, type ReportTarget } from '@shop/shared';
+import {
+  REPORT_REASONS,
+  REPORT_REASON_LABEL,
+  REPORT_TARGETS,
+  type ReportReason,
+  type ReportTarget,
+} from '@shop/shared';
 import { useMutation } from '@tanstack/react-query';
-import { router, Stack, useLocalSearchParams } from 'expo-router';
+import { Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Button } from '@/components/ui/button';
@@ -9,9 +15,15 @@ import { Field } from '@/components/ui/field';
 import { Empty } from '@/components/ui/state';
 import { Text } from '@/components/ui/text';
 import { api } from '@/lib/api';
+import { goBack } from '@/lib/nav';
 import { useTheme } from '@/theme';
 
-const TARGET: Record<ReportTarget, string> = { PRODUCT: '작품', USER: '사용자', REVIEW: '후기', MESSAGE: '메시지' };
+const TARGET: Record<ReportTarget, string> = {
+  PRODUCT: '작품',
+  USER: '사용자',
+  REVIEW: '후기',
+  MESSAGE: '메시지',
+};
 
 /** 신고: 작품·사용자·후기·메시지 공용 모달. 처리 결과는 신고 내역에서 확인한다 */
 export default function ReportScreen() {
@@ -24,7 +36,7 @@ export default function ReportScreen() {
     mutationFn: () => api.safety.report({ targetType: target!, targetId: id, reason, detail: detail.trim() }),
     onSuccess: () => {
       Alert.alert('신고를 접수했어요', '운영팀이 확인 후 처리 결과를 알려드릴게요.');
-      router.back();
+      goBack();
     },
     onError: (e) => Alert.alert(e instanceof ApiError ? e.message : '신고하지 못했어요.'),
   });
@@ -43,7 +55,10 @@ export default function ReportScreen() {
               accessibilityRole="radio"
               accessibilityState={{ checked: on }}
               onPress={() => setReason(r)}
-              style={[styles.option, { minHeight: t.touch, borderColor: on ? t.colors.primary : t.colors.border }]}
+              style={[
+                styles.option,
+                { minHeight: t.touch, borderColor: on ? t.colors.primary : t.colors.border },
+              ]}
             >
               <View style={[styles.dot, { borderColor: on ? t.colors.primary : t.colors.borderStrong }]}>
                 {on && <View style={[styles.inner, { backgroundColor: t.colors.primary }]} />}
@@ -77,6 +92,13 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderRadius: 8,
   },
-  dot: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
+  dot: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   inner: { width: 10, height: 10, borderRadius: 5 },
 });

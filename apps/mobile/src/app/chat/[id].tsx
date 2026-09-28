@@ -29,6 +29,7 @@ import { Bubble, type PendingMessage } from '@/components/chat/bubble';
 import { Empty, Loading } from '@/components/ui/state';
 import { Text } from '@/components/ui/text';
 import { api } from '@/lib/api';
+import { goBack } from '@/lib/nav';
 import { mediaUrl } from '@/lib/media';
 import { getRealtime } from '@/lib/realtime';
 import { pickImages, uploadAsset } from '@/lib/upload';
@@ -54,7 +55,11 @@ function choose(title: string, options: { label: string; destructive?: boolean; 
     );
   } else {
     Alert.alert(title, undefined, [
-      ...options.map((o) => ({ text: o.label, style: o.destructive ? ('destructive' as const) : ('default' as const), onPress: o.onPress })),
+      ...options.map((o) => ({
+        text: o.label,
+        style: o.destructive ? ('destructive' as const) : ('default' as const),
+        onPress: o.onPress,
+      })),
       { text: '취소', style: 'cancel' as const },
     ]);
   }
@@ -101,7 +106,9 @@ export default function ChatRoomScreen() {
             ...d,
             pages: d.pages.map((p) => ({
               ...p,
-              items: p.items.map((x) => (x.id === mid ? { ...x, deleted: true, body: null, image: null } : x)),
+              items: p.items.map((x) =>
+                x.id === mid ? { ...x, deleted: true, body: null, image: null } : x,
+              ),
             })),
           },
       ),
@@ -131,10 +138,14 @@ export default function ChatRoomScreen() {
         markRead();
       }
     };
-    const onDeleted: ServerToClientEvents['CHAT_MESSAGE_DELETED'] = (p) => p.roomId === id && markDeleted(p.messageId);
+    const onDeleted: ServerToClientEvents['CHAT_MESSAGE_DELETED'] = (p) =>
+      p.roomId === id && markDeleted(p.messageId);
     const onRead: ServerToClientEvents['CHAT_READ'] = (p) => {
       if (p.roomId !== id || p.userId === me.id) return;
-      qc.setQueryData<ChatRoomDto>(['chat', 'room', id], (r) => r && { ...r, counterpartLastReadAt: p.lastReadAt });
+      qc.setQueryData<ChatRoomDto>(
+        ['chat', 'room', id],
+        (r) => r && { ...r, counterpartLastReadAt: p.lastReadAt },
+      );
     };
     const onTyping: ServerToClientEvents['CHAT_TYPING'] = (p) => {
       if (p.roomId !== id || p.userId === me.id) return;
@@ -165,7 +176,10 @@ export default function ChatRoomScreen() {
     };
   }, [id, me, qc, upsert, markDeleted, markRead]);
 
-  if (!me) return <Empty title="로그인이 필요해요" action={{ title: '로그인', onPress: () => router.push('/login') }} />;
+  if (!me)
+    return (
+      <Empty title="로그인이 필요해요" action={{ title: '로그인', onPress: () => router.push('/login') }} />
+    );
   if (room.isPending || msgs.isPending) return <Loading />;
   const r = room.data;
   if (!r) return <Empty title="대화를 찾을 수 없어요" />;
@@ -179,7 +193,9 @@ export default function ChatRoomScreen() {
         void qc.invalidateQueries({ queryKey: ['chat', 'rooms'] });
       })
       .catch((e: unknown) => {
-        setPending((ps) => ps.map((x) => (x.clientId === m.clientId ? { ...x, pending: 'failed', retry: input } : x)));
+        setPending((ps) =>
+          ps.map((x) => (x.clientId === m.clientId ? { ...x, pending: 'failed', retry: input } : x)),
+        );
         Alert.alert('보내지 못했어요', errMsg(e));
       });
 
@@ -216,7 +232,9 @@ export default function ChatRoomScreen() {
     choose('보내기', [
       { label: '사진 찍기', onPress: () => void sendPhoto('camera') },
       { label: '앨범에서 선택', onPress: () => void sendPhoto('library') },
-      ...(r.product ? [{ label: '이 작품 보내기', onPress: () => send({ kind: 'PRODUCT', productId: r.product!.id }) }] : []),
+      ...(r.product
+        ? [{ label: '이 작품 보내기', onPress: () => send({ kind: 'PRODUCT', productId: r.product!.id }) }]
+        : []),
       { label: '거래 약속 잡기', onPress: () => setAppointment(true) },
     ]);
 
@@ -235,18 +253,35 @@ export default function ChatRoomScreen() {
     choose(r.counterpart.nickname, [
       {
         label: r.muted ? '알림 켜기' : '알림 끄기',
-        onPress: () => void api.chat.mute(id, !r.muted).then(() => qc.invalidateQueries({ queryKey: roomKey })),
+        onPress: () =>
+          void api.chat.mute(id, !r.muted).then(() => qc.invalidateQueries({ queryKey: roomKey })),
       },
-      { label: '신고하기', onPress: () => router.push({ pathname: '/report', params: { type: 'USER', id: r.counterpart.id } }) },
+      {
+        label: '신고하기',
+        onPress: () => router.push({ pathname: '/report', params: { type: 'USER', id: r.counterpart.id } }),
+      },
       r.blocked
-        ? { label: '차단 해제', onPress: () => void api.safety.unblock(r.counterpart.id).then(() => qc.invalidateQueries({ queryKey: roomKey })) }
+        ? {
+            label: '차단 해제',
+            onPress: () =>
+              void api.safety
+                .unblock(r.counterpart.id)
+                .then(() => qc.invalidateQueries({ queryKey: roomKey })),
+          }
         : {
             label: '차단하기',
             destructive: true,
             onPress: () =>
               Alert.alert(`${r.counterpart.nickname}님을 차단할까요?`, '서로 메시지를 보낼 수 없게 돼요.', [
                 { text: '취소', style: 'cancel' },
-                { text: '차단', style: 'destructive', onPress: () => void api.safety.block(r.counterpart.id).then(() => qc.invalidateQueries({ queryKey: roomKey })) },
+                {
+                  text: '차단',
+                  style: 'destructive',
+                  onPress: () =>
+                    void api.safety
+                      .block(r.counterpart.id)
+                      .then(() => qc.invalidateQueries({ queryKey: roomKey })),
+                },
               ]),
           },
       {
@@ -261,7 +296,7 @@ export default function ChatRoomScreen() {
               onPress: () =>
                 void api.chat.leave(id).then(() => {
                   void qc.invalidateQueries({ queryKey: ['chat', 'rooms'] });
-                  router.back();
+                  goBack();
                 }),
             },
           ]),
@@ -282,14 +317,23 @@ export default function ChatRoomScreen() {
               .catch((e: unknown) => Alert.alert(errMsg(e))),
         },
       ]);
-    else choose('메시지', [{ label: '신고', destructive: true, onPress: () => router.push({ pathname: '/report', params: { type: 'MESSAGE', id: m.id } }) }]);
+    else
+      choose('메시지', [
+        {
+          label: '신고',
+          destructive: true,
+          onPress: () => router.push({ pathname: '/report', params: { type: 'MESSAGE', id: m.id } }),
+        },
+      ]);
   };
 
   const server = (msgs.data?.pages.flatMap((p) => p.items) ?? []) as PendingMessage[];
   const known = new Set(server.map((m) => m.clientId));
   const items = [...pending.filter((p) => !known.has(p.clientId)).reverse(), ...server];
   const readAt = r.counterpartLastReadAt;
-  const lastRead = items.find((m) => m.senderId === me.id && !m.pending && readAt && m.createdAt <= readAt)?.id;
+  const lastRead = items.find(
+    (m) => m.senderId === me.id && !m.pending && readAt && m.createdAt <= readAt,
+  )?.id;
   const canSend = !r.blocked && !r.blockedMe && !r.counterpart.left;
 
   return (
@@ -302,7 +346,12 @@ export default function ChatRoomScreen() {
         options={{
           title: r.counterpart.nickname,
           headerRight: () => (
-            <Pressable accessibilityRole="button" accessibilityLabel="채팅방 메뉴" onPress={menu} hitSlop={10}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="채팅방 메뉴"
+              onPress={menu}
+              hitSlop={10}
+            >
               <Text variant="h3">⋯</Text>
             </Pressable>
           ),
@@ -310,16 +359,31 @@ export default function ChatRoomScreen() {
       />
       {r.product && (
         <Link href={{ pathname: '/products/[id]', params: { id: r.product.id } }} asChild>
-          <Pressable accessibilityRole="link" style={[styles.product, { borderColor: t.colors.border }]}>
-            <View style={[styles.thumb, { backgroundColor: r.product.image?.dominantColor ?? t.colors.surface2 }]}>
-              {r.product.image && <Image source={mediaUrl(r.product.image.key, 400)} style={StyleSheet.absoluteFill} contentFit="contain" />}
+          <Pressable
+            accessibilityRole="link"
+            style={StyleSheet.flatten([styles.product, { borderColor: t.colors.border }])}
+          >
+            <View
+              style={[styles.thumb, { backgroundColor: r.product.image?.dominantColor ?? t.colors.surface2 }]}
+            >
+              {r.product.image && (
+                <Image
+                  source={mediaUrl(r.product.image.key, 400)}
+                  style={StyleSheet.absoluteFill}
+                  contentFit="contain"
+                />
+              )}
             </View>
             <View style={{ flex: 1 }}>
               <Text variant="small" numberOfLines={1}>
                 {r.product.title}
               </Text>
               <Text variant="bodyStrong">
-                {r.product.status === 'SOLD' ? '판매 완료' : r.product.price != null ? formatPrice(r.product.price) : '경매'}
+                {r.product.status === 'SOLD'
+                  ? '판매 완료'
+                  : r.product.price != null
+                    ? formatPrice(r.product.price)
+                    : '경매'}
               </Text>
             </View>
           </Pressable>
@@ -333,7 +397,10 @@ export default function ChatRoomScreen() {
         onEndReached={() => msgs.hasNextPage && !msgs.isFetchingNextPage && void msgs.fetchNextPage()}
         renderItem={({ item, index }) => {
           const newer = items[index - 1];
-          const showTime = !newer || newer.senderId !== item.senderId || newer.createdAt.slice(0, 16) !== item.createdAt.slice(0, 16);
+          const showTime =
+            !newer ||
+            newer.senderId !== item.senderId ||
+            newer.createdAt.slice(0, 16) !== item.createdAt.slice(0, 16);
           return (
             <Bubble
               m={item}
@@ -343,7 +410,9 @@ export default function ChatRoomScreen() {
               onLongPress={() => onLongPress(item)}
               onRetry={() => {
                 if (!item.retry) return;
-                setPending((ps) => ps.map((x) => (x.clientId === item.clientId ? { ...x, pending: 'sending' } : x)));
+                setPending((ps) =>
+                  ps.map((x) => (x.clientId === item.clientId ? { ...x, pending: 'sending' } : x)),
+                );
                 void deliver(item, item.retry);
               }}
             />
@@ -365,8 +434,18 @@ export default function ChatRoomScreen() {
         }
       />
       {canSend ? (
-        <View style={[styles.composer, { borderColor: t.colors.border, paddingBottom: Math.max(insets.bottom, 8) }]}>
-          <Pressable accessibilityRole="button" accessibilityLabel="첨부" onPress={attach} style={[styles.round, { width: t.touch, height: t.touch }]}>
+        <View
+          style={[
+            styles.composer,
+            { borderColor: t.colors.border, paddingBottom: Math.max(insets.bottom, 8) },
+          ]}
+        >
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="첨부"
+            onPress={attach}
+            style={[styles.round, { width: t.touch, height: t.touch }]}
+          >
             <Text variant="h2">＋</Text>
           </Pressable>
           <TextInput
@@ -383,14 +462,25 @@ export default function ChatRoomScreen() {
                 getRealtime().emit('chat:typing', { roomId: id });
               }
             }}
-            style={[t.type('body'), styles.input, { color: t.colors.foreground, backgroundColor: t.colors.surface2, minHeight: t.touch }]}
+            style={[
+              t.type('body'),
+              styles.input,
+              { color: t.colors.foreground, backgroundColor: t.colors.surface2, minHeight: t.touch },
+            ]}
           />
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="보내기"
             disabled={!text.trim()}
             onPress={sendText}
-            style={[styles.round, { width: t.touch, height: t.touch, backgroundColor: text.trim() ? t.colors.primary : t.colors.surface2 }]}
+            style={[
+              styles.round,
+              {
+                width: t.touch,
+                height: t.touch,
+                backgroundColor: text.trim() ? t.colors.primary : t.colors.surface2,
+              },
+            ]}
           >
             <Text variant="bodyStrong" color={text.trim() ? 'primaryForeground' : 'faint'}>
               ↑
@@ -398,9 +488,18 @@ export default function ChatRoomScreen() {
           </Pressable>
         </View>
       ) : (
-        <View style={[styles.blocked, { paddingBottom: Math.max(insets.bottom, 12), borderColor: t.colors.border }]}>
+        <View
+          style={[
+            styles.blocked,
+            { paddingBottom: Math.max(insets.bottom, 12), borderColor: t.colors.border },
+          ]}
+        >
           <Text color="muted">
-            {r.counterpart.left ? '탈퇴한 사용자와는 대화할 수 없어요.' : r.blocked ? '차단한 사용자예요.' : '지금은 이 사용자와 대화할 수 없어요.'}
+            {r.counterpart.left
+              ? '탈퇴한 사용자와는 대화할 수 없어요.'
+              : r.blocked
+                ? '차단한 사용자예요.'
+                : '지금은 이 사용자와 대화할 수 없어요.'}
           </Text>
         </View>
       )}
@@ -418,10 +517,30 @@ export default function ChatRoomScreen() {
 }
 
 const styles = StyleSheet.create({
-  product: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderBottomWidth: StyleSheet.hairlineWidth },
+  product: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
   thumb: { width: 44, height: 44, overflow: 'hidden' },
-  composer: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, paddingHorizontal: 8, paddingTop: 8, borderTopWidth: StyleSheet.hairlineWidth },
+  composer: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 8,
+    paddingHorizontal: 8,
+    paddingTop: 8,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
   round: { borderRadius: 999, alignItems: 'center', justifyContent: 'center' },
-  input: { flex: 1, maxHeight: 128, borderRadius: 20, paddingHorizontal: 14, paddingTop: 10, paddingBottom: 10 },
+  input: {
+    flex: 1,
+    maxHeight: 128,
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingTop: 10,
+    paddingBottom: 10,
+  },
   blocked: { alignItems: 'center', padding: 16, borderTopWidth: StyleSheet.hairlineWidth },
 });

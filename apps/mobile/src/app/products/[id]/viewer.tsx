@@ -1,11 +1,12 @@
 import type { ProductDetailDto } from '@shop/shared';
 import { useQueryClient } from '@tanstack/react-query';
-import { router, Stack, useLocalSearchParams } from 'expo-router';
+import { Stack, useLocalSearchParams } from 'expo-router';
 import { FlatList, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ZoomableImage } from '@/components/product/zoomable-image';
 import { Text } from '@/components/ui/text';
 import { mediaUrl } from '@/lib/media';
+import { goBack } from '@/lib/nav';
 
 /** 전체 화면 사진 보기 (작품 상세 캐시를 재사용) */
 export default function ViewerScreen() {
@@ -33,7 +34,7 @@ export default function ViewerScreen() {
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="닫기"
-        onPress={() => router.back()}
+        onPress={goBack}
         style={[styles.close, { top: insets.top + 8 }]}
         hitSlop={12}
       >

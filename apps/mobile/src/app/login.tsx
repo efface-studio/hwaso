@@ -1,5 +1,5 @@
 import { ApiError } from '@shop/api-client';
-import { Link, router } from 'expo-router';
+import { Link } from 'expo-router';
 import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { SocialButtons } from '@/components/auth/social-buttons';
@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
 import { Text } from '@/components/ui/text';
 import { api } from '@/lib/api';
+import { goBack } from '@/lib/nav';
 import { appDevice } from '@/lib/device';
 import { useAuthStore } from '@/stores/auth';
 import { useTheme } from '@/theme';
@@ -24,7 +25,7 @@ export default function LoginScreen() {
     try {
       const tokens = await api.auth.login({ email: email.trim(), password, device: appDevice() });
       await useAuthStore.getState().setSession(tokens);
-      router.back();
+      goBack();
     } catch (e) {
       setError(e instanceof ApiError ? e.message : '로그인하지 못했어요. 네트워크를 확인해주세요.');
     } finally {
@@ -84,7 +85,7 @@ export default function LoginScreen() {
         <Text variant="caption" color="muted" style={{ textAlign: 'center', marginVertical: 20 }}>
           간편 로그인
         </Text>
-        <SocialButtons onDone={() => router.back()} />
+        <SocialButtons onDone={goBack} />
       </ScrollView>
     </KeyboardAvoidingView>
   );
