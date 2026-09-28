@@ -16,9 +16,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Rail } from '@/components/home/rail';
 import { Button } from '@/components/ui/button';
 import { Gallery } from '@/components/product/gallery';
+import { Inquiries } from '@/components/product/inquiries';
 import { Avatar } from '@/components/ui/avatar';
 import { Empty, Loading } from '@/components/ui/state';
 import { Text } from '@/components/ui/text';
+import { actionSheet } from '@/lib/action-sheet';
 import { api } from '@/lib/api';
 import { env } from '@/lib/env';
 import { useAuthStore } from '@/stores/auth';
@@ -214,6 +216,7 @@ function BottomBar({ p }: { p: ProductDetailDto }) {
 export default function ProductScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const t = useTheme();
+  const user = useAuthStore((s) => s.user);
   const q = useQuery({ queryKey: ['product', id], queryFn: () => api.market.product(id) });
   const related = useQuery({
     queryKey: ['related', id],
@@ -232,7 +235,44 @@ export default function ProductScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: t.colors.background }}>
-      <Stack.Screen options={{ title: '' }} />
+      <Stack.Screen
+        options={{
+          title: '',
+          headerRight: () => (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="더보기"
+              hitSlop={10}
+              onPress={() =>
+                actionSheet(p.title, [
+                  {
+                    label: '공유하기',
+                    onPress: () =>
+                      void Share.share({
+                        message: `${p.title} · 화소`,
+                        url: `${env.webUrl}/products/${p.id}`,
+                      }),
+                  },
+                  ...(p.isMine
+                    ? []
+                    : [
+                        {
+                          label: '작품 신고',
+                          destructive: true,
+                          onPress: () =>
+                            user
+                              ? router.push({ pathname: '/report', params: { type: 'PRODUCT', id: p.id } })
+                              : router.push('/login'),
+                        },
+                      ]),
+                ])
+              }
+            >
+              <Text variant="h3">⋯</Text>
+            </Pressable>
+          ),
+        }}
+      />
       <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={{ paddingBottom: 24 }}>
         {p.images.length > 0 && <Gallery productId={p.id} images={p.images} title={p.title} />}
         <View style={styles.head}>
@@ -313,6 +353,10 @@ export default function ProductScreen() {
             <Text variant="small">{p.returnPolicy}</Text>
           </Section>
         ) : null}
+
+        <Section title="상품 문의">
+          <Inquiries productId={p.id} isMine={p.isMine} />
+        </Section>
 
         <Section title="판매자">
           <Link href={{ pathname: '/users/[id]', params: { id: p.seller.id } }} asChild>
