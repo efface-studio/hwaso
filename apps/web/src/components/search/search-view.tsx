@@ -169,7 +169,7 @@ export function SearchView({ categories, fixedCategory, title }: SearchViewProps
         </aside>
 
         <div className="min-w-0">
-          <div className="sticky top-[97px] z-10 -mx-4 flex items-center justify-between gap-2 border-b border-border bg-background px-4 py-2 md:static md:mx-0 md:border-none md:px-0 md:py-0">
+          <div className="sticky top-(--header-h) z-10 -mx-4 flex items-center justify-between gap-2 border-b border-border bg-background px-4 py-2 md:static md:mx-0 md:border-none md:px-0 md:py-0">
             <p className="text-small text-muted" aria-live="polite">
               {total == null ? ' ' : `작품 ${total.toLocaleString('ko-KR')}개`}
             </p>

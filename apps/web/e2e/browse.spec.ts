@@ -92,3 +92,15 @@ test('카테고리 시트는 애니메이션으로 열린다 (모바일 아래�
     await expect(sheet).toBeHidden();
   }
 });
+
+test('헤더 실제 높이와 --header-h 가 같다 (헤더 아래 고정 요소가 겹치지 않게)', async ({ page }) => {
+  for (const width of [390, 1280]) {
+    await page.setViewportSize({ width, height: 844 });
+    await page.goto('/');
+    const [actual, token] = await page.evaluate(() => [
+      document.querySelector('header')!.getBoundingClientRect().height,
+      parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--header-h')),
+    ]);
+    expect(token, `${width}px`).toBe(actual);
+  }
+});

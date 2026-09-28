@@ -45,7 +45,7 @@ export function AuctionLive({ initial }: { initial: AuctionSnapshot }) {
       {!connected && (
         <div
           role="status"
-          className="sticky top-[97px] z-20 flex items-center justify-center gap-2 bg-warning/10 py-2 text-small text-warning"
+          className="sticky top-(--header-h) z-20 flex items-center justify-center gap-2 bg-warning/10 py-2 text-small text-warning"
         >
           <WifiOff className="size-4" aria-hidden />
           실시간 연결이 끊겼어요. 다시 연결하는 중…
