@@ -1,7 +1,7 @@
 import type { ProductCardDto } from '@shop/shared';
 import type { ReactElement } from 'react';
 import { FlatList, RefreshControl } from 'react-native';
-import { Empty, Loading } from '@/components/ui/state';
+import { Loading } from '@/components/ui/state';
 import { useGrid } from '@/hooks/use-grid';
 import { useTheme } from '@/theme';
 import { ProductCard } from './product-card';
