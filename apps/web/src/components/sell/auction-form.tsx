@@ -4,44 +4,9 @@ import { formatPrice, suggestIncrement } from '@shop/shared';
 import { Switch } from '@/components/ui/choice';
 import { Field, Input, PriceInput, Textarea } from '@/components/ui/field';
 
-export interface AuctionDraft {
-  startPrice: number | null;
-  bidIncrement: number | null;
-  buyNowPrice: number | null;
-  startsAt: string;
-  endsAt: string;
-  autoExtend: boolean;
-  description: string;
-}
-
-const local = (d: Date) => new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
-
-export function defaultAuction(): AuctionDraft {
-  const start = new Date(Date.now() + 60 * 60_000);
-  start.setMinutes(0, 0, 0);
-  return {
-    startPrice: null,
-    bidIncrement: null,
-    buyNowPrice: null,
-    startsAt: local(start),
-    endsAt: local(new Date(start.getTime() + 3 * 86_400_000)),
-    autoExtend: true,
-    description: '',
-  };
-}
-
-export function auctionToInput(a: AuctionDraft, productId: string) {
-  return {
-    productId,
-    startPrice: a.startPrice ?? 0,
-    bidIncrement: a.bidIncrement ?? suggestIncrement(a.startPrice ?? 0),
-    buyNowPrice: a.buyNowPrice,
-    startsAt: new Date(a.startsAt).toISOString(),
-    endsAt: new Date(a.endsAt).toISOString(),
-    autoExtend: a.autoExtend,
-    description: a.description,
-  };
-}
+// 폼 상태·변환은 앱과 함께 쓴다 (@shop/shared/sell)
+import type { AuctionDraft } from '@shop/shared';
+export { auctionToInput, defaultAuction, type AuctionDraft } from '@shop/shared';
 
 /** 경매 조건. 시간·금액 규칙은 서버(관리자 정책)가 최종 검증한다 */
 export function AuctionFields({
