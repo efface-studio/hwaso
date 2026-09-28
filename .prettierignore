@@ -5,3 +5,4 @@ pnpm-lock.yaml
 **/coverage
 **/migrations/**/*.sql
 packages/tokens/tokens.css
+**/expo-env.d.ts
