@@ -44,6 +44,7 @@ const messageInclude = {
       images: { select: imageSelect, orderBy: { sortOrder: 'asc' }, take: 1 },
     },
   },
+  replyTo: { select: { id: true, senderId: true, kind: true, body: true, data: true, deletedAt: true } },
 } satisfies Prisma.ChatMessageInclude;
 
 type MessageRow = Prisma.ChatMessageGetPayload<{ include: typeof messageInclude }>;
@@ -78,6 +79,21 @@ export function toMessageDto(m: MessageRow): ChatMessageDto {
           },
     appointment: deleted ? null : (data.appointment ?? null),
     system: data.system ?? null,
+    replyTo:
+      deleted || !m.replyTo
+        ? null
+        : {
+            id: m.replyTo.id,
+            senderId: m.replyTo.senderId,
+            kind: m.replyTo.kind,
+            preview: chatPreview({
+              kind: m.replyTo.kind,
+              body: m.replyTo.body,
+              deleted: !!m.replyTo.deletedAt,
+              imageCount: ((m.replyTo.data ?? {}) as MessageData).images?.length,
+            }),
+            deleted: !!m.replyTo.deletedAt,
+          },
     warning: !deleted && !!data.warning,
     clientId: m.clientId,
     deleted,
@@ -356,6 +372,11 @@ export class ChatService {
     if (!other || other.status === 'DELETED')
       throw new AppException('FORBIDDEN', '대화 상대가 탈퇴해 메시지를 보낼 수 없습니다.');
     const { data, productId, imageKey } = await this.content(user, input);
+    if (
+      input.replyToId &&
+      !(await this.prisma.chatMessage.count({ where: { id: input.replyToId, roomId, deletedAt: null } }))
+    )
+      throw new AppException('NOT_FOUND', '답장할 메시지를 찾을 수 없습니다.');
     // 네트워크 재시도(같은 clientId)는 이미 저장된 메시지를 돌려주고 도배 제한에 세지 않는다
     if (input.clientId) {
       const sent = await this.prisma.chatMessage.findFirst({
@@ -380,6 +401,7 @@ export class ChatService {
             productId,
             data: data as object,
             clientId: input.clientId,
+            replyToId: input.replyToId,
             createdAt: now,
           },
           include: messageInclude,
