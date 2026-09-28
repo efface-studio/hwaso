@@ -1,12 +1,56 @@
 import type { NextConfig } from 'next';
 
+const origin = (url: string) => new URL(url).origin;
 const mediaUrl = new URL(process.env.NEXT_PUBLIC_MEDIA_URL ?? 'http://localhost:9000/shop-media/public');
+const apiOrigin = origin(process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api/v1');
+const wsOrigin = origin(process.env.NEXT_PUBLIC_WS_URL ?? 'http://localhost:4000');
+const isProd = process.env.NODE_ENV === 'production';
+/** HTTPS 로 서비스할 때만 (로컬 next start 미리보기는 http) */
+const isHttps = (process.env.NEXT_PUBLIC_SITE_URL ?? '').startsWith('https://');
+
+/** 외부 연동: 토스페이먼츠 결제창, 카카오 우편번호, 포트원(PASS 본인인증) */
+const TOSS = 'https://*.tosspayments.com';
+const DAUM = [
+  'https://t1.daumcdn.net',
+  'https://*.daumcdn.net',
+  'https://postcode.map.daum.net',
+  'https://*.daum.net',
+];
+const PORTONE = ['https://cdn.portone.io', 'https://*.portone.io'];
+
+/**
+ * 콘텐츠 보안 정책. 허용 목록 밖의 스크립트·연결·프레임은 브라우저가 막는다.
+ * ponytail: Next 가 넣는 인라인 스크립트 때문에 script-src 에 'unsafe-inline' 을 둔다 — nonce 방식은 모든 페이지가 동적 렌더링이 되어 ISR 을 잃는다
+ */
+const csp = [
+  "default-src 'self'",
+  `script-src 'self' 'unsafe-inline'${isProd ? '' : " 'unsafe-eval'"} ${TOSS} ${DAUM.join(' ')} ${PORTONE.join(' ')}`,
+  "style-src 'self' 'unsafe-inline'",
+  `img-src 'self' data: blob: ${mediaUrl.origin} ${DAUM.join(' ')} ${TOSS}`,
+  "font-src 'self' data:",
+  `connect-src 'self' ${apiOrigin} ${wsOrigin} ${wsOrigin.replace(/^http/, 'ws')} ${TOSS} ${PORTONE.join(' ')} ${DAUM.join(' ')}`,
+  `frame-src ${TOSS} ${DAUM.join(' ')} ${PORTONE.join(' ')}`,
+  "worker-src 'self'",
+  "manifest-src 'self'",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "frame-ancestors 'none'",
+  ...(isHttps ? ['upgrade-insecure-requests'] : []),
+].join('; ');
 
 const securityHeaders = [
+  { key: 'Content-Security-Policy', value: csp },
   { key: 'X-Content-Type-Options', value: 'nosniff' },
   { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
   { key: 'X-Frame-Options', value: 'DENY' },
-  { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
+  // 카메라는 채팅·판매 사진 촬영(파일 선택)에 쓰일 수 있어 자기 도메인만 허용
+  { key: 'Permissions-Policy', value: 'camera=(self), microphone=(), geolocation=(), payment=(self)' },
+  // 결제·본인인증 팝업이 opener 로 결과를 돌려줄 수 있게 same-origin-allow-popups
+  { key: 'Cross-Origin-Opener-Policy', value: 'same-origin-allow-popups' },
+  ...(isHttps
+    ? [{ key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' }]
+    : []),
 ];
 
 const config: NextConfig = {
