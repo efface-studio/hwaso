@@ -27,8 +27,19 @@ type Payload<E extends EventName> = Parameters<ServerToClientEvents[E]>[0];
  */
 @Injectable()
 export class RealtimeService implements OnModuleDestroy {
+  private readonly logger = new Logger(RealtimeService.name);
   private readonly redis = new Redis(env().REDIS_URL, { maxRetriesPerRequest: 3 });
-  private readonly emitter = new Emitter(this.redis).of(RT_NAMESPACE);
+  /**
+   * emitter 는 publish 프로미스를 버린다 — Redis 가 끊기거나 종료 중이면 처리 안 된 거부로 프로세스가 죽을 수 있어
+   * 실패는 여기서 기록만 한다 (실시간 알림은 재조회로 복구되는 부가 기능)
+   */
+  private readonly emitter = new Emitter({
+    publish: (channel: string, msg: string | Buffer) =>
+      this.redis.publish(channel, msg).catch((err: unknown) => {
+        this.logger.warn({ err, channel }, 'realtime publish failed');
+        return 0;
+      }),
+  } as unknown as Redis).of(RT_NAMESPACE);
 
   emit<E extends EventName>(room: string, event: E, payload: Payload<E>) {
     // redis-emitter 의 타입은 이벤트 맵을 모르므로 여기서만 좁혀서 보낸다
