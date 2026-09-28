@@ -1,4 +1,11 @@
-import type { ChatMessageDto, ChatRoomDto, CreateReportInput, Page, SendMessageInput } from '@shop/shared';
+import type {
+  ChatMessageDto,
+  ChatRoomDto,
+  ChatTradeInput,
+  CreateReportInput,
+  Page,
+  SendMessageInput,
+} from '@shop/shared';
 import type { Http } from '../http';
 
 const id = (v: string) => encodeURIComponent(v);
@@ -22,6 +29,9 @@ export const chatApi = (http: Http) => ({
   deleteMessage: (roomId: string, messageId: string) =>
     http.delete<{ ok: true }>(`/chat/rooms/${id(roomId)}/messages/${id(messageId)}`),
   read: (roomId: string) => http.post<{ ok: true }>(`/chat/rooms/${id(roomId)}/read`),
+  /** 판매자: 거래 상태 변경 (판매 중·거래 중·판매 완료) */
+  trade: (roomId: string, status: ChatTradeInput['status']) =>
+    http.patch<{ status: ChatTradeInput['status'] }>(`/chat/rooms/${id(roomId)}/trade`, { status }),
   leave: (roomId: string) => http.post<{ ok: true }>(`/chat/rooms/${id(roomId)}/leave`),
   mute: (roomId: string, muted: boolean) =>
     http.patch<{ muted: boolean }>(`/chat/rooms/${id(roomId)}`, { muted }),

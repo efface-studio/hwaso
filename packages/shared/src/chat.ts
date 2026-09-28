@@ -6,8 +6,8 @@ import { id } from './schemas/common';
 /** 채팅방에 남는 거래 안내 (판매자의 상태 변경 · 주문 진행) */
 export const CHAT_SYSTEM_TEXT = {
   TRADE_ACTIVE: '판매자가 판매 중으로 바꿨어요.',
-  TRADE_RESERVED: '판매자가 예약 중으로 바꿨어요.',
-  TRADE_SOLD: '판매자가 거래 완료로 바꿨어요.',
+  TRADE_RESERVED: '판매자가 거래 중으로 바꿨어요.',
+  TRADE_SOLD: '판매자가 판매 완료로 바꿨어요.',
   ORDER_PAID: '결제가 완료됐어요. 판매자가 발송을 준비해요.',
   ORDER_SHIPPED: '작품이 발송됐어요.',
   ORDER_DELIVERED: '배송이 완료됐어요. 작품을 확인하고 구매를 확정해주세요.',
