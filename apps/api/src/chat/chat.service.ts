@@ -10,6 +10,8 @@ import {
   type SendMessageInput,
 } from '@shop/shared';
 import { AppException } from '../common/app-exception';
+import { RateLimitService } from '../common/rate-limit';
+import { createHash } from 'node:crypto';
 import type { AuthUser } from '../common/auth';
 import { logNotifyError } from '../notifications/notification-events';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -95,6 +97,11 @@ type RoomRow = Prisma.ChatRoomGetPayload<{ include: typeof roomInclude }>;
  * 작품 기반 1:1 채팅 (docs/API.md "Chat"). 메시지는 두 참여자의 개인 룸(user:{id})으로 실시간 전송하고,
  * 입력 중 표시만 채팅방 룸(chat:{id})을 쓴다. 차단 관계에서는 방 생성·전송이 막힌다.
  */
+const CHAT_BURST_LIMIT = 8;
+const CHAT_BURST_WINDOW_SEC = 10;
+const CHAT_DUPLICATE_LIMIT = 2;
+const CHAT_DUPLICATE_WINDOW_SEC = 30;
+
 @Injectable()
 export class ChatService {
   constructor(
@@ -103,6 +110,7 @@ export class ChatService {
     private readonly redis: RedisService,
     private readonly safety: SafetyService,
     private readonly notifications: NotificationsService,
+    private readonly limiter: RateLimitService,
   ) {}
 
   private async member(user: AuthUser, roomId: string) {
@@ -326,6 +334,15 @@ export class ChatService {
     if (!other || other.status === 'DELETED')
       throw new AppException('FORBIDDEN', '대화 상대가 탈퇴해 메시지를 보낼 수 없습니다.');
     const { data, productId, imageKey } = await this.content(user, input);
+    // 네트워크 재시도(같은 clientId)는 이미 저장된 메시지를 돌려주고 도배 제한에 세지 않는다
+    if (input.clientId) {
+      const sent = await this.prisma.chatMessage.findFirst({
+        where: { roomId, senderId: user.id, clientId: input.clientId },
+        include: messageInclude,
+      });
+      if (sent) return toMessageDto(sent);
+    }
+    await this.assertNotSpam(user.id, roomId, input);
 
     let message: MessageRow;
     try {
@@ -370,6 +387,20 @@ export class ChatService {
       this.realtime.toUser(uid, 'CHAT_MESSAGE', { roomId, message: dto });
     void this.pushToCounterpart(user.id, counterpartId, roomId, dto).catch(logNotifyError);
     return dto;
+  }
+
+  /**
+   * 도배 제한: 사용자당 10초 8개, 같은 방에 같은 글(공백·대소문자 무시)은 30초에 2번까지.
+   * ponytail: 고정 창 카운터 — 창 경계에서 최대 2배까지 통과할 수 있다. 정밀해야 하면 슬라이딩 창으로
+   */
+  private async assertNotSpam(userId: string, roomId: string, input: SendMessageInput) {
+    if (await this.limiter.exceeded(`chat-burst:u:${userId}`, CHAT_BURST_LIMIT, CHAT_BURST_WINDOW_SEC))
+      throw new AppException('CHAT_TOO_FAST');
+    if (input.kind !== 'TEXT' || !input.body) return;
+    const normalized = input.body.trim().replace(/\s+/g, ' ').toLowerCase();
+    const key = `chat-dup:u:${userId}:${roomId}:${createHash('sha256').update(normalized).digest('hex').slice(0, 16)}`;
+    if (await this.limiter.exceeded(key, CHAT_DUPLICATE_LIMIT, CHAT_DUPLICATE_WINDOW_SEC))
+      throw new AppException('CHAT_DUPLICATE');
   }
 
   private async pushToCounterpart(senderId: string, to: string, roomId: string, m: ChatMessageDto) {

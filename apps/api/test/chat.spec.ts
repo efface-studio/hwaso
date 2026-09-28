@@ -181,3 +181,31 @@ describe('safety', () => {
     expect(mine.body[0]).toMatchObject({ targetType: 'MESSAGE', status: 'OPEN' });
   });
 });
+
+describe('spam (도배 제한)', () => {
+  it('10초 안에 8개를 넘게 보내면 CHAT_TOO_FAST', async () => {
+    const { buyer, roomId } = await setup();
+    for (let i = 0; i < 8; i++) await text(buyer, roomId, `질문 ${i}`).expect(201);
+    const res = await text(buyer, roomId, '질문 8').expect(429);
+    expect(res.body.error.code).toBe('CHAT_TOO_FAST');
+    const msgs = await t.http.get(`/api/v1/chat/rooms/${roomId}/messages`).set(buyer.auth).expect(200);
+    expect(msgs.body.items).toHaveLength(8);
+  });
+
+  it('같은 글을 30초 안에 세 번째 보내면 CHAT_DUPLICATE (공백·대소문자 무시)', async () => {
+    const { buyer, roomId } = await setup();
+    await text(buyer, roomId, '가격 조정 되나요?').expect(201);
+    await text(buyer, roomId, '  가격 조정   되나요? ').expect(201);
+    const res = await text(buyer, roomId, '가격 조정 되나요?').expect(429);
+    expect(res.body.error.code).toBe('CHAT_DUPLICATE');
+    await text(buyer, roomId, '배송은 어떻게 되나요?').expect(201);
+  });
+
+  it('같은 clientId 재전송(네트워크 재시도)은 제한에 세지 않는다', async () => {
+    const { buyer, roomId } = await setup();
+    for (let i = 0; i < 12; i++) await text(buyer, roomId, '재시도 메시지', 'retry-client-1').expect(201);
+    const msgs = await t.http.get(`/api/v1/chat/rooms/${roomId}/messages`).set(buyer.auth).expect(200);
+    expect(msgs.body.items).toHaveLength(1);
+    await text(buyer, roomId, '다음 메시지').expect(201);
+  });
+});
