@@ -58,6 +58,9 @@ function Navigation() {
         />
         <Stack.Screen name="search" options={{ title: '검색' }} />
         <Stack.Screen name="auctions/[id]" options={{ title: '경매' }} />
+        <Stack.Screen name="chat/[id]" options={{ title: '채팅' }} />
+        <Stack.Screen name="notifications" options={{ title: '알림' }} />
+        <Stack.Screen name="report" options={{ presentation: 'modal', title: '신고' }} />
       </Stack>
     </ThemeProvider>
   );

@@ -50,13 +50,26 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-/** 하단 고정 바: 관심 · 공유 (구매·입찰·채팅 버튼은 해당 기능 화면과 함께 붙는다) */
+/** 하단 고정 바: 관심 · 공유 · 채팅 · 경매 참여 (구매 버튼은 주문 화면과 함께 붙는다) */
 function BottomBar({ p }: { p: ProductDetailDto }) {
   const t = useTheme();
   const insets = useSafeAreaInsets();
   const qc = useQueryClient();
   const user = useAuthStore((s) => s.user);
   const [fav, setFav] = useState({ on: p.isFavorite, count: p.favoriteCount });
+  const [opening, setOpening] = useState(false);
+  const chat = async () => {
+    if (!user) return router.push('/login');
+    setOpening(true);
+    try {
+      const { id } = await api.chat.open(p.id);
+      router.push({ pathname: '/chat/[id]', params: { id } });
+    } catch (e) {
+      Alert.alert(e instanceof ApiError ? e.message : '채팅을 열지 못했어요.');
+    } finally {
+      setOpening(false);
+    }
+  };
   const toggle = async () => {
     if (!user) return router.push('/login');
     const next = { on: !fav.on, count: fav.count + (fav.on ? -1 : 1) };
@@ -104,6 +117,16 @@ function BottomBar({ p }: { p: ProductDetailDto }) {
       >
         <Text variant="bodyStrong">공유</Text>
       </Pressable>
+      {user?.id !== p.seller.id && p.status !== 'SOLD' && (
+        <Button
+          title="채팅하기"
+          variant={p.auction ? 'outline' : 'primary'}
+          size="lg"
+          loading={opening}
+          style={{ flex: 1 }}
+          onPress={() => void chat()}
+        />
+      )}
       {p.auction &&
         (p.auction.status === 'LIVE' || p.auction.status === 'SCHEDULED' || p.auction.status === 'ENDED') && (
           <Button
