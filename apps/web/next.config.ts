@@ -10,11 +10,15 @@ const isHttps = (process.env.NEXT_PUBLIC_SITE_URL ?? '').startsWith('https://');
 
 /** 외부 연동: 토스페이먼츠 결제창, 카카오 우편번호, 포트원(PASS 본인인증) */
 const TOSS = 'https://*.tosspayments.com';
+/** 우편번호 서비스는 postcode.map.kakao.com 을 프레임으로 띄우며, 페이지 프로토콜을 따른다 (로컬 http 미리보기 포함) */
 const DAUM = [
   'https://t1.daumcdn.net',
   'https://*.daumcdn.net',
   'https://postcode.map.daum.net',
   'https://*.daum.net',
+  'https://postcode.map.kakao.com',
+  'https://*.kakao.com',
+  ...(isHttps ? [] : ['http://postcode.map.kakao.com', 'http://postcode.map.daum.net']),
 ];
 const PORTONE = ['https://cdn.portone.io', 'https://*.portone.io'];
 
