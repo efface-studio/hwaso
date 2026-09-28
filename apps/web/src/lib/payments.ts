@@ -7,9 +7,13 @@ const clampHours = (dueAt: string | null) =>
  * 결제창 열기. 성공·실패 시 토스페이먼츠가 /checkout/success · /checkout/fail 로 이동시키며,
  * 최종 승인은 서버(/payments/confirm)가 금액을 대조한 뒤 한다. 키가 없는 개발 환경은 모의 결제로 바로 이동한다.
  */
-export async function startPayment(req: PaymentRequestDto) {
-  const successUrl = `${window.location.origin}/checkout/success`;
-  const failUrl = `${window.location.origin}/checkout/fail`;
+export async function startPayment(
+  req: PaymentRequestDto,
+  {
+    successUrl = `${window.location.origin}/checkout/success`,
+    failUrl = `${window.location.origin}/checkout/fail`,
+  }: { successUrl?: string; failUrl?: string } = {},
+) {
   if (req.provider === 'mock') {
     const q = new URLSearchParams({
       paymentKey: `mock_${crypto.randomUUID()}`,
