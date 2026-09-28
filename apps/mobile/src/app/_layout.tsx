@@ -61,6 +61,14 @@ function Navigation() {
         <Stack.Screen name="chat/[id]" options={{ title: '채팅' }} />
         <Stack.Screen name="notifications" options={{ title: '알림' }} />
         <Stack.Screen name="report" options={{ presentation: 'modal', title: '신고' }} />
+        <Stack.Screen name="cart" options={{ title: '장바구니' }} />
+        <Stack.Screen name="checkout" options={{ title: '주문서' }} />
+        <Stack.Screen name="orders/index" options={{ title: '구매 내역' }} />
+        <Stack.Screen name="orders/[id]/index" options={{ title: '주문 상세' }} />
+        <Stack.Screen name="orders/[id]/review" options={{ presentation: 'modal', title: '거래 후기' }} />
+        <Stack.Screen name="addresses/index" options={{ title: '배송지 관리' }} />
+        <Stack.Screen name="addresses/edit" options={{ presentation: 'modal', title: '배송지' }} />
+        <Stack.Screen name="bridge" options={{ headerShown: false, animation: 'none' }} />
       </Stack>
     </ThemeProvider>
   );

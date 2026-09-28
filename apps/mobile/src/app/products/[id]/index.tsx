@@ -8,7 +8,7 @@ import {
   formatPrice,
   type ProductDetailDto,
 } from '@shop/shared';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, router, Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert, Pressable, ScrollView, Share, StyleSheet, View } from 'react-native';
@@ -50,7 +50,74 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-/** 하단 고정 바: 관심 · 공유 · 채팅 · 경매 참여 (구매 버튼은 주문 화면과 함께 붙는다) */
+const when = (iso: string) =>
+  new Date(iso).toLocaleString('ko-KR', {
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+
+/** 판매 방식별 CTA (웹 PurchasePanel 과 같은 규칙). 가격·경매 상태는 서버 값만 쓴다 */
+function Cta({ p }: { p: ProductDetailDto }) {
+  const qc = useQueryClient();
+  const user = useAuthStore((s) => s.user);
+  const add = useMutation({
+    mutationFn: () => api.orders.putCart(p.id, 1),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['cart'] });
+      Alert.alert('장바구니에 담았어요', undefined, [
+        { text: '계속 둘러보기', style: 'cancel' },
+        { text: '장바구니 보기', onPress: () => router.push('/cart') },
+      ]);
+    },
+    onError: (e) => Alert.alert(e instanceof ApiError ? e.message : '담지 못했어요.'),
+  });
+  const disabled = (title: string) => <Button title={title} size="lg" disabled block />;
+  if (p.isMine) return disabled('내가 등록한 작품');
+  if (p.status === 'SOLD') return disabled('판매 완료');
+  if (p.status === 'RESERVED') return disabled('거래 진행 중');
+  if (p.saleType === 'AUCTION' && p.auction) {
+    const a = p.auction;
+    return (
+      <Button
+        title={
+          a.status === 'LIVE'
+            ? '경매 참여하기'
+            : a.status === 'SCHEDULED'
+              ? '경매 보러가기'
+              : '경매 결과 보기'
+        }
+        size="lg"
+        block
+        onPress={() => router.push({ pathname: '/auctions/[id]', params: { id: a.id } })}
+      />
+    );
+  }
+  if (p.saleType === 'RESERVATION' && p.availableAt && Date.parse(p.availableAt) > Date.now())
+    return disabled(`${when(p.availableAt)} 판매 시작`);
+  return (
+    <View style={{ flexDirection: 'row', gap: 8 }}>
+      <Button
+        title="장바구니"
+        variant="outline"
+        size="lg"
+        loading={add.isPending}
+        onPress={() => (user ? add.mutate() : router.push('/login'))}
+      />
+      <Button
+        title="구매하기"
+        size="lg"
+        style={{ flex: 1 }}
+        onPress={() =>
+          user ? router.push({ pathname: '/checkout', params: { productId: p.id } }) : router.push('/login')
+        }
+      />
+    </View>
+  );
+}
+
+/** 하단 고정 바: 관심 · 공유 · 채팅 + 판매 방식별 CTA */
 function BottomBar({ p }: { p: ProductDetailDto }) {
   const t = useTheme();
   const insets = useSafeAreaInsets();
@@ -117,31 +184,20 @@ function BottomBar({ p }: { p: ProductDetailDto }) {
       >
         <Text variant="bodyStrong">공유</Text>
       </Pressable>
-      {user?.id !== p.seller.id && p.status !== 'SOLD' && (
-        <Button
-          title="채팅하기"
-          variant={p.auction ? 'outline' : 'primary'}
-          size="lg"
-          loading={opening}
-          style={{ flex: 1 }}
+      {!p.isMine && p.status !== 'SOLD' && (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="판매자와 채팅하기"
+          disabled={opening}
           onPress={() => void chat()}
-        />
+          style={[styles.icon, { minHeight: t.touch, minWidth: t.touch }]}
+        >
+          <Text variant="bodyStrong">채팅</Text>
+        </Pressable>
       )}
-      {p.auction &&
-        (p.auction.status === 'LIVE' || p.auction.status === 'SCHEDULED' || p.auction.status === 'ENDED') && (
-          <Button
-            title={
-              p.auction.status === 'LIVE'
-                ? '경매 참여하기'
-                : p.auction.status === 'SCHEDULED'
-                  ? '경매 예정 보기'
-                  : '경매 결과 보기'
-            }
-            size="lg"
-            style={{ flex: 1 }}
-            onPress={() => router.push({ pathname: '/auctions/[id]', params: { id: p.auction!.id } })}
-          />
-        )}
+      <View style={styles.cta}>
+        <Cta p={p} />
+      </View>
     </View>
   );
 }
@@ -287,4 +343,5 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
   },
   icon: { alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6 },
+  cta: { flex: 1 },
 });
