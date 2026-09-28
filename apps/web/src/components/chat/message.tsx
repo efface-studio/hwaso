@@ -20,8 +20,44 @@ export const dayLabel = (iso: string) =>
     weekday: 'short',
   });
 
+/** 사진 여러 장: 2열 격자, 4장 넘으면 마지막 칸에 +N. 누르면 원본 */
+function ImageGrid({ images }: { images: PendingMessage['images'] }) {
+  const shown = images.slice(0, 4);
+  const rest = images.length - shown.length;
+  return (
+    <div className="grid w-60 max-w-full grid-cols-2 gap-1">
+      {shown.map((img, i) => (
+        <a
+          key={img.key}
+          href={mediaUrl(img.key, 1600)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={cn(
+            'relative block aspect-square overflow-hidden rounded-sm',
+            images.length === 3 && i === 0 && 'col-span-2 aspect-[2/1]',
+          )}
+        >
+          <MediaImage
+            image={img}
+            alt={`보낸 사진 ${i + 1}/${images.length}`}
+            sizes="120px"
+            fit="cover"
+            thumb
+          />
+          {rest > 0 && i === shown.length - 1 && (
+            <span className="absolute inset-0 flex items-center justify-center bg-overlay text-body-strong text-white">
+              +{rest}
+            </span>
+          )}
+        </a>
+      ))}
+    </div>
+  );
+}
+
 function Body({ m, mine }: { m: PendingMessage; mine: boolean }) {
   if (m.deleted) return <p className="text-small text-muted italic">삭제된 메시지입니다.</p>;
+  if (m.kind === 'IMAGE' && m.images.length > 1) return <ImageGrid images={m.images} />;
   if (m.kind === 'IMAGE' && m.image)
     return (
       <a

@@ -49,6 +49,7 @@ const messageInclude = {
 type MessageRow = Prisma.ChatMessageGetPayload<{ include: typeof messageInclude }>;
 type MessageData = {
   image?: ImageDto;
+  images?: ImageDto[];
   appointment?: { at: string; place: string };
   warning?: boolean;
   system?: ChatMessageDto['system'];
@@ -64,6 +65,7 @@ export function toMessageDto(m: MessageRow): ChatMessageDto {
     kind: m.kind,
     body: deleted ? null : m.body,
     image: deleted ? null : (data.image ?? null),
+    images: deleted ? [] : (data.images ?? (data.image ? [data.image] : [])),
     product:
       deleted || !m.product
         ? null
@@ -217,7 +219,11 @@ export class ChatService {
       blockedMe: blocks.blockedMe.has(other.id),
       lastMessage: visibleLast && {
         kind: visibleLast.kind,
-        preview: chatPreview({ ...visibleLast, deleted: !!visibleLast.deletedAt }),
+        preview: chatPreview({
+          ...visibleLast,
+          deleted: !!visibleLast.deletedAt,
+          imageCount: ((visibleLast.data ?? {}) as MessageData).images?.length,
+        }),
         senderId: visibleLast.senderId,
         createdAt: visibleLast.createdAt.toISOString(),
       },
@@ -311,13 +317,20 @@ export class ChatService {
     if (input.kind === 'TEXT') {
       data.warning = looksLikeExternalTrade(input.body!);
     } else if (input.kind === 'IMAGE') {
-      imageKey = input.imageKey!;
-      if ((await this.redis.get(mediaOwnerKey(imageKey))) !== user.id)
-        throw new AppException('INVALID_IMAGE', '업로드한 사진만 보낼 수 있습니다. 다시 올려주세요.');
-      const meta = await this.redis.get(`media:meta:${imageKey}`);
-      if (!meta) throw new AppException('INVALID_IMAGE', '사진 정보를 찾을 수 없습니다. 다시 올려주세요.');
-      const m = JSON.parse(meta) as ImageDto;
-      data.image = { key: imageKey, width: m.width, height: m.height, dominantColor: m.dominantColor };
+      // 여러 장(imageKeys) 또는 예전 앱의 한 장(imageKey). 모두 내가 올린 사진이어야 한다
+      const keys = [...new Set(input.imageKeys ?? [input.imageKey!])];
+      const images: ImageDto[] = [];
+      for (const key of keys) {
+        if ((await this.redis.get(mediaOwnerKey(key))) !== user.id)
+          throw new AppException('INVALID_IMAGE', '업로드한 사진만 보낼 수 있습니다. 다시 올려주세요.');
+        const meta = await this.redis.get(`media:meta:${key}`);
+        if (!meta) throw new AppException('INVALID_IMAGE', '사진 정보를 찾을 수 없습니다. 다시 올려주세요.');
+        const m = JSON.parse(meta) as ImageDto;
+        images.push({ key, width: m.width, height: m.height, dominantColor: m.dominantColor });
+      }
+      imageKey = keys[0];
+      data.images = images;
+      data.image = images[0];
     } else if (input.kind === 'PRODUCT') {
       const p = await this.prisma.product.count({
         where: { id: input.productId, deletedAt: null, publishedAt: { not: null } },
@@ -462,7 +475,7 @@ export class ChatService {
     await this.notifications.notify(to, {
       type: 'CHAT_MESSAGE',
       title: sender?.nickname ?? '새 메시지',
-      body: chatPreview(m),
+      body: chatPreview({ ...m, imageCount: m.images.length }),
       link: `/chat/${roomId}`,
       store: false,
     });

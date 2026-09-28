@@ -22,6 +22,33 @@ test('작품에서 판매자와 채팅을 시작하고 메시지를 보낸다', 
   await page.getByRole('button', { name: /15일/ }).click();
   await expect(dialog.getByRole('button', { name: /날짜와 시간/ })).toContainText('15일');
   await expect(dialog.locator('input[type="datetime-local"]')).toHaveCount(0);
+  await page.keyboard.press('Escape'); // 날짜 팝오버 닫기
+  await dialog.getByRole('button', { name: '닫기' }).click();
+  await expect(dialog).toBeHidden();
+
+  // 사진 여러 장을 한 메시지로 — 캔버스로 만든 PNG 2장
+  const png = (color: string) =>
+    page.evaluate((c) => {
+      const cv = document.createElement('canvas');
+      cv.width = 480;
+      cv.height = 360;
+      const ctx = cv.getContext('2d')!;
+      ctx.fillStyle = c;
+      ctx.fillRect(0, 0, 480, 360);
+      return cv.toDataURL('image/png').split(',')[1]!;
+    }, color);
+  const files = await Promise.all(
+    ['#c0392b', '#2980b9'].map(async (c, i) => ({
+      name: `photo-${i}.png`,
+      mimeType: 'image/png',
+      buffer: Buffer.from(await png(c), 'base64'),
+    })),
+  );
+  await page.getByRole('button', { name: '첨부' }).click();
+  const chooser = page.waitForEvent('filechooser');
+  await page.getByRole('menuitem', { name: '사진' }).click();
+  await (await chooser).setFiles(files);
+  await expect(page.getByRole('link', { name: '보낸 사진 2/2' })).toBeVisible({ timeout: 15_000 });
 });
 
 test('관리자 콘솔 대시보드가 열린다', async ({ page }) => {

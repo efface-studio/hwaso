@@ -19,6 +19,7 @@ function Body({ m }: { m: PendingMessage }) {
         삭제된 메시지입니다.
       </Text>
     );
+  if (m.kind === 'IMAGE' && m.images.length > 1) return <ImageGrid images={m.images} />;
   if (m.kind === 'IMAGE' && m.image)
     return (
       <Image
@@ -72,6 +73,28 @@ function Body({ m }: { m: PendingMessage }) {
       </View>
     );
   return <Text selectable>{m.body}</Text>;
+}
+
+/** 사진 여러 장: 2열 격자, 4장 넘으면 마지막 칸에 +N */
+function ImageGrid({ images }: { images: PendingMessage['images'] }) {
+  const shown = images.slice(0, 4);
+  const rest = images.length - shown.length;
+  return (
+    <View style={styles.grid} accessibilityLabel={`보낸 사진 ${images.length}장`}>
+      {shown.map((img, i) => (
+        <View key={img.key} style={[styles.cell, { backgroundColor: img.dominantColor }]}>
+          <Image source={mediaUrl(img.key, 400)} style={StyleSheet.absoluteFill} contentFit="cover" />
+          {rest > 0 && i === shown.length - 1 && (
+            <View style={[StyleSheet.absoluteFill, styles.more]}>
+              <Text variant="bodyStrong" style={{ color: '#fff' }}>
+                +{rest}
+              </Text>
+            </View>
+          )}
+        </View>
+      ))}
+    </View>
+  );
 }
 
 /** 거래 안내(판매자 상태 변경·주문 진행): 가운데 한 줄, 주문이 있으면 바로가기 */
@@ -169,6 +192,9 @@ export function Bubble({
 }
 
 const styles = StyleSheet.create({
+  grid: { width: 204, flexDirection: 'row', flexWrap: 'wrap', gap: 4 },
+  cell: { width: 100, height: 100, borderRadius: 6, overflow: 'hidden' },
+  more: { alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.45)' },
   system: {
     alignSelf: 'center',
     maxWidth: '90%',
