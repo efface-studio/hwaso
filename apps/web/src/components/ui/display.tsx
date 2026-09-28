@@ -37,7 +37,7 @@ const badgeTone = {
   outline: 'border border-border-strong text-muted',
   primary: 'bg-primary-soft text-primary',
   solid: 'bg-secondary text-secondary-foreground',
-  live: 'bg-live text-white',
+  live: 'bg-live text-live-foreground',
   destructive: 'bg-destructive/10 text-destructive',
 } as const;
 
