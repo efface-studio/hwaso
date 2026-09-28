@@ -72,6 +72,19 @@ test('작품에서 판매자와 채팅을 시작하고 메시지를 보낸다', 
   await page.getByRole('menuitem', { name: '사진' }).click();
   await (await chooser).setFiles(files);
   await expect(page.getByRole('link', { name: '보낸 사진 2/2' })).toBeVisible({ timeout: 15_000 });
+
+  // 상단 고정 → 목록에 고정 표시, 필터·검색
+  await page.getByRole('button', { name: '채팅방 메뉴' }).click();
+  await page.getByRole('menuitem', { name: '상단 고정' }).click();
+  const list = page.getByRole('complementary');
+  await expect(list.getByLabel('고정됨').first()).toBeVisible();
+  await list.getByRole('button', { name: '판매' }).click();
+  await expect(list.getByText('해당하는 대화가 없어요.')).toBeVisible();
+  await list.getByRole('button', { name: '구매' }).click();
+  await list.getByLabel('채팅 검색').fill('없는닉네임없는작품');
+  await expect(list.getByText('검색 결과가 없어요.')).toBeVisible();
+  await list.getByLabel('채팅 검색').fill(product.title);
+  await expect(list.getByRole('link').first()).toBeVisible();
 });
 
 test('관리자 콘솔 대시보드가 열린다', async ({ page }) => {
