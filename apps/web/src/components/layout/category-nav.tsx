@@ -73,42 +73,51 @@ function CategoryTiles({ onPick }: { onPick: () => void }) {
     );
   return (
     <div className="flex flex-col gap-8">
-      {(data ?? []).map((root) => (
-        <section key={root.id} aria-labelledby={`cat-${root.slug}`}>
-          <div className="mb-3 flex items-baseline justify-between">
-            <h3 id={`cat-${root.slug}`} className="text-body-strong">
-              {root.name}
-            </h3>
-            <Link
-              href={`/category/${root.slug}`}
-              onClick={onPick}
-              className="text-small text-muted hover:text-foreground"
-            >
-              전체 {root.productCount}점
-            </Link>
-          </div>
-          <ul className="grid grid-cols-3 gap-x-3 gap-y-4 md:grid-cols-3">
-            {root.children.map((c) => (
-              <li key={c.id}>
-                <Link href={`/category/${c.slug}`} onClick={onPick} className="group flex flex-col gap-1.5">
-                  <span className="block aspect-square overflow-hidden rounded-sm bg-background-soft">
-                    <MediaImage
-                      image={c.coverImage}
-                      alt=""
-                      fit="cover"
-                      sizes="(min-width: 768px) 130px, 30vw"
-                      thumb
-                      className="transition-transform duration-200 group-hover:scale-105"
-                    />
-                  </span>
-                  <span className="truncate text-label">{c.name}</span>
-                  <span className="-mt-1 text-caption text-muted">{c.productCount}점</span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ))}
+      {(data ?? [])
+        .filter((r) => r.productCount > 0)
+        .map((root) => (
+          <section key={root.id} aria-labelledby={`cat-${root.slug}`}>
+            <div className="mb-3 flex items-baseline justify-between">
+              <h3 id={`cat-${root.slug}`} className="text-body-strong">
+                {root.name}
+              </h3>
+              <Link
+                href={`/category/${root.slug}`}
+                onClick={onPick}
+                className="text-small text-muted hover:text-foreground"
+              >
+                전체 {root.productCount}점
+              </Link>
+            </div>
+            <ul className="grid grid-cols-3 gap-x-3 gap-y-4 md:grid-cols-3">
+              {/* 작품이 없는 분류는 빈 타일이 되므로 숨긴다 */}
+              {root.children
+                .filter((c) => c.productCount > 0)
+                .map((c) => (
+                  <li key={c.id}>
+                    <Link
+                      href={`/category/${c.slug}`}
+                      onClick={onPick}
+                      className="group flex flex-col gap-1.5"
+                    >
+                      <span className="block aspect-square overflow-hidden rounded-sm bg-background-soft">
+                        <MediaImage
+                          image={c.coverImage}
+                          alt=""
+                          fit="cover"
+                          sizes="(min-width: 768px) 130px, 30vw"
+                          thumb
+                          className="transition-transform duration-200 group-hover:scale-105"
+                        />
+                      </span>
+                      <span className="truncate text-label">{c.name}</span>
+                      <span className="-mt-1 text-caption text-muted">{c.productCount}점</span>
+                    </Link>
+                  </li>
+                ))}
+            </ul>
+          </section>
+        ))}
     </div>
   );
 }
@@ -130,14 +139,7 @@ export function CategoryNav() {
         <LayoutGrid className="size-4" aria-hidden />
         카테고리
       </button>
-      <Sheet
-        open={open}
-        onOpenChange={setOpen}
-        title="카테고리"
-        side="bottom"
-        // 모바일은 하단 시트, 데스크톱은 오른쪽 패널
-        className="md:inset-y-0 md:right-0 md:left-auto md:max-h-none md:w-full md:max-w-md md:rounded-none md:border-t-0 md:border-l"
-      >
+      <Sheet open={open} onOpenChange={setOpen} title="카테고리" side="bottom" desktopSide="right">
         <CategoryTiles onPick={() => setOpen(false)} />
       </Sheet>
     </nav>

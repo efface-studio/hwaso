@@ -179,7 +179,7 @@ function ZoomViewer({ open, onOpenChange, images, index, onIndex, title }: ZoomV
     <D.Root open={open} onOpenChange={onOpenChange}>
       <D.Portal>
         <D.Content
-          className="fixed inset-0 z-[70] flex flex-col bg-background focus:outline-none"
+          className="fixed inset-0 z-[70] flex flex-col bg-background focus:outline-none data-[state=open]:animate-overlay-in data-[state=closed]:animate-overlay-out"
           aria-describedby={undefined}
         >
           <div className="flex h-14 items-center justify-between px-4">

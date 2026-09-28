@@ -4,7 +4,8 @@ import { DropdownMenu as M, Popover as P, Tooltip as T } from 'radix-ui';
 import type { ReactNode } from 'react';
 import { cn } from '@/lib/cn';
 
-const panel = 'z-50 min-w-40 rounded-md border border-border bg-surface p-1 shadow-md';
+const panel =
+  'z-50 min-w-40 rounded-md border border-border bg-surface p-1 shadow-md data-[state=open]:animate-pop-in data-[state=closed]:animate-pop-out';
 
 export interface MenuItem {
   label: string;
@@ -26,7 +27,11 @@ export function DropdownMenu({
     <M.Root>
       <M.Trigger asChild>{trigger}</M.Trigger>
       <M.Portal>
-        <M.Content align={align} sideOffset={4} className={panel}>
+        <M.Content
+          align={align}
+          sideOffset={4}
+          className={cn(panel, 'origin-(--radix-dropdown-menu-content-transform-origin)')}
+        >
           {items.map((it) => (
             <M.Item
               key={it.label}
@@ -59,7 +64,10 @@ export function Popover({
     <P.Root>
       <P.Trigger asChild>{trigger}</P.Trigger>
       <P.Portal>
-        <P.Content sideOffset={6} className={cn(panel, 'p-4', className)}>
+        <P.Content
+          sideOffset={6}
+          className={cn(panel, 'origin-(--radix-popover-content-transform-origin) p-4', className)}
+        >
           {children}
         </P.Content>
       </P.Portal>
@@ -75,7 +83,7 @@ export function Tooltip({ content, children }: { content: ReactNode; children: R
         <T.Portal>
           <T.Content
             sideOffset={6}
-            className="z-50 max-w-64 rounded-sm bg-secondary px-2.5 py-1.5 text-caption text-secondary-foreground"
+            className="z-50 max-w-64 origin-(--radix-tooltip-content-transform-origin) rounded-sm bg-secondary px-2.5 py-1.5 text-caption text-secondary-foreground data-[state=closed]:animate-pop-out data-[state=delayed-open]:animate-pop-in data-[state=instant-open]:animate-pop-in"
           >
             {content}
           </T.Content>

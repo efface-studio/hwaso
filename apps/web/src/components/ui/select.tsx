@@ -52,7 +52,7 @@ export function Select<T extends string>({
         <S.Content
           position="popper"
           sideOffset={4}
-          className="z-50 max-h-80 min-w-[var(--radix-select-trigger-width)] overflow-hidden rounded-md border border-border bg-surface shadow-md"
+          className="z-50 max-h-80 min-w-[var(--radix-select-trigger-width)] origin-(--radix-select-content-transform-origin) overflow-hidden rounded-md border border-border bg-surface shadow-md data-[state=open]:animate-pop-in data-[state=closed]:animate-pop-out"
         >
           <S.Viewport className="p-1">
             {options.map((o) => (

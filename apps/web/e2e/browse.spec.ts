@@ -77,6 +77,22 @@ test('브랜드 배너는 배경 상자 없이 페이지 위에 놓인다', asyn
   }
 });
 
+test('카테고리 시트는 애니메이션으로 열린다 (모바일 아래에서, 데스크톱 오른쪽에서)', async ({ page }) => {
+  for (const [width, name] of [
+    [390, 'sheet-in-bottom'],
+    [1280, 'sheet-in-right'],
+  ] as const) {
+    await page.setViewportSize({ width, height: 844 });
+    await page.goto('/');
+    await page.getByRole('button', { name: '카테고리' }).click();
+    const sheet = page.getByRole('dialog', { name: '카테고리' });
+    await expect(sheet).toBeVisible();
+    expect(await sheet.evaluate((el) => getComputedStyle(el).animationName), `${width}px`).toBe(name);
+    await page.keyboard.press('Escape');
+    await expect(sheet).toBeHidden();
+  }
+});
+
 test('헤더 실제 높이와 --header-h 가 같다 (헤더 아래 고정 요소가 겹치지 않게)', async ({ page }) => {
   for (const width of [390, 1280]) {
     await page.setViewportSize({ width, height: 844 });

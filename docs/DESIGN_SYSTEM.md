@@ -110,7 +110,13 @@
 - 관심상품 토글: 아이콘 scale 1 → 1.15 → 1 (150ms)
 - 장바구니 담기 / 저장: 토스트
 - 시트·다이얼로그 열림/닫힘, 페이지 전환(모바일 네이티브 스택)
-- `prefers-reduced-motion` 시 전부 끔
+- **오버레이는 반드시 등장·퇴장 애니메이션** (팝업·모달·시트·메뉴·셀렉트·툴팁·토스트, `globals.css` 의 `animate-*`):
+  - 배경 딤: `overlay-in/out` 페이드 200/160ms
+  - 하단 시트·측면 패널: `sheet-in/out-{bottom,right,left}` 슬라이드 320~340ms `cubic-bezier(.32,.72,0,1)`, 닫힘 220ms
+  - 다이얼로그·드롭다운·팝오버·셀렉트·툴팁: `pop-in/out` 페이드 + scale .96, 200/140ms (메뉴는 트리거 쪽이 기준점)
+  - 토스트: `toast-in` 아래에서 12px 떠오름 260ms
+  - 앱(RN)은 OS 기본 표현(pageSheet·slide)으로 같은 원칙을 지킨다
+- `prefers-reduced-motion`·시니어 모드 시 전부 끔 (즉시 표시)
 
 금지: 스크롤 등장 fade/slide, parallax, bounce, 무한 반복 장식 애니메이션.
 
