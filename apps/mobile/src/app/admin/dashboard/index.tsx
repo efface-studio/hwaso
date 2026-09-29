@@ -23,6 +23,9 @@ const num = (v: number) => v.toLocaleString('ko-KR');
 const time = (ms: number) => new Date(ms).toLocaleTimeString('ko-KR', { hour: 'numeric', minute: '2-digit' });
 const today = (ms: number) =>
   new Date(ms).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'long' });
+const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
+/** 2026-09-16 → 수 (날짜만 있는 값이라 UTC 로 읽어 요일이 밀리지 않게) */
+const weekday = (iso: string) => WEEKDAYS[new Date(`${iso}T00:00:00Z`).getUTCDay()]!;
 /** 2026-09-16 → 9월 16일 */
 const day = (iso: string) => `${Number(iso.slice(5, 7))}월 ${Number(iso.slice(8, 10))}일`;
 
@@ -120,7 +123,8 @@ function Sales({ d }: { d: Dashboard }) {
   const series = d.series;
   const max = Math.max(1, ...series.map((s) => s.gmv));
   const picked = sel === null ? undefined : series[sel];
-  const detail = (s: Series[number]) => `${day(s.date)} · ${formatPrice(s.gmv)} · 주문 ${s.orders}건`;
+  const detail = (s: Series[number]) =>
+    `${day(s.date)} (${weekday(s.date)}) · ${formatPrice(s.gmv)} · 주문 ${s.orders}건`;
 
   return (
     <View style={styles.sales}>
@@ -162,6 +166,19 @@ function Sales({ d }: { d: Dashboard }) {
               </Pressable>
             );
           })}
+        </View>
+        {/* 막대 아래 요일 — 고른 날은 진하고 굵게 */}
+        <View style={styles.days} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
+          {series.map((s, i) => (
+            <Text
+              key={s.date}
+              variant="caption"
+              color={sel === i ? 'foreground' : 'faint'}
+              style={[styles.day, sel === i && styles.dayOn]}
+            >
+              {weekday(s.date)}
+            </Text>
+          ))}
         </View>
       </View>
     </View>
@@ -264,6 +281,10 @@ export default function AdminDashboardScreen() {
           <AdminRow
             title={<Text variant="body">판매 중 작품</Text>}
             value={<Text style={styles.tabular}>{num(d.products.active)}</Text>}
+            accessibilityRole="link"
+            onPress={() =>
+              router.push({ pathname: '/admin/catalog', params: { tab: 'products', status: 'ACTIVE' } })
+            }
           />
           <AdminRow
             title={<Text variant="body">정산 예정</Text>}
@@ -301,6 +322,9 @@ const styles = StyleSheet.create({
   figure: { flex: 1, gap: 2 },
   divider: { width: StyleSheet.hairlineWidth },
   chart: { gap: 8 },
+  days: { flexDirection: 'row', marginTop: -2 },
+  day: { flex: 1, textAlign: 'center', fontSize: 11, lineHeight: 14 },
+  dayOn: { fontWeight: '700' },
   bars: { flexDirection: 'row', alignItems: 'flex-end' },
   barSlot: { flex: 1, height: '100%', justifyContent: 'flex-end', paddingHorizontal: 2.5 },
 });

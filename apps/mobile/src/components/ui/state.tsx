@@ -1,5 +1,7 @@
-import type { ReactNode } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { useSegments } from 'expo-router';
+import { useCallback, useRef, useState, type ReactNode } from 'react';
+import { ActivityIndicator, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/theme';
 import { Button } from './button';
 import { EmptyIllustration, type EmptyKind } from '@/components/illustrations/empty';
@@ -46,6 +48,23 @@ export function RefreshSkeleton({
   return refreshing ? <Loading variant={variant} /> : <>{children}</>;
 }
 
+/** 떠 있는 탭 바(iOS 26)가 화면 아래에서 가리는 높이 — 홈 인디케이터 영역 포함 */
+const TAB_BAR_COVER = 82;
+
+/** 화면에서 실제로 보이는 영역의 아래 끝 (탭 바·홈 인디케이터 위) */
+function useVisibleBottom() {
+  const { height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const root = useSegments()[0];
+  const inTabs = root === '(tabs)' || root === 'admin';
+  return height - (inTabs ? Math.max(TAB_BAR_COVER, insets.bottom) : insets.bottom);
+}
+
+/**
+ * 빈 상태 (그림 + 글 + 동작).
+ * 목록은 헤더·탭 바 밑까지 스크롤 영역이라 flex 가운데 정렬만 하면 그만큼 아래로 처진다 —
+ * 화면에 보이는 영역(자기 위치 ~ 탭 바 위)을 재서 그 가운데에 둔다.
+ */
 export function Empty({
   title,
   description,
@@ -61,20 +80,42 @@ export function Empty({
   /** 직접 넣는 그림 (kind 대신) */
   illustration?: ReactNode;
 }) {
+  const visibleBottom = useVisibleBottom();
+  const box = useRef<View>(null);
+  const contentH = useRef(0);
+  const [offset, setOffset] = useState<number | null>(null);
+
+  const place = useCallback(() => {
+    box.current?.measureInWindow((_x, y, _w, h) => {
+      if (!contentH.current) return;
+      const bottom = Math.min(y + h, visibleBottom);
+      setOffset(Math.max(0, (bottom - y - contentH.current) / 2));
+    });
+  }, [visibleBottom]);
+
   return (
-    <View style={styles.center}>
-      <View style={styles.illustration}>{illustration ?? <EmptyIllustration kind={kind} />}</View>
-      <Text variant="bodyStrong" style={styles.text}>
-        {title}
-      </Text>
-      {description && (
-        <Text variant="small" color="muted" style={styles.text}>
-          {description}
+    <View ref={box} style={styles.fill} onLayout={place}>
+      <View
+        onLayout={(e) => {
+          contentH.current = e.nativeEvent.layout.height;
+          place();
+        }}
+        // 자리를 잡기 전에는 가려 두어 한 번 튀는 것을 막는다
+        style={[styles.empty, { marginTop: offset ?? 0, opacity: offset === null ? 0 : 1 }]}
+      >
+        <View style={styles.illustration}>{illustration ?? <EmptyIllustration kind={kind} />}</View>
+        <Text variant="bodyStrong" style={styles.text}>
+          {title}
         </Text>
-      )}
-      {action && (
-        <Button title={action.title} variant="outline" onPress={action.onPress} style={{ marginTop: 12 }} />
-      )}
+        {description && (
+          <Text variant="small" color="muted" style={styles.text}>
+            {description}
+          </Text>
+        )}
+        {action && (
+          <Button title={action.title} variant="outline" onPress={action.onPress} style={{ marginTop: 12 }} />
+        )}
+      </View>
     </View>
   );
 }
@@ -82,6 +123,7 @@ export function Empty({
 const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 6 },
   fill: { flex: 1 },
+  empty: { alignItems: 'center', padding: 24, gap: 6 },
   illustration: { marginBottom: 16 },
   text: { textAlign: 'center' },
 });

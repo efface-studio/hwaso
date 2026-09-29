@@ -12,6 +12,7 @@ import { ActionSheetHost } from '@/components/action-sheet-host';
 import { AnimatedSplash } from '@/components/animated-splash';
 import { AppLock } from '@/components/app-lock';
 import { OfflineBanner } from '@/components/offline-banner';
+import { preloadTabIcons } from '@/components/tab-icons';
 import { refreshAccessToken } from '@/lib/api';
 import { isAdmin } from '@/lib/admin';
 import { connectQueryFocus } from '@/lib/query-focus';
@@ -23,6 +24,7 @@ import { useTheme } from '@/theme';
 
 void SplashScreen.preventAutoHideAsync();
 connectQueryFocus();
+preloadTabIcons();
 
 function makeClient() {
   return new QueryClient({
