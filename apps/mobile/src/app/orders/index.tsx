@@ -2,7 +2,9 @@ import { ORDER_LIST_FILTERS, formatPrice, type OrderListQuery } from '@shop/shar
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { AppRefreshControl } from '@/components/ui/app-refresh-control';
+import { usePullRefresh } from '@/hooks/use-pull-refresh';
 import { OrderItemRow, OrderStatusBadge } from '@/components/order/order-ui';
 import { Chips } from '@/components/ui/chips';
 import { Empty, Loading } from '@/components/ui/state';
@@ -32,6 +34,7 @@ export default function OrdersScreen() {
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (last) => last.nextCursor ?? undefined,
   });
+  const pull = usePullRefresh(q.refetch);
   const rows = q.data?.pages.flatMap((p) => p.items) ?? [];
 
   return (
@@ -46,21 +49,29 @@ export default function OrdersScreen() {
         />
       </View>
       {q.isPending ? (
-        <Loading />
+        <Loading variant="list" />
       ) : (
         <FlatList
-          data={rows}
+          alwaysBounceVertical={false}
+          data={pull.refreshing ? [] : rows}
           keyExtractor={(o) => o.id}
-          contentContainerStyle={{ padding: 16, gap: 12 }}
-          refreshControl={<RefreshControl refreshing={q.isRefetching} onRefresh={() => void q.refetch()} />}
+          contentContainerStyle={{ flexGrow: 1, padding: 16, gap: 12 }}
+          refreshControl={<AppRefreshControl refreshing={pull.refreshing} onRefresh={pull.onRefresh} />}
           onEndReached={() => q.hasNextPage && !q.isFetchingNextPage && void q.fetchNextPage()}
           ListEmptyComponent={
-            <Empty
-              title={as === 'buyer' ? '주문 내역이 없어요' : '받은 주문이 없어요'}
-              action={
-                as === 'buyer' ? { title: '작품 둘러보기', onPress: () => router.push('/search') } : undefined
-              }
-            />
+            pull.refreshing ? (
+              <Loading variant="list" />
+            ) : (
+              <Empty
+                kind="box"
+                title={as === 'buyer' ? '주문 내역이 없어요' : '받은 주문이 없어요'}
+                action={
+                  as === 'buyer'
+                    ? { title: '작품 둘러보기', onPress: () => router.push('/search') }
+                    : undefined
+                }
+              />
+            )
           }
           renderItem={({ item: o }) => (
             <Pressable

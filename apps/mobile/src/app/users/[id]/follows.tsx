@@ -3,7 +3,9 @@ import type { FollowUserDto } from '@shop/shared';
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Alert, FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
+import { Alert, FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { AppRefreshControl } from '@/components/ui/app-refresh-control';
+import { usePullRefresh } from '@/hooks/use-pull-refresh';
 import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Chips } from '@/components/ui/chips';
@@ -60,6 +62,7 @@ export default function FollowsScreen() {
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (last) => last.nextCursor ?? undefined,
   });
+  const pull = usePullRefresh(q.refetch);
   const toggle = async (u: FollowUserDto) => {
     setBusy(u.id);
     try {
@@ -88,15 +91,24 @@ export default function FollowsScreen() {
         />
       </View>
       {q.isPending ? (
-        <Loading />
+        <Loading variant="list" />
       ) : (
         <FlatList
-          data={q.data?.pages.flatMap((p) => p.items) ?? []}
+          alwaysBounceVertical={false}
+          contentContainerStyle={{ flexGrow: 1 }}
+          data={pull.refreshing ? [] : (q.data?.pages.flatMap((p) => p.items) ?? [])}
           keyExtractor={(u) => u.id}
-          refreshControl={<RefreshControl refreshing={q.isRefetching} onRefresh={() => void q.refetch()} />}
+          refreshControl={<AppRefreshControl refreshing={pull.refreshing} onRefresh={pull.onRefresh} />}
           onEndReached={() => q.hasNextPage && !q.isFetchingNextPage && void q.fetchNextPage()}
           ListEmptyComponent={
-            <Empty title={kind === 'followers' ? '팔로워가 없어요' : '팔로우한 사람이 없어요'} />
+            pull.refreshing ? (
+              <Loading variant="list" />
+            ) : (
+              <Empty
+                kind="people"
+                title={kind === 'followers' ? '팔로워가 없어요' : '팔로우한 사람이 없어요'}
+              />
+            )
           }
           renderItem={({ item }) => (
             <Row u={item} busy={busy === item.id} onToggle={() => void toggle(item)} />

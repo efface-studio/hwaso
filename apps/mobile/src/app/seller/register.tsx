@@ -4,30 +4,14 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, Stack } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert, ScrollView, StyleSheet } from 'react-native';
+import { BankField } from '@/components/bank-picker';
 import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
-import { SelectField } from '@/components/ui/inputs';
 import { Empty, Loading } from '@/components/ui/state';
 import { Text } from '@/components/ui/text';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
 import { useTheme } from '@/theme';
-
-const BANKS = [
-  'KB국민은행',
-  '신한은행',
-  '우리은행',
-  '하나은행',
-  'NH농협은행',
-  'IBK기업은행',
-  '카카오뱅크',
-  '토스뱅크',
-  '케이뱅크',
-  'SC제일은행',
-  '부산은행',
-  '대구은행',
-  '우체국',
-].map((b) => ({ value: b, label: b }));
 
 /** 판매자 등록 ↔ 정산 정보 조회·수정 (계좌번호는 서버가 암호화해 보관) */
 export default function SellerRegisterScreen() {
@@ -62,9 +46,13 @@ export default function SellerRegisterScreen() {
 
   if (!user)
     return (
-      <Empty title="로그인이 필요해요" action={{ title: '로그인', onPress: () => router.push('/login') }} />
+      <Empty
+        kind="lock"
+        title="로그인이 필요해요"
+        action={{ title: '로그인', onPress: () => router.push('/login') }}
+      />
     );
-  if (providers.isPending || (user.isSeller && info.isPending)) return <Loading />;
+  if (providers.isPending || (user.isSeller && info.isPending)) return <Loading variant="text" />;
   const needsIdentity = !!providers.data?.identity && !user.identityVerified;
 
   const submit = async () => {
@@ -106,6 +94,7 @@ export default function SellerRegisterScreen() {
       <Text color="muted">판매 대금을 받을 계좌를 등록해주세요. 계좌번호는 암호화되어 보관됩니다.</Text>
       {needsIdentity ? (
         <Empty
+          kind="lock"
           title="본인인증이 필요해요"
           description="판매 대금 정산을 위해 먼저 휴대폰 본인인증을 해주세요."
           action={{ title: '본인인증 하러 가기', onPress: () => router.push('/settings/identity') }}
@@ -118,13 +107,7 @@ export default function SellerRegisterScreen() {
               {info.data.verified ? ' · 인증 판매자' : ''}
             </Text>
           )}
-          <SelectField
-            label="은행"
-            value={bankName}
-            onChange={setBankName}
-            options={BANKS}
-            placeholder="은행 선택"
-          />
+          <BankField label="은행" value={bankName} onChange={setBankName} />
           <Field
             label="계좌번호"
             keyboardType="number-pad"

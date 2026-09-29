@@ -1,7 +1,9 @@
 import { SETTLEMENT_STATUS_LABEL, formatPrice } from '@shop/shared';
 import { useQuery } from '@tanstack/react-query';
 import { router, Stack } from 'expo-router';
-import { FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { AppRefreshControl } from '@/components/ui/app-refresh-control';
+import { usePullRefresh } from '@/hooks/use-pull-refresh';
 import { Button } from '@/components/ui/button';
 import { Empty, Loading } from '@/components/ui/state';
 import { Text } from '@/components/ui/text';
@@ -12,17 +14,19 @@ import { useTheme } from '@/theme';
 export default function SettlementsScreen() {
   const t = useTheme();
   const q = useQuery({ queryKey: ['settlements'], queryFn: api.orders.settlements });
-  if (q.isPending) return <Loading />;
+  const pull = usePullRefresh(q.refetch);
+  if (q.isPending) return <Loading variant="plain-list" />;
   const data = q.data;
-  if (!data) return <Empty title="정산 정보를 불러오지 못했어요" />;
+  if (!data) return <Empty kind="error" title="정산 정보를 불러오지 못했어요" />;
 
   return (
     <FlatList
+      alwaysBounceVertical={false}
       style={{ backgroundColor: t.colors.background }}
-      contentContainerStyle={{ padding: 16, gap: 10 }}
-      data={data.items}
+      contentContainerStyle={{ flexGrow: 1, padding: 16, gap: 10 }}
+      data={pull.refreshing ? [] : data.items}
       keyExtractor={(s) => s.id}
-      refreshControl={<RefreshControl refreshing={q.isRefetching} onRefresh={() => void q.refetch()} />}
+      refreshControl={<AppRefreshControl refreshing={pull.refreshing} onRefresh={pull.onRefresh} />}
       ListHeaderComponent={
         <View style={{ gap: 12, marginBottom: 8 }}>
           <Stack.Screen options={{ title: '정산' }} />
@@ -54,7 +58,13 @@ export default function SettlementsScreen() {
           />
         </View>
       }
-      ListEmptyComponent={<Empty title="정산 내역이 없어요" description="구매 확정된 주문부터 정산돼요." />}
+      ListEmptyComponent={
+        pull.refreshing ? (
+          <Loading variant="plain-list" />
+        ) : (
+          <Empty kind="doc" title="정산 내역이 없어요" description="구매 확정된 주문부터 정산돼요." />
+        )
+      }
       renderItem={({ item: s }) => (
         <Pressable
           accessibilityRole="link"

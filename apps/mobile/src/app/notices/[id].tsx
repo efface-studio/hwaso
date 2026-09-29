@@ -11,9 +11,9 @@ export default function NoticeScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const t = useTheme();
   const q = useQuery({ queryKey: ['notice', id], queryFn: () => api.notices.get(id) });
-  if (q.isPending) return <Loading />;
+  if (q.isPending) return <Loading variant="text" />;
   const n = q.data;
-  if (!n) return <Empty title="공지를 찾을 수 없어요" />;
+  if (!n) return <Empty kind="notfound" title="공지를 찾을 수 없어요" />;
   return (
     <ScrollView style={{ backgroundColor: t.colors.background }} contentContainerStyle={styles.body}>
       <Stack.Screen options={{ title: '공지사항' }} />

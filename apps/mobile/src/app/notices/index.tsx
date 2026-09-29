@@ -1,6 +1,8 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { router, Stack } from 'expo-router';
-import { FlatList, Pressable, RefreshControl, StyleSheet } from 'react-native';
+import { FlatList, Pressable, StyleSheet } from 'react-native';
+import { AppRefreshControl } from '@/components/ui/app-refresh-control';
+import { usePullRefresh } from '@/hooks/use-pull-refresh';
 import { Empty, Loading } from '@/components/ui/state';
 import { Text } from '@/components/ui/text';
 import { api } from '@/lib/api';
@@ -17,16 +19,21 @@ export default function NoticesScreen() {
     initialPageParam: 1,
     getNextPageParam: (last) => (last.page * last.size < last.total ? last.page + 1 : undefined),
   });
-  if (q.isPending) return <Loading />;
+  const pull = usePullRefresh(q.refetch);
+  if (q.isPending) return <Loading variant="plain-list" />;
   return (
     <FlatList
+      alwaysBounceVertical={false}
+      contentContainerStyle={{ flexGrow: 1 }}
       style={{ backgroundColor: t.colors.background }}
-      data={q.data?.pages.flatMap((p) => p.items) ?? []}
+      data={pull.refreshing ? [] : (q.data?.pages.flatMap((p) => p.items) ?? [])}
       keyExtractor={(n) => n.id}
-      refreshControl={<RefreshControl refreshing={q.isRefetching} onRefresh={() => void q.refetch()} />}
+      refreshControl={<AppRefreshControl refreshing={pull.refreshing} onRefresh={pull.onRefresh} />}
       onEndReached={() => q.hasNextPage && !q.isFetchingNextPage && void q.fetchNextPage()}
       ListHeaderComponent={<Stack.Screen options={{ title: '공지사항' }} />}
-      ListEmptyComponent={<Empty title="공지사항이 없어요" />}
+      ListEmptyComponent={
+        pull.refreshing ? <Loading variant="plain-list" /> : <Empty kind="doc" title="공지사항이 없어요" />
+      }
       renderItem={({ item: n }) => (
         <Pressable
           accessibilityRole="link"

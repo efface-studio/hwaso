@@ -209,6 +209,8 @@ export function SelectField<T extends string>({
             <Button title="닫기" variant="ghost" size="sm" onPress={() => setOpen(false)} />
           </View>
           <FlatList
+            alwaysBounceVertical={false}
+            contentContainerStyle={{ flexGrow: 1 }}
             data={options}
             keyExtractor={(o) => o.value}
             renderItem={({ item: o }) => {

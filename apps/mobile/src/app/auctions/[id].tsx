@@ -104,9 +104,9 @@ export default function AuctionScreen() {
   const [sheet, setSheet] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  if (live.loading) return <Loading />;
+  if (live.loading) return <Loading variant="detail" />;
   const s = live.snapshot;
-  if (!s) return <Empty title="경매를 찾을 수 없어요" />;
+  if (!s) return <Empty kind="notfound" title="경매를 찾을 수 없어요" />;
   const a = s.auction;
   const mine = !!user && a.sellerId === user.id;
   const leading = !!user && a.highestBidderId === user.id;

@@ -234,9 +234,9 @@ export default function ProductScreen() {
     void api.market.recordView(id).catch(() => undefined);
   }, [id]);
 
-  if (q.isPending) return <Loading />;
+  if (q.isPending) return <Loading variant="detail" />;
   const p = q.data;
-  if (!p) return <Empty title="작품을 찾을 수 없어요" />;
+  if (!p) return <Empty kind="notfound" title="작품을 찾을 수 없어요" />;
   const price = p.auction ? p.auction.currentPrice : p.price;
   const year = p.productionYear ? `${p.productionYear}년` : null;
 

@@ -1,4 +1,5 @@
 import { Stack } from 'expo-router';
+import { tabHeaderOptions } from '@/components/tab-header';
 import { useTheme } from '@/theme';
 
 export default function Layout() {
@@ -6,12 +7,10 @@ export default function Layout() {
   return (
     <Stack
       screenOptions={{
-        headerLargeTitle: true,
         headerTitleStyle: t.type('h3'),
-        headerLargeTitleShadowVisible: false,
       }}
     >
-      <Stack.Screen name="index" options={{ title: '경매' }} />
+      <Stack.Screen name="index" options={tabHeaderOptions('경매')} />
     </Stack>
   );
 }

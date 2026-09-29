@@ -22,12 +22,13 @@ export default function BlocksScreen() {
     },
     onError: (e) => Alert.alert(e instanceof ApiError ? e.message : '해제하지 못했어요.'),
   });
-  if (q.isPending) return <Loading />;
+  if (q.isPending) return <Loading variant="list" />;
 
   return (
     <FlatList
+      alwaysBounceVertical={false}
       style={{ backgroundColor: t.colors.background }}
-      contentContainerStyle={{ padding: 16 }}
+      contentContainerStyle={{ flexGrow: 1, padding: 16 }}
       data={q.data ?? []}
       keyExtractor={(u) => u.id}
       ListHeaderComponent={
@@ -39,7 +40,11 @@ export default function BlocksScreen() {
         </>
       }
       ListEmptyComponent={
-        <Empty title="차단한 사용자가 없어요" description="채팅방 메뉴에서 사용자를 차단할 수 있어요." />
+        <Empty
+          kind="people"
+          title="차단한 사용자가 없어요"
+          description="채팅방 메뉴에서 사용자를 차단할 수 있어요."
+        />
       }
       renderItem={({ item: u }) => (
         <View style={[styles.row, { borderColor: t.colors.borderSoft }]}>

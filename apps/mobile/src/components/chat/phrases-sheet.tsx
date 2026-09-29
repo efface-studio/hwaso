@@ -34,7 +34,7 @@ export function PhrasesSheet({ onPick, onClose }: { onPick: (text: string) => vo
   return (
     <Sheet title="자주 쓰는 문구" onClose={onClose}>
       {list.isPending ? (
-        <Loading />
+        <Loading variant="spinner" />
       ) : draft ? (
         <>
           <Text color="muted">최대 {CHAT_PHRASES_MAX}개까지 저장할 수 있어요.</Text>

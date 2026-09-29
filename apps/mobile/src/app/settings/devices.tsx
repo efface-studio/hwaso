@@ -1,7 +1,9 @@
 import { ApiError } from '@shop/api-client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
-import { Alert, FlatList, RefreshControl, StyleSheet, View } from 'react-native';
+import { Alert, FlatList, StyleSheet, View } from 'react-native';
+import { AppRefreshControl } from '@/components/ui/app-refresh-control';
+import { usePullRefresh } from '@/hooks/use-pull-refresh';
 import { Button } from '@/components/ui/button';
 import { Loading } from '@/components/ui/state';
 import { Text } from '@/components/ui/text';
@@ -23,17 +25,20 @@ export default function DevicesScreen() {
   const t = useTheme();
   const qc = useQueryClient();
   const q = useQuery({ queryKey: ['sessions'], queryFn: api.auth.sessions });
+  const pull = usePullRefresh(q.refetch);
   const refresh = () => void qc.invalidateQueries({ queryKey: ['sessions'] });
-  if (q.isPending) return <Loading />;
+  if (q.isPending) return <Loading variant="plain-list" />;
   const others = (q.data ?? []).filter((s) => !s.current).length;
 
   return (
     <FlatList
+      alwaysBounceVertical={false}
       style={{ backgroundColor: t.colors.background }}
-      contentContainerStyle={{ padding: 16 }}
-      data={q.data ?? []}
+      contentContainerStyle={{ flexGrow: 1, padding: 16 }}
+      data={pull.refreshing ? [] : (q.data ?? [])}
       keyExtractor={(s) => s.id}
-      refreshControl={<RefreshControl refreshing={q.isRefetching} onRefresh={() => void q.refetch()} />}
+      refreshControl={<AppRefreshControl refreshing={pull.refreshing} onRefresh={pull.onRefresh} />}
+      ListEmptyComponent={pull.refreshing ? <Loading variant="plain-list" /> : null}
       ListHeaderComponent={
         <View style={{ gap: 8, marginBottom: 8 }}>
           <Stack.Screen options={{ title: '로그인 기기' }} />

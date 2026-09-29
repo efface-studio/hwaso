@@ -62,7 +62,7 @@ export default function AddressEditScreen() {
   };
   const search = async () => {
     try {
-      const r = await searchPostcode();
+      const r = await searchPostcode(t.scheme);
       if (r) set(r);
     } catch (e) {
       onError(e);
@@ -100,19 +100,32 @@ export default function AddressEditScreen() {
           accessibilityRole="button"
           accessibilityLabel={d.address1 ? `주소 ${d.address1}, 눌러서 다시 검색` : '주소 검색'}
           onPress={() => void search()}
-          style={[
+          style={({ pressed }) => [
             styles.search,
+            d.address1 ? styles.searchFilled : null,
             {
               minHeight: t.controlHeight,
+              borderRadius: t.radius.sm,
               borderColor: errors.address1 || errors.zipCode ? t.colors.destructive : t.colors.borderStrong,
+              backgroundColor: pressed ? t.colors.surface2 : 'transparent',
             },
           ]}
         >
-          <Text color={d.address1 ? 'foreground' : 'faint'} style={{ flex: 1 }}>
-            {d.address1 ? `[${d.zipCode}] ${d.address1}` : '우편번호·도로명으로 검색'}
-          </Text>
-          <Text variant="bodyStrong" color="primary">
-            검색
+          {/* 고른 뒤: 우편번호 / 주소(줄바꿈) — 버튼은 오른쪽 위에 둔다 */}
+          {d.address1 ? (
+            <View style={styles.picked}>
+              <Text variant="small" color="muted">
+                {d.zipCode}
+              </Text>
+              <Text>{d.address1}</Text>
+            </View>
+          ) : (
+            <Text color="faint" style={{ flex: 1 }}>
+              우편번호·도로명으로 검색
+            </Text>
+          )}
+          <Text variant="label" color="primary">
+            {d.address1 ? '변경' : '검색'}
           </Text>
         </Pressable>
         {(errors.address1 || errors.zipCode) && (
@@ -166,11 +179,12 @@ const styles = StyleSheet.create({
   search: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 12,
-    borderWidth: 1,
-    borderRadius: 6,
+    gap: 12,
+    paddingHorizontal: 14,
+    borderWidth: StyleSheet.hairlineWidth * 2,
   },
+  searchFilled: { alignItems: 'flex-start', paddingVertical: 12 },
+  picked: { flex: 1, gap: 2 },
   presets: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   row: { flexDirection: 'row', alignItems: 'center' },
 });

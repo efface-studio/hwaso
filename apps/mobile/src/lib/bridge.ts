@@ -66,10 +66,12 @@ export async function verifyIdentity(): Promise<IdentityStatusDto> {
   return api.auth.completeIdentity(p.get('identityVerificationId') ?? prep.identityVerificationId);
 }
 
-/** 우편번호 검색 → { zipCode, address1 } (닫으면 null) */
-export async function searchPostcode(): Promise<{ zipCode: string; address1: string } | null> {
+/** 우편번호 검색 → { zipCode, address1 } (닫으면 null). 검색 화면은 앱 테마(theme)로 그린다 */
+export async function searchPostcode(
+  theme: 'light' | 'dark',
+): Promise<{ zipCode: string; address1: string } | null> {
   try {
-    const p = await openBridge('postcode');
+    const p = await openBridge('postcode', { theme });
     const zipCode = p.get('zipCode');
     const address1 = p.get('address1');
     return zipCode && address1 ? { zipCode, address1 } : null;

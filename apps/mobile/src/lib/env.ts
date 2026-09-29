@@ -21,5 +21,8 @@ export const env = {
   mediaUrl:
     process.env.EXPO_PUBLIC_MEDIA_URL ??
     `http://${Platform.OS === 'web' ? 'localhost' : devHost()}:9000/shop-media/public`,
-  webUrl: process.env.EXPO_PUBLIC_WEB_URL ?? 'https://hwaso.kr',
+  // 웹 브리지(결제·우편번호·본인인증). 개발 중에는 로컬 웹 서버(pnpm --filter @shop/web dev)를 쓴다
+  webUrl:
+    process.env.EXPO_PUBLIC_WEB_URL ??
+    (__DEV__ ? `http://${Platform.OS === 'web' ? 'localhost' : devHost()}:3000` : 'https://hwaso.kr'),
 };

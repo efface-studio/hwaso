@@ -47,7 +47,7 @@ export function Inquiries({ productId, isMine }: { productId: string; isMine: bo
     onError,
   });
   const inputStyle = [
-    t.type('body'),
+    t.inputType(true),
     styles.input,
     { color: t.colors.foreground, borderColor: t.colors.borderStrong },
   ];
@@ -188,7 +188,8 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth * 2,
     borderRadius: 6,
     paddingHorizontal: 12,
-    paddingTop: 10,
+    paddingTop: 12,
+    paddingBottom: 12,
     textAlignVertical: 'top',
   },
   item: { gap: 4, paddingVertical: 10, borderTopWidth: StyleSheet.hairlineWidth },

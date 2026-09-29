@@ -1,6 +1,6 @@
 import { ApiError } from '@shop/api-client';
 import { nicknameSchema, passwordSchema } from '@shop/shared';
-import * as WebBrowser from 'expo-web-browser';
+import { router } from 'expo-router';
 import { useState } from 'react';
 import {
   KeyboardAvoidingView,
@@ -16,9 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
 import { Text } from '@/components/ui/text';
 import { api } from '@/lib/api';
-import { goBack } from '@/lib/nav';
 import { appDevice } from '@/lib/device';
-import { env } from '@/lib/env';
 import { useAuthStore } from '@/stores/auth';
 import { useTheme } from '@/theme';
 
@@ -51,8 +49,8 @@ export default function SignupScreen() {
         agreeMarketing: marketing,
         device: appDevice(),
       });
+      // 로그인 상태가 되면 루트 가드가 홈으로 보낸다
       await useAuthStore.getState().setSession(tokens);
-      goBack();
     } catch (e) {
       if (e instanceof ApiError && e.code === 'NICKNAME_TAKEN') setErrors({ nickname: e.message });
       else setErrors({ form: e instanceof ApiError ? e.message : '가입하지 못했어요.' });
@@ -101,7 +99,7 @@ export default function SignupScreen() {
               <Text style={{ flex: 1 }}>이용약관·개인정보처리방침 동의 (필수)</Text>
               <Pressable
                 accessibilityRole="link"
-                onPress={() => void WebBrowser.openBrowserAsync(`${env.webUrl}/terms`)}
+                onPress={() => router.push({ pathname: '/policies/[slug]', params: { slug: 'terms' } })}
                 hitSlop={8}
               >
                 <Text variant="small" color="muted">
