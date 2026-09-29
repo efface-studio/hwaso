@@ -55,6 +55,7 @@ function fromCache<S extends IconSet>(set: S) {
  * 탭 아이콘 이미지 (선형 · 선택 시 채움). 템플릿 이미지로 쓰므로 색은 탭 바가 입힌다.
  * 폰트 아이콘을 이미지로 만드는 동안은 비어 있다 — 호출하는 쪽에서 SF Symbol 로 대신한다.
  * 탭마다 따로 바꾸면 이미지(20pt)와 SF Symbol(약 25pt)이 섞여 라벨 높이가 어긋나므로, 전부 준비된 뒤 한 번에 바꾼다.
+ * 보통은 preloadTabIcons() 로 캐시가 채워져 있어 첫 렌더부터 이미지다.
  */
 export function useTabIconSet<S extends IconSet>(set: S) {
   const [icons, setIcons] = useState<Partial<Record<keyof S, TabIcon>>>(() => fromCache(set) ?? {});
@@ -74,3 +75,16 @@ export function useTabIconSet<S extends IconSet>(set: S) {
 }
 
 export const useTabIcons = () => useTabIconSet(TAB_ICONS);
+
+/**
+ * 앱을 켤 때 사용자·관리자 탭 아이콘을 미리 만들어 둔다.
+ * 탭 바가 대체 SF Symbol 로 먼저 그려진 뒤 이미지로 바뀌면 iOS 가 일부 탭의 라벨 위치를 다시 잡지 않아
+ * 글자가 아래로 밀리므로, 탭 바가 처음부터 최종 아이콘으로 그려지게 한다.
+ */
+export function preloadTabIcons() {
+  for (const set of [TAB_ICONS, ADMIN_TAB_ICONS] as IconSet[])
+    for (const [off, on] of Object.values(set)) {
+      void load(off).catch(() => undefined);
+      void load(on).catch(() => undefined);
+    }
+}
