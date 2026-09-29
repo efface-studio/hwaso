@@ -275,7 +275,10 @@ export interface EditableProductDto extends ProductDetailDto {
 }
 
 export interface AuthProvidersDto {
+  /** 웹 OAuth(인가 코드) 키가 설정된 provider */
   oauth: AuthProvider[];
+  /** iOS 네이티브 Sign in with Apple 사용 가능 여부 (APPLE_BUNDLE_ID) */
+  appleNative: boolean;
   /** PASS 본인인증 사용 가능 여부와 클라이언트 SDK 설정 */
   identity: { storeId: string; channelKey: string } | null;
 }
