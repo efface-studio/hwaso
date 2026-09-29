@@ -38,12 +38,12 @@
 
 ## 5. 소셜 로그인
 
-| Provider | 방식                                                    | 필요 설정                                    |
-| -------- | ------------------------------------------------------- | -------------------------------------------- |
-| Google   | OAuth 2.0 Authorization Code + PKCE, OIDC id_token 검증 | `GOOGLE_CLIENT_ID/SECRET`                    |
-| Apple    | Sign in with Apple, id_token(JWKS) 검증, `form_post`    | `APPLE_CLIENT_ID/TEAM_ID/KEY_ID/PRIVATE_KEY` |
-| Kakao    | OAuth 2.0 Code → `/v2/user/me`                          | `KAKAO_CLIENT_ID/SECRET`                     |
-| Naver    | OAuth 2.0 Code (+state) → `/v1/nid/me`                  | `NAVER_CLIENT_ID/SECRET`                     |
+| Provider | 방식                                                    | 필요 설정                                                                         |
+| -------- | ------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| Google   | OAuth 2.0 Authorization Code + PKCE, OIDC id_token 검증 | `GOOGLE_CLIENT_ID/SECRET`                                                         |
+| Apple    | Sign in with Apple, id_token(JWKS) 검증, `form_post`    | 웹: `APPLE_CLIENT_ID/TEAM_ID/KEY_ID/PRIVATE_KEY`, iOS 네이티브: `APPLE_BUNDLE_ID` |
+| Kakao    | OAuth 2.0 Code → `/v2/user/me`                          | `KAKAO_CLIENT_ID/SECRET`                                                          |
+| Naver    | OAuth 2.0 Code (+state) → `/v1/nid/me`                  | `NAVER_CLIENT_ID/SECRET`                                                          |
 
 흐름 (Web·Mobile 공통, 서버가 code 교환):
 
@@ -55,6 +55,8 @@
    - 없으면 신규 가입 (emailVerifiedAt = provider 검증 시각, 닉네임 자동 생성 후 온보딩에서 수정)
 
 환경 변수가 없는 provider 는 `/auth/providers` 응답에서 제외되어 버튼이 표시되지 않는다.
+
+iOS 앱의 Apple 로그인은 웹 OAuth 가 아니라 시스템 Sign in with Apple 이다. 앱이 받은 `identityToken` 을 `POST /auth/oauth/apple/native` 로 보내면 서버가 Apple 공개키로 검증하며, 토큰 대상(aud)이 `APPLE_BUNDLE_ID`(앱 번들 ID, `app.config.ts` 의 `ios.bundleIdentifier`)여야 한다. 그래서 웹 키가 없어도 `APPLE_BUNDLE_ID` 만 있으면 `/auth/providers` 의 `appleNative` 가 `true` 가 되어 iOS 앱에 버튼이 보인다. 개발 모드에서는 Expo Go 로 실행한 토큰(aud `host.exp.Exponent`)도 허용한다. Apple Developer 에서 해당 App ID 에 Sign in with Apple 기능을 켜야 한다.
 
 ## 6. 세션 · 기기 관리
 

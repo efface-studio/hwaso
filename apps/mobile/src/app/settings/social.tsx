@@ -27,7 +27,7 @@ export default function SocialScreen() {
   });
   const [busy, setBusy] = useState<AuthProvider | null>(null);
   if (!user) return null;
-  if (providers.isPending) return <Loading />;
+  if (providers.isPending) return <Loading variant="plain-list" />;
   // iOS 의 Apple 로그인은 시스템 방식이라 여기서는 브라우저로 연결할 수 있는 제공자만 연결한다
   const available = AUTH_PROVIDERS.filter(
     (p) =>

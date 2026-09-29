@@ -178,11 +178,15 @@ export default function ChatRoomScreen() {
 
   if (!me)
     return (
-      <Empty title="로그인이 필요해요" action={{ title: '로그인', onPress: () => router.push('/login') }} />
+      <Empty
+        kind="lock"
+        title="로그인이 필요해요"
+        action={{ title: '로그인', onPress: () => router.push('/login') }}
+      />
     );
-  if (room.isPending || msgs.isPending) return <Loading />;
+  if (room.isPending || msgs.isPending) return <Loading variant="plain-list" />;
   const r = room.data;
-  if (!r) return <Empty title="대화를 찾을 수 없어요" />;
+  if (!r) return <Empty kind="notfound" title="대화를 찾을 수 없어요" />;
   const presence = presenceLabel(r.counterpart);
 
   const deliver = (m: PendingMessage, input: SendMessageInput) =>
@@ -470,10 +474,11 @@ export default function ChatRoomScreen() {
         </Link>
       )}
       <FlatList
+        alwaysBounceVertical={false}
         inverted
         data={items}
         keyExtractor={(m) => m.id}
-        contentContainerStyle={{ padding: 16, gap: 8 }}
+        contentContainerStyle={{ flexGrow: 1, padding: 16, gap: 8 }}
         onEndReached={() => msgs.hasNextPage && !msgs.isFetchingNextPage && void msgs.fetchNextPage()}
         renderItem={({ item, index }) => {
           const newer = items[index - 1];
@@ -567,9 +572,16 @@ export default function ChatRoomScreen() {
               }
             }}
             style={[
-              t.type('body'),
+              t.inputType(true),
               styles.input,
-              { color: t.colors.foreground, backgroundColor: t.colors.surface2, minHeight: t.touch },
+              {
+                color: t.colors.foreground,
+                backgroundColor: t.colors.surface2,
+                minHeight: t.touch,
+                // 한 줄일 때 글자가 입력칸 가운데 오도록 위아래 여백을 같게
+                paddingTop: (t.touch - t.inputLineHeight) / 2,
+                paddingBottom: (t.touch - t.inputLineHeight) / 2,
+              },
             ]}
           />
           <Pressable
@@ -661,8 +673,6 @@ const styles = StyleSheet.create({
     maxHeight: 128,
     borderRadius: 20,
     paddingHorizontal: 14,
-    paddingTop: 10,
-    paddingBottom: 10,
   },
   blocked: { alignItems: 'center', padding: 16, borderTopWidth: StyleSheet.hairlineWidth },
 });

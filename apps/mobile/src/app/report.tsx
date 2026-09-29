@@ -34,7 +34,7 @@ export default function ReportScreen() {
     },
     onError: (e) => Alert.alert(e instanceof ApiError ? e.message : '신고하지 못했어요.'),
   });
-  if (!target || !id) return <Empty title="잘못된 요청이에요" />;
+  if (!target || !id) return <Empty kind="error" title="잘못된 요청이에요" />;
 
   return (
     <ScrollView style={{ backgroundColor: t.colors.background }} contentContainerStyle={styles.body}>

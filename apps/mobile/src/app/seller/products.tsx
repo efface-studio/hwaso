@@ -4,10 +4,13 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Alert, FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
+import { Alert, FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { AppRefreshControl } from '@/components/ui/app-refresh-control';
+import { usePullRefresh } from '@/hooks/use-pull-refresh';
 import { Chips } from '@/components/ui/chips';
 import { Empty, Loading } from '@/components/ui/state';
 import { Text } from '@/components/ui/text';
+import { Separator } from '@/components/ui/separator';
 import { actionSheet, type SheetOption } from '@/lib/action-sheet';
 import { api } from '@/lib/api';
 import { mediaUrl } from '@/lib/media';
@@ -24,6 +27,8 @@ const FILTERS: { value: Filter; label: string }[] = [
 const errMsg = (e: unknown) => (e instanceof ApiError ? e.message : '처리하지 못했어요.');
 
 /** 내 작품 관리: 상태별 목록, 눌러서 수정·게시·판매 중지/재개·삭제 */
+const Sep = () => <Separator soft />;
+
 export default function SellerProductsScreen() {
   const params = useLocalSearchParams<{ status?: string }>();
   const t = useTheme();
@@ -35,6 +40,7 @@ export default function SellerProductsScreen() {
     queryKey: ['seller', 'products', filter],
     queryFn: () => api.market.sellerProducts(filter),
   });
+  const pull = usePullRefresh(q.refetch);
   const run = (fn: () => Promise<unknown>, done: string) =>
     fn().then(
       () => {
@@ -102,20 +108,24 @@ export default function SellerProductsScreen() {
         <Chips label="작품 상태" value={filter} onChange={setFilter} options={FILTERS} />
       </View>
       {q.isPending ? (
-        <Loading />
+        <Loading variant="list" />
       ) : (
         <FlatList
-          data={q.data ?? []}
+          alwaysBounceVertical={false}
+          contentContainerStyle={{ flexGrow: 1 }}
+          data={pull.refreshing ? [] : (q.data ?? [])}
           keyExtractor={(p) => p.id}
-          refreshControl={<RefreshControl refreshing={q.isRefetching} onRefresh={() => void q.refetch()} />}
-          ItemSeparatorComponent={() => (
-            <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: t.colors.borderSoft }} />
-          )}
+          refreshControl={<AppRefreshControl refreshing={pull.refreshing} onRefresh={pull.onRefresh} />}
+          ItemSeparatorComponent={Sep}
           ListEmptyComponent={
-            <Empty
-              title="작품이 없어요"
-              action={{ title: '작품 등록하기', onPress: () => router.push('/sell/new') }}
-            />
+            pull.refreshing ? (
+              <Loading variant="list" />
+            ) : (
+              <Empty
+                title="작품이 없어요"
+                action={{ title: '작품 등록하기', onPress: () => router.push('/sell/new') }}
+              />
+            )
           }
           renderItem={({ item: p }) => (
             <Pressable

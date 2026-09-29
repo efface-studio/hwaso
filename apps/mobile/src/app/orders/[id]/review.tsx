@@ -78,7 +78,7 @@ export default function ReviewScreen() {
     save.mutate();
   };
 
-  if (mine.isPending) return <Loading />;
+  if (mine.isPending) return <Loading variant="text" />;
   const locked = !!existing && !existing.editable;
 
   return (

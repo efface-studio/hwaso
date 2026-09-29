@@ -11,17 +11,18 @@ import { useTheme } from '@/theme';
 export default function AddressesScreen() {
   const t = useTheme();
   const q = useAddresses();
-  if (q.isPending) return <Loading />;
+  if (q.isPending) return <Loading variant="plain-list" />;
   return (
     <>
       <Stack.Screen options={{ title: '배송지 관리' }} />
       <FlatList
+        alwaysBounceVertical={false}
         style={{ backgroundColor: t.colors.background }}
-        contentContainerStyle={{ padding: 16, gap: 10 }}
+        contentContainerStyle={{ flexGrow: 1, padding: 16, gap: 10 }}
         contentInsetAdjustmentBehavior="automatic"
         data={q.data ?? []}
         keyExtractor={(a) => a.id}
-        ListEmptyComponent={<Empty title="저장된 배송지가 없어요" />}
+        ListEmptyComponent={<Empty kind="pin" title="저장된 배송지가 없어요" />}
         renderItem={({ item: a }) => (
           <Pressable
             accessibilityRole="button"

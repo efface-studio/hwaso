@@ -106,7 +106,11 @@ export class AuthController {
   @Public()
   @Get('providers')
   providers() {
-    return { oauth: this.oauth.configured(), identity: this.identity.clientConfig() };
+    return {
+      oauth: this.oauth.configured(),
+      appleNative: this.oauth.appleNativeConfigured(),
+      identity: this.identity.clientConfig(),
+    };
   }
 
   @Public()

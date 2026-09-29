@@ -92,11 +92,12 @@ export default function CheckoutScreen() {
     }
   };
 
-  if (!items.length) return <Empty title="주문할 작품이 없어요" />;
-  if (quote.isPending) return <Loading />;
+  if (!items.length) return <Empty kind="cart" title="주문할 작품이 없어요" />;
+  if (quote.isPending) return <Loading variant="text" />;
   if (quote.error && !couponError)
     return (
       <Empty
+        kind="error"
         title="주문할 수 없어요"
         description={errMsg(quote.error)}
         action={{ title: fromCart ? '장바구니로' : '돌아가기', onPress: goBack }}

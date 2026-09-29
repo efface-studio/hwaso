@@ -1,75 +1,23 @@
-import { useQuery } from '@tanstack/react-query';
-import { router, Stack } from 'expo-router';
-import { Pressable, StyleSheet, View } from 'react-native';
-import { Icon } from '@/components/ui/icon';
-import { Text } from '@/components/ui/text';
-import { api } from '@/lib/api';
-import { useAuthStore } from '@/stores/auth';
+import { Stack } from 'expo-router';
+import { tabHeaderOptions } from '@/components/tab-header';
 import { useTheme } from '@/theme';
-
-function HeaderActions() {
-  const t = useTheme();
-  const signedIn = !!useAuthStore((s) => s.user);
-  const q = useQuery({
-    queryKey: ['notifications', 'unread'],
-    queryFn: api.notifications.unreadCount,
-    enabled: signedIn,
-    refetchInterval: 60_000,
-  });
-  const unread = q.data?.unreadCount ?? 0;
-  return (
-    <View style={styles.row}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="검색"
-        onPress={() => router.push('/search')}
-        hitSlop={10}
-      >
-        <Icon ios="magnifyingglass" android="search" />
-      </Pressable>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={unread ? `알림 ${unread}개 안 읽음` : '알림'}
-        onPress={() => router.push(signedIn ? '/notifications' : '/login')}
-        hitSlop={10}
-      >
-        <Icon ios="bell" android="notifications" />
-        {unread > 0 && (
-          <View style={[styles.badge, { backgroundColor: t.colors.destructive }]}>
-            <Text variant="caption" style={{ color: '#fff', fontSize: 10, lineHeight: 14 }}>
-              {unread > 99 ? '99+' : unread}
-            </Text>
-          </View>
-        )}
-      </Pressable>
-    </View>
-  );
-}
 
 export default function Layout() {
   const t = useTheme();
   return (
-    <Stack
-      screenOptions={{
-        headerLargeTitle: true,
-        headerTitleStyle: t.type('h3'),
-        headerLargeTitleShadowVisible: false,
-      }}
-    >
-      <Stack.Screen name="index" options={{ title: '화소', headerRight: () => <HeaderActions /> }} />
+    <Stack screenOptions={{ headerTitleStyle: t.type('h3'), headerShadowVisible: false }}>
+      {/* 로고만 둬 상단 여백을 줄인다. 헤더는 반투명 — 콘텐츠가 헤더 뒤로 비쳐 스크롤된다.
+          검색·알림 버튼은 화면(index)에서 붙인다 (그 자리에서 검색하는 상태를 화면이 가진다) */}
+      <Stack.Screen
+        name="index"
+        options={{
+          ...tabHeaderOptions(null),
+          headerTransparent: true,
+          // 배경색 30% + 부드러운 스크롤 가장자리 효과 (블러와 함께 쓰면 효과가 겹친다)
+          headerStyle: { backgroundColor: `${t.colors.background}4D` },
+          scrollEdgeEffects: { top: 'soft' },
+        }}
+      />
     </Stack>
   );
 }
-
-const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', gap: 16, marginRight: 8 },
-  badge: {
-    position: 'absolute',
-    top: -8,
-    right: -12,
-    minWidth: 16,
-    paddingHorizontal: 4,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-});

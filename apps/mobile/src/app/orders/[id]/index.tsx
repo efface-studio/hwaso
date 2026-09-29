@@ -12,7 +12,8 @@ import * as Clipboard from 'expo-clipboard';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { useEffect, useState, type ReactNode } from 'react';
-import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { AppRefreshControl } from '@/components/ui/app-refresh-control';
 import { AddressPicker } from '@/components/order/address-list';
 import {
   AddressText,
@@ -26,7 +27,8 @@ import { ReasonSheet, ShipSheet } from '@/components/order/sheets';
 import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { RadioList } from '@/components/ui/radio';
-import { Empty, Loading } from '@/components/ui/state';
+import { Empty, Loading, RefreshSkeleton } from '@/components/ui/state';
+import { usePullRefresh } from '@/hooks/use-pull-refresh';
 import { Text } from '@/components/ui/text';
 import { api } from '@/lib/api';
 import { BridgeCancelled, payOrder } from '@/lib/bridge';
@@ -322,6 +324,7 @@ export default function OrderDetailScreen() {
   const qc = useQueryClient();
   const key = ['order', id];
   const q = useQuery({ queryKey: key, queryFn: () => api.orders.detail(id) });
+  const pull = usePullRefresh(q.refetch);
   const refresh = (next?: OrderDetailDto) => {
     if (next) qc.setQueryData(key, next);
     void qc.invalidateQueries({ queryKey: ['order', id] });
@@ -340,9 +343,9 @@ export default function OrderDetailScreen() {
     return () => void socket.off('ORDER_STATUS_UPDATED', on);
   }, [id, qc]);
 
-  if (q.isPending) return <Loading />;
+  if (q.isPending) return <Loading variant="text" />;
   const o = q.data;
-  if (!o) return <Empty title="주문을 찾을 수 없어요" description={errMsg(q.error)} />;
+  if (!o) return <Empty kind="notfound" title="주문을 찾을 수 없어요" description={errMsg(q.error)} />;
   const counterpart = o.role === 'buyer' ? o.seller : o.buyer;
   const pay = o.payment;
   const openChat = async () => {
@@ -358,139 +361,141 @@ export default function OrderDetailScreen() {
     <ScrollView
       style={{ backgroundColor: t.colors.background }}
       contentContainerStyle={styles.body}
-      refreshControl={<RefreshControl refreshing={q.isRefetching} onRefresh={() => void q.refetch()} />}
+      refreshControl={<AppRefreshControl refreshing={pull.refreshing} onRefresh={pull.onRefresh} />}
     >
       <Stack.Screen options={{ title: '주문 상세' }} />
-      <View style={{ gap: 8 }}>
-        <View style={styles.row}>
-          <OrderStatusBadge status={o.status} />
-          {o.source === 'AUCTION' && (
-            <Text variant="small" color="muted">
-              경매 낙찰
-            </Text>
-          )}
+      <RefreshSkeleton refreshing={pull.refreshing} variant="text">
+        <View style={{ gap: 8 }}>
+          <View style={styles.row}>
+            <OrderStatusBadge status={o.status} />
+            {o.source === 'AUCTION' && (
+              <Text variant="small" color="muted">
+                경매 낙찰
+              </Text>
+            )}
+          </View>
+          <Text variant="small" color="muted" selectable>
+            주문번호 {o.orderNumber} · {dateTime(o.createdAt)}
+          </Text>
+          <OrderSteps status={o.status} />
         </View>
-        <Text variant="small" color="muted" selectable>
-          주문번호 {o.orderNumber} · {dateTime(o.createdAt)}
-        </Text>
-        <OrderSteps status={o.status} />
-      </View>
 
-      {o.status === 'PAYMENT_PENDING' && o.role === 'buyer' && <PendingPayment o={o} refresh={refresh} />}
-      {o.status === 'CANCELLED' && (
-        <View style={[styles.box, { borderColor: t.colors.border }]}>
-          <Text variant="bodyStrong">취소된 주문이에요</Text>
+        {o.status === 'PAYMENT_PENDING' && o.role === 'buyer' && <PendingPayment o={o} refresh={refresh} />}
+        {o.status === 'CANCELLED' && (
+          <View style={[styles.box, { borderColor: t.colors.border }]}>
+            <Text variant="bodyStrong">취소된 주문이에요</Text>
+            <Text variant="small" color="muted">
+              {o.cancelReason}
+              {o.cancelledAt && ` · ${dateTime(o.cancelledAt)}`}
+            </Text>
+          </View>
+        )}
+        {o.status === 'REFUND_REQUESTED' && (
+          <View style={[styles.box, { borderColor: t.colors.warning }]}>
+            <Text variant="bodyStrong">환불 요청 중</Text>
+            <Text variant="small">{o.refundReason}</Text>
+          </View>
+        )}
+        {o.autoConfirmAt && o.role === 'buyer' && (
           <Text variant="small" color="muted">
-            {o.cancelReason}
-            {o.cancelledAt && ` · ${dateTime(o.cancelledAt)}`}
+            {dateTime(o.autoConfirmAt)}에 자동으로 구매 확정돼요.
           </Text>
-        </View>
-      )}
-      {o.status === 'REFUND_REQUESTED' && (
-        <View style={[styles.box, { borderColor: t.colors.warning }]}>
-          <Text variant="bodyStrong">환불 요청 중</Text>
-          <Text variant="small">{o.refundReason}</Text>
-        </View>
-      )}
-      {o.autoConfirmAt && o.role === 'buyer' && (
-        <Text variant="small" color="muted">
-          {dateTime(o.autoConfirmAt)}에 자동으로 구매 확정돼요.
-        </Text>
-      )}
+        )}
 
-      <Actions o={o} refresh={refresh} />
-      {o.status === 'COMPLETED' && o.role !== 'admin' && (
-        <Button
-          title={o.reviewed ? '내 후기 보기·수정' : `${counterpart.nickname}님과의 거래 후기 쓰기`}
-          variant={o.reviewed ? 'outline' : 'primary'}
-          onPress={() => router.push({ pathname: '/orders/[id]/review', params: { id: o.id } })}
-        />
-      )}
-      {o.role === 'buyer' && o.items[0] && (
-        <Button title="판매자와 채팅" variant="outline" size="sm" onPress={() => void openChat()} />
-      )}
+        <Actions o={o} refresh={refresh} />
+        {o.status === 'COMPLETED' && o.role !== 'admin' && (
+          <Button
+            title={o.reviewed ? '내 후기 보기·수정' : `${counterpart.nickname}님과의 거래 후기 쓰기`}
+            variant={o.reviewed ? 'outline' : 'primary'}
+            onPress={() => router.push({ pathname: '/orders/[id]/review', params: { id: o.id } })}
+          />
+        )}
+        {o.role === 'buyer' && o.items[0] && (
+          <Button title="판매자와 채팅" variant="outline" size="sm" onPress={() => void openChat()} />
+        )}
 
-      <Block
-        title="주문 작품"
-        action={
-          <Pressable
-            accessibilityRole="link"
-            onPress={() => router.push({ pathname: '/users/[id]', params: { id: counterpart.id } })}
-            style={styles.row}
-          >
-            <Avatar avatarKey={counterpart.avatarKey} name={counterpart.nickname} size={24} />
-            <Text variant="small">
-              {o.role === 'buyer' ? '판매자' : '구매자'} {counterpart.nickname}
+        <Block
+          title="주문 작품"
+          action={
+            <Pressable
+              accessibilityRole="link"
+              onPress={() => router.push({ pathname: '/users/[id]', params: { id: counterpart.id } })}
+              style={styles.row}
+            >
+              <Avatar avatarKey={counterpart.avatarKey} name={counterpart.nickname} size={24} />
+              <Text variant="small">
+                {o.role === 'buyer' ? '판매자' : '구매자'} {counterpart.nickname}
+              </Text>
+            </Pressable>
+          }
+        >
+          {o.items.map((i) => (
+            <OrderItemRow key={i.productId} item={i} />
+          ))}
+        </Block>
+
+        {o.shipment && (
+          <Block title="배송">
+            <Text selectable>
+              {o.shipment.carrier} {o.shipment.trackingNumber}
             </Text>
-          </Pressable>
-        }
-      >
-        {o.items.map((i) => (
-          <OrderItemRow key={i.productId} item={i} />
-        ))}
-      </Block>
+            {o.shipment.shippedAt && (
+              <Text variant="small" color="muted">
+                발송 {dateTime(o.shipment.shippedAt)}
+              </Text>
+            )}
+            {o.shipment.trackingUrl && (
+              <Button
+                title="배송 조회"
+                variant="outline"
+                size="sm"
+                onPress={() => void WebBrowser.openBrowserAsync(o.shipment!.trackingUrl!)}
+              />
+            )}
+          </Block>
+        )}
 
-      {o.shipment && (
-        <Block title="배송">
-          <Text selectable>
-            {o.shipment.carrier} {o.shipment.trackingNumber}
-          </Text>
-          {o.shipment.shippedAt && (
-            <Text variant="small" color="muted">
-              발송 {dateTime(o.shipment.shippedAt)}
-            </Text>
+        {o.shippingAddress && (
+          <Block title="배송지">
+            <AddressText a={o.shippingAddress} />
+          </Block>
+        )}
+
+        <Block title="결제">
+          <AmountSummary q={o} />
+          {pay && pay.status !== 'READY' && pay.status !== 'FAILED' && (
+            <View style={{ gap: 4, marginTop: 6 }}>
+              <Info label="결제 수단">{PAYMENT_METHOD_LABEL[pay.method]}</Info>
+              {pay.approvedAt && <Info label="결제 일시">{dateTime(pay.approvedAt)}</Info>}
+              {pay.cancelledAmount > 0 && <Info label="환불">{formatPrice(pay.cancelledAmount)}</Info>}
+            </View>
           )}
-          {o.shipment.trackingUrl && (
+          {pay?.receiptUrl && (
             <Button
-              title="배송 조회"
-              variant="outline"
+              title="영수증 보기"
+              variant="ghost"
               size="sm"
-              onPress={() => void WebBrowser.openBrowserAsync(o.shipment!.trackingUrl!)}
+              onPress={() => void WebBrowser.openBrowserAsync(pay.receiptUrl!)}
             />
           )}
         </Block>
-      )}
 
-      {o.shippingAddress && (
-        <Block title="배송지">
-          <AddressText a={o.shippingAddress} />
-        </Block>
-      )}
-
-      <Block title="결제">
-        <AmountSummary q={o} />
-        {pay && pay.status !== 'READY' && pay.status !== 'FAILED' && (
-          <View style={{ gap: 4, marginTop: 6 }}>
-            <Info label="결제 수단">{PAYMENT_METHOD_LABEL[pay.method]}</Info>
-            {pay.approvedAt && <Info label="결제 일시">{dateTime(pay.approvedAt)}</Info>}
-            {pay.cancelledAmount > 0 && <Info label="환불">{formatPrice(pay.cancelledAmount)}</Info>}
-          </View>
-        )}
-        {pay?.receiptUrl && (
-          <Button
-            title="영수증 보기"
-            variant="ghost"
-            size="sm"
-            onPress={() => void WebBrowser.openBrowserAsync(pay.receiptUrl!)}
-          />
-        )}
-      </Block>
-
-      <Block title="진행 기록">
-        {[...o.logs].reverse().map((l, i) => (
-          <View key={i} style={styles.row}>
-            <Text variant="caption" color="muted" style={{ width: 110 }}>
-              {dateTime(l.createdAt)}
-            </Text>
-            <Text variant="small" style={{ flex: 1 }}>
-              <Text variant="small" style={{ fontWeight: '600' }}>
-                {ORDER_STATUS_LABEL[l.to]}
+        <Block title="진행 기록">
+          {[...o.logs].reverse().map((l, i) => (
+            <View key={i} style={styles.row}>
+              <Text variant="caption" color="muted" style={{ width: 110 }}>
+                {dateTime(l.createdAt)}
               </Text>
-              {l.reason ? ` · ${l.reason}` : ''}
-            </Text>
-          </View>
-        ))}
-      </Block>
+              <Text variant="small" style={{ flex: 1 }}>
+                <Text variant="small" style={{ fontWeight: '600' }}>
+                  {ORDER_STATUS_LABEL[l.to]}
+                </Text>
+                {l.reason ? ` · ${l.reason}` : ''}
+              </Text>
+            </View>
+          ))}
+        </Block>
+      </RefreshSkeleton>
     </ScrollView>
   );
 }

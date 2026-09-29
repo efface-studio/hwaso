@@ -94,11 +94,16 @@ export default function SellNewScreen() {
 
   if (!user)
     return (
-      <Empty title="로그인이 필요해요" action={{ title: '로그인', onPress: () => router.push('/login') }} />
+      <Empty
+        kind="lock"
+        title="로그인이 필요해요"
+        action={{ title: '로그인', onPress: () => router.push('/login') }}
+      />
     );
   if (!user.isSeller)
     return (
       <Empty
+        kind="lock"
         title="판매자 등록이 필요해요"
         description="판매 대금을 받을 계좌를 등록하면 바로 작품을 올릴 수 있어요."
         action={{ title: '판매자 등록하기', onPress: () => router.replace('/seller/register') }}

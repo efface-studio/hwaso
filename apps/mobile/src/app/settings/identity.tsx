@@ -24,7 +24,7 @@ export default function IdentityScreen() {
   const status = useQuery({ queryKey: ['identity'], queryFn: api.auth.identity });
   const [pending, setPending] = useState(false);
   if (!user) return null;
-  if (status.isPending) return <Loading />;
+  if (status.isPending) return <Loading variant="text" />;
 
   const verify = async () => {
     // 키가 없는 개발 환경에서도 화면은 보이게 두고, 눌렀을 때 안내한다

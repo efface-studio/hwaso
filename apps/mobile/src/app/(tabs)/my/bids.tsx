@@ -3,11 +3,14 @@ import { useQuery } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { router, Stack } from 'expo-router';
 import { useState } from 'react';
-import { FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { AppRefreshControl } from '@/components/ui/app-refresh-control';
+import { usePullRefresh } from '@/hooks/use-pull-refresh';
 import { Button } from '@/components/ui/button';
 import { Chips } from '@/components/ui/chips';
 import { Empty, Loading } from '@/components/ui/state';
 import { Text } from '@/components/ui/text';
+import { Separator } from '@/components/ui/separator';
 import { api } from '@/lib/api';
 import { mediaUrl } from '@/lib/media';
 import { useTheme, type Colors } from '@/theme';
@@ -27,6 +30,8 @@ function status(b: MyBidDto): { label: string; color: keyof Colors } {
 }
 
 /** 입찰 내역 · 낙찰 내역. 낙찰 주문은 여기서 바로 결제한다 */
+const Sep = () => <Separator soft />;
+
 export default function MyBidsScreen() {
   const t = useTheme();
   const [tab, setTab] = useState<'bids' | 'wins'>('bids');
@@ -34,6 +39,7 @@ export default function MyBidsScreen() {
     queryKey: [tab === 'wins' ? 'my-wins' : 'my-bids'],
     queryFn: tab === 'wins' ? api.auctions.myWins : api.auctions.myBids,
   });
+  const pull = usePullRefresh(q.refetch);
 
   return (
     <View style={{ flex: 1, backgroundColor: t.colors.background }}>
@@ -50,20 +56,25 @@ export default function MyBidsScreen() {
         />
       </View>
       {q.isPending ? (
-        <Loading />
+        <Loading variant="list" />
       ) : (
         <FlatList
-          data={q.data ?? []}
+          alwaysBounceVertical={false}
+          contentContainerStyle={{ flexGrow: 1 }}
+          data={pull.refreshing ? [] : (q.data ?? [])}
           keyExtractor={(b) => b.auction.id}
-          refreshControl={<RefreshControl refreshing={q.isRefetching} onRefresh={() => void q.refetch()} />}
-          ItemSeparatorComponent={() => (
-            <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: t.colors.borderSoft }} />
-          )}
+          refreshControl={<AppRefreshControl refreshing={pull.refreshing} onRefresh={pull.onRefresh} />}
+          ItemSeparatorComponent={Sep}
           ListEmptyComponent={
-            <Empty
-              title={tab === 'wins' ? '낙찰받은 작품이 없어요' : '입찰한 경매가 없어요'}
-              action={{ title: '진행 중인 경매 보기', onPress: () => router.push('/auctions') }}
-            />
+            pull.refreshing ? (
+              <Loading variant="list" />
+            ) : (
+              <Empty
+                kind="gavel"
+                title={tab === 'wins' ? '낙찰받은 작품이 없어요' : '입찰한 경매가 없어요'}
+                action={{ title: '진행 중인 경매 보기', onPress: () => router.push('/auctions') }}
+              />
+            )
           }
           renderItem={({ item: b }) => {
             const s = status(b);

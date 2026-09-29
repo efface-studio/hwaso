@@ -1,3 +1,4 @@
+import { networkInterfaces } from 'node:os';
 import type { NextConfig } from 'next';
 
 const origin = (url: string) => new URL(url).origin;
@@ -57,8 +58,21 @@ const securityHeaders = [
     : []),
 ];
 
+/**
+ * 개발 서버를 localhost 가 아닌 주소로 여는 경우 — 앱(시뮬레이터·실기기)의 인앱 브라우저가 웹 브리지를
+ * 127.0.0.1·PC 의 내부망 IP 로 연다. Next 는 이런 출처의 개발 리소스(/_next/*)를 기본으로 막는다.
+ */
+const devOrigins = [
+  '127.0.0.1',
+  ...Object.values(networkInterfaces())
+    .flat()
+    .filter((i) => i?.family === 'IPv4' && !i.internal)
+    .map((i) => i!.address),
+];
+
 const config: NextConfig = {
   reactStrictMode: true,
+  allowedDevOrigins: isProd ? undefined : devOrigins,
   poweredByHeader: false,
   transpilePackages: ['@shop/shared', '@shop/tokens', '@shop/api-client'],
   images: {

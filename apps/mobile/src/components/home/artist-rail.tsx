@@ -27,7 +27,7 @@ export function ArtistRail({ artists }: { artists: ArtistDto[] }) {
             accessibilityRole="link"
             accessibilityLabel={`${a.name}, 작품 ${a.productCount}점`}
             onPress={() => router.push({ pathname: '/artists/[id]', params: { id: a.id } })}
-            style={{ width: size, alignItems: 'center', gap: 6 }}
+            style={{ width: size, alignItems: 'center', gap: 8 }}
           >
             <View
               style={[
@@ -43,12 +43,15 @@ export function ArtistRail({ artists }: { artists: ArtistDto[] }) {
                 />
               )}
             </View>
-            <Text variant="small" numberOfLines={1}>
-              {a.name}
-            </Text>
-            <Text variant="caption" color="muted">
-              작품 {a.productCount}
-            </Text>
+            {/* 이름과 작품 수는 붙여서 한 묶음으로 */}
+            <View style={styles.caption}>
+              <Text variant="small" numberOfLines={1}>
+                {a.name}
+              </Text>
+              <Text variant="caption" color="muted">
+                작품 {a.productCount}
+              </Text>
+            </View>
           </Pressable>
         )}
       />
@@ -60,5 +63,6 @@ const styles = StyleSheet.create({
   section: { paddingTop: 24 },
   title: { paddingHorizontal: 16, marginBottom: 12 },
   list: { paddingHorizontal: 16, gap: 16 },
+  caption: { alignItems: 'center', maxWidth: '100%' },
   photo: { borderRadius: 999, overflow: 'hidden' },
 });

@@ -91,7 +91,7 @@ export default function NotificationSettingsScreen() {
     await check();
   };
 
-  if (q.isPending) return <Loading />;
+  if (q.isPending) return <Loading variant="plain-list" />;
   const data = q.data;
   if (!data) return null;
   return (

@@ -9,11 +9,14 @@ import { useQuery } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { router, Stack } from 'expo-router';
 import { useState } from 'react';
-import { FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { AppRefreshControl } from '@/components/ui/app-refresh-control';
+import { usePullRefresh } from '@/hooks/use-pull-refresh';
 import { Avatar } from '@/components/ui/avatar';
 import { Chips } from '@/components/ui/chips';
 import { Empty, Loading } from '@/components/ui/state';
 import { Text } from '@/components/ui/text';
+import { Separator } from '@/components/ui/separator';
 import { api } from '@/lib/api';
 import { mediaUrl } from '@/lib/media';
 import { useAuthStore } from '@/stores/auth';
@@ -76,33 +79,36 @@ function Row({ r }: { r: ChatRoomDto }) {
 }
 
 /** 채팅 목록: 고정한 방 먼저, 구매·판매·안 읽음 필터, 헤더 검색(닉네임·작품명) */
+/** 사진(44) 뒤 글자 시작점까지 들여 쓴 구분선 */
+const Sep = () => <Separator inset={76} soft />;
+
 export default function ChatListScreen() {
   const t = useTheme();
   const user = useAuthStore((s) => s.user);
   const [filter, setFilter] = useState<ChatRoomFilter>('all');
   const [query, setQuery] = useState('');
   const q = useQuery({ queryKey: ['chat', 'rooms'], queryFn: api.chat.rooms, enabled: !!user });
+  const pull = usePullRefresh(q.refetch);
   if (!user)
     return (
       <Empty
+        kind="lock"
         title="로그인하고 판매자와 대화해보세요"
         action={{ title: '로그인', onPress: () => router.push('/login') }}
       />
     );
-  if (q.isPending) return <Loading />;
+  if (q.isPending) return <Loading variant="list" />;
   const all = q.data ?? [];
   return (
     <FlatList
-      data={filterChatRooms(all, filter, query)}
+      alwaysBounceVertical={false}
+      contentContainerStyle={{ flexGrow: 1 }}
+      data={pull.refreshing ? [] : filterChatRooms(all, filter, query)}
       keyExtractor={(r) => r.id}
       renderItem={({ item }) => <Row r={item} />}
       contentInsetAdjustmentBehavior="automatic"
       style={{ backgroundColor: t.colors.background }}
-      ItemSeparatorComponent={() => (
-        <View
-          style={{ height: StyleSheet.hairlineWidth, backgroundColor: t.colors.borderSoft, marginLeft: 76 }}
-        />
-      )}
+      ItemSeparatorComponent={Sep}
       ListHeaderComponent={
         <>
           <Stack.Screen
@@ -128,13 +134,19 @@ export default function ChatListScreen() {
         </>
       }
       ListEmptyComponent={
-        all.length ? (
-          <Empty title={query.trim() ? '검색 결과가 없어요' : '해당하는 대화가 없어요'} />
+        pull.refreshing ? (
+          <Loading variant="list" />
+        ) : all.length ? (
+          <Empty kind="search" title={query.trim() ? '검색 결과가 없어요' : '해당하는 대화가 없어요'} />
         ) : (
-          <Empty title="아직 대화가 없어요" description="작품 상세에서 판매자에게 궁금한 점을 물어보세요." />
+          <Empty
+            kind="chat"
+            title="아직 대화가 없어요"
+            description="작품 상세에서 판매자에게 궁금한 점을 물어보세요."
+          />
         )
       }
-      refreshControl={<RefreshControl refreshing={q.isRefetching} onRefresh={() => void q.refetch()} />}
+      refreshControl={<AppRefreshControl refreshing={pull.refreshing} onRefresh={pull.onRefresh} />}
     />
   );
 }

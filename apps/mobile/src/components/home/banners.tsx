@@ -1,5 +1,6 @@
 import type { BannerDto } from '@shop/shared';
 import { Image } from 'expo-image';
+import { useIsFocused } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { Text } from '@/components/ui/text';
@@ -19,9 +20,11 @@ export function BannerCarousel({ banners }: { banners: BannerDto[] }) {
   const height = Math.round(width * 0.56);
   const list = useRef<FlatList<BannerDto>>(null);
   const [index, setIndex] = useState(0);
+  // 다른 탭·화면을 보는 동안에는 자동 넘김을 멈춘다
+  const focused = useIsFocused();
 
   useEffect(() => {
-    if (senior || banners.length < 2) return;
+    if (senior || !focused || banners.length < 2) return;
     const id = setInterval(() => {
       setIndex((i) => {
         const next = (i + 1) % banners.length;
@@ -30,7 +33,7 @@ export function BannerCarousel({ banners }: { banners: BannerDto[] }) {
       });
     }, INTERVAL_MS);
     return () => clearInterval(id);
-  }, [banners.length, senior]);
+  }, [banners.length, senior, focused]);
 
   if (!banners.length) return null;
   return (

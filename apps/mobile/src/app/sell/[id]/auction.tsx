@@ -30,9 +30,9 @@ export default function AuctionSetupScreen() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [pending, setPending] = useState(false);
 
-  if (product.isPending) return <Loading />;
+  if (product.isPending) return <Loading variant="text" />;
   const p = product.data;
-  if (!p?.isMine) return <Empty title="내 작품만 경매로 등록할 수 있어요" />;
+  if (!p?.isMine) return <Empty kind="lock" title="내 작품만 경매로 등록할 수 있어요" />;
 
   const submit = async () => {
     const input = auctionToInput(

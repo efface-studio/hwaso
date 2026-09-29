@@ -1,6 +1,7 @@
 import type { ProductCardDto } from '@shop/shared';
 import type { ReactElement } from 'react';
-import { FlatList, RefreshControl } from 'react-native';
+import { FlatList } from 'react-native';
+import { AppRefreshControl } from '@/components/ui/app-refresh-control';
 import { Loading } from '@/components/ui/state';
 import { useGrid } from '@/hooks/use-grid';
 import { useTheme } from '@/theme';
@@ -24,21 +25,22 @@ export function CardList({
 }) {
   const t = useTheme();
   const g = useGrid();
-  if (loading) return <Loading />;
+  if (loading) return <Loading variant="grid" />;
   return (
     <FlatList
+      alwaysBounceVertical={false}
       key={g.columns}
-      data={items ?? []}
+      data={refreshing ? [] : (items ?? [])}
       numColumns={g.columns}
       keyExtractor={(p) => p.id}
       renderItem={({ item }) => <ProductCard p={item} width={g.cardWidth} />}
       ListHeaderComponent={header}
-      ListEmptyComponent={empty}
+      ListEmptyComponent={refreshing ? <Loading variant="grid" /> : empty}
       columnWrapperStyle={g.columns > 1 ? { gap: g.gap, paddingHorizontal: g.padding } : undefined}
-      contentContainerStyle={{ gap: 20, paddingTop: 12, paddingBottom: 32 }}
+      contentContainerStyle={{ flexGrow: 1, gap: 20, paddingTop: 12, paddingBottom: 32 }}
       contentInsetAdjustmentBehavior="automatic"
       style={{ backgroundColor: t.colors.background }}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      refreshControl={<AppRefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
     />
   );
 }

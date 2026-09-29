@@ -1,13 +1,17 @@
 import { SALE_TYPE_LABEL, formatPrice, type ProductCardDto } from '@shop/shared';
 import { Image } from 'expo-image';
 import { Link } from 'expo-router';
+import { memo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { mediaUrl } from '@/lib/media';
 import { useTheme } from '@/theme';
 
-/** 작품 카드: 이미지는 잘리지 않게 contain, 로딩 전에는 대표색 */
-export function ProductCard({ p, width }: { p: ProductCardDto; width: number }) {
+/**
+ * 작품 카드: 이미지는 잘리지 않게 contain, 로딩 전에는 대표색.
+ * 목록을 다시 불러와도 바뀌지 않은 작품(React Query 가 같은 객체를 유지)은 다시 그리지 않는다.
+ */
+export const ProductCard = memo(function ProductCard({ p, width }: { p: ProductCardDto; width: number }) {
   const t = useTheme();
   const price = p.auction ? p.auction.currentPrice : p.price;
   return (
@@ -34,7 +38,7 @@ export function ProductCard({ p, width }: { p: ProductCardDto; width: number }) 
               {p.artistName}
             </Text>
           )}
-          <Text variant="small" numberOfLines={2}>
+          <Text variant="small" numberOfLines={1}>
             {p.title}
           </Text>
           <Text variant="price">
@@ -50,7 +54,7 @@ export function ProductCard({ p, width }: { p: ProductCardDto; width: number }) 
       </Pressable>
     </Link>
   );
-}
+});
 
 const styles = StyleSheet.create({
   frame: { aspectRatio: 4 / 5, overflow: 'hidden' },

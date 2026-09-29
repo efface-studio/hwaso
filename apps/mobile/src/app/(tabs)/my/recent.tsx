@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
 import { Alert } from 'react-native';
+import { usePullRefresh } from '@/hooks/use-pull-refresh';
 import { CardList } from '@/components/product/card-list';
 import { Button } from '@/components/ui/button';
 import { Empty } from '@/components/ui/state';
@@ -9,6 +10,7 @@ import { api } from '@/lib/api';
 export default function RecentScreen() {
   const qc = useQueryClient();
   const q = useQuery({ queryKey: ['recent'], queryFn: api.market.recent });
+  const pull = usePullRefresh(q.refetch);
   return (
     <>
       <Stack.Screen
@@ -41,8 +43,8 @@ export default function RecentScreen() {
       <CardList
         items={q.data}
         loading={q.isPending}
-        refreshing={q.isRefetching}
-        onRefresh={() => void q.refetch()}
+        refreshing={pull.refreshing}
+        onRefresh={pull.onRefresh}
         empty={<Empty title="최근 본 작품이 없어요" />}
       />
     </>

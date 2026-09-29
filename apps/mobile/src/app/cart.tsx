@@ -42,12 +42,17 @@ export default function CartScreen() {
 
   if (!me)
     return (
-      <Empty title="로그인이 필요해요" action={{ title: '로그인', onPress: () => router.push('/login') }} />
+      <Empty
+        kind="lock"
+        title="로그인이 필요해요"
+        action={{ title: '로그인', onPress: () => router.push('/login') }}
+      />
     );
-  if (q.isPending) return <Loading />;
+  if (q.isPending) return <Loading variant="list" />;
   if (!q.data?.length)
     return (
       <Empty
+        kind="cart"
         title="장바구니가 비어 있어요"
         description="마음에 드는 작품을 담아두고 한 번에 주문하세요."
         action={{ title: '작품 둘러보기', onPress: () => router.push('/search') }}

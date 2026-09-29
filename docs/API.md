@@ -60,23 +60,25 @@ NestJS REST API. Base URL `/api/v1`. 모든 요청/응답은 JSON (업로드 제
 
 ### Auth
 
-| Method | Path                           | 권한 | 설명                                                             |
-| ------ | ------------------------------ | ---- | ---------------------------------------------------------------- |
-| POST   | /auth/email/send-code          | -    | {email, purpose} OTP 발송 (SIGNUP/RESET_PASSWORD/DELETE_ACCOUNT) |
-| POST   | /auth/email/verify-code        | -    | {email, purpose, code} → {verificationToken} (10분 유효)         |
-| POST   | /auth/signup                   | -    | {verificationToken, password, nickname, device} → 토큰 쌍        |
-| POST   | /auth/login                    | -    | {email, password, device} → 토큰 쌍                              |
-| POST   | /auth/refresh                  | -    | 쿠키 또는 {refreshToken} → 회전된 토큰 쌍                        |
-| POST   | /auth/logout                   | -    | 현재 세션 폐기                                                   |
-| POST   | /auth/password/reset           | -    | {verificationToken, newPassword} → 전체 세션 폐기                |
-| POST   | /auth/password/change          | U    | {currentPassword, newPassword}                                   |
-| GET    | /auth/oauth/:provider/url      | -    | ?redirectUri → {url, state} (google/apple/kakao/naver)           |
-| POST   | /auth/oauth/:provider/callback | -    | {code, state, redirectUri, device} → 토큰 쌍                     |
-| GET    | /auth/sessions                 | U    | 기기(세션) 목록                                                  |
-| DELETE | /auth/sessions/:id             | U    | 특정 기기 로그아웃                                               |
-| DELETE | /auth/sessions                 | U    | 현재 기기 제외 전체 로그아웃                                     |
-| DELETE | /auth/account                  | U    | {password 또는 verificationToken} 탈퇴 (개인정보 익명화)         |
-| GET    | /auth/me                       | U    | 내 계정 + 프로필 + 역할                                          |
+| Method | Path                           | 권한 | 설명                                                                                        |
+| ------ | ------------------------------ | ---- | ------------------------------------------------------------------------------------------- |
+| POST   | /auth/email/send-code          | -    | {email, purpose} OTP 발송 (SIGNUP/RESET_PASSWORD/DELETE_ACCOUNT)                            |
+| POST   | /auth/email/verify-code        | -    | {email, purpose, code} → {verificationToken} (10분 유효)                                    |
+| POST   | /auth/signup                   | -    | {verificationToken, password, nickname, device} → 토큰 쌍                                   |
+| POST   | /auth/login                    | -    | {email, password, device} → 토큰 쌍                                                         |
+| POST   | /auth/refresh                  | -    | 쿠키 또는 {refreshToken} → 회전된 토큰 쌍                                                   |
+| POST   | /auth/logout                   | -    | 현재 세션 폐기                                                                              |
+| POST   | /auth/password/reset           | -    | {verificationToken, newPassword} → 전체 세션 폐기                                           |
+| POST   | /auth/password/change          | U    | {currentPassword, newPassword}                                                              |
+| GET    | /auth/oauth/:provider/url      | -    | ?redirectUri → {url, state} (google/apple/kakao/naver)                                      |
+| POST   | /auth/oauth/:provider/callback | -    | {code, state, redirectUri, device} → 토큰 쌍                                                |
+| POST   | /auth/oauth/apple/native       | -    | {identityToken, name?, device} iOS 네이티브 Sign in with Apple → 토큰 쌍                    |
+| GET    | /auth/providers                | -    | {oauth: 웹 OAuth 가 설정된 provider[], appleNative: iOS 네이티브 Apple 가능 여부, identity} |
+| GET    | /auth/sessions                 | U    | 기기(세션) 목록                                                                             |
+| DELETE | /auth/sessions/:id             | U    | 특정 기기 로그아웃                                                                          |
+| DELETE | /auth/sessions                 | U    | 현재 기기 제외 전체 로그아웃                                                                |
+| DELETE | /auth/account                  | U    | {password 또는 verificationToken} 탈퇴 (개인정보 익명화)                                    |
+| GET    | /auth/me                       | U    | 내 계정 + 프로필 + 역할                                                                     |
 
 ### Users / Profile
 

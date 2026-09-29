@@ -3,13 +3,14 @@ import { Injectable } from '@nestjs/common';
 import type { AuthProvider, DeviceInput } from '@shop/shared';
 import { AppException } from '../common/app-exception';
 import { randomToken } from '../common/crypto';
-import { env } from '../config/env';
+import { env, isProd } from '../config/env';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 import { type OAuthProfile, PROVIDERS, verifyAppleIdToken } from './oauth.providers';
 import { type ClientInfo, SessionService } from './session.service';
 
 const STATE_TTL_SEC = 600;
+const EXPO_GO_BUNDLE_ID = 'host.exp.Exponent';
 
 interface StoredState {
   provider: AuthProvider;
@@ -39,6 +40,11 @@ export class OAuthService {
 
   configured(): AuthProvider[] {
     return (Object.keys(PROVIDERS) as AuthProvider[]).filter((p) => PROVIDERS[p].configured());
+  }
+
+  /** iOS 네이티브 Sign in with Apple 사용 가능 여부 (웹 OAuth 키 없이 번들 ID 만으로 동작) */
+  appleNativeConfigured(): boolean {
+    return !!env().APPLE_BUNDLE_ID;
   }
 
   private assertConfigured(provider: AuthProvider) {
@@ -156,6 +162,8 @@ export class OAuthService {
     const profile = await verifyAppleIdToken(identityToken, [
       bundle,
       ...(env().APPLE_CLIENT_ID ? [env().APPLE_CLIENT_ID!] : []),
+      // 개발 중 Expo Go 로 실행하면 토큰 대상(aud)이 Expo Go 번들 ID 다
+      ...(isProd() ? [] : [EXPO_GO_BUNDLE_ID]),
     ]);
     return this.signIn('APPLE', profile, device, client, name);
   }

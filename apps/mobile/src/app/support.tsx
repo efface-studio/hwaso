@@ -1,19 +1,9 @@
-import { COMPANY } from '@shop/shared';
+import { COMPANY, POLICIES, POLICY_SLUGS } from '@shop/shared';
 import Constants from 'expo-constants';
 import { router, Stack } from 'expo-router';
-import * as WebBrowser from 'expo-web-browser';
 import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Text } from '@/components/ui/text';
-import { env } from '@/lib/env';
 import { useTheme } from '@/theme';
-
-/** 약관·정책은 웹과 같은 문서를 인앱 브라우저로 연다 (한 곳에서만 관리) */
-const POLICIES: [string, string][] = [
-  ['/terms', '이용약관'],
-  ['/privacy', '개인정보처리방침'],
-  ['/policy/auction', '경매 운영 정책'],
-  ['/policy/authenticity', '진품 보증·검수 정책'],
-];
 
 /** 고객센터: 공지사항·문의 연락처·약관과 정책·사업자 정보·앱 버전 */
 export default function SupportScreen() {
@@ -58,8 +48,8 @@ export default function SupportScreen() {
       <Text variant="label" color="muted" style={styles.group}>
         약관 · 정책
       </Text>
-      {POLICIES.map(([path, label]) =>
-        row(label, () => void WebBrowser.openBrowserAsync(`${env.webUrl}${path}`)),
+      {POLICY_SLUGS.map((slug) =>
+        row(POLICIES[slug].title, () => router.push({ pathname: '/policies/[slug]', params: { slug } })),
       )}
       <Text variant="label" color="muted" style={styles.group}>
         사업자 정보

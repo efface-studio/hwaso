@@ -67,10 +67,11 @@ export default function EditProductScreen() {
     if (product.data && !d) setD(draftFromProduct(product.data));
   }, [product.data, d]);
 
-  if (product.isError) return <Empty title="작품을 불러오지 못했어요" description={errMsg(product.error)} />;
-  if (!product.data || !d) return <Loading />;
+  if (product.isError)
+    return <Empty kind="error" title="작품을 불러오지 못했어요" description={errMsg(product.error)} />;
+  if (!product.data || !d) return <Loading variant="text" />;
   const p = product.data;
-  if (!p.isMine) return <Empty title="내 작품만 수정할 수 있어요" />;
+  if (!p.isMine) return <Empty kind="lock" title="내 작품만 수정할 수 있어요" />;
 
   const auctionStarted = !!p.auction && ['LIVE', 'ENDED', 'SETTLED'].includes(p.auction.status);
   const set = <K extends keyof ProductDraft>(k: K, v: ProductDraft[K]) =>

@@ -1,10 +1,13 @@
 import type { NotificationDto } from '@shop/shared';
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { router, Stack, type Href } from 'expo-router';
-import { Alert, FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
+import { Alert, FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { AppRefreshControl } from '@/components/ui/app-refresh-control';
+import { usePullRefresh } from '@/hooks/use-pull-refresh';
 import { Empty, Loading } from '@/components/ui/state';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
+import { Separator } from '@/components/ui/separator';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
 import { useTheme } from '@/theme';
@@ -18,6 +21,8 @@ const ago = (iso: string) => {
 };
 
 /** 알림함: 누르면 읽음 처리 후 해당 화면으로, 길게 눌러 삭제 */
+const Sep = () => <Separator />;
+
 export default function NotificationsScreen() {
   const t = useTheme();
   const qc = useQueryClient();
@@ -29,6 +34,7 @@ export default function NotificationsScreen() {
     getNextPageParam: (last) => last.nextCursor ?? undefined,
     enabled: !!me,
   });
+  const pull = usePullRefresh(q.refetch);
   const refresh = () => {
     void qc.invalidateQueries({ queryKey: ['notifications'] });
   };
@@ -58,9 +64,13 @@ export default function NotificationsScreen() {
 
   if (!me)
     return (
-      <Empty title="로그인이 필요해요" action={{ title: '로그인', onPress: () => router.push('/login') }} />
+      <Empty
+        kind="lock"
+        title="로그인이 필요해요"
+        action={{ title: '로그인', onPress: () => router.push('/login') }}
+      />
     );
-  if (q.isPending) return <Loading />;
+  if (q.isPending) return <Loading variant="list" />;
   const items = q.data?.pages.flatMap((p) => p.items) ?? [];
 
   return (
@@ -81,18 +91,26 @@ export default function NotificationsScreen() {
         }}
       />
       <FlatList
+        alwaysBounceVertical={false}
+        contentContainerStyle={{ flexGrow: 1 }}
         style={{ backgroundColor: t.colors.background }}
         contentInsetAdjustmentBehavior="automatic"
-        data={items}
+        data={pull.refreshing ? [] : items}
         keyExtractor={(n) => n.id}
-        refreshControl={<RefreshControl refreshing={q.isRefetching} onRefresh={() => void q.refetch()} />}
+        refreshControl={<AppRefreshControl refreshing={pull.refreshing} onRefresh={pull.onRefresh} />}
         onEndReached={() => q.hasNextPage && !q.isFetchingNextPage && void q.fetchNextPage()}
         ListEmptyComponent={
-          <Empty title="새 알림이 없어요" description="입찰·주문·채팅 소식을 여기서 알려드려요." />
+          pull.refreshing ? (
+            <Loading variant="list" />
+          ) : (
+            <Empty
+              kind="bell"
+              title="새 알림이 없어요"
+              description="입찰·주문·채팅 소식을 여기서 알려드려요."
+            />
+          )
         }
-        ItemSeparatorComponent={() => (
-          <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: t.colors.border }} />
-        )}
+        ItemSeparatorComponent={Sep}
         renderItem={({ item: n }) => (
           <Pressable
             accessibilityRole="button"
