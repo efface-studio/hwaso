@@ -6,6 +6,7 @@ import {
   typography,
   type TypographyToken,
 } from '@shop/tokens';
+import { createContext, useContext } from 'react';
 import { useColorScheme, type TextStyle } from 'react-native';
 import { usePrefs } from '@/stores/prefs';
 
@@ -20,9 +21,38 @@ const FONT_WEIGHT: Record<number, TextStyle['fontWeight']> = {
 
 type Scheme = 'light' | 'dark';
 
-function buildTheme(scheme: Scheme, senior: boolean) {
+/** 강조 색 계열: brand(초록, 사용자 앱) · admin(보라, 관리자 앱) */
+export type Accent = 'brand' | 'admin';
+
+/** 관리자 앱 강조 색 — 사용자 앱과 한눈에 구분되게. 글자 대비는 라이트 흰 글자, 다크 어두운 글자 기준 4.5:1 이상 */
+const ADMIN_ACCENT: Record<Scheme, Partial<Colors>> = {
+  light: {
+    primary: '#6B46C1',
+    primaryHover: '#5B3AA8',
+    primarySoft: '#6B46C112',
+    primaryForeground: '#FFFFFF',
+    focusRing: '#6B46C1',
+  },
+  dark: {
+    primary: '#A68BF0',
+    primaryHover: '#B9A3F4',
+    primarySoft: '#A68BF024',
+    primaryForeground: '#140B24',
+    focusRing: '#A68BF0',
+  },
+};
+
+const AccentContext = createContext<Accent>('brand');
+/** 이 아래의 화면은 useTheme() 의 강조 색(primary 계열)이 accent 로 바뀐다 */
+export const AccentProvider = AccentContext.Provider;
+
+function buildTheme(scheme: Scheme, senior: boolean, accent: Accent) {
   const base = palette[scheme];
-  const colors: Colors = senior ? { ...base, ...seniorTokens.colors[scheme] } : base;
+  const colors: Colors = {
+    ...base,
+    ...(senior ? seniorTokens.colors[scheme] : {}),
+    ...(accent === 'admin' ? ADMIN_ACCENT[scheme] : {}),
+  };
 
   // 글자 스타일은 토큰마다 한 번만 만든다 (Text 가 렌더될 때마다 새 객체를 만들지 않게)
   const typeCache = new Map<TypographyToken, TextStyle>();
@@ -71,7 +101,7 @@ function buildTheme(scheme: Scheme, senior: boolean) {
   };
 }
 
-/** 조합(라이트·다크 × 시니어)은 네 가지뿐이라 한 번 만든 테마를 계속 쓴다 — 같은 객체라 의존성 비교에도 안전하다 */
+/** 조합(라이트·다크 × 시니어 × 강조 색)은 여덟 가지뿐이라 한 번 만든 테마를 계속 쓴다 — 같은 객체라 의존성 비교에도 안전하다 */
 const themes = new Map<string, ReturnType<typeof buildTheme>>();
 
 /**
@@ -83,11 +113,12 @@ export function useTheme() {
   // 필요한 값만 구독한다 (앱 잠금 등 다른 설정이 바뀌어도 화면 전체가 다시 그려지지 않게)
   const theme = usePrefs((s) => s.theme);
   const senior = usePrefs((s) => s.senior);
+  const accent = useContext(AccentContext);
   const scheme: Scheme = theme === 'system' ? (system === 'dark' ? 'dark' : 'light') : theme;
-  const key = `${scheme}:${senior ? 1 : 0}`;
+  const key = `${scheme}:${senior ? 1 : 0}:${accent}`;
   let built = themes.get(key);
   if (!built) {
-    built = buildTheme(scheme, senior);
+    built = buildTheme(scheme, senior, accent);
     themes.set(key, built);
   }
   return built;
