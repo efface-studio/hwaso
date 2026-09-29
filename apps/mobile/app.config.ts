@@ -1,4 +1,5 @@
 import type { ExpoConfig } from 'expo/config';
+import { withAppDelegate, withInfoPlist, type ConfigPlugin } from 'expo/config-plugins';
 
 /**
  * 앱 설정. 환경마다 달라지는 값은 EXPO_PUBLIC_* / 빌드 환경 변수로 넣는다 (eas.json 프로필).
@@ -93,4 +94,55 @@ const config: ExpoConfig = {
   },
 };
 
-export default config;
+/**
+ * iOS 27 부터 UIScene 생명주기를 쓰지 않는 앱은 실행 직후 UIKit 이 중단시킨다 (실기기에서 앱이 바로 꺼짐).
+ * Expo 가 제공하는 ExpoAppSceneDelegate 로 창을 만들고 React Native 를 시작하도록 바꾼다.
+ * - Info.plist: 씬 매니페스트 (창 하나, SceneDelegate)
+ * - AppDelegate: ExpoReactNativeFactoryProvider 를 따르고, 창 생성·RN 시작은 씬 델리게이트에 맡긴다
+ * - SceneDelegate: 앱 타깃 안의 하위 클래스로 둬 링크 단계에서 클래스가 빠지지 않게 한다
+ */
+const withSceneLifecycle: ConfigPlugin = (config) => {
+  config = withInfoPlist(config, (c) => {
+    c.modResults.UIApplicationSceneManifest = {
+      UIApplicationSupportsMultipleScenes: false,
+      UISceneConfigurations: {
+        UIWindowSceneSessionRoleApplication: [
+          {
+            UISceneConfigurationName: 'Default Configuration',
+            UISceneDelegateClassName: '$(PRODUCT_MODULE_NAME).SceneDelegate',
+          },
+        ],
+      },
+    };
+    return c;
+  });
+
+  return withAppDelegate(config, (c) => {
+    if (c.modResults.language !== 'swift')
+      throw new Error('with-scene-lifecycle: Swift AppDelegate 만 지원해요.');
+    let src = c.modResults.contents;
+    if (src.includes('class SceneDelegate')) return c;
+
+    const start =
+      /\n#if os\(iOS\) \|\| os\(tvOS\)\n\s*window = UIWindow\(frame: UIScreen\.main\.bounds\)\n\s*factory\.startReactNative\([\s\S]*?\)\n#endif\n/;
+    if (!start.test(src) || !src.includes('class AppDelegate: ExpoAppDelegate {'))
+      throw new Error('with-scene-lifecycle: AppDelegate 템플릿이 예상과 달라요. 플러그인을 확인해 주세요.');
+
+    src = src
+      .replace(
+        'class AppDelegate: ExpoAppDelegate {',
+        'class AppDelegate: ExpoAppDelegate, ExpoReactNativeFactoryProvider {',
+      )
+      .replace(
+        start,
+        '\n    // 창 생성과 React Native 시작은 SceneDelegate(ExpoAppSceneDelegate)가 한다 (iOS 27 씬 생명주기)\n',
+      )
+      .concat(
+        '\n/// iOS 27 씬 생명주기 — Expo 기본 구현을 그대로 쓴다 (Info.plist 의 UISceneDelegateClassName)\nclass SceneDelegate: ExpoAppSceneDelegate {}\n',
+      );
+    c.modResults.contents = src;
+    return c;
+  });
+};
+
+export default withSceneLifecycle(config);
