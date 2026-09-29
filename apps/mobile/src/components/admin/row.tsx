@@ -6,10 +6,10 @@ import { useTheme } from '@/theme';
 
 /**
  * 관리자 화면의 기본 한 줄 (iOS 목록 행):
- * [앞 요소] 제목 ········ 값
- *           설명 ········ 상태
+ * [앞 요소] 제목          값   ›
+ *           설명          상태
  *           메타
- * 누를 수 있으면 오른쪽에 chevron, 누르는 동안 배경을 살짝 칠한다.
+ * 값·상태는 오른쪽 한 열로 세로 가운데에 둔다. 누를 수 있으면 chevron, 누르는 동안 배경을 살짝 칠한다.
  */
 export function AdminRow({
   title,
@@ -23,16 +23,17 @@ export function AdminRow({
   disabled,
   dimmed,
   chevron = !!onPress,
+  reserveChevron = false,
   accessibilityLabel,
   accessibilityHint,
   accessibilityRole = 'button',
 }: {
   title: ReactNode;
-  /** 제목 줄 오른쪽 (금액·건수 등) */
+  /** 오른쪽 열 위 (금액·건수 등) */
   value?: ReactNode;
   /** 둘째 줄 (이메일·판매자 등) */
   detail?: ReactNode;
-  /** 둘째 줄 오른쪽 (StatusText) */
+  /** 오른쪽 열 아래 (StatusText) */
   status?: ReactNode;
   /** 셋째 줄 (날짜 등 보조 정보) */
   meta?: ReactNode;
@@ -44,6 +45,8 @@ export function AdminRow({
   /** 삭제·만료처럼 흐리게 보일 행 */
   dimmed?: boolean;
   chevron?: boolean;
+  /** chevron 이 없어도 그 자리를 비워 둔다 (같은 묶음의 다른 행과 숫자 끝을 맞출 때) */
+  reserveChevron?: boolean;
   accessibilityLabel?: string;
   accessibilityHint?: string;
   accessibilityRole?: AccessibilityRole;
@@ -62,14 +65,20 @@ export function AdminRow({
     <>
       {leading}
       <View style={styles.main}>
-        <View style={styles.line}>
-          {typeof title === 'string' ? (
-            <Text variant="bodyStrong" numberOfLines={1} style={styles.grow}>
-              {title}
-            </Text>
-          ) : (
-            <View style={styles.grow}>{title}</View>
-          )}
+        {typeof title === 'string' ? (
+          <Text variant="bodyStrong" numberOfLines={1}>
+            {title}
+          </Text>
+        ) : (
+          title
+        )}
+        {detail != null && text(detail, 'small', 'muted')}
+        {meta != null && text(meta, 'caption', 'faint')}
+        {children}
+      </View>
+      {/* 값·상태는 오른쪽 한 열에 쌓아 chevron 과 같은 세로 중심에 둔다 (행마다 숫자 위치가 같게) */}
+      {(value != null || status != null) && (
+        <View style={styles.trailing}>
           {typeof value === 'string' || typeof value === 'number' ? (
             <Text variant="body" style={styles.value}>
               {value}
@@ -77,17 +86,15 @@ export function AdminRow({
           ) : (
             value
           )}
+          {status}
         </View>
-        {(detail != null || status != null) && (
-          <View style={styles.line}>
-            {detail != null ? text(detail, 'small', 'muted') : <View style={styles.grow} />}
-            {status}
-          </View>
-        )}
-        {meta != null && text(meta, 'caption', 'faint')}
-        {children}
-      </View>
-      {chevron && <Icon ios="chevron.right" android="chevron_right" color="faint" size={13} />}
+      )}
+      {chevron ? (
+        <Icon ios="chevron.right" android="chevron_right" color="faint" size={13} />
+      ) : (
+        // chevron 이 없는 행도 오른쪽 끝을 맞춘다
+        reserveChevron && <View style={styles.chevronSpace} />
+      )}
     </>
   );
 
@@ -165,7 +172,8 @@ const styles = StyleSheet.create({
     paddingVertical: 11,
   },
   main: { flex: 1, gap: 2 },
-  line: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  trailing: { alignItems: 'flex-end', justifyContent: 'center', gap: 2, maxWidth: '45%' },
+  chevronSpace: { width: 8 },
   grow: { flex: 1 },
   value: { fontVariant: ['tabular-nums'] },
   section: { paddingTop: 20 },
