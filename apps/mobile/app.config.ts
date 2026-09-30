@@ -20,6 +20,7 @@ const config: ExpoConfig = {
   primaryColor: PRIMARY,
   ios: {
     bundleIdentifier: 'dev.efface.hwaso',
+    appleTeamId: '3NVCLTSP9V',
     buildNumber: '1',
     supportsTablet: true,
     usesAppleSignIn: true,
@@ -31,10 +32,15 @@ const config: ExpoConfig = {
         '판매할 작품 사진과 채팅 사진을 앨범에서 고르려면 사진 접근이 필요해요.',
       NSFaceIDUsageDescription: '앱 잠금을 Face ID 로 해제할 때 사용해요.',
       CFBundleAllowMixedLocalizations: true,
+      // 푸시에 보낸 사람 이름·프로필 사진을 보여주는 커뮤니케이션 알림 (targets/notification-service)
+      NSUserActivityTypes: ['INSendMessageIntent'],
     },
+    entitlements: { 'com.apple.developer.usernotifications.communication': true },
   },
   android: {
     package: 'dev.efface.hwaso',
+    // FCM 기기 토큰용 Firebase 설정. 파일은 저장소 밖에 두고 경로만 환경 변수로 넘긴다 (EAS 는 파일 환경 변수)
+    ...(process.env.GOOGLE_SERVICES_JSON ? { googleServicesFile: process.env.GOOGLE_SERVICES_JSON } : {}),
     versionCode: 1,
     adaptiveIcon: {
       backgroundImage: './assets/android-icon-background.png',
@@ -85,6 +91,8 @@ const config: ExpoConfig = {
       },
     ],
     ['expo-notifications', { color: PRIMARY }],
+    // iOS 알림 서비스 확장 등 앱 밖 타깃 (targets/*)
+    '@bacons/apple-targets',
     // 앱이 지원하는 언어 (iOS 설정 > 앱 > 언어 에서 앱별로 고를 수 있다)
     ['expo-localization', { supportedLocales: ['ko', 'en', 'ja', 'zh-Hans', 'zh-Hant'] }],
     ['expo-local-authentication', { faceIDPermission: '앱 잠금을 Face ID 로 해제할 때 사용해요.' }],
