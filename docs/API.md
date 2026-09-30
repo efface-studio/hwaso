@@ -224,7 +224,7 @@ NestJS REST API. Base URL `/api/v1`. 모든 요청/응답은 JSON (업로드 제
 | GET         | /notifications/unread-count         | U         |                                                                                    |
 | DELETE      | /notifications/:id · /notifications | U         | 한 건 삭제 / 읽은 알림 모두 삭제                                                   |
 | GET/PUT     | /me/notification-settings           | U         | {push:{auction,trade,chat,activity}, quietHours} — 방해 금지 21~8시(KST) 푸시 보류 |
-| POST/DELETE | /me/push-tokens                     | U         | {token, platform: expo·web} 등록(기기당 한 계정)·해제                              |
+| POST/DELETE | /me/push-tokens                     | U         | {token, platform: apns·fcm·expo·web} 등록(기기당 한 계정)·해제                     |
 | GET         | /notifications/push-config          | -         | {vapidPublicKey} (웹 푸시 구독용, 미설정 시 null)                                  |
 | POST        | /reports                            | U         | {targetType, targetId, reason, detail}                                             |
 
