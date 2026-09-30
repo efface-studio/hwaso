@@ -17,6 +17,7 @@ import { useAuthStore } from '@/stores/auth';
 import { useTheme } from '@/theme';
 
 const products = (status: string): Href => ({ pathname: '/seller/products', params: { status } });
+const SALES_TO_SHIP: Href = { pathname: '/orders', params: { as: 'seller', filter: 'progress' } };
 
 /**
  * 판매 탭: 지금 처리할 일 → 작품 현황 → 관리 메뉴. 작품 등록은 헤더 오른쪽 버튼.
@@ -53,7 +54,7 @@ export default function SellScreen() {
           label: tr('tab.tasks.toShip'),
           count: tr('tab.countCases', { count: s.ordersToShip }),
           n: s.ordersToShip,
-          href: { pathname: '/orders', params: { as: 'seller', filter: 'progress' } },
+          href: SALES_TO_SHIP,
         },
         {
           label: tr('tab.tasks.inquiries'),
