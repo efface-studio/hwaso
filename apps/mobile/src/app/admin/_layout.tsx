@@ -1,6 +1,5 @@
 import { ThemeProvider, useTheme as useNavigationTheme } from 'expo-router';
 import { NativeTabs } from 'expo-router/unstable-native-tabs';
-import { View } from 'react-native';
 import type { AndroidSymbol, SFSymbol } from 'expo-symbols';
 import { PromptHost } from '@/components/admin/prompt';
 import { ADMIN_TAB_ICONS, useTabIconSet } from '@/components/tab-icons';
@@ -32,9 +31,7 @@ export default function AdminLayout() {
 function AdminTabs() {
   const t = useTheme();
   const nav = useNavigationTheme();
-  const { icons, ready } = useTabIconSet(ADMIN_TAB_ICONS);
-  // 아이콘이 준비되기 전에는 탭 바를 그리지 않는다 (대체 아이콘 → 이미지 교체 시 라벨이 밀림)
-  if (!ready) return <View style={{ flex: 1, backgroundColor: t.colors.background }} />;
+  const icons = useTabIconSet(ADMIN_TAB_ICONS);
   return (
     // 네이티브 헤더 버튼·뒤로 가기 색도 같은 강조 색으로
     <ThemeProvider value={{ ...nav, colors: { ...nav.colors, primary: t.colors.primary } }}>
