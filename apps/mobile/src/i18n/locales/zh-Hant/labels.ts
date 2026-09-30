@@ -1,6 +1,150 @@
 import type ko from '../ko/labels';
 import type { Translation } from '../../types';
 
-const zhHant: Translation<typeof ko> = {};
+const zhHant: Translation<typeof ko> = {
+  saleType: {
+    FIXED: '立即購買',
+    AUCTION: '拍賣',
+    RESERVATION: '預購',
+  },
+  condition: {
+    MINT: '全新（近乎未使用）',
+    EXCELLENT: '非常好',
+    GOOD: '良好',
+    FAIR: '一般（有使用痕跡）',
+    POOR: '有損壞',
+  },
+  auctionStatus: {
+    DRAFT: '草稿',
+    SCHEDULED: '即將開始',
+    LIVE: '進行中',
+    ENDED: '已結束',
+    SETTLED: '交易完成',
+    CANCELLED: '已取消',
+  },
+  orderStatus: {
+    PENDING: '已下單',
+    PAYMENT_PENDING: '待付款',
+    PAID: '已付款',
+    PREPARING: '備貨中',
+    SHIPPED: '運送中',
+    DELIVERED: '已送達',
+    COMPLETED: '已確認收貨',
+    CANCELLED: '已取消',
+    REFUND_REQUESTED: '已申請退款',
+    REFUNDED: '已退款',
+  },
+  paymentMethod: {
+    CARD: '信用卡/簽帳金融卡',
+    EASY_PAY: '行動支付',
+    BANK_TRANSFER: '銀行轉帳',
+    VIRTUAL_ACCOUNT: '匯款（虛擬帳戶）',
+  },
+  verification: {
+    UNVERIFIED: '賣家提供資訊',
+    PENDING: '審核中',
+    VERIFIED: '平台已審核',
+    REJECTED: '審核未通過',
+  },
+  reportReason: {
+    FRAUD: '詐騙',
+    FAKE_ITEM: '虛假商品',
+    COUNTERFEIT: '疑似贗品',
+    COPYRIGHT: '侵犯著作權',
+    INAPPROPRIATE: '不當內容',
+    OTHER: '其他',
+  },
+  sort: {
+    relevance: '相關度',
+    latest: '最新',
+    price_asc: '價格由低到高',
+    price_desc: '價格由高到低',
+    popular: '最受歡迎',
+    ending_soon: '即將結束',
+  },
+  notificationType: {
+    BID_PLACED: '出價成功',
+    OUTBID: '被更高出價',
+    AUCTION_ENDING: '拍賣即將結束',
+    AUCTION_WON: '得標',
+    AUCTION_LOST: '未得標',
+    AUCTION_STARTED: '拍賣開始',
+    ITEM_SOLD: '已售出',
+    PAYMENT_DONE: '已付款',
+    SHIPPED: '已出貨',
+    DELIVERED: '已送達',
+    INQUIRY_ANSWERED: '詢問已回覆',
+    PRICE_CHANGED: '價格變動',
+    FOLLOWED: '追蹤',
+    FAVORITE_ON_SALE: '收藏商品開賣',
+    CHAT_MESSAGE: '新訊息',
+    INQUIRY_RECEIVED: '新詢問',
+    REVIEW_RECEIVED: '新評價',
+    ORDER_UPDATED: '訂單',
+    FOLLOWING_NEW_ITEM: '追蹤的新作品',
+    SYSTEM: '通知',
+  },
+  productStatus: {
+    DRAFT: '草稿',
+    PENDING_REVIEW: '審核中',
+    ACTIVE: '販售中',
+    RESERVED: '交易中',
+    SOLD: '已售出',
+    SUSPENDED: '已被停用',
+    HIDDEN: '已下架',
+  },
+  provenanceKind: {
+    OWNERSHIP: '收藏',
+    EXHIBITION: '展覽',
+    PUBLICATION: '出版',
+  },
+  settlementStatus: {
+    PENDING: '待結算',
+    SCHEDULED: '待撥款',
+    PAID: '已撥款',
+    HELD: '暫緩',
+  },
+  authProvider: {
+    KAKAO: 'Kakao',
+    NAVER: 'Naver',
+    GOOGLE: 'Google',
+    APPLE: 'Apple',
+  },
+  reportTarget: {
+    PRODUCT: '作品',
+    USER: '使用者',
+    REVIEW: '評價',
+    MESSAGE: '訊息',
+  },
+  reportStatus: {
+    OPEN: '已受理',
+    IN_REVIEW: '處理中',
+    RESOLVED: '已處理',
+    REJECTED: '已駁回',
+  },
+  notificationCategory: {
+    auction: {
+      label: '拍賣',
+      description: '被更高出價、即將結束、得標或流標、關注的拍賣開始',
+    },
+    trade: {
+      label: '訂單與物流',
+      description: '付款、出貨、送達、取消與退款',
+    },
+    chat: {
+      label: '聊天',
+      description: '新訊息',
+    },
+    activity: {
+      label: '動態',
+      description: '詢問與回覆、評價、追蹤、收藏作品降價、追蹤賣家的新作品',
+    },
+  },
+  bankGroup: {
+    bank: '銀行',
+    mutual: '合作金融·儲蓄銀行',
+    foreign: '外資銀行（韓國分行）',
+  },
+};
 
 export default zhHant;
