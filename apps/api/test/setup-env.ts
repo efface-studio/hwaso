@@ -1,3 +1,5 @@
+import { generateKeyPairSync } from 'node:crypto';
+
 // 통합 테스트 환경 변수. 실제 PostgreSQL/Redis 를 쓰고 외부 연동(S3·메일·PG)은 테스트 더블로 교체한다.
 const defaults: Record<string, string> = {
   NODE_ENV: 'test',
@@ -28,5 +30,19 @@ Object.assign(process.env, {
   APPLE_CLIENT_ID: '',
   SMTP_URL: '',
   OAUTH_REDIRECT_ALLOWLIST: 'http://localhost:3000/auth/callback',
+});
+
+// OTA 매니페스트 서명 키: 실행마다 새로 만들고 공개 키는 검증용으로 넘긴다.
+// 운영처럼 한 줄 env("\n" 이스케이프)로 넣어 줄바꿈 변환도 함께 검증한다
+const ota = generateKeyPairSync('rsa', {
+  modulusLength: 2048,
+  publicKeyEncoding: { type: 'spki', format: 'pem' },
+  privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
+});
+Object.assign(process.env, {
+  OTA_PUBLISH_TOKEN: 'test-ota-publish-token-000000000000000000',
+  OTA_SIGNING_KEY: ota.privateKey.replace(/\n/g, '\\n'),
+  OTA_SIGNING_KEY_ID: 'main',
+  OTA_TEST_PUBLIC_KEY: ota.publicKey,
 });
 process.env.DATABASE_URL = process.env.DATABASE_URL_TEST;

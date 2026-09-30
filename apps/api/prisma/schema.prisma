@@ -968,3 +968,30 @@ model AuditLog {
   @@index([actorId, createdAt])
   @@index([createdAt(sort: Desc)])
 }
+
+/// 자체 호스팅 OTA 업데이트 (Expo Updates 프로토콜 v1 — docs/MOBILE_RELEASE.md "OTA 업데이트")
+/// id 는 클라이언트가 업데이트 식별자로 쓰는 UUID v4 (코드에서 생성)
+model OtaUpdate {
+  id             String   @id
+  /// ios | android
+  platform       String
+  runtimeVersion String
+  channel        String   @default("production")
+  /// UPDATE | ROLLBACK (내장 번들로 되돌리기 지시)
+  kind           String   @default("UPDATE")
+  message        String   @default("")
+  critical       Boolean  @default(false)
+  /// 1~100. eas-client-id 해시로 대상 기기를 고른다
+  rolloutPercent Int      @default(100)
+  /// ACTIVE | ROLLED_BACK
+  status         String   @default("ACTIVE")
+  /// ROLLBACK 은 null
+  launchAsset    Json?
+  assets         Json     @default("[]")
+  /// 매니페스트 extra.expoClient (앱 설정)
+  expoClient     Json?
+  createdById    String?
+  createdAt      DateTime @default(now()) @db.Timestamptz
+
+  @@index([platform, runtimeVersion, channel, createdAt(sort: Desc)])
+}

@@ -15,6 +15,7 @@ import { MediaModule } from './media/media.controller';
 import { MailModule } from './mail/mail.service';
 import { NotificationsModule } from './notifications/notifications.controller';
 import { OrdersModule } from './orders/orders.controller';
+import { OtaModule } from './ota/ota.controller';
 import { PrismaModule } from './prisma/prisma.service';
 import { ProductsModule } from './products/products.controller';
 import { RealtimeEmitterModule } from './realtime/realtime';
@@ -45,6 +46,7 @@ import { UsersModule } from './users/users.controller';
     ChatModule,
     CommunityModule,
     AdminModule,
+    OtaModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: HttpExceptionFilter },

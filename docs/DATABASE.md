@@ -119,6 +119,16 @@ CHECK 제약:
 
 `Admin` 은 별도 테이블 없이 `User.role ∈ {ADMIN, SUPER_ADMIN}` 으로 표현한다.
 
+### 앱 OTA
+
+| 모델        | 주요 필드                                                                                                                                                                                    | 비고                                                      |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| `OtaUpdate` | platform(ios/android), runtimeVersion, channel, kind(UPDATE/ROLLBACK), message, critical, rolloutPercent(1~100), status(ACTIVE/ROLLED_BACK), launchAsset?, assets, expoClient?, createdById? | 인덱스(platform, runtimeVersion, channel, createdAt desc) |
+
+- `id` 는 코드에서 만든 UUID v4 — 앱(expo-updates)이 업데이트 ID 로 쓴다.
+- `launchAsset`·`assets` 는 `OtaAsset` JSON (ROLLBACK 행은 launchAsset 없음). 매니페스트 내용은 만든 뒤 바꾸지 않는다 (비율·상태만 변경).
+- 같은 (platform, runtimeVersion, channel) 안에서 `createdAt` 은 항상 증가한다 — 앱은 더 새로운 업데이트·되돌리기 지시만 적용한다.
+
 ## 마이그레이션 정책
 
 - `prisma migrate dev` 로 생성하며, 커밋된 migration SQL 은 이후 수정하지 않는다.

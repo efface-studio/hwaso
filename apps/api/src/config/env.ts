@@ -61,6 +61,14 @@ const schema = z.object({
   VAPID_SUBJECT: optional,
   /** Expo 푸시 보안 설정을 켠 경우에만 필요 */
   EXPO_ACCESS_TOKEN: optional,
+  /** OTA 배포 스크립트 공유 비밀 (x-ota-publish-token). 비우면 OTA 업로드·등록이 막힌다 */
+  OTA_PUBLISH_TOKEN: optional.refine(
+    (v) => !v || v.length >= 32,
+    'OTA_PUBLISH_TOKEN 은 32자 이상이어야 합니다.',
+  ),
+  /** OTA 매니페스트 서명 키 (RSA 개인 키 PEM). env 한 줄로 넣을 때의 "\n" 은 줄바꿈으로 바꾼다 */
+  OTA_SIGNING_KEY: optional.transform((v) => v?.replace(/\\n/g, '\n')),
+  OTA_SIGNING_KEY_ID: z.string().min(1).default('main'),
   /** 공개 데모: 이 계정들만 로그인한다. JSON [{login,password,role,nickname?}] — 깃에 두지 않는다 (auth/demo.ts) */
   DEMO_ACCOUNTS: optional,
 });
