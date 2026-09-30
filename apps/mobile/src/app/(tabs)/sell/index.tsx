@@ -121,14 +121,9 @@ export default function SellScreen() {
   );
 }
 
-/** 판매자 등록 전 안내: 그림 · 소개 · 등록 3단계 · 등록 버튼 (모두 가운데 정렬) */
+/** 판매자 등록 전 안내: 그림 · 소개 · 등록 버튼 (모두 가운데 정렬) */
 function SellerOnboarding() {
   const t = useTheme();
-  const steps = [
-    ['1', '본인인증과 정산 계좌 등록', '판매 대금을 받을 계좌를 한 번만 등록해요.'],
-    ['2', '작품 사진 찍고 정보 입력', '작가·재료·크기·상태를 적으면 끝이에요.'],
-    ['3', '즉시 판매 또는 경매 예약', '원하는 방식으로 컬렉터를 만나요.'],
-  ] as const;
   return (
     <ScrollView
       contentInsetAdjustmentBehavior="automatic"
@@ -143,23 +138,6 @@ function SellerOnboarding() {
         <Text color="muted" style={styles.centerText}>
           판매 대금을 받을 계좌만 등록하면{'\n'}사진 촬영부터 경매 예약까지 앱에서 바로 할 수 있어요.
         </Text>
-      </View>
-      <View style={[styles.steps, { backgroundColor: t.colors.surface2, borderRadius: t.radius.lg }]}>
-        {steps.map(([n, title, desc]) => (
-          <View key={n} style={styles.step}>
-            <View style={[styles.stepNo, { backgroundColor: t.colors.primary }]}>
-              <Text variant="label" color="primaryForeground">
-                {n}
-              </Text>
-            </View>
-            <View style={{ flex: 1, gap: 2 }}>
-              <Text variant="bodyStrong">{title}</Text>
-              <Text variant="small" color="muted">
-                {desc}
-              </Text>
-            </View>
-          </View>
-        ))}
       </View>
       <Button title="판매자 등록하기" size="lg" block onPress={() => router.push('/seller/register')} />
     </ScrollView>
@@ -179,9 +157,6 @@ const styles = StyleSheet.create({
   },
   center: { alignItems: 'center', gap: 8 },
   centerText: { textAlign: 'center' },
-  steps: { alignSelf: 'stretch', padding: 16, gap: 14 },
-  step: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
-  stepNo: { width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   body: { padding: 16, gap: 16 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   tile: { width: '31.8%', borderWidth: StyleSheet.hairlineWidth, borderRadius: 8, padding: 12, gap: 2 },
