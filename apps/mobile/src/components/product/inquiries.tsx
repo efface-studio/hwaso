@@ -72,6 +72,7 @@ export function Inquiries({ productId, isMine }: { productId: string; isMine: bo
           />
           <View style={styles.row}>
             <Switch
+              style={{ alignSelf: 'center' }}
               value={isPrivate}
               onValueChange={setPrivate}
               trackColor={{ true: t.colors.primary }}

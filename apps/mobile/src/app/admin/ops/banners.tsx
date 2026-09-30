@@ -244,6 +244,7 @@ function BannerForm({ initial, onClose }: { initial: AdminBannerRow | null; onCl
         <View style={[styles.switchRow, { minHeight: t.touch }]}>
           <Text style={{ flex: 1 }}>노출</Text>
           <Switch
+            style={{ alignSelf: 'center' }}
             value={b.isActive}
             onValueChange={(isActive) => set({ isActive })}
             trackColor={{ true: t.colors.primary }}

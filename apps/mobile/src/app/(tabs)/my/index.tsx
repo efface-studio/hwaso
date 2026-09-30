@@ -14,7 +14,6 @@ import { api, logout } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
 import { usePrefs } from '@/stores/prefs';
 import { useTheme } from '@/theme';
-import { LANGUAGE_NAME } from '@/i18n';
 
 function Row({
   label,
@@ -185,7 +184,6 @@ export default function MyScreen() {
   const t = useTheme();
   const user = useAuthStore((s) => s.user);
   const { theme, senior, setTheme, setSenior } = usePrefs();
-  const language = usePrefs((s) => s.language);
   const { t: tr } = useTranslation(['my', 'common']);
   const qc = useQueryClient();
   const [refreshing, setRefreshing] = useState(false);
@@ -291,20 +289,13 @@ export default function MyScreen() {
           <ThemePicker value={theme} onChange={setTheme} />
           <Row label={tr('myTab.senior.label')} description={tr('myTab.senior.description')}>
             <Switch
+              style={{ alignSelf: 'center' }}
               value={senior}
               onValueChange={setSenior}
               trackColor={{ true: t.colors.primary }}
               accessibilityLabel={tr('myTab.senior.a11y')}
             />
           </Row>
-          <Pressable accessibilityRole="link" onPress={() => router.push('/settings/language')}>
-            <Row label={tr('common:language.title')}>
-              <Text color="muted">
-                {language === 'system' ? tr('common:language.system') : LANGUAGE_NAME[language]}
-              </Text>
-              <Text color="faint">›</Text>
-            </Row>
-          </Pressable>
           {user && (
             <Button
               title={tr('myTab.logout')}

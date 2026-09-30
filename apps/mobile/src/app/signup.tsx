@@ -94,6 +94,7 @@ export default function SignupScreen() {
             />
             <View style={[styles.row, { minHeight: t.touch }]}>
               <Switch
+                style={{ alignSelf: 'center' }}
                 value={terms}
                 onValueChange={setTerms}
                 trackColor={{ true: t.colors.primary }}
@@ -112,6 +113,7 @@ export default function SignupScreen() {
             </View>
             <View style={[styles.row, { minHeight: t.touch }]}>
               <Switch
+                style={{ alignSelf: 'center' }}
                 value={marketing}
                 onValueChange={setMarketing}
                 trackColor={{ true: t.colors.primary }}

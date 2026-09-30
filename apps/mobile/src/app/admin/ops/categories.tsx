@@ -137,6 +137,7 @@ function Form({
       <View style={[styles.switchRow, { minHeight: t.touch }]}>
         <Text style={{ flex: 1 }}>사이트에 표시</Text>
         <Switch
+          style={{ alignSelf: 'center' }}
           value={isActive}
           onValueChange={setIsActive}
           trackColor={{ true: t.colors.primary }}

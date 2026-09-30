@@ -45,6 +45,7 @@ function SwitchRow({
         )}
       </View>
       <Switch
+        style={{ alignSelf: 'center' }}
         value={value}
         onValueChange={onChange}
         trackColor={{ true: t.colors.primary }}
