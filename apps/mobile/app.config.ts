@@ -7,6 +7,9 @@ import { withAppDelegate, withInfoPlist, type ConfigPlugin } from 'expo/config-p
  */
 const APP_LINK_HOST = process.env.APP_LINK_HOST ?? 'hwaso.kr';
 const PRIMARY = '#2F7A58';
+// OTA 업데이트 서버 (docs/MOBILE_RELEASE.md 「OTA 업데이트」). API 주소가 없는 개발 빌드에서는 끈다
+const API_URL = process.env.EXPO_PUBLIC_API_URL;
+const OTA_CHANNEL = process.env.OTA_CHANNEL ?? 'production';
 
 const config: ExpoConfig = {
   name: '화소',
@@ -18,6 +21,19 @@ const config: ExpoConfig = {
   userInterfaceStyle: 'automatic',
   backgroundColor: '#FFFFFF',
   primaryColor: PRIMARY,
+  // 네이티브 코드(모듈·설정·패치)가 같은 빌드끼리만 같은 OTA 를 받는다
+  runtimeVersion: { policy: 'fingerprint' },
+  updates: {
+    enabled: !!API_URL,
+    url: API_URL ? `${API_URL}/ota/manifest` : undefined,
+    // 실행을 기다리게 하지 않는다 — 새 업데이트는 뒤에서 받아 두고 다음 실행 때 적용
+    checkAutomatically: 'ON_LOAD',
+    fallbackToCacheTimeout: 0,
+    requestHeaders: { 'expo-channel-name': OTA_CHANNEL },
+    // 서버가 서명한 매니페스트만 받는다 (개인 키는 저장소 밖, 인증서만 저장소에)
+    codeSigningCertificate: './certs/certificate.pem',
+    codeSigningMetadata: { keyid: 'main', alg: 'rsa-v1_5-sha256' },
+  },
   ios: {
     bundleIdentifier: 'dev.efface.hwaso',
     buildNumber: '1',

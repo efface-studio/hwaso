@@ -15,6 +15,7 @@ export default function Layout() {
       <Stack.Screen name="broadcast" options={{ title: '전체 알림' }} />
       <Stack.Screen name="policy" options={{ title: '경매 정책' }} />
       <Stack.Screen name="audit" options={{ title: '감사 로그' }} />
+      <Stack.Screen name="updates" options={{ title: '앱 업데이트' }} />
     </Stack>
   );
 }

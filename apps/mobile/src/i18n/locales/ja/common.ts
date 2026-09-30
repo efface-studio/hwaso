@@ -160,6 +160,11 @@ const ja: Translation<typeof ko> = {
     phone: 'スマートフォン',
     web: 'Web',
   },
+  update: {
+    criticalTitle: '重要なアップデート',
+    criticalMessage: '必要な修正を適用します。アプリを再起動します。',
+    restart: '再起動',
+  },
   push: {
     channelName: '一般通知',
   },

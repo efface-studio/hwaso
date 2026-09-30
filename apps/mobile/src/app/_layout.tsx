@@ -24,6 +24,7 @@ import { OfflineBanner } from '@/components/offline-banner';
 import { preloadTabIcons } from '@/components/tab-icons';
 import { refreshAccessToken } from '@/lib/api';
 import { isAdmin } from '@/lib/admin';
+import { OtaSync } from '@/lib/ota';
 import { guardRapidNavigation } from '@/lib/nav';
 import { connectQueryFocus } from '@/lib/query-focus';
 import { AppSync } from '@/lib/realtime-sync';
@@ -179,6 +180,7 @@ export default function RootLayout() {
         <QueryClientProvider client={client}>
           <Navigation />
           <AppSync />
+          <OtaSync />
           <OfflineBanner />
           <ActionSheetHost />
           <AppLock />
