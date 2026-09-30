@@ -1,10 +1,11 @@
 import { ApiError } from '@shop/api-client';
-import { AUTH_PROVIDERS, type AuthProvider } from '@shop/shared';
+import type { AuthProvider } from '@shop/shared';
 import { useQuery } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { ProviderBadge } from '@/components/auth/provider-logo';
 import { Button } from '@/components/ui/button';
 import { Loading } from '@/components/ui/state';
 import { Text } from '@/components/ui/text';
@@ -15,13 +16,15 @@ import { OAuthCancelled, linkSocial } from '@/lib/oauth';
 import { useAuthStore } from '@/stores/auth';
 import { useTheme } from '@/theme';
 
+const ORDER: AuthProvider[] = ['KAKAO', 'NAVER', 'GOOGLE', 'APPLE'];
+
 const errMsg = (e: unknown) =>
   e instanceof ApiError || e instanceof Error ? e.message : i18n.t('common:state.actionFailed');
 
 /** 연결된 소셜 계정: 연결하면 그 계정으로도 로그인할 수 있다 */
 export default function SocialScreen() {
   const t = useTheme();
-  const { t: tr } = useTranslation(['my', 'common']);
+  const { t: tr } = useTranslation(['my', 'auth', 'common']);
   const user = useAuthStore((s) => s.user);
   const setUser = useAuthStore((s) => s.setUser);
   const providers = useQuery({
@@ -33,13 +36,22 @@ export default function SocialScreen() {
   if (!user) return null;
   if (providers.isPending) return <Loading variant="plain-list" />;
   // iOS 의 Apple 로그인은 시스템 방식이라 여기서는 브라우저로 연결할 수 있는 제공자만 연결한다
-  const available = AUTH_PROVIDERS.filter(
+  const configured = (p: AuthProvider) =>
+    !!providers.data?.oauth.includes(p) && !(p === 'APPLE' && Platform.OS === 'ios');
+  // 로그인 화면과 같이: 운영에서는 연결할 수 있거나 이미 연결된 것만, 개발에서는 모두 보인다
+  const available = ORDER.filter(
     (p) =>
-      (providers.data?.oauth.includes(p) && !(p === 'APPLE' && Platform.OS === 'ios')) ||
-      user.socialProviders.includes(p),
+      user.socialProviders.includes(p) ||
+      configured(p) ||
+      (__DEV__ && !(p === 'APPLE' && Platform.OS === 'ios')),
   );
 
   const link = async (p: AuthProvider) => {
+    if (!configured(p))
+      return Alert.alert(
+        tr('auth:social.notConfiguredTitle', { provider: label('authProvider', p) }),
+        tr('auth:social.notConfiguredMessage'),
+      );
     setBusy(p);
     try {
       await linkSocial(p);
@@ -83,6 +95,7 @@ export default function SocialScreen() {
         const linked = user.socialProviders.includes(p);
         return (
           <View key={p} style={[styles.row, { borderColor: t.colors.borderSoft, minHeight: t.touch + 12 }]}>
+            <ProviderBadge provider={p} size={28} />
             <Text style={{ flex: 1 }}>
               {label('authProvider', p)}
               {linked ? (
