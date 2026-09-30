@@ -28,6 +28,7 @@ const GROUPS: { title: GroupKey; rows: [Href, RowKey][] }[] = [
       ['/settings/password', 'password'],
       ['/settings/social', 'social'],
       ['/settings/devices', 'devices'],
+      ['/settings/security', 'security'],
     ],
   },
   {

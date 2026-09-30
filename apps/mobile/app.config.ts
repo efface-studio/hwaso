@@ -8,6 +8,65 @@ import { withAppDelegate, withInfoPlist, type ConfigPlugin } from 'expo/config-p
 const APP_LINK_HOST = process.env.APP_LINK_HOST ?? 'hwaso.kr';
 const PRIMARY = '#2F7A58';
 
+/** URL 환경 변수에서 호스트만 뽑는다 (없거나 잘못된 값이면 건너뛴다) */
+function hostOf(url: string | undefined): string | null {
+  if (!url) return null;
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * TLS 인증서 고정 대상 (하위 도메인 포함). 운영(hwaso.kr)·개발 서버(hwaso.efface.dev)는 항상 넣고,
+ * 빌드 환경의 API·미디어·웹 주소 호스트를 더한다. localhost·IP 는 플러그인이 뺀다.
+ */
+const PINNED_DOMAINS = [
+  'hwaso.kr',
+  'hwaso.efface.dev',
+  APP_LINK_HOST,
+  hostOf(process.env.EXPO_PUBLIC_API_URL),
+  hostOf(process.env.EXPO_PUBLIC_WS_URL),
+  hostOf(process.env.EXPO_PUBLIC_MEDIA_URL),
+  hostOf(process.env.EXPO_PUBLIC_WEB_URL),
+].filter((h): h is string => !!h);
+
+/**
+ * 고정할 CA 공개키 (SPKI SHA-256, base64). Cloudflare 가 발급에 쓰는 CA 들이라 인증서가 갱신·교체돼도 통과한다.
+ * 루트는 macOS SystemRootCertificates 에서, Root YE·YE2 는 hwaso.efface.dev 실제 체인에서 계산했다 (2026-09-30).
+ * 계산: openssl x509 -pubkey -noout | openssl pkey -pubin -outform der | openssl dgst -sha256 -binary | base64
+ * 바꾸려면 새 바이너리가 필요하다 (OTA 불가). Android 는 TLS_PIN_EXPIRATION 이 지나면 고정을 풀어 통신이 끊기지 않게 한다.
+ */
+const TLS_PINS = [
+  // Let's Encrypt
+  'C5+lpZ7tcVwmwQIMcRtPbsQtWLABXhQzejna0wHFr8M=', // ISRG Root X1
+  'diGVwiVYbubAI3RW4hB9xU8e/CH2GnkuvVFZE8zmgzI=', // ISRG Root X2
+  'sCkq5UWXjg+7mKu9lMhhYF5bGLsy7VI/UNW3tccdR7w=', // ISRG Root YE (X2 교차 서명, 현재 체인)
+  's/tdAOmUzd8syaTuqfgGvFcn6DzA5Cmb+Vby1ST+U3Y=', // Let's Encrypt YE2 (현재 중간 인증서 — 루트가 이미 덮지만 체인 확인용)
+  // Google Trust Services
+  'hxqRlPTu1bMS/0DITB1SSu0vd4u/8l8TjPgfaAp63Gc=', // GTS Root R1
+  'Vfd95BwDeSQo+NUYxVEEIlvkOlWY2SalKK1lPhzOx78=', // GTS Root R2
+  'QXnt2YHvdHR3tJYmQIr0Paosp6t/nggsEGD4QJZ3Q0g=', // GTS Root R3
+  'mEflZT5enoR1FuXLgYYGqnVEoZvmf9c2bVBpiOjYQ0c=', // GTS Root R4
+  'K87oWBWM9UZfyddvDfoxL+8lpNyoUB2ptGtn0fv6G2Q=', // GlobalSign Root CA (GTS R1·R4 교차 서명, 2028-01-28 만료)
+  // SSL.com
+  '0cRTd+vc1hjNFlHcLgLCHXUeWqn80bNDH/bs9qMTSPo=', // SSL.com Root Certification Authority RSA
+  'oyD01TTXvpfBro3QSZc1vIlcMjrdLTiL/M9mLCPX+Zo=', // SSL.com Root Certification Authority ECC
+  'K89VOmb1cJAN3TK6bf4ezAbJGC1mLcG2Dh97dnwr3VQ=', // SSL.com TLS RSA Root CA 2022
+  'G/ANXI8TwJTdF+AFBM8IiIUPEv0Gf6H5LA/b9guG4yE=', // SSL.com TLS ECC Root CA 2022
+];
+const TLS_PIN_EXPIRATION = '2027-12-31';
+
+/**
+ * Android 서명 인증서 SHA-256 허용 목록 (쉼표 구분, 콜론 포함 가능). 비어 있으면 변조 검사를 하지 않는다.
+ * Play 앱 서명을 쓰면 Play Console > 앱 무결성 의 "앱 서명 키 인증서" 지문을 넣는다 (eas.json env).
+ */
+const ANDROID_SIGNING_CERT_SHA256 = String(process.env.ANDROID_SIGNING_CERT_SHA256 ?? '')
+  .split(',')
+  .map((s: string) => s.trim())
+  .filter(Boolean);
+
 const config: ExpoConfig = {
   name: '화소',
   slug: 'hwaso',
@@ -29,13 +88,16 @@ const config: ExpoConfig = {
       NSCameraUsageDescription: '판매할 작품이나 채팅으로 보낼 사진을 촬영하려면 카메라 접근이 필요해요.',
       NSPhotoLibraryUsageDescription:
         '판매할 작품 사진과 채팅 사진을 앨범에서 고르려면 사진 접근이 필요해요.',
-      NSFaceIDUsageDescription: '앱 잠금을 Face ID 로 해제할 때 사용해요.',
+      NSFaceIDUsageDescription:
+        '앱 잠금 해제와 결제·계좌 변경 같은 중요한 작업을 확인할 때 Face ID 를 사용해요.',
       CFBundleAllowMixedLocalizations: true,
     },
   },
   android: {
     package: 'dev.efface.hwaso',
     versionCode: 1,
+    // 토큰·설정이 adb backup·클라우드 백업으로 다른 기기에 옮겨지지 않게 한다
+    allowBackup: false,
     adaptiveIcon: {
       backgroundImage: './assets/android-icon-background.png',
       foregroundImage: './assets/android-icon-foreground.png',
@@ -48,7 +110,12 @@ const config: ExpoConfig = {
       'android.permission.POST_NOTIFICATIONS',
       'android.permission.USE_BIOMETRIC',
     ],
-    blockedPermissions: ['android.permission.RECORD_AUDIO', 'android.permission.ACCESS_FINE_LOCATION'],
+    blockedPermissions: [
+      'android.permission.RECORD_AUDIO',
+      'android.permission.ACCESS_FINE_LOCATION',
+      // expo-screen-capture 의 스크린샷 감지용 권한 — 쓰지 않는다 (캡처 차단만 쓴다)
+      'android.permission.READ_MEDIA_IMAGES',
+    ],
     intentFilters: [
       {
         action: 'VIEW',
@@ -87,7 +154,15 @@ const config: ExpoConfig = {
     ['expo-notifications', { color: PRIMARY }],
     // 앱이 지원하는 언어 (iOS 설정 > 앱 > 언어 에서 앱별로 고를 수 있다)
     ['expo-localization', { supportedLocales: ['ko', 'en', 'ja', 'zh-Hans', 'zh-Hant'] }],
-    ['expo-local-authentication', { faceIDPermission: '앱 잠금을 Face ID 로 해제할 때 사용해요.' }],
+    [
+      'expo-local-authentication',
+      { faceIDPermission: '앱 잠금 해제와 결제·계좌 변경 같은 중요한 작업을 확인할 때 Face ID 를 사용해요.' },
+    ],
+    [
+      './plugins/with-tls-pinning',
+      { domains: PINNED_DOMAINS, spkiSha256: TLS_PINS, expiration: TLS_PIN_EXPIRATION },
+    ],
+    ['./plugins/with-device-integrity', { androidSigningCertSha256: ANDROID_SIGNING_CERT_SHA256 }],
   ],
   experiments: { typedRoutes: true },
   extra: {

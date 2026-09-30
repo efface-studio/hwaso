@@ -2,6 +2,7 @@ import { createApiClient } from '@shop/api-client';
 import { withDemo } from '@/demo/demo-fetch';
 import { REFRESH_KEY, useAuthStore } from '@/stores/auth';
 import { env } from './env';
+import { biometricKey, requestReauth } from './reauth';
 import { secure } from './secure';
 
 let inflight: Promise<string | null> | null = null;
@@ -35,6 +36,8 @@ export const api = createApiClient({
   credentials: 'omit',
   getAccessToken: () => useAuthStore.getState().accessToken,
   refresh: refreshAccessToken,
+  // 결제·정산 계좌 변경 등에서 서버가 본인 확인을 요구하면 확인 창을 띄우고 같은 요청을 다시 보낸다
+  reauth: requestReauth,
   // 서버가 꺼져 있을 때 기록한 관리자 계정으로 시연 (개발·시연 빌드에서만)
   fetch: withDemo(globalThis.fetch.bind(globalThis)),
 });
@@ -44,5 +47,8 @@ export async function logout() {
   await import('./push').then((m) => m.unregisterPush()).catch(() => undefined);
   const token = await secure.get(REFRESH_KEY);
   await api.auth.logout(token ?? undefined).catch(() => undefined);
+  // 이 기기의 생체 인증 본인 확인 키도 지운다 (서버는 세션과 함께 폐기)
+  await biometricKey.clear();
+  api.setReauthToken(null);
   await useAuthStore.getState().clear();
 }

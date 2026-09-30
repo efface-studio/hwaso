@@ -3,6 +3,7 @@ import { usePathname } from 'expo-router';
 import { useEffect } from 'react';
 import type { ServerToClientEvents } from '@shop/shared';
 import { useAuthStore } from '@/stores/auth';
+import { checkIntegrity } from './integrity';
 import { listenNotificationTaps, registerPush, setCurrentPath } from './push';
 import { getRealtime } from './realtime';
 
@@ -18,7 +19,9 @@ export function AppSync() {
   useEffect(() => setCurrentPath(pathname), [pathname]);
   useEffect(() => listenNotificationTaps(), []);
   useEffect(() => {
-    if (userId) void registerPush().catch(() => undefined);
+    if (!userId) return;
+    void registerPush().catch(() => undefined);
+    void checkIntegrity();
   }, [userId]);
 
   useEffect(() => {

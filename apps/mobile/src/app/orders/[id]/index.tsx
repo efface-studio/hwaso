@@ -1,7 +1,6 @@
 import { ApiError } from '@shop/api-client';
 import { type OrderDetailDto, type PaymentMethod, type ServerToClientEvents } from '@shop/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import * as Clipboard from 'expo-clipboard';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { useEffect, useState, type ReactNode } from 'react';
@@ -29,6 +28,8 @@ import i18n, { currentLanguage, LOCALE } from '@/i18n';
 import { formatPrice } from '@/i18n/format';
 import { label } from '@/i18n/labels';
 import { api } from '@/lib/api';
+import { copySensitive } from '@/lib/clipboard';
+import { useScreenGuard } from '@/lib/screen-guard';
 import { BridgeCancelled, payOrder } from '@/lib/bridge';
 import { getRealtime } from '@/lib/realtime';
 import { useTheme } from '@/theme';
@@ -112,9 +113,7 @@ function PendingPayment({ o, refresh }: { o: OrderDetailDto; refresh: () => void
             accessibilityRole="button"
             accessibilityHint={tr('pending.copyAccountHint')}
             onPress={() =>
-              void Clipboard.setStringAsync(va.accountNumber).then(() =>
-                Alert.alert(tr('pending.accountCopied')),
-              )
+              void copySensitive(va.accountNumber).then(() => Alert.alert(tr('pending.accountCopied')))
             }
           >
             <Text variant="small">
@@ -341,6 +340,8 @@ function Actions({ o, refresh }: { o: OrderDetailDto; refresh: (next?: OrderDeta
 }
 
 export default function OrderDetailScreen() {
+  // 입금 계좌·결제 정보가 보이는 화면 — 캡처·화면 녹화 차단
+  useScreenGuard();
   const { id, paid } = useLocalSearchParams<{ id: string; paid?: string }>();
   const t = useTheme();
   const { t: tr } = useTranslation(['order', 'common']);
