@@ -1,8 +1,9 @@
-import { AUCTION_STATUS_LABEL, formatPrice, formatRelativeTime, type MyBidDto } from '@shop/shared';
+import type { MyBidDto } from '@shop/shared';
 import { useQuery } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { router, Stack } from 'expo-router';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { AppRefreshControl } from '@/components/ui/app-refresh-control';
 import { usePullRefresh } from '@/hooks/use-pull-refresh';
@@ -12,6 +13,9 @@ import { Empty, Loading } from '@/components/ui/state';
 import { Text } from '@/components/ui/text';
 import { Separator } from '@/components/ui/separator';
 import { List } from '@/components/ui/list';
+import i18n from '@/i18n';
+import { formatPrice, formatRelative } from '@/i18n/format';
+import { label } from '@/i18n/labels';
 import { api } from '@/lib/api';
 import { mediaUrl } from '@/lib/media';
 import { useTheme, type Colors } from '@/theme';
@@ -20,14 +24,16 @@ function status(b: MyBidDto): { label: string; color: keyof Colors } {
   const a = b.auction;
   if (a.status === 'LIVE')
     return a.highestBidderIsMe
-      ? { label: '최고 입찰', color: 'primary' }
-      : { label: '상회 입찰됨', color: 'destructive' };
+      ? { label: i18n.t('product:bids.status.leading'), color: 'primary' }
+      : { label: i18n.t('product:bids.status.outbid'), color: 'destructive' };
   if (a.status === 'ENDED' || a.status === 'SETTLED') {
-    if (a.highestBidderIsMe && a.result === 'SOLD') return { label: '낙찰', color: 'primary' };
-    if (a.highestBidderIsMe && a.result === 'UNPAID') return { label: '미결제 취소', color: 'destructive' };
-    return { label: '패찰', color: 'muted' };
+    if (a.highestBidderIsMe && a.result === 'SOLD')
+      return { label: i18n.t('product:bids.status.won'), color: 'primary' };
+    if (a.highestBidderIsMe && a.result === 'UNPAID')
+      return { label: i18n.t('product:bids.status.unpaid'), color: 'destructive' };
+    return { label: i18n.t('product:bids.status.lost'), color: 'muted' };
   }
-  return { label: AUCTION_STATUS_LABEL[a.status], color: 'muted' };
+  return { label: label('auctionStatus', a.status), color: 'muted' };
 }
 
 /** 입찰 내역 · 낙찰 내역. 낙찰 주문은 여기서 바로 결제한다 */
@@ -35,6 +41,7 @@ const Sep = () => <Separator soft />;
 
 export default function MyBidsScreen() {
   const t = useTheme();
+  const { t: tr } = useTranslation('product');
   const [tab, setTab] = useState<'bids' | 'wins'>('bids');
   const q = useQuery({
     queryKey: [tab === 'wins' ? 'my-wins' : 'my-bids'],
@@ -44,15 +51,15 @@ export default function MyBidsScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: t.colors.background }}>
-      <Stack.Screen options={{ title: '입찰·낙찰 내역', headerLargeTitle: false }} />
+      <Stack.Screen options={{ title: tr('bids.title'), headerLargeTitle: false }} />
       <View style={{ paddingVertical: 8 }}>
         <Chips
-          label="보기"
+          label={tr('bids.view')}
           value={tab}
           onChange={setTab}
           options={[
-            { value: 'bids', label: '입찰 내역' },
-            { value: 'wins', label: '낙찰 내역' },
+            { value: 'bids', label: tr('bids.tabBids') },
+            { value: 'wins', label: tr('bids.tabWins') },
           ]}
         />
       </View>
@@ -71,8 +78,8 @@ export default function MyBidsScreen() {
             ) : (
               <Empty
                 kind="gavel"
-                title={tab === 'wins' ? '낙찰받은 작품이 없어요' : '입찰한 경매가 없어요'}
-                action={{ title: '진행 중인 경매 보기', onPress: () => router.push('/auctions') }}
+                title={tab === 'wins' ? tr('bids.emptyWins') : tr('bids.emptyBids')}
+                action={{ title: tr('bids.browse'), onPress: () => router.push('/auctions') }}
               />
             )
           }
@@ -102,13 +109,17 @@ export default function MyBidsScreen() {
                     {b.product.title}
                   </Text>
                   <Text variant="small" color="muted">
-                    내 최고 {formatPrice(b.myMaxBid)} · {b.myBidCount}회 · 현재{' '}
-                    {formatPrice(b.auction.currentPrice)} · {formatRelativeTime(b.lastBidAt)}
+                    {tr('bids.summary', {
+                      max: formatPrice(b.myMaxBid),
+                      count: b.myBidCount,
+                      current: formatPrice(b.auction.currentPrice),
+                      time: formatRelative(b.lastBidAt),
+                    })}
                   </Text>
                 </View>
                 {b.orderId && (
                   <Button
-                    title="결제하기"
+                    title={tr('bids.pay')}
                     size="sm"
                     onPress={() => router.push({ pathname: '/orders/[id]', params: { id: b.orderId! } })}
                   />

@@ -1,29 +1,34 @@
-import { formatPrice, type ChatMessageDto, type SendMessageInput } from '@shop/shared';
+import type { ChatMessageDto, SendMessageInput } from '@shop/shared';
 import { Image } from 'expo-image';
 import { Link } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
+import { localizePreview, systemText } from '@/components/chat/localize';
 import { Text } from '@/components/ui/text';
+import { currentLanguage, LOCALE } from '@/i18n';
+import { formatPrice } from '@/i18n/format';
 import { mediaUrl } from '@/lib/media';
 import { useTheme } from '@/theme';
 
 export type PendingMessage = ChatMessageDto & { pending?: 'sending' | 'failed'; retry?: SendMessageInput };
 
 const time = (iso: string) =>
-  new Date(iso).toLocaleTimeString('ko-KR', { hour: 'numeric', minute: '2-digit' });
+  new Date(iso).toLocaleTimeString(LOCALE[currentLanguage()], { hour: 'numeric', minute: '2-digit' });
 
 function Body({ m }: { m: PendingMessage }) {
   const t = useTheme();
+  const { t: tr } = useTranslation('chat');
   if (m.deleted)
     return (
       <Text variant="small" color="muted" style={{ fontStyle: 'italic' }}>
-        삭제된 메시지입니다.
+        {tr('message.deleted')}
       </Text>
     );
   if (m.kind === 'IMAGE' && m.images.length > 1) return <ImageGrid images={m.images} />;
   if (m.kind === 'IMAGE' && m.image)
     return (
       <Image
-        accessibilityLabel="보낸 사진"
+        accessibilityLabel={tr('message.photo')}
         source={mediaUrl(m.image.key, 800)}
         style={{
           width: 200,
@@ -58,10 +63,10 @@ function Body({ m }: { m: PendingMessage }) {
   if (m.kind === 'APPOINTMENT' && m.appointment)
     return (
       <View style={{ gap: 4, width: 220 }}>
-        <Text variant="label">거래 약속</Text>
+        <Text variant="label">{tr('message.appointment')}</Text>
         <Text variant="small">
           🗓{' '}
-          {new Date(m.appointment.at).toLocaleString('ko-KR', {
+          {new Date(m.appointment.at).toLocaleString(LOCALE[currentLanguage()], {
             month: 'long',
             day: 'numeric',
             weekday: 'short',
@@ -77,10 +82,11 @@ function Body({ m }: { m: PendingMessage }) {
 
 /** 사진 여러 장: 2열 격자, 4장 넘으면 마지막 칸에 +N */
 function ImageGrid({ images }: { images: PendingMessage['images'] }) {
+  const { t: tr } = useTranslation('chat');
   const shown = images.slice(0, 4);
   const rest = images.length - shown.length;
   return (
-    <View style={styles.grid} accessibilityLabel={`보낸 사진 ${images.length}장`}>
+    <View style={styles.grid} accessibilityLabel={tr('message.photos', { count: images.length })}>
       {shown.map((img, i) => (
         <View key={img.key} style={[styles.cell, { backgroundColor: img.dominantColor }]}>
           <Image source={mediaUrl(img.key, 400)} style={StyleSheet.absoluteFill} contentFit="cover" />
@@ -100,17 +106,18 @@ function ImageGrid({ images }: { images: PendingMessage['images'] }) {
 /** 거래 안내(판매자 상태 변경·주문 진행): 가운데 한 줄, 주문이 있으면 바로가기 */
 function SystemLine({ m }: { m: PendingMessage }) {
   const t = useTheme();
+  const { t: tr } = useTranslation('chat');
   const orderId = m.system?.orderId;
   return (
     <View style={[styles.system, { backgroundColor: t.colors.surface2 }]}>
       <Text variant="caption" color="muted" style={{ textAlign: 'center' }}>
-        {m.body}
+        {m.system ? systemText(m.system.event) : m.body}
       </Text>
       {orderId && (
         <Link href={{ pathname: '/orders/[id]', params: { id: orderId } }} asChild>
           <Pressable accessibilityRole="link" hitSlop={8}>
             <Text variant="caption" style={{ fontWeight: '600' }}>
-              주문 보기
+              {tr('message.viewOrder')}
             </Text>
           </Pressable>
         </Link>
@@ -122,10 +129,11 @@ function SystemLine({ m }: { m: PendingMessage }) {
 /** 답장 인용 (원문 작성자 · 요약). ponytail: 원문으로 스크롤은 웹만 — 앱은 필요하면 scrollToIndex 로 */
 function Quote({ reply, author }: { reply: NonNullable<PendingMessage['replyTo']>; author: string }) {
   const t = useTheme();
+  const { t: tr } = useTranslation('chat');
   return (
     <View style={[styles.quote, { borderColor: t.colors.borderStrong }]}>
       <Text variant="caption" color="muted">
-        ↳ {author}에게 답장
+        ↳ {tr('message.replyTo', { name: author })}
       </Text>
       <Text
         variant="caption"
@@ -133,7 +141,7 @@ function Quote({ reply, author }: { reply: NonNullable<PendingMessage['replyTo']
         numberOfLines={2}
         style={reply.deleted ? { fontStyle: 'italic' } : undefined}
       >
-        {reply.preview}
+        {localizePreview(reply)}
       </Text>
     </View>
   );
@@ -159,6 +167,7 @@ export function Bubble({
   onRetry: () => void;
 }) {
   const t = useTheme();
+  const { t: tr } = useTranslation('chat');
   if (m.kind === 'SYSTEM') return <SystemLine m={m} />;
   const card = m.kind !== 'TEXT' && !m.deleted;
   return (
@@ -166,7 +175,7 @@ export function Bubble({
       <View style={[styles.line, mine && { flexDirection: 'row-reverse' }]}>
         <Pressable
           onLongPress={onLongPress}
-          accessibilityHint="길게 눌러 메뉴 열기"
+          accessibilityHint={tr('message.longPressHint')}
           style={[
             styles.bubble,
             card
@@ -187,14 +196,14 @@ export function Bubble({
           {m.pending === 'failed' ? (
             <Pressable accessibilityRole="button" onPress={onRetry} hitSlop={8}>
               <Text variant="caption" color="destructive">
-                다시 보내기
+                {tr('message.retry')}
               </Text>
             </Pressable>
           ) : (
             <>
               {mine && read && (
                 <Text variant="caption" color="primary">
-                  읽음
+                  {tr('message.read')}
                 </Text>
               )}
               {showTime && !m.pending && (
@@ -208,7 +217,7 @@ export function Bubble({
       </View>
       {m.warning && !mine && (
         <Text variant="caption" color="warning" style={{ maxWidth: '80%' }}>
-          ⚠ 외부 메신저·계좌로 거래하면 화소의 구매 보호를 받을 수 없어요. 결제는 꼭 화소 안에서 해주세요.
+          {tr('message.externalWarning')}
         </Text>
       )}
     </View>

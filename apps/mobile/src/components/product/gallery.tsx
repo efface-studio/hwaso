@@ -2,6 +2,7 @@ import type { ImageDto } from '@shop/shared';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { FlatList, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { mediaUrl } from '@/lib/media';
@@ -18,6 +19,7 @@ export function Gallery({
   title: string;
 }) {
   const t = useTheme();
+  const { t: tr } = useTranslation('product');
   const { width: screen } = useWindowDimensions();
   // 태블릿에서는 사진이 화면을 다 차지하지 않게 폭을 제한한다
   const width = Math.min(screen, 720);
@@ -35,7 +37,7 @@ export function Gallery({
         renderItem={({ item, index: i }) => (
           <Pressable
             accessibilityRole="imagebutton"
-            accessibilityLabel={`${title} 사진 ${i + 1}/${images.length}, 크게 보기`}
+            accessibilityLabel={tr('gallery.imageA11y', { title, index: i + 1, total: images.length })}
             onPress={() =>
               router.push({ pathname: '/products/[id]/viewer', params: { id: productId, index: String(i) } })
             }

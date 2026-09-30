@@ -1,6 +1,7 @@
 import type { IdentityStatusDto, PaymentMethod } from '@shop/shared';
 import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
+import i18n from '@/i18n';
 import { api } from './api';
 import { env } from './env';
 
@@ -38,7 +39,7 @@ export async function payOrder(orderId: string, method: PaymentMethod, addressId
   const code = p.get('code');
   if (code) {
     if (CANCEL_CODES.has(code)) throw new BridgeCancelled();
-    throw new Error(p.get('message') || '결제하지 못했어요.');
+    throw new Error(p.get('message') || i18n.t('common:bridge.paymentFailed'));
   }
   await api.orders.confirmPayment({
     paymentId: p.get('orderId') ?? '',

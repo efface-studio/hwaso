@@ -2,6 +2,7 @@ import { ApiError } from '@shop/api-client';
 import { nicknameSchema, passwordSchema } from '@shop/shared';
 import { router } from 'expo-router';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -12,6 +13,7 @@ import {
   View,
 } from 'react-native';
 import { EmailCodeStep } from '@/components/auth/email-code';
+import { nicknameIssueMessage, passwordIssueMessage } from '@/components/auth/validation';
 import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
 import { Text } from '@/components/ui/text';
@@ -23,6 +25,7 @@ import { useTheme } from '@/theme';
 /** 회원가입: 이메일 인증 → 비밀번호·닉네임·약관 */
 export default function SignupScreen() {
   const t = useTheme();
+  const { t: tr } = useTranslation('auth');
   const [token, setToken] = useState<string | null>(null);
   const [password, setPassword] = useState('');
   const [nickname, setNickname] = useState('');
@@ -35,8 +38,8 @@ export default function SignupScreen() {
     const pw = passwordSchema.safeParse(password);
     const nn = nicknameSchema.safeParse(nickname);
     const next: Record<string, string> = {};
-    if (!pw.success) next.password = pw.error.issues[0]!.message;
-    if (!nn.success) next.nickname = nn.error.issues[0]!.message;
+    if (!pw.success) next.password = passwordIssueMessage(pw.error.issues[0]!, password);
+    if (!nn.success) next.nickname = nicknameIssueMessage(nn.error.issues[0]!);
     setErrors(next);
     if (Object.keys(next).length || !token) return;
     setBusy(true);
@@ -53,7 +56,7 @@ export default function SignupScreen() {
       await useAuthStore.getState().setSession(tokens);
     } catch (e) {
       if (e instanceof ApiError && e.code === 'NICKNAME_TAKEN') setErrors({ nickname: e.message });
-      else setErrors({ form: e instanceof ApiError ? e.message : '가입하지 못했어요.' });
+      else setErrors({ form: e instanceof ApiError ? e.message : tr('signup.failed') });
     } finally {
       setBusy(false);
     }
@@ -65,28 +68,28 @@ export default function SignupScreen() {
       style={{ flex: 1, backgroundColor: t.colors.background }}
     >
       <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
-        <Text variant="h2">{token ? '거의 다 됐어요' : '이메일로 가입하기'}</Text>
+        <Text variant="h2">{token ? tr('signup.almostDone') : tr('signup.title')}</Text>
         {!token ? (
           <EmailCodeStep purpose="SIGNUP" onVerified={(_e, tk) => setToken(tk)} />
         ) : (
           <View style={{ gap: 14 }}>
             <Field
-              label="비밀번호"
+              label={tr('signup.password')}
               secureTextEntry
               autoComplete="new-password"
               textContentType="newPassword"
               value={password}
               onChangeText={setPassword}
               error={errors.password}
-              hint="8자 이상, 영문·숫자·기호 중 2가지 이상"
+              hint={tr('signup.passwordHint')}
             />
             <Field
-              label="닉네임"
+              label={tr('signup.nickname')}
               autoCapitalize="none"
               value={nickname}
               onChangeText={setNickname}
               error={errors.nickname}
-              hint="2~20자, 다른 회원에게 보이는 이름"
+              hint={tr('signup.nicknameHint')}
               maxLength={20}
             />
             <View style={[styles.row, { minHeight: t.touch }]}>
@@ -94,16 +97,16 @@ export default function SignupScreen() {
                 value={terms}
                 onValueChange={setTerms}
                 trackColor={{ true: t.colors.primary }}
-                accessibilityLabel="이용약관·개인정보처리방침 동의 (필수)"
+                accessibilityLabel={tr('signup.agreeTerms')}
               />
-              <Text style={{ flex: 1 }}>이용약관·개인정보처리방침 동의 (필수)</Text>
+              <Text style={{ flex: 1 }}>{tr('signup.agreeTerms')}</Text>
               <Pressable
                 accessibilityRole="link"
                 onPress={() => router.push({ pathname: '/policies/[slug]', params: { slug: 'terms' } })}
                 hitSlop={8}
               >
                 <Text variant="small" color="muted">
-                  보기
+                  {tr('signup.viewTerms')}
                 </Text>
               </Pressable>
             </View>
@@ -112,9 +115,9 @@ export default function SignupScreen() {
                 value={marketing}
                 onValueChange={setMarketing}
                 trackColor={{ true: t.colors.primary }}
-                accessibilityLabel="이벤트·혜택 알림 받기 (선택)"
+                accessibilityLabel={tr('signup.agreeMarketing')}
               />
-              <Text style={{ flex: 1 }}>이벤트·혜택 알림 받기 (선택)</Text>
+              <Text style={{ flex: 1 }}>{tr('signup.agreeMarketing')}</Text>
             </View>
             {errors.form && (
               <Text variant="small" color="destructive">
@@ -122,7 +125,7 @@ export default function SignupScreen() {
               </Text>
             )}
             <Button
-              title="가입하기"
+              title={tr('signup.submit')}
               size="lg"
               block
               loading={busy}

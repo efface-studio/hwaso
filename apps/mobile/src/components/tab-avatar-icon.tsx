@@ -30,7 +30,7 @@ export function useMyTabIcon({
 }) {
   const t = useTheme();
   // 사진·이름·테마·글자 크기가 바뀌면 다시 캡처한다
-  const signature = [avatarKey, name.slice(0, 1), t.scheme, t.senior].join('|');
+  const signature = [avatarKey, name.slice(0, 1), label, t.scheme, t.senior].join('|');
   const [icon, setIcon] = useState<{ signature: string; icon: Icon } | null>(null);
   const capture = (
     <MyTabCapture

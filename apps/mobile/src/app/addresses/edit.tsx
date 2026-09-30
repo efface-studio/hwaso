@@ -3,6 +3,7 @@ import { addressSchema, type AddressInput } from '@shop/shared';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Alert, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { ADDRESSES_KEY, useAddresses } from '@/components/order/address-list';
 import { Button } from '@/components/ui/button';
@@ -13,12 +14,14 @@ import { searchPostcode } from '@/lib/bridge';
 import { goBack } from '@/lib/nav';
 import { useTheme } from '@/theme';
 
-const MEMO_PRESETS = [
-  '문 앞에 놓아주세요',
-  '경비실에 맡겨주세요',
-  '배송 전 연락 부탁드려요',
-  '파손 주의 — 직접 전달해주세요',
-];
+const MEMO_PRESETS = ['door', 'security', 'callFirst', 'fragile'] as const;
+/** 공용 스키마의 한국어 오류 대신 필드별 번역 문구 */
+const INVALID = {
+  recipient: 'address.invalid.recipient',
+  phone: 'address.invalid.phone',
+  zipCode: 'address.invalid.zipCode',
+  address1: 'address.invalid.address1',
+} as const;
 const empty: AddressInput = {
   recipient: '',
   phone: '',
@@ -33,12 +36,14 @@ const empty: AddressInput = {
 export default function AddressEditScreen() {
   const { id } = useLocalSearchParams<{ id?: string }>();
   const t = useTheme();
+  const { t: tr } = useTranslation(['order', 'common']);
   const qc = useQueryClient();
   const initial = useAddresses().data?.find((a) => a.id === id);
   const [d, setD] = useState<AddressInput>(initial ? { ...initial } : empty);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const set = (patch: Partial<AddressInput>) => setD((prev) => ({ ...prev, ...patch }));
-  const onError = (e: unknown) => Alert.alert(e instanceof ApiError ? e.message : '저장하지 못했어요.');
+  const onError = (e: unknown) =>
+    Alert.alert(e instanceof ApiError ? e.message : tr('common:state.saveFailed'));
   const done = () => {
     void qc.invalidateQueries({ queryKey: ADDRESSES_KEY });
     goBack();
@@ -54,7 +59,14 @@ export default function AddressEditScreen() {
   const submit = () => {
     const r = addressSchema.safeParse(d);
     if (!r.success) {
-      setErrors(Object.fromEntries(r.error.issues.map((i) => [String(i.path[0]), i.message])));
+      setErrors(
+        Object.fromEntries(
+          r.error.issues.map((i) => {
+            const field = String(i.path[0]);
+            return [field, field in INVALID ? tr(INVALID[field as keyof typeof INVALID]) : i.message];
+          }),
+        ),
+      );
       return;
     }
     setErrors({});
@@ -75,9 +87,9 @@ export default function AddressEditScreen() {
       contentContainerStyle={styles.body}
       keyboardShouldPersistTaps="handled"
     >
-      <Stack.Screen options={{ title: id ? '배송지 수정' : '새 배송지' }} />
+      <Stack.Screen options={{ title: id ? tr('address.editTitle') : tr('address.newTitle') }} />
       <Field
-        label="받는 분"
+        label={tr('address.recipient')}
         value={d.recipient}
         onChangeText={(recipient) => set({ recipient })}
         error={errors.recipient}
@@ -85,20 +97,22 @@ export default function AddressEditScreen() {
         autoComplete="name"
       />
       <Field
-        label="휴대폰 번호"
+        label={tr('address.phone')}
         value={d.phone}
         onChangeText={(phone) => set({ phone: phone.replace(/\D/g, '') })}
         error={errors.phone}
         keyboardType="phone-pad"
         autoComplete="tel"
         maxLength={11}
-        placeholder="숫자만 입력"
+        placeholder={tr('address.phonePlaceholder')}
       />
       <View style={{ gap: 6 }}>
-        <Text variant="label">주소</Text>
+        <Text variant="label">{tr('address.address')}</Text>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={d.address1 ? `주소 ${d.address1}, 눌러서 다시 검색` : '주소 검색'}
+          accessibilityLabel={
+            d.address1 ? tr('address.researchA11y', { address: d.address1 }) : tr('address.searchA11y')
+          }
           onPress={() => void search()}
           style={({ pressed }) => [
             styles.search,
@@ -121,11 +135,11 @@ export default function AddressEditScreen() {
             </View>
           ) : (
             <Text color="faint" style={{ flex: 1 }}>
-              우편번호·도로명으로 검색
+              {tr('address.searchPlaceholder')}
             </Text>
           )}
           <Text variant="label" color="primary">
-            {d.address1 ? '변경' : '검색'}
+            {d.address1 ? tr('address.change') : tr('common:action.search')}
           </Text>
         </Pressable>
         {(errors.address1 || errors.zipCode) && (
@@ -135,37 +149,49 @@ export default function AddressEditScreen() {
         )}
       </View>
       <Field
-        label="상세 주소"
+        label={tr('address.detail')}
         value={d.address2}
         onChangeText={(address2) => set({ address2 })}
         maxLength={200}
-        placeholder="동·호수 등"
+        placeholder={tr('address.detailPlaceholder')}
       />
-      <Field label="배송 메모 (선택)" value={d.memo} onChangeText={(memo) => set({ memo })} maxLength={200} />
+      <Field
+        label={tr('address.memo')}
+        value={d.memo}
+        onChangeText={(memo) => set({ memo })}
+        maxLength={200}
+      />
       <View style={styles.presets}>
-        {MEMO_PRESETS.map((m) => (
-          <Button key={m} title={m} size="sm" variant="outline" onPress={() => set({ memo: m })} />
+        {/* 메모는 판매자·택배 기사가 읽으므로 버튼만 번역하고 넣는 글은 한국어로 */}
+        {MEMO_PRESETS.map((key) => (
+          <Button
+            key={key}
+            title={tr(`address.memoPreset.${key}`)}
+            size="sm"
+            variant="outline"
+            onPress={() => set({ memo: tr(`address.memoPreset.${key}`, { lng: 'ko' }) })}
+          />
         ))}
       </View>
       <View style={styles.row}>
-        <Text style={{ flex: 1 }}>기본 배송지로 설정</Text>
+        <Text style={{ flex: 1 }}>{tr('address.setDefault')}</Text>
         <Switch
           value={d.isDefault}
           onValueChange={(isDefault) => set({ isDefault })}
           trackColor={{ true: t.colors.primary }}
-          accessibilityLabel="기본 배송지로 설정"
+          accessibilityLabel={tr('address.setDefault')}
         />
       </View>
-      <Button title="저장" size="lg" loading={save.isPending} onPress={submit} />
+      <Button title={tr('common:action.save')} size="lg" loading={save.isPending} onPress={submit} />
       {id && (
         <Button
-          title="이 배송지 삭제"
+          title={tr('address.delete')}
           variant="ghost"
           loading={remove.isPending}
           onPress={() =>
-            Alert.alert('배송지를 삭제할까요?', undefined, [
-              { text: '취소', style: 'cancel' },
-              { text: '삭제', style: 'destructive', onPress: () => remove.mutate() },
+            Alert.alert(tr('address.deleteTitle'), undefined, [
+              { text: tr('common:action.cancel'), style: 'cancel' },
+              { text: tr('common:action.delete'), style: 'destructive', onPress: () => remove.mutate() },
             ])
           }
         />

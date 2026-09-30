@@ -1,4 +1,5 @@
 import { router, Stack } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useAddresses } from '@/components/order/address-list';
 import { AddressText } from '@/components/order/order-ui';
@@ -11,28 +12,29 @@ import { useTheme } from '@/theme';
 /** 배송지 관리: 눌러서 수정·삭제, 기본 배송지 표시 */
 export default function AddressesScreen() {
   const t = useTheme();
+  const { t: tr } = useTranslation('order');
   const q = useAddresses();
   if (q.isPending) return <Loading variant="plain-list" />;
   return (
     <>
-      <Stack.Screen options={{ title: '배송지 관리' }} />
+      <Stack.Screen options={{ title: tr('address.manageTitle') }} />
       <List
         style={{ backgroundColor: t.colors.background }}
         contentContainerStyle={{ flexGrow: 1, padding: 16, gap: 10 }}
         contentInsetAdjustmentBehavior="automatic"
         data={q.data ?? []}
         keyExtractor={(a) => a.id}
-        ListEmptyComponent={<Empty kind="pin" title="저장된 배송지가 없어요" />}
+        ListEmptyComponent={<Empty kind="pin" title={tr('address.empty')} />}
         renderItem={({ item: a }) => (
           <Pressable
             accessibilityRole="button"
-            accessibilityHint="눌러서 수정"
+            accessibilityHint={tr('address.editHint')}
             onPress={() => router.push({ pathname: '/addresses/edit', params: { id: a.id } })}
             style={[styles.card, { borderColor: a.isDefault ? t.colors.primary : t.colors.border }]}
           >
             {a.isDefault && (
               <Text variant="caption" color="primary">
-                기본 배송지
+                {tr('address.default')}
               </Text>
             )}
             <AddressText a={a} />
@@ -40,7 +42,7 @@ export default function AddressesScreen() {
         )}
         ListFooterComponent={
           <View style={{ marginTop: 8 }}>
-            <Button title="+ 새 배송지 추가" onPress={() => router.push('/addresses/edit')} />
+            <Button title={tr('address.add')} onPress={() => router.push('/addresses/edit')} />
           </View>
         }
       />

@@ -1,27 +1,22 @@
 import { ApiError } from '@shop/api-client';
-import {
-  ORDER_STATUS_LABEL,
-  PAYMENT_METHOD_LABEL,
-  formatPrice,
-  type OrderDetailDto,
-  type PaymentMethod,
-  type ServerToClientEvents,
-} from '@shop/shared';
+import { type OrderDetailDto, type PaymentMethod, type ServerToClientEvents } from '@shop/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as Clipboard from 'expo-clipboard';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { useEffect, useState, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { AppRefreshControl } from '@/components/ui/app-refresh-control';
 import { AddressPicker } from '@/components/order/address-list';
 import {
   AddressText,
   AmountSummary,
+  carrierLabel,
   OrderItemRow,
   OrderStatusBadge,
   OrderSteps,
-  PAY_METHODS,
+  payMethods,
 } from '@/components/order/order-ui';
 import { ReasonSheet, ShipSheet } from '@/components/order/sheets';
 import { Avatar } from '@/components/ui/avatar';
@@ -30,24 +25,27 @@ import { RadioList } from '@/components/ui/radio';
 import { Empty, Loading, RefreshSkeleton } from '@/components/ui/state';
 import { usePullRefresh } from '@/hooks/use-pull-refresh';
 import { Text } from '@/components/ui/text';
+import i18n, { currentLanguage, LOCALE } from '@/i18n';
+import { formatPrice } from '@/i18n/format';
+import { label } from '@/i18n/labels';
 import { api } from '@/lib/api';
 import { BridgeCancelled, payOrder } from '@/lib/bridge';
 import { getRealtime } from '@/lib/realtime';
 import { useTheme } from '@/theme';
 
 const dateTime = (iso: string) =>
-  new Date(iso).toLocaleString('ko-KR', {
+  new Date(iso).toLocaleString(LOCALE[currentLanguage()], {
     month: 'long',
     day: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
   });
 const errMsg = (e: unknown) =>
-  e instanceof ApiError || e instanceof Error ? e.message : '처리하지 못했어요.';
-const confirmThen = (title: string, message: string, label: string, fn: () => void) =>
+  e instanceof ApiError || e instanceof Error ? e.message : i18n.t('common:state.actionFailed');
+const confirmThen = (title: string, message: string, confirmLabel: string, fn: () => void) =>
   Alert.alert(title, message, [
-    { text: '취소', style: 'cancel' },
-    { text: label, onPress: fn },
+    { text: i18n.t('common:action.cancel'), style: 'cancel' },
+    { text: confirmLabel, onPress: fn },
   ]);
 
 function Block({ title, children, action }: { title: string; children: ReactNode; action?: ReactNode }) {
@@ -65,11 +63,11 @@ function Block({ title, children, action }: { title: string; children: ReactNode
   );
 }
 
-function Info({ label, children }: { label: string; children: ReactNode }) {
+function Info({ name, children }: { name: string; children: ReactNode }) {
   return (
     <View style={styles.row}>
       <Text variant="small" color="muted" style={{ width: 88 }}>
-        {label}
+        {name}
       </Text>
       <View style={{ flex: 1 }}>
         {typeof children === 'string' ? <Text variant="small">{children}</Text> : children}
@@ -81,6 +79,7 @@ function Info({ label, children }: { label: string; children: ReactNode }) {
 /** 결제 대기: 배송지·결제 수단을 고르고 결제 (낙찰 주문 포함). 가상계좌 발급 후에는 입금 안내 */
 function PendingPayment({ o, refresh }: { o: OrderDetailDto; refresh: () => void }) {
   const t = useTheme();
+  const { t: tr } = useTranslation(['order', 'common']);
   const [addressId, setAddressId] = useState<string | null>(null);
   const [changeAddress, setChangeAddress] = useState(!o.shippingAddress);
   const [method, setMethod] = useState<PaymentMethod>('CARD');
@@ -95,9 +94,9 @@ function PendingPayment({ o, refresh }: { o: OrderDetailDto; refresh: () => void
     setPaying(true);
     try {
       await payOrder(o.id, method, changeAddress ? (addressId ?? undefined) : undefined);
-      Alert.alert('결제가 완료되었어요');
+      Alert.alert(tr('pay.done'));
     } catch (e) {
-      if (!(e instanceof BridgeCancelled)) Alert.alert('결제하지 못했어요', errMsg(e));
+      if (!(e instanceof BridgeCancelled)) Alert.alert(tr('pay.failed'), errMsg(e));
     } finally {
       setPaying(false);
       refresh();
@@ -107,29 +106,31 @@ function PendingPayment({ o, refresh }: { o: OrderDetailDto; refresh: () => void
   if (va)
     return (
       <View style={[styles.box, { borderColor: t.colors.warning }]}>
-        <Text variant="bodyStrong">입금을 기다리고 있어요</Text>
-        <Info label="입금 계좌">
+        <Text variant="bodyStrong">{tr('pending.waitingDeposit')}</Text>
+        <Info name={tr('pending.depositAccount')}>
           <Pressable
             accessibilityRole="button"
-            accessibilityHint="눌러서 계좌번호 복사"
+            accessibilityHint={tr('pending.copyAccountHint')}
             onPress={() =>
-              void Clipboard.setStringAsync(va.accountNumber).then(() => Alert.alert('계좌번호를 복사했어요'))
+              void Clipboard.setStringAsync(va.accountNumber).then(() =>
+                Alert.alert(tr('pending.accountCopied')),
+              )
             }
           >
             <Text variant="small">
               {va.bank} {va.accountNumber}{' '}
               <Text variant="small" color="primary">
-                복사
+                {tr('common:action.copy')}
               </Text>
             </Text>
           </Pressable>
         </Info>
-        <Info label="예금주">{va.holder}</Info>
-        <Info label="입금 금액">{formatPrice(o.totalAmount)}</Info>
-        <Info label="입금 기한">{dateTime(va.dueDate)}</Info>
+        <Info name={tr('pending.holder')}>{va.holder}</Info>
+        <Info name={tr('pending.depositAmount')}>{formatPrice(o.totalAmount)}</Info>
+        <Info name={tr('pending.depositDue')}>{dateTime(va.dueDate)}</Info>
         {o.payment?.provider === 'mock' && (
           <Button
-            title="모의 입금하기 (개발용)"
+            title={tr('pending.mockDeposit')}
             size="sm"
             variant="outline"
             loading={deposit.isPending}
@@ -141,20 +142,20 @@ function PendingPayment({ o, refresh }: { o: OrderDetailDto; refresh: () => void
 
   return (
     <View style={[styles.box, { borderColor: t.colors.primary }]}>
-      <Text variant="bodyStrong">결제를 완료해주세요</Text>
+      <Text variant="bodyStrong">{tr('pending.completePayment')}</Text>
       {o.paymentDueAt && (
         <Text variant="small" color="muted">
-          {dateTime(o.paymentDueAt)}까지 결제하지 않으면 주문이 자동 취소돼요.
-          {o.source === 'AUCTION' && ' 낙찰 후 미결제는 경매 참여 제한 사유가 됩니다.'}
+          {tr('pending.autoCancel', { date: dateTime(o.paymentDueAt) })}
+          {o.source === 'AUCTION' && tr('pending.auctionPenalty')}
         </Text>
       )}
       <View style={styles.row}>
         <Text variant="label" style={{ flex: 1 }}>
-          배송지
+          {tr('pending.address')}
         </Text>
         {o.shippingAddress && (
           <Button
-            title={changeAddress ? '기존 배송지 사용' : '변경'}
+            title={changeAddress ? tr('pending.useSavedAddress') : tr('pending.change')}
             size="sm"
             variant="ghost"
             onPress={() => setChangeAddress((v) => !v)}
@@ -166,10 +167,10 @@ function PendingPayment({ o, refresh }: { o: OrderDetailDto; refresh: () => void
       ) : (
         o.shippingAddress && <AddressText a={o.shippingAddress} />
       )}
-      <Text variant="label">결제 수단</Text>
-      <RadioList label="결제 수단" value={method} onChange={setMethod} options={PAY_METHODS} />
+      <Text variant="label">{tr('detail.payMethod')}</Text>
+      <RadioList label={tr('detail.payMethod')} value={method} onChange={setMethod} options={payMethods()} />
       <Button
-        title={`${formatPrice(o.totalAmount)} 결제하기`}
+        title={tr('pay.buttonAmount', { amount: formatPrice(o.totalAmount) })}
         size="lg"
         loading={paying}
         disabled={changeAddress && !addressId}
@@ -182,12 +183,13 @@ function PendingPayment({ o, refresh }: { o: OrderDetailDto; refresh: () => void
 type Sheet = 'cancel' | 'refund' | 'reject' | 'ship' | 'reship' | null;
 
 function Actions({ o, refresh }: { o: OrderDetailDto; refresh: (next?: OrderDetailDto) => void }) {
+  const { t: tr } = useTranslation(['order', 'common']);
   const [sheet, setSheet] = useState<Sheet>(null);
   const run = useMutation({
     mutationFn: (fn: () => Promise<OrderDetailDto>) => fn(),
     onSuccess: (next) => {
       setSheet(null);
-      Alert.alert(`${ORDER_STATUS_LABEL[next.status]} 상태가 되었어요`);
+      Alert.alert(tr('detail.statusChanged', { status: label('orderStatus', next.status) }));
       refresh(next);
     },
     onError: (e) => Alert.alert(errMsg(e)),
@@ -205,13 +207,13 @@ function Actions({ o, refresh }: { o: OrderDetailDto; refresh: (next?: OrderDeta
     buttons.push(
       <Button
         key="confirm"
-        title="구매 확정"
+        title={tr('action.confirmPurchase')}
         loading={run.isPending}
         onPress={() =>
           confirmThen(
-            '작품을 잘 받으셨나요?',
-            '구매를 확정하면 판매자에게 대금이 정산되고 환불을 요청할 수 없어요.',
-            '구매 확정',
+            tr('action.confirmTitle'),
+            tr('action.confirmMessage'),
+            tr('action.confirmPurchase'),
             () => run.mutate(() => api.orders.confirm(o.id)),
           )
         }
@@ -219,50 +221,70 @@ function Actions({ o, refresh }: { o: OrderDetailDto; refresh: (next?: OrderDeta
     );
   if (buyer && s === 'DELIVERED')
     buttons.push(
-      <Button key="refund" title="환불 요청" variant="outline" onPress={() => setSheet('refund')} />,
+      <Button
+        key="refund"
+        title={tr('action.requestRefund')}
+        variant="outline"
+        onPress={() => setSheet('refund')}
+      />,
     );
   if (seller && s === 'PAID')
     buttons.push(
       <Button
         key="prepare"
-        title="발송 준비 중으로 변경"
+        title={tr('action.markPreparing')}
         variant="outline"
         loading={run.isPending}
         onPress={() => run.mutate(() => api.orders.prepare(o.id))}
       />,
     );
   if (seller && (s === 'PAID' || s === 'PREPARING'))
-    buttons.push(<Button key="ship" title="발송 처리" onPress={() => setSheet('ship')} />);
+    buttons.push(<Button key="ship" title={tr('action.ship')} onPress={() => setSheet('ship')} />);
   if (seller && s === 'SHIPPED')
     buttons.push(
       <Button
         key="deliver"
-        title="배송 완료 처리"
+        title={tr('action.markDelivered')}
         loading={run.isPending}
         onPress={() => run.mutate(() => api.orders.deliver(o.id))}
       />,
-      <Button key="reship" title="송장 수정" variant="outline" onPress={() => setSheet('reship')} />,
+      <Button
+        key="reship"
+        title={tr('action.editTracking')}
+        variant="outline"
+        onPress={() => setSheet('reship')}
+      />,
     );
   if (seller && s === 'REFUND_REQUESTED')
     buttons.push(
       <Button
         key="approve"
-        title="환불 승인"
+        title={tr('action.approveRefund')}
         loading={run.isPending}
         onPress={() =>
           confirmThen(
-            '환불을 승인할까요?',
-            '결제 금액 전액이 구매자에게 환불되고 작품은 판매 중지 상태가 돼요.',
-            '환불 승인',
+            tr('action.approveTitle'),
+            tr('action.approveMessage'),
+            tr('action.approveRefund'),
             () => run.mutate(() => api.orders.refundApprove(o.id)),
           )
         }
       />,
-      <Button key="reject" title="환불 거절" variant="outline" onPress={() => setSheet('reject')} />,
+      <Button
+        key="reject"
+        title={tr('action.rejectRefund')}
+        variant="outline"
+        onPress={() => setSheet('reject')}
+      />,
     );
   if (canCancel)
     buttons.push(
-      <Button key="cancel" title="주문 취소" variant="ghost" onPress={() => setSheet('cancel')} />,
+      <Button
+        key="cancel"
+        title={tr('action.cancelOrder')}
+        variant="ghost"
+        onPress={() => setSheet('cancel')}
+      />,
     );
   if (!buttons.length) return null;
 
@@ -271,9 +293,9 @@ function Actions({ o, refresh }: { o: OrderDetailDto; refresh: (next?: OrderDeta
       {buttons}
       {sheet === 'cancel' && (
         <ReasonSheet
-          title="주문을 취소할까요?"
-          description={s !== 'PAYMENT_PENDING' ? '결제 금액 전액이 원래 결제 수단으로 환불돼요.' : undefined}
-          confirmLabel="주문 취소"
+          title={tr('action.cancelTitle')}
+          description={s !== 'PAYMENT_PENDING' ? tr('action.cancelRefundNotice') : undefined}
+          confirmLabel={tr('action.cancelOrder')}
           destructive
           pending={run.isPending}
           onClose={() => setSheet(null)}
@@ -282,9 +304,9 @@ function Actions({ o, refresh }: { o: OrderDetailDto; refresh: (next?: OrderDeta
       )}
       {sheet === 'refund' && (
         <ReasonSheet
-          title="환불 요청"
-          description="판매자가 확인 후 승인하면 전액 환불돼요. 파손·상품 정보와 다른 점을 구체적으로 적어주세요."
-          confirmLabel="환불 요청"
+          title={tr('action.requestRefund')}
+          description={tr('action.refundDescription')}
+          confirmLabel={tr('action.requestRefund')}
           minLength={5}
           pending={run.isPending}
           onClose={() => setSheet(null)}
@@ -293,9 +315,9 @@ function Actions({ o, refresh }: { o: OrderDetailDto; refresh: (next?: OrderDeta
       )}
       {sheet === 'reject' && (
         <ReasonSheet
-          title="환불 거절"
-          description="거절 사유가 구매자에게 안내되며, 구매자는 고객센터에 조정을 요청할 수 있어요."
-          confirmLabel="거절"
+          title={tr('action.rejectRefund')}
+          description={tr('action.rejectDescription')}
+          confirmLabel={tr('action.reject')}
           destructive
           pending={run.isPending}
           onClose={() => setSheet(null)}
@@ -321,6 +343,7 @@ function Actions({ o, refresh }: { o: OrderDetailDto; refresh: (next?: OrderDeta
 export default function OrderDetailScreen() {
   const { id, paid } = useLocalSearchParams<{ id: string; paid?: string }>();
   const t = useTheme();
+  const { t: tr } = useTranslation(['order', 'common']);
   const qc = useQueryClient();
   const key = ['order', id];
   const q = useQuery({ queryKey: key, queryFn: () => api.orders.detail(id) });
@@ -332,7 +355,7 @@ export default function OrderDetailScreen() {
   };
 
   useEffect(() => {
-    if (paid) Alert.alert('결제가 완료되었어요');
+    if (paid) Alert.alert(i18n.t('order:pay.done'));
   }, [paid]);
   // 상대방·워커가 상태를 바꾸면 바로 반영
   useEffect(() => {
@@ -345,7 +368,7 @@ export default function OrderDetailScreen() {
 
   if (q.isPending) return <Loading variant="text" />;
   const o = q.data;
-  if (!o) return <Empty kind="notfound" title="주문을 찾을 수 없어요" description={errMsg(q.error)} />;
+  if (!o) return <Empty kind="notfound" title={tr('detail.notFound')} description={errMsg(q.error)} />;
   const counterpart = o.role === 'buyer' ? o.seller : o.buyer;
   const pay = o.payment;
   const openChat = async () => {
@@ -363,19 +386,19 @@ export default function OrderDetailScreen() {
       contentContainerStyle={styles.body}
       refreshControl={<AppRefreshControl refreshing={pull.refreshing} onRefresh={pull.onRefresh} />}
     >
-      <Stack.Screen options={{ title: '주문 상세' }} />
+      <Stack.Screen options={{ title: tr('detail.title') }} />
       <RefreshSkeleton refreshing={pull.refreshing} variant="text">
         <View style={{ gap: 8 }}>
           <View style={styles.row}>
             <OrderStatusBadge status={o.status} />
             {o.source === 'AUCTION' && (
               <Text variant="small" color="muted">
-                경매 낙찰
+                {tr('detail.auctionWon')}
               </Text>
             )}
           </View>
           <Text variant="small" color="muted" selectable>
-            주문번호 {o.orderNumber} · {dateTime(o.createdAt)}
+            {tr('detail.orderNumber', { number: o.orderNumber, date: dateTime(o.createdAt) })}
           </Text>
           <OrderSteps status={o.status} />
         </View>
@@ -383,7 +406,7 @@ export default function OrderDetailScreen() {
         {o.status === 'PAYMENT_PENDING' && o.role === 'buyer' && <PendingPayment o={o} refresh={refresh} />}
         {o.status === 'CANCELLED' && (
           <View style={[styles.box, { borderColor: t.colors.border }]}>
-            <Text variant="bodyStrong">취소된 주문이에요</Text>
+            <Text variant="bodyStrong">{tr('detail.cancelled')}</Text>
             <Text variant="small" color="muted">
               {o.cancelReason}
               {o.cancelledAt && ` · ${dateTime(o.cancelledAt)}`}
@@ -392,30 +415,37 @@ export default function OrderDetailScreen() {
         )}
         {o.status === 'REFUND_REQUESTED' && (
           <View style={[styles.box, { borderColor: t.colors.warning }]}>
-            <Text variant="bodyStrong">환불 요청 중</Text>
+            <Text variant="bodyStrong">{tr('detail.refundRequested')}</Text>
             <Text variant="small">{o.refundReason}</Text>
           </View>
         )}
         {o.autoConfirmAt && o.role === 'buyer' && (
           <Text variant="small" color="muted">
-            {dateTime(o.autoConfirmAt)}에 자동으로 구매 확정돼요.
+            {tr('detail.autoConfirm', { date: dateTime(o.autoConfirmAt) })}
           </Text>
         )}
 
         <Actions o={o} refresh={refresh} />
         {o.status === 'COMPLETED' && o.role !== 'admin' && (
           <Button
-            title={o.reviewed ? '내 후기 보기·수정' : `${counterpart.nickname}님과의 거래 후기 쓰기`}
+            title={
+              o.reviewed ? tr('detail.myReview') : tr('detail.writeReview', { name: counterpart.nickname })
+            }
             variant={o.reviewed ? 'outline' : 'primary'}
             onPress={() => router.push({ pathname: '/orders/[id]/review', params: { id: o.id } })}
           />
         )}
         {o.role === 'buyer' && o.items[0] && (
-          <Button title="판매자와 채팅" variant="outline" size="sm" onPress={() => void openChat()} />
+          <Button
+            title={tr('detail.chatSeller')}
+            variant="outline"
+            size="sm"
+            onPress={() => void openChat()}
+          />
         )}
 
         <Block
-          title="주문 작품"
+          title={tr('detail.items')}
           action={
             <Pressable
               accessibilityRole="link"
@@ -424,7 +454,7 @@ export default function OrderDetailScreen() {
             >
               <Avatar avatarKey={counterpart.avatarKey} name={counterpart.nickname} size={24} />
               <Text variant="small">
-                {o.role === 'buyer' ? '판매자' : '구매자'} {counterpart.nickname}
+                {o.role === 'buyer' ? tr('role.seller') : tr('role.buyer')} {counterpart.nickname}
               </Text>
             </Pressable>
           }
@@ -435,18 +465,18 @@ export default function OrderDetailScreen() {
         </Block>
 
         {o.shipment && (
-          <Block title="배송">
+          <Block title={tr('detail.shipping')}>
             <Text selectable>
-              {o.shipment.carrier} {o.shipment.trackingNumber}
+              {carrierLabel(o.shipment.carrier)} {o.shipment.trackingNumber}
             </Text>
             {o.shipment.shippedAt && (
               <Text variant="small" color="muted">
-                발송 {dateTime(o.shipment.shippedAt)}
+                {tr('detail.shippedAt', { date: dateTime(o.shipment.shippedAt) })}
               </Text>
             )}
             {o.shipment.trackingUrl && (
               <Button
-                title="배송 조회"
+                title={tr('detail.trackShipment')}
                 variant="outline"
                 size="sm"
                 onPress={() => void WebBrowser.openBrowserAsync(o.shipment!.trackingUrl!)}
@@ -456,23 +486,25 @@ export default function OrderDetailScreen() {
         )}
 
         {o.shippingAddress && (
-          <Block title="배송지">
+          <Block title={tr('detail.address')}>
             <AddressText a={o.shippingAddress} />
           </Block>
         )}
 
-        <Block title="결제">
+        <Block title={tr('detail.payment')}>
           <AmountSummary q={o} />
           {pay && pay.status !== 'READY' && pay.status !== 'FAILED' && (
             <View style={{ gap: 4, marginTop: 6 }}>
-              <Info label="결제 수단">{PAYMENT_METHOD_LABEL[pay.method]}</Info>
-              {pay.approvedAt && <Info label="결제 일시">{dateTime(pay.approvedAt)}</Info>}
-              {pay.cancelledAmount > 0 && <Info label="환불">{formatPrice(pay.cancelledAmount)}</Info>}
+              <Info name={tr('detail.payMethod')}>{label('paymentMethod', pay.method)}</Info>
+              {pay.approvedAt && <Info name={tr('detail.paidAt')}>{dateTime(pay.approvedAt)}</Info>}
+              {pay.cancelledAmount > 0 && (
+                <Info name={tr('detail.refund')}>{formatPrice(pay.cancelledAmount)}</Info>
+              )}
             </View>
           )}
           {pay?.receiptUrl && (
             <Button
-              title="영수증 보기"
+              title={tr('detail.receipt')}
               variant="ghost"
               size="sm"
               onPress={() => void WebBrowser.openBrowserAsync(pay.receiptUrl!)}
@@ -480,7 +512,7 @@ export default function OrderDetailScreen() {
           )}
         </Block>
 
-        <Block title="진행 기록">
+        <Block title={tr('detail.history')}>
           {[...o.logs].reverse().map((l, i) => (
             <View key={i} style={styles.row}>
               <Text variant="caption" color="muted" style={{ width: 110 }}>
@@ -488,7 +520,7 @@ export default function OrderDetailScreen() {
               </Text>
               <Text variant="small" style={{ flex: 1 }}>
                 <Text variant="small" style={{ fontWeight: '600' }}>
-                  {ORDER_STATUS_LABEL[l.to]}
+                  {label('orderStatus', l.to)}
                 </Text>
                 {l.reason ? ` · ${l.reason}` : ''}
               </Text>

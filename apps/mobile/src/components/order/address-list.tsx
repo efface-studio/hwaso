@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
@@ -20,6 +21,7 @@ export function AddressPicker({
   onSelect: (id: string) => void;
 }) {
   const t = useTheme();
+  const { t: tr } = useTranslation(['order', 'common']);
   const q = useAddresses();
   const list = q.data ?? [];
   useEffect(() => {
@@ -27,7 +29,7 @@ export function AddressPicker({
   }, [selected, list, onSelect]);
 
   return (
-    <View style={{ gap: 8 }} accessibilityRole="radiogroup" accessibilityLabel="배송지">
+    <View style={{ gap: 8 }} accessibilityRole="radiogroup" accessibilityLabel={tr('address.list')}>
       {list.map((a) => {
         const on = a.id === selected;
         return (
@@ -41,13 +43,13 @@ export function AddressPicker({
             <View style={{ flex: 1 }}>
               {a.isDefault && (
                 <Text variant="caption" color="primary">
-                  기본 배송지
+                  {tr('address.default')}
                 </Text>
               )}
               <AddressText a={a} />
             </View>
             <Button
-              title="수정"
+              title={tr('common:action.edit')}
               size="sm"
               variant="ghost"
               onPress={() => router.push({ pathname: '/addresses/edit', params: { id: a.id } })}
@@ -55,7 +57,7 @@ export function AddressPicker({
           </Pressable>
         );
       })}
-      <Button title="+ 새 배송지 추가" variant="outline" onPress={() => router.push('/addresses/edit')} />
+      <Button title={tr('address.add')} variant="outline" onPress={() => router.push('/addresses/edit')} />
     </View>
   );
 }

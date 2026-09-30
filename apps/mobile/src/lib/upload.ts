@@ -3,13 +3,14 @@ import * as DocumentPicker from 'expo-document-picker';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 import { Alert, Linking, Platform } from 'react-native';
+import i18n from '@/i18n';
 import { api } from './api';
 
 /** 권한이 거절됐을 때 설정으로 안내 (다시 묻지 않는 OS 동작 대응) */
 function denied(what: string) {
-  Alert.alert(`${what} 접근 권한이 필요해요`, '설정에서 화소의 권한을 허용해주세요.', [
-    { text: '취소', style: 'cancel' },
-    { text: '설정 열기', onPress: () => void Linking.openSettings() },
+  Alert.alert(i18n.t('common:upload.permissionTitle', { what }), i18n.t('common:upload.permissionMessage'), [
+    { text: i18n.t('common:action.cancel'), style: 'cancel' },
+    { text: i18n.t('common:action.openSettings'), onPress: () => void Linking.openSettings() },
   ]);
 }
 
@@ -21,7 +22,7 @@ export async function pickImages(
   if (source === 'camera') {
     const perm = await ImagePicker.requestCameraPermissionsAsync();
     if (!perm.granted) {
-      denied('카메라');
+      denied(i18n.t('common:upload.camera'));
       return [];
     }
     const r = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 0.85, exif: false });

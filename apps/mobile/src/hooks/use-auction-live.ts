@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import * as Haptics from 'expo-haptics';
 import { useEffect, useRef, useState } from 'react';
 import { AppState, Platform } from 'react-native';
+import i18n from '@/i18n';
 import { api } from '@/lib/api';
 import { syncServerTime } from '@/lib/clock';
 import { getRealtime } from '@/lib/realtime';
@@ -78,14 +79,17 @@ export function useAuctionLive(auctionId: string) {
       }));
       // 내가 최고가였는데 다른 사람이 올렸다 — 진동으로 알린다
       if (userId && wasMine && p.highestBidderId !== userId) {
-        setNotice({ text: '더 높은 입찰이 들어왔어요', at: Date.now() });
+        setNotice({ text: i18n.t('common:auctionLive.outbid'), at: Date.now() });
         if (Platform.OS !== 'web') void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
       }
     };
     const onExtended: ServerToClientEvents['AUCTION_EXTENDED'] = (p) => {
       if (p.auctionId !== auctionId) return;
       patch((s) => ({ ...s, auction: { ...s.auction, endsAt: p.endsAt } }));
-      setNotice({ text: `마감 직전 입찰로 ${p.extendedBySec}초 연장되었어요`, at: Date.now() });
+      setNotice({
+        text: i18n.t('common:auctionLive.extended', { seconds: p.extendedBySec }),
+        at: Date.now(),
+      });
     };
     const onTimer: ServerToClientEvents['AUCTION_TIMER_UPDATED'] = (p) => {
       if (p.auctionId === auctionId) patch((s) => ({ ...s, auction: { ...s.auction, endsAt: p.endsAt } }));

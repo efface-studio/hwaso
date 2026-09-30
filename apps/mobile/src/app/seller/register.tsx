@@ -3,6 +3,7 @@ import { sellerRegisterSchema } from '@shop/shared';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, Stack } from 'expo-router';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Alert, ScrollView, StyleSheet } from 'react-native';
 import { BankField } from '@/components/bank-picker';
 import { Button } from '@/components/ui/button';
@@ -12,10 +13,12 @@ import { Text } from '@/components/ui/text';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
 import { useTheme } from '@/theme';
+import { schemaMessage } from '@/i18n/validation';
 
 /** 판매자 등록 ↔ 정산 정보 조회·수정 (계좌번호는 서버가 암호화해 보관) */
 export default function SellerRegisterScreen() {
   const t = useTheme();
+  const { t: tr } = useTranslation(['sell', 'common']);
   const qc = useQueryClient();
   const user = useAuthStore((s) => s.user);
   const setUser = useAuthStore((s) => s.setUser);
@@ -48,8 +51,8 @@ export default function SellerRegisterScreen() {
     return (
       <Empty
         kind="lock"
-        title="로그인이 필요해요"
-        action={{ title: '로그인', onPress: () => router.push('/login') }}
+        title={tr('gate.loginRequired')}
+        action={{ title: tr('gate.login'), onPress: () => router.push('/login') }}
       />
     );
   if (providers.isPending || (user.isSeller && info.isPending)) return <Loading variant="text" />;
@@ -69,16 +72,17 @@ export default function SellerRegisterScreen() {
         await api.auth.updateSeller({ ...body, bankAccount: bankAccount || undefined });
         await qc.invalidateQueries({ queryKey: ['seller-info'] });
         setBankAccount('');
-        Alert.alert('정산 정보를 저장했어요');
+        Alert.alert(tr('register.saved'));
       } else {
         const parsed = sellerRegisterSchema.safeParse(body);
-        if (!parsed.success) throw new ApiError(400, 'VALIDATION_FAILED', parsed.error.issues[0]!.message);
+        if (!parsed.success)
+          throw new ApiError(400, 'VALIDATION_FAILED', schemaMessage(parsed.error.issues[0]!.message));
         setUser(await api.auth.registerSeller(parsed.data));
-        Alert.alert('판매자 등록을 마쳤어요', '이제 작품을 등록할 수 있어요.');
+        Alert.alert(tr('register.done'), tr('register.doneMessage'));
         router.replace('/sell/new');
       }
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : '잠시 문제가 발생했어요. 다시 시도해주세요.');
+      setError(e instanceof ApiError ? e.message : tr('error.generic'));
     } finally {
       setPending(false);
     }
@@ -90,39 +94,46 @@ export default function SellerRegisterScreen() {
       contentContainerStyle={styles.body}
       keyboardShouldPersistTaps="handled"
     >
-      <Stack.Screen options={{ title: user.isSeller ? '판매자 정보' : '판매자 등록' }} />
-      <Text color="muted">판매 대금을 받을 계좌를 등록해주세요. 계좌번호는 암호화되어 보관됩니다.</Text>
+      <Stack.Screen
+        options={{ title: user.isSeller ? tr('register.titleSeller') : tr('common:screen.sellerRegister') }}
+      />
+      <Text color="muted">{tr('register.intro')}</Text>
       {needsIdentity ? (
         <Empty
           kind="lock"
-          title="본인인증이 필요해요"
-          description="판매 대금 정산을 위해 먼저 휴대폰 본인인증을 해주세요."
-          action={{ title: '본인인증 하러 가기', onPress: () => router.push('/settings/identity') }}
+          title={tr('register.identityTitle')}
+          description={tr('register.identityDescription')}
+          action={{ title: tr('register.identityAction'), onPress: () => router.push('/settings/identity') }}
         />
       ) : (
         <>
           {info.data && (
             <Text variant="small" color="muted">
-              등록된 계좌: {info.data.bankName} {info.data.bankAccountMasked}
-              {info.data.verified ? ' · 인증 판매자' : ''}
+              {tr('register.current', { bank: info.data.bankName, account: info.data.bankAccountMasked })}
+              {info.data.verified ? tr('register.verified') : ''}
             </Text>
           )}
-          <BankField label="은행" value={bankName} onChange={setBankName} />
+          <BankField label={tr('register.bank')} value={bankName} onChange={setBankName} />
           <Field
-            label="계좌번호"
+            label={tr('register.accountNumber')}
             keyboardType="number-pad"
             autoComplete="off"
             value={bankAccount}
             onChangeText={(v) => setBankAccount(v.replace(/[^\d-]/g, ''))}
-            hint={user.isSeller ? '바꿀 때만 입력하세요.' : '숫자만 입력해주세요.'}
+            hint={user.isSeller ? tr('register.accountHintEdit') : tr('register.accountHint')}
           />
-          <Field label="예금주" value={accountHolder} onChangeText={setAccountHolder} maxLength={50} />
           <Field
-            label="상호 (선택)"
+            label={tr('register.holder')}
+            value={accountHolder}
+            onChangeText={setAccountHolder}
+            maxLength={50}
+          />
+          <Field
+            label={tr('register.business')}
             value={businessName}
             onChangeText={setBusinessName}
             maxLength={100}
-            hint="갤러리·사업자라면 입력해주세요."
+            hint={tr('register.businessHint')}
           />
           {error && (
             <Text variant="small" color="destructive" accessibilityLiveRegion="assertive">
@@ -130,7 +141,7 @@ export default function SellerRegisterScreen() {
             </Text>
           )}
           <Button
-            title={user.isSeller ? '저장' : '판매자 등록'}
+            title={user.isSeller ? tr('common:action.save') : tr('register.submit')}
             size="lg"
             loading={pending}
             onPress={() => void submit()}

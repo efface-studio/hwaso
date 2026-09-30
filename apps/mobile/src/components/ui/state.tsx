@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { useVisibleHeight } from '@/hooks/use-visible-height';
 import { useTheme } from '@/theme';
@@ -16,9 +17,10 @@ export type LoadingVariant = 'list' | 'plain-list' | 'grid' | 'home' | 'detail' 
  */
 export function Loading({ variant = 'list' }: { variant?: LoadingVariant }) {
   const t = useTheme();
+  const { t: tr } = useTranslation('common');
   if (variant === 'spinner')
     return (
-      <View style={styles.center} accessibilityRole="progressbar" accessibilityLabel="불러오는 중">
+      <View style={styles.center} accessibilityRole="progressbar" accessibilityLabel={tr('state.loading')}>
         <ActivityIndicator color={t.colors.muted} />
       </View>
     );

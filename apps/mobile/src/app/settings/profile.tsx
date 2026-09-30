@@ -2,7 +2,9 @@ import { ApiError } from '@shop/api-client';
 import { nicknameSchema } from '@shop/shared';
 import { router, Stack } from 'expo-router';
 import { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import i18n from '@/i18n';
 import { AvatarCropper } from '@/components/avatar-cropper';
 import { Avatar } from '@/components/ui/avatar';
 import { Field } from '@/components/ui/field';
@@ -13,8 +15,9 @@ import { api } from '@/lib/api';
 import { pickImageFile, pickImages, uploadAsset, type LocalImage } from '@/lib/upload';
 import { useAuthStore } from '@/stores/auth';
 import { useTheme } from '@/theme';
+import { nicknameIssueMessage } from '@/components/auth/validation';
 
-const errMsg = (e: unknown) => (e instanceof ApiError ? e.message : '저장하지 못했어요.');
+const errMsg = (e: unknown) => (e instanceof ApiError ? e.message : i18n.t('common:state.saveFailed'));
 
 const AVATAR_SIZE = 104;
 
@@ -24,6 +27,7 @@ const AVATAR_SIZE = 104;
  */
 export default function ProfileScreen() {
   const t = useTheme();
+  const { t: tr } = useTranslation(['my', 'common']);
   const user = useAuthStore((s) => s.user);
   const setUser = useAuthStore((s) => s.setUser);
   const [nickname, setNickname] = useState(user?.profile.nickname ?? '');
@@ -54,21 +58,23 @@ export default function ProfileScreen() {
     try {
       setAvatarKey((await uploadAsset(image)).key);
     } catch (e) {
-      Alert.alert('사진을 올리지 못했어요', errMsg(e));
+      Alert.alert(tr('profile.uploadFailed'), errMsg(e));
     } finally {
       setUploading(false);
     }
   };
   const photoMenu = () =>
-    actionSheet('프로필 사진', [
-      { label: '사진 찍기', onPress: () => void pick('camera') },
-      { label: '앨범에서 선택', onPress: () => void pick('library') },
-      { label: '파일에서 선택', onPress: () => void pick('file') },
-      ...(avatarKey ? [{ label: '사진 삭제', destructive: true, onPress: () => setAvatarKey(null) }] : []),
+    actionSheet(tr('profile.photo.title'), [
+      { label: tr('profile.photo.camera'), onPress: () => void pick('camera') },
+      { label: tr('profile.photo.library'), onPress: () => void pick('library') },
+      { label: tr('profile.photo.file'), onPress: () => void pick('file') },
+      ...(avatarKey
+        ? [{ label: tr('profile.photo.remove'), destructive: true, onPress: () => setAvatarKey(null) }]
+        : []),
     ]);
   const save = async () => {
     const n = nicknameSchema.safeParse(nickname);
-    if (!n.success) return setError(n.error.issues[0]!.message);
+    if (!n.success) return setError(nicknameIssueMessage(n.error.issues[0]!));
     setError(null);
     setPending(true);
     try {
@@ -91,11 +97,11 @@ export default function ProfileScreen() {
     >
       <Stack.Screen
         options={{
-          title: '프로필 수정',
+          title: tr('profile.title'),
           unstable_headerRightItems: () => [
             {
               type: 'button',
-              label: pending ? '저장 중' : '저장',
+              label: pending ? tr('profile.saving') : tr('common:action.save'),
               variant: 'prominent',
               tintColor: t.colors.primary,
               disabled: !dirty || pending || uploading,
@@ -108,8 +114,8 @@ export default function ProfileScreen() {
       <View style={styles.avatarSection}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="프로필 사진 변경"
-          accessibilityHint="사진 찍기, 앨범에서 선택, 삭제"
+          accessibilityLabel={tr('profile.photo.a11yLabel')}
+          accessibilityHint={tr('profile.photo.a11yHint')}
           onPress={photoMenu}
           disabled={uploading}
           style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
@@ -133,7 +139,7 @@ export default function ProfileScreen() {
 
       <View style={styles.form}>
         <Field
-          label="닉네임"
+          label={tr('profile.nickname')}
           counter
           maxLength={20}
           value={nickname}
@@ -144,22 +150,22 @@ export default function ProfileScreen() {
           returnKeyType="next"
         />
         <Field
-          label="소개"
+          label={tr('profile.bio')}
           counter
           multiline
           maxLength={300}
           value={bio}
           onChangeText={setBio}
-          placeholder="좋아하는 작품이나 거래 방식을 소개해 주세요"
-          hint="판매자 프로필에 표시돼요."
+          placeholder={tr('profile.bioPlaceholder')}
+          hint={tr('profile.bioHint')}
           style={styles.bio}
         />
         <Field
-          label="거래 지역"
+          label={tr('profile.region')}
           maxLength={50}
           value={region}
           onChangeText={setRegion}
-          placeholder="예) 서울 종로구"
+          placeholder={tr('profile.regionPlaceholder')}
           returnKeyType="done"
         />
       </View>

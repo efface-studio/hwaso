@@ -1,8 +1,10 @@
 import { POLICIES, POLICY_SLUGS, type PolicySlug } from '@shop/shared';
 import { Stack, useLocalSearchParams } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { Empty } from '@/components/ui/state';
 import { Text } from '@/components/ui/text';
+import { currentLanguage } from '@/i18n';
 import { useTheme } from '@/theme';
 
 const isSlug = (v: string | undefined): v is PolicySlug => POLICY_SLUGS.some((s) => s === v);
@@ -10,9 +12,12 @@ const isSlug = (v: string | undefined): v is PolicySlug => POLICY_SLUGS.some((s)
 /** 약관·정책 (본문은 @shop/shared POLICIES — 웹 페이지와 같은 내용). 로그인 전(가입 화면)에도 연다 */
 export default function PolicyScreen() {
   const t = useTheme();
+  const { t: tr } = useTranslation(['my', 'common']);
   const { slug } = useLocalSearchParams<{ slug: string }>();
-  if (!isSlug(slug)) return <Empty kind="notfound" title="문서를 찾을 수 없어요" />;
+  if (!isSlug(slug)) return <Empty kind="notfound" title={tr('policy.notFound')} />;
   const doc = POLICIES[slug];
+  // 본문은 한국어 원문 그대로 — 제목·시행일 같은 화면 틀만 번역한다
+  const title = tr(`policy.title.${slug}`);
 
   return (
     <ScrollView
@@ -20,12 +25,17 @@ export default function PolicyScreen() {
       contentInsetAdjustmentBehavior="automatic"
       contentContainerStyle={styles.body}
     >
-      <Stack.Screen options={{ title: doc.title }} />
+      <Stack.Screen options={{ title }} />
       <View style={{ gap: 4 }}>
-        <Text variant="h2">{doc.title}</Text>
+        <Text variant="h2">{title}</Text>
         <Text variant="small" color="muted">
-          시행일 {doc.effectiveDate}
+          {tr('policy.effectiveDate', { date: doc.effectiveDate })}
         </Text>
+        {currentLanguage() !== 'ko' && (
+          <Text variant="small" color="muted">
+            {tr('policy.koreanOnly')}
+          </Text>
+        )}
       </View>
       {doc.sections.map((s) => (
         <View key={s.title} style={styles.section}>

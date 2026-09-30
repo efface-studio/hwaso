@@ -1,8 +1,9 @@
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Platform, StyleSheet, TextInput, View } from 'react-native';
 import type { SearchBarCommands } from 'react-native-screens';
-import { SEARCH_PLACEHOLDER, SearchContent, useSearch } from '@/components/search/search-content';
+import { SearchContent, useSearch } from '@/components/search/search-content';
 import { useTheme } from '@/theme';
 
 /** iOS·Android 는 OS 기본 헤더 검색창, 웹 미리보기는 헤더 검색창이 없어 입력창을 직접 그린다 */
@@ -11,6 +12,7 @@ const NATIVE_SEARCH = Platform.OS !== 'web';
 /** 검색 화면 (홈 밖에서 여는 경우 — 홈은 헤더에서 그 자리에서 검색한다): 입력 중 자동완성, 제출하면 결과 그리드 */
 export default function SearchScreen() {
   const t = useTheme();
+  const { t: tr } = useTranslation(['home', 'common']);
   const params = useLocalSearchParams<{ q?: string }>();
   const s = useSearch(params.q ?? '');
   const searchBar = useRef<SearchBarCommands>(null);
@@ -40,11 +42,11 @@ export default function SearchScreen() {
     <View style={{ flex: 1, backgroundColor: t.colors.background }}>
       <Stack.Screen
         options={{
-          title: '검색',
+          title: tr('common:screen.search'),
           headerSearchBarOptions: NATIVE_SEARCH
             ? {
                 ref: searchBar,
-                placeholder: SEARCH_PLACEHOLDER,
+                placeholder: tr('search.placeholder'),
                 autoFocus: !params.q,
                 hideWhenScrolling: false,
                 onChangeText: (e) => s.setText(e.nativeEvent.text),
@@ -58,8 +60,8 @@ export default function SearchScreen() {
         <View style={[styles.bar, { borderColor: t.colors.border }]}>
           <TextInput
             autoFocus={!params.q}
-            accessibilityLabel="작품, 작가 검색"
-            placeholder={SEARCH_PLACEHOLDER}
+            accessibilityLabel={tr('search.inputA11y')}
+            placeholder={tr('search.placeholder')}
             placeholderTextColor={t.colors.faint}
             returnKeyType="search"
             value={s.text}

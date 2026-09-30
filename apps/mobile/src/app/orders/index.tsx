@@ -1,7 +1,8 @@
-import { ORDER_LIST_FILTERS, formatPrice, type OrderListQuery } from '@shop/shared';
+import { ORDER_LIST_FILTERS, type OrderListQuery } from '@shop/shared';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { AppRefreshControl } from '@/components/ui/app-refresh-control';
 import { usePullRefresh } from '@/hooks/use-pull-refresh';
@@ -10,23 +11,18 @@ import { Chips } from '@/components/ui/chips';
 import { Empty, Loading } from '@/components/ui/state';
 import { Text } from '@/components/ui/text';
 import { List } from '@/components/ui/list';
+import { formatDate, formatPrice } from '@/i18n/format';
 import { api } from '@/lib/api';
 import { useTheme } from '@/theme';
 
 type Filter = OrderListQuery['filter'];
-const LABEL: Record<Filter, string> = {
-  all: '전체',
-  pending: '결제 대기',
-  progress: '진행 중',
-  done: '완료',
-  cancelled: '취소',
-};
 
 /** 구매 내역(기본) · 판매 주문(?as=seller) 공용 목록 */
 export default function OrdersScreen() {
   const params = useLocalSearchParams<{ as?: string; filter?: string }>();
   const as = params.as === 'seller' ? 'seller' : 'buyer';
   const t = useTheme();
+  const { t: tr } = useTranslation('order');
   const [filter, setFilter] = useState<Filter>(ORDER_LIST_FILTERS.find((f) => f === params.filter) ?? 'all');
   const q = useInfiniteQuery({
     queryKey: ['orders', as, filter],
@@ -40,13 +36,13 @@ export default function OrdersScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: t.colors.background }}>
-      <Stack.Screen options={{ title: as === 'buyer' ? '구매 내역' : '판매 주문' }} />
+      <Stack.Screen options={{ title: as === 'buyer' ? tr('list.buyerTitle') : tr('list.sellerTitle') }} />
       <View style={{ paddingVertical: 8 }}>
         <Chips
-          label="주문 상태"
+          label={tr('list.statusFilter')}
           value={filter}
           onChange={setFilter}
-          options={ORDER_LIST_FILTERS.map((f) => ({ value: f, label: LABEL[f] }))}
+          options={ORDER_LIST_FILTERS.map((f) => ({ value: f, label: tr(`list.filter.${f}`) }))}
         />
       </View>
       {q.isPending ? (
@@ -64,10 +60,10 @@ export default function OrdersScreen() {
             ) : (
               <Empty
                 kind="box"
-                title={as === 'buyer' ? '주문 내역이 없어요' : '받은 주문이 없어요'}
+                title={as === 'buyer' ? tr('list.buyerEmpty') : tr('list.sellerEmpty')}
                 action={
                   as === 'buyer'
-                    ? { title: '작품 둘러보기', onPress: () => router.push('/search') }
+                    ? { title: tr('list.browse'), onPress: () => router.push('/search') }
                     : undefined
                 }
               />
@@ -82,16 +78,16 @@ export default function OrdersScreen() {
               <View style={styles.head}>
                 <OrderStatusBadge status={o.status} />
                 <Text variant="caption" color="muted" style={{ flex: 1 }}>
-                  {new Date(o.createdAt).toLocaleDateString('ko-KR')} · {o.orderNumber}
+                  {formatDate(o.createdAt)} · {o.orderNumber}
                 </Text>
                 <Text variant="caption" color="muted">
-                  {as === 'buyer' ? '판매자' : '구매자'} {o.counterpart.nickname}
+                  {as === 'buyer' ? tr('role.seller') : tr('role.buyer')} {o.counterpart.nickname}
                 </Text>
               </View>
               <OrderItemRow item={o.items[0]!} compact />
               <View style={styles.head}>
                 <Text variant="small" color="muted" style={{ flex: 1 }}>
-                  {o.items.length > 1 ? `외 ${o.items.length - 1}건` : ''}
+                  {o.items.length > 1 ? tr('list.andMore', { count: o.items.length - 1 }) : ''}
                 </Text>
                 <Text variant="bodyStrong">{formatPrice(o.totalAmount)}</Text>
               </View>

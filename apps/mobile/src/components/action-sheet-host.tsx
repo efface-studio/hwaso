@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { Modal, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from '@/components/ui/text';
@@ -7,6 +8,7 @@ import { useTheme } from '@/theme';
 /** Android·웹 선택 메뉴: 아래에서 올라오는 시트 (선택지 수 제한 없음). 큰 글씨 모드는 움직임 없이 */
 export function ActionSheetHost() {
   const t = useTheme();
+  const { t: tr } = useTranslation('common');
   const insets = useSafeAreaInsets();
   const sheet = useActionSheet((s) => s.sheet);
   const close = () => useActionSheet.setState({ sheet: null });
@@ -14,7 +16,7 @@ export function ActionSheetHost() {
   const row = [styles.row, { minHeight: t.touch, borderColor: t.colors.borderSoft }];
   return (
     <Modal visible transparent animationType={t.senior ? 'none' : 'slide'} onRequestClose={close}>
-      <Pressable accessibilityLabel="닫기" style={styles.backdrop} onPress={close} />
+      <Pressable accessibilityLabel={tr('action.close')} style={styles.backdrop} onPress={close} />
       <View
         accessibilityViewIsModal
         style={[
@@ -39,7 +41,7 @@ export function ActionSheetHost() {
           </Pressable>
         ))}
         <Pressable accessibilityRole="button" onPress={close} style={row}>
-          <Text color="muted">취소</Text>
+          <Text color="muted">{tr('action.cancel')}</Text>
         </Pressable>
       </View>
     </Modal>

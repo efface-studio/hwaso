@@ -1,0 +1,151 @@
+import type ko from '../ko/labels';
+import type { Translation } from '../../types';
+
+const en: Translation<typeof ko> = {
+  saleType: {
+    FIXED: 'Buy now',
+    AUCTION: 'Auction',
+    RESERVATION: 'Pre-order',
+  },
+  condition: {
+    MINT: 'Mint (like new)',
+    EXCELLENT: 'Excellent',
+    GOOD: 'Good',
+    FAIR: 'Fair (signs of use)',
+    POOR: 'Damaged',
+  },
+  auctionStatus: {
+    DRAFT: 'Draft',
+    SCHEDULED: 'Upcoming',
+    LIVE: 'Live',
+    ENDED: 'Ended',
+    SETTLED: 'Settled',
+    CANCELLED: 'Cancelled',
+  },
+  orderStatus: {
+    PENDING: 'Order received',
+    PAYMENT_PENDING: 'Awaiting payment',
+    PAID: 'Paid',
+    PREPARING: 'Preparing shipment',
+    SHIPPED: 'Shipped',
+    DELIVERED: 'Delivered',
+    COMPLETED: 'Completed',
+    CANCELLED: 'Cancelled',
+    REFUND_REQUESTED: 'Refund requested',
+    REFUNDED: 'Refunded',
+  },
+  paymentMethod: {
+    CARD: 'Credit/debit card',
+    EASY_PAY: 'Mobile pay',
+    BANK_TRANSFER: 'Bank transfer',
+    VIRTUAL_ACCOUNT: 'Virtual account deposit',
+  },
+  verification: {
+    UNVERIFIED: 'Seller-provided',
+    PENDING: 'Under review',
+    VERIFIED: 'Verified by Hwaso',
+    REJECTED: 'Review rejected',
+  },
+  reportReason: {
+    FRAUD: 'Fraud',
+    FAKE_ITEM: 'Fake listing',
+    COUNTERFEIT: 'Suspected counterfeit',
+    COPYRIGHT: 'Copyright infringement',
+    INAPPROPRIATE: 'Inappropriate content',
+    OTHER: 'Other',
+  },
+  sort: {
+    relevance: 'Relevance',
+    latest: 'Newest',
+    price_asc: 'Price: low to high',
+    price_desc: 'Price: high to low',
+    popular: 'Popular',
+    ending_soon: 'Ending soon',
+  },
+  notificationType: {
+    BID_PLACED: 'Bid placed',
+    OUTBID: 'Outbid',
+    AUCTION_ENDING: 'Auction ending soon',
+    AUCTION_WON: 'Won',
+    AUCTION_LOST: 'Lost',
+    AUCTION_STARTED: 'Auction started',
+    ITEM_SOLD: 'Sold',
+    PAYMENT_DONE: 'Paid',
+    SHIPPED: 'Shipped',
+    DELIVERED: 'Delivered',
+    INQUIRY_ANSWERED: 'Question answered',
+    PRICE_CHANGED: 'Price changed',
+    FOLLOWED: 'New follower',
+    FAVORITE_ON_SALE: 'Saved item on sale',
+    CHAT_MESSAGE: 'New message',
+    INQUIRY_RECEIVED: 'New question',
+    REVIEW_RECEIVED: 'New review',
+    ORDER_UPDATED: 'Order',
+    FOLLOWING_NEW_ITEM: 'New from following',
+    SYSTEM: 'Notice',
+  },
+  productStatus: {
+    DRAFT: 'Draft',
+    PENDING_REVIEW: 'Under review',
+    ACTIVE: 'On sale',
+    RESERVED: 'In progress',
+    SOLD: 'Sold',
+    SUSPENDED: 'Suspended',
+    HIDDEN: 'Hidden',
+  },
+  provenanceKind: {
+    OWNERSHIP: 'Ownership',
+    EXHIBITION: 'Exhibition',
+    PUBLICATION: 'Publication',
+  },
+  settlementStatus: {
+    PENDING: 'Pending',
+    SCHEDULED: 'Scheduled',
+    PAID: 'Paid out',
+    HELD: 'On hold',
+  },
+  authProvider: {
+    KAKAO: 'Kakao',
+    NAVER: 'Naver',
+    GOOGLE: 'Google',
+    APPLE: 'Apple',
+  },
+  reportTarget: {
+    PRODUCT: 'Artwork',
+    USER: 'User',
+    REVIEW: 'Review',
+    MESSAGE: 'Message',
+  },
+  reportStatus: {
+    OPEN: 'Received',
+    IN_REVIEW: 'Reviewing',
+    RESOLVED: 'Resolved',
+    REJECTED: 'Rejected',
+  },
+  notificationCategory: {
+    auction: {
+      label: 'Auction',
+      description: 'Outbid, ending soon, won or unsold, saved auction started',
+    },
+    trade: {
+      label: 'Orders & shipping',
+      description: 'Payment, shipping, delivery, cancellations & refunds',
+    },
+    chat: {
+      label: 'Chat',
+      description: 'New message',
+    },
+    activity: {
+      label: 'Activity',
+      description:
+        'Questions & answers, reviews, followers, price drops on saved items, new work from sellers you follow',
+    },
+  },
+  bankGroup: {
+    bank: 'Banks',
+    mutual: 'Cooperatives & savings banks',
+    foreign: 'Foreign banks (Korea branches)',
+  },
+};
+
+export default en;

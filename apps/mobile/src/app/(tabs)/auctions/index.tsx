@@ -2,6 +2,7 @@ import type { ProductCardDto } from '@shop/shared';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { useIsFocused } from 'expo-router';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, View } from 'react-native';
 import { AppRefreshControl } from '@/components/ui/app-refresh-control';
 import { usePullRefresh } from '@/hooks/use-pull-refresh';
@@ -14,16 +15,13 @@ import { api } from '@/lib/api';
 import { useTheme } from '@/theme';
 
 type Tab = 'live' | 'scheduled' | 'ended';
-const TABS: { value: Tab; label: string }[] = [
-  { value: 'live', label: '진행 중' },
-  { value: 'scheduled', label: '예정' },
-  { value: 'ended', label: '종료' },
-];
+const TABS: Tab[] = ['live', 'scheduled', 'ended'];
 const LIVE_REFRESH_MS = 30_000;
 
 /** 경매: 진행 중·예정·종료 (웹 /auctions 와 같은 탭). 진행 중은 30초마다 새로 불러온다 */
 export default function AuctionsScreen() {
   const t = useTheme();
+  const { t: tr } = useTranslation('home');
   const g = useGrid();
   const [tab, setTab] = useState<Tab>('live');
   const focused = useIsFocused();
@@ -40,7 +38,6 @@ export default function AuctionsScreen() {
   const pull = usePullRefresh(q.refetch);
   const items: ProductCardDto[] = q.data?.pages.flatMap((p) => p.items) ?? [];
   const total = q.data?.pages[0]?.total;
-  const label = TABS.find((x) => x.value === tab)!.label;
 
   return (
     <List
@@ -56,13 +53,13 @@ export default function AuctionsScreen() {
       ListHeaderComponent={
         <View style={{ paddingTop: 8 }}>
           <Chips
-            label="경매 상태"
+            label={tr('auctions.status')}
             value={tab}
             onChange={setTab}
-            options={TABS.map((x) => ({
-              value: x.value,
-              label: x.value === tab && total != null ? `${x.label} ${total}` : x.label,
-            }))}
+            options={TABS.map((x) => {
+              const label = tr(`auctions.tabs.${x}`);
+              return { value: x, label: x === tab && total != null ? `${label} ${total}` : label };
+            })}
           />
         </View>
       }
@@ -72,7 +69,7 @@ export default function AuctionsScreen() {
         ) : q.isPending ? (
           <Loading variant="grid" />
         ) : (
-          <Empty kind="gavel" title={`${label}인 경매가 없어요`} />
+          <Empty kind="gavel" title={tr(`auctions.empty.${tab}`)} />
         )
       }
       ListFooterComponent={

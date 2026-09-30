@@ -1,13 +1,15 @@
 import { ApiError } from '@shop/api-client';
-import { formatPrice, type CartItemDto } from '@shop/shared';
+import { type CartItemDto } from '@shop/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { router, Stack } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Empty, Loading } from '@/components/ui/state';
 import { Text } from '@/components/ui/text';
+import { formatPrice } from '@/i18n/format';
 import { api } from '@/lib/api';
 import { mediaUrl } from '@/lib/media';
 import { useAuthStore } from '@/stores/auth';
@@ -24,11 +26,13 @@ function groupBySeller(items: CartItemDto[]) {
 /** 장바구니: 판매자별로 따로 주문·배송된다 */
 export default function CartScreen() {
   const t = useTheme();
+  const { t: tr } = useTranslation(['order', 'common']);
   const qc = useQueryClient();
   const me = useAuthStore((s) => s.user);
   const q = useQuery({ queryKey: CART_KEY, queryFn: api.orders.cart, enabled: !!me });
   const refresh = () => void qc.invalidateQueries({ queryKey: CART_KEY });
-  const onError = (e: unknown) => Alert.alert(e instanceof ApiError ? e.message : '처리하지 못했어요.');
+  const onError = (e: unknown) =>
+    Alert.alert(e instanceof ApiError ? e.message : tr('common:state.actionFailed'));
   const setQty = useMutation({
     mutationFn: ({ id, n }: { id: string; n: number }) => api.orders.putCart(id, n),
     onSuccess: refresh,
@@ -44,8 +48,8 @@ export default function CartScreen() {
     return (
       <Empty
         kind="lock"
-        title="로그인이 필요해요"
-        action={{ title: '로그인', onPress: () => router.push('/login') }}
+        title={tr('cart.loginRequired')}
+        action={{ title: tr('cart.login'), onPress: () => router.push('/login') }}
       />
     );
   if (q.isPending) return <Loading variant="list" />;
@@ -53,9 +57,9 @@ export default function CartScreen() {
     return (
       <Empty
         kind="cart"
-        title="장바구니가 비어 있어요"
-        description="마음에 드는 작품을 담아두고 한 번에 주문하세요."
-        action={{ title: '작품 둘러보기', onPress: () => router.push('/search') }}
+        title={tr('cart.empty.title')}
+        description={tr('cart.empty.description')}
+        action={{ title: tr('cart.browse'), onPress: () => router.push('/search') }}
       />
     );
 
@@ -65,9 +69,9 @@ export default function CartScreen() {
       contentContainerStyle={styles.body}
       contentInsetAdjustmentBehavior="automatic"
     >
-      <Stack.Screen options={{ title: '장바구니' }} />
+      <Stack.Screen options={{ title: tr('cart.title') }} />
       <Text variant="small" color="muted">
-        작품은 판매자별로 따로 주문·배송돼요.
+        {tr('cart.perSellerNotice')}
       </Text>
       {groupBySeller(q.data).map((group) => {
         const seller = group[0]!.seller;
@@ -110,7 +114,7 @@ export default function CartScreen() {
                   </Text>
                   {!i.available && (
                     <Text variant="small" color="destructive">
-                      지금은 구매할 수 없어요
+                      {tr('cart.unavailable')}
                     </Text>
                   )}
                   {i.available && i.product.stock > 1 && (
@@ -119,7 +123,7 @@ export default function CartScreen() {
                         title="−"
                         size="sm"
                         variant="outline"
-                        accessibilityLabel="수량 줄이기"
+                        accessibilityLabel={tr('cart.decreaseQty')}
                         disabled={i.quantity <= 1}
                         onPress={() => setQty.mutate({ id: i.productId, n: i.quantity - 1 })}
                       />
@@ -128,7 +132,7 @@ export default function CartScreen() {
                         title="+"
                         size="sm"
                         variant="outline"
-                        accessibilityLabel="수량 늘리기"
+                        accessibilityLabel={tr('cart.increaseQty')}
                         disabled={i.quantity >= i.product.stock}
                         onPress={() => setQty.mutate({ id: i.productId, n: i.quantity + 1 })}
                       />
@@ -137,7 +141,7 @@ export default function CartScreen() {
                 </View>
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel={`${i.product.title} 빼기`}
+                  accessibilityLabel={tr('cart.removeItem', { title: i.product.title })}
                   hitSlop={10}
                   onPress={() => remove.mutate(i.productId)}
                 >
@@ -147,11 +151,14 @@ export default function CartScreen() {
             ))}
             <View style={[styles.foot, { backgroundColor: t.colors.backgroundSoft }]}>
               <Text variant="small">
-                작품 {formatPrice(items)} + 배송비 {shipping ? formatPrice(shipping) : '무료'} ={' '}
+                {tr('cart.summary', {
+                  items: formatPrice(items),
+                  shipping: shipping ? formatPrice(shipping) : tr('amount.free'),
+                })}{' '}
                 <Text variant="bodyStrong">{formatPrice(items + shipping)}</Text>
               </Text>
               <Button
-                title={`${buyable.length}개 주문하기`}
+                title={tr('cart.orderCount', { count: buyable.length })}
                 disabled={!buyable.length}
                 onPress={() =>
                   router.push({

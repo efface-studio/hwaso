@@ -1,15 +1,11 @@
-import {
-  CHAT_ROOM_FILTERS,
-  filterChatRooms,
-  formatRelativeTime,
-  type ChatRoomDto,
-  type ChatRoomFilter,
-} from '@shop/shared';
+import { CHAT_ROOM_FILTERS, filterChatRooms, type ChatRoomDto, type ChatRoomFilter } from '@shop/shared';
 import { useQuery } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { router, Stack } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
+import { localizePreview } from '@/components/chat/localize';
 import { AppRefreshControl } from '@/components/ui/app-refresh-control';
 import { usePullRefresh } from '@/hooks/use-pull-refresh';
 import { Avatar } from '@/components/ui/avatar';
@@ -18,6 +14,7 @@ import { Empty, Loading } from '@/components/ui/state';
 import { Text } from '@/components/ui/text';
 import { Separator } from '@/components/ui/separator';
 import { List } from '@/components/ui/list';
+import { formatRelative } from '@/i18n/format';
 import { api } from '@/lib/api';
 import { mediaUrl } from '@/lib/media';
 import { useAuthStore } from '@/stores/auth';
@@ -25,11 +22,20 @@ import { useTheme } from '@/theme';
 
 function Row({ r }: { r: ChatRoomDto }) {
   const t = useTheme();
+  const { t: tr } = useTranslation('chat');
+  const preview = r.lastMessage && localizePreview(r.lastMessage);
   return (
     <Pressable
       onPress={() => router.push({ pathname: '/chat/[id]', params: { id: r.id } })}
       accessibilityRole="link"
-      accessibilityLabel={`${r.pinned ? '고정됨, ' : ''}${r.counterpart.nickname}, ${r.lastMessage?.preview ?? ''}${r.unreadCount ? `, 안 읽은 메시지 ${r.unreadCount}개` : ''}`}
+      accessibilityLabel={[
+        r.pinned && tr('list.a11yPinned'),
+        r.counterpart.nickname,
+        preview ?? '',
+        r.unreadCount > 0 && tr('list.a11yUnread', { count: r.unreadCount }),
+      ]
+        .filter((part) => part !== false)
+        .join(', ')}
       style={({ pressed }) => [
         styles.row,
         { backgroundColor: pressed ? t.colors.surface2 : 'transparent', minHeight: t.touch + 28 },
@@ -43,22 +49,22 @@ function Row({ r }: { r: ChatRoomDto }) {
           </Text>
           {r.pinned && (
             <Text variant="caption" color="faint">
-              고정
+              {tr('list.pinned')}
             </Text>
           )}
           {r.muted && (
             <Text variant="caption" color="faint">
-              알림 끔
+              {tr('list.muted')}
             </Text>
           )}
           {r.lastMessage && (
             <Text variant="caption" color="faint">
-              {formatRelativeTime(r.lastMessage.createdAt)}
+              {formatRelative(r.lastMessage.createdAt)}
             </Text>
           )}
         </View>
         <Text variant="small" color="muted" numberOfLines={1}>
-          {r.lastMessage?.preview ?? r.product?.title}
+          {preview ?? r.product?.title}
         </Text>
       </View>
       {r.unreadCount > 0 && (
@@ -85,6 +91,7 @@ const Sep = () => <Separator inset={76} soft />;
 
 export default function ChatListScreen() {
   const t = useTheme();
+  const { t: tr } = useTranslation('chat');
   const user = useAuthStore((s) => s.user);
   const [filter, setFilter] = useState<ChatRoomFilter>('all');
   const [query, setQuery] = useState('');
@@ -94,8 +101,8 @@ export default function ChatListScreen() {
     return (
       <Empty
         kind="lock"
-        title="로그인하고 판매자와 대화해보세요"
-        action={{ title: '로그인', onPress: () => router.push('/login') }}
+        title={tr('list.loginTitle')}
+        action={{ title: tr('login'), onPress: () => router.push('/login') }}
       />
     );
   if (q.isPending) return <Loading variant="list" />;
@@ -114,7 +121,7 @@ export default function ChatListScreen() {
           <Stack.Screen
             options={{
               headerSearchBarOptions: {
-                placeholder: '닉네임, 작품명 검색',
+                placeholder: tr('list.searchPlaceholder'),
                 hideWhenScrolling: false,
                 onChangeText: (e) => setQuery(e.nativeEvent.text),
                 onCancelButtonPress: () => setQuery(''),
@@ -124,10 +131,10 @@ export default function ChatListScreen() {
           {all.length > 0 && (
             <View style={{ paddingVertical: 8 }}>
               <Chips
-                label="채팅 필터"
+                label={tr('list.filterLabel')}
                 value={filter}
                 onChange={setFilter}
-                options={CHAT_ROOM_FILTERS.map(([value, label]) => ({ value, label }))}
+                options={CHAT_ROOM_FILTERS.map(([value]) => ({ value, label: tr(`list.filter.${value}`) }))}
               />
             </View>
           )}
@@ -137,13 +144,9 @@ export default function ChatListScreen() {
         pull.refreshing ? (
           <Loading variant="list" />
         ) : all.length ? (
-          <Empty kind="search" title={query.trim() ? '검색 결과가 없어요' : '해당하는 대화가 없어요'} />
+          <Empty kind="search" title={query.trim() ? tr('list.noResults') : tr('list.noMatches')} />
         ) : (
-          <Empty
-            kind="chat"
-            title="아직 대화가 없어요"
-            description="작품 상세에서 판매자에게 궁금한 점을 물어보세요."
-          />
+          <Empty kind="chat" title={tr('list.empty.title')} description={tr('list.empty.description')} />
         )
       }
       refreshControl={<AppRefreshControl refreshing={pull.refreshing} onRefresh={pull.onRefresh} />}

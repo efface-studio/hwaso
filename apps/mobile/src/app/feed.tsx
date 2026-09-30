@@ -1,5 +1,6 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { router, Stack } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { AppRefreshControl } from '@/components/ui/app-refresh-control';
 import { usePullRefresh } from '@/hooks/use-pull-refresh';
 import { ProductCard } from '@/components/product/product-card';
@@ -12,6 +13,7 @@ import { useTheme } from '@/theme';
 /** 팔로잉 새 작품: 팔로우한 판매자가 올린 작품을 최신순으로 */
 export default function FeedScreen() {
   const t = useTheme();
+  const { t: tr } = useTranslation(['home', 'common']);
   const g = useGrid();
   const q = useInfiniteQuery({
     queryKey: ['following-feed'],
@@ -33,16 +35,16 @@ export default function FeedScreen() {
       contentContainerStyle={{ flexGrow: 1, gap: 20, paddingVertical: 16 }}
       refreshControl={<AppRefreshControl refreshing={pull.refreshing} onRefresh={pull.onRefresh} />}
       onEndReached={() => q.hasNextPage && !q.isFetchingNextPage && void q.fetchNextPage()}
-      ListHeaderComponent={<Stack.Screen options={{ title: '팔로잉 새 작품' }} />}
+      ListHeaderComponent={<Stack.Screen options={{ title: tr('common:screen.feed') }} />}
       ListEmptyComponent={
         pull.refreshing ? (
           <Loading variant="grid" />
         ) : (
           <Empty
             kind="people"
-            title="새 작품이 없어요"
-            description="마음에 드는 판매자를 팔로우하면 새 작품을 여기서 볼 수 있어요."
-            action={{ title: '작품 둘러보기', onPress: () => router.push('/search') }}
+            title={tr('feed.empty.title')}
+            description={tr('feed.empty.description')}
+            action={{ title: tr('feed.empty.action'), onPress: () => router.push('/search') }}
           />
         )
       }

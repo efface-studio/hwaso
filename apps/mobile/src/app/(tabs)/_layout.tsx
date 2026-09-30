@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { NativeTabs } from 'expo-router/unstable-native-tabs';
 import { useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useMyTabIcon } from '@/components/tab-avatar-icon';
 import { useTabIcons } from '@/components/tab-icons';
 import { isAdmin } from '@/lib/admin';
@@ -21,12 +22,13 @@ const DOUBLE_TAP_MS = 350;
 
 export default function TabsLayout() {
   const t = useTheme();
+  const { t: tr } = useTranslation();
   const user = useAuthStore((s) => s.user);
   const signedIn = !!user;
   const my = useMyTabIcon({
     avatarKey: user?.profile.avatarKey ?? null,
     name: user?.profile.nickname ?? '',
-    label: '마이',
+    label: tr('tabs.my'),
   });
   const icons = useTabIcons();
   // 관리자 계정은 마이 탭을 빠르게 두 번 누르면 관리자 앱으로 (이미 마이 탭이어도 누를 때마다 tabPress 가 온다)
@@ -54,7 +56,7 @@ export default function TabsLayout() {
       {my.capture}
       <NativeTabs tintColor={t.colors.primary} labelStyle={{ fontSize: t.senior ? 13 : 11 }}>
         <NativeTabs.Trigger name="home">
-          <NativeTabs.Trigger.Label>홈</NativeTabs.Trigger.Label>
+          <NativeTabs.Trigger.Label>{tr('tabs.home')}</NativeTabs.Trigger.Label>
           {icons.home ? (
             <NativeTabs.Trigger.Icon src={icons.home} renderingMode="template" md="home" />
           ) : (
@@ -62,7 +64,7 @@ export default function TabsLayout() {
           )}
         </NativeTabs.Trigger>
         <NativeTabs.Trigger name="auctions">
-          <NativeTabs.Trigger.Label>경매</NativeTabs.Trigger.Label>
+          <NativeTabs.Trigger.Label>{tr('tabs.auctions')}</NativeTabs.Trigger.Label>
           {icons.auctions ? (
             <NativeTabs.Trigger.Icon src={icons.auctions} renderingMode="template" md="gavel" />
           ) : (
@@ -70,7 +72,7 @@ export default function TabsLayout() {
           )}
         </NativeTabs.Trigger>
         <NativeTabs.Trigger name="sell">
-          <NativeTabs.Trigger.Label>판매</NativeTabs.Trigger.Label>
+          <NativeTabs.Trigger.Label>{tr('tabs.sell')}</NativeTabs.Trigger.Label>
           {icons.sell ? (
             <NativeTabs.Trigger.Icon src={icons.sell} renderingMode="template" md="add_box" />
           ) : (
@@ -81,7 +83,7 @@ export default function TabsLayout() {
           )}
         </NativeTabs.Trigger>
         <NativeTabs.Trigger name="chat">
-          <NativeTabs.Trigger.Label>채팅</NativeTabs.Trigger.Label>
+          <NativeTabs.Trigger.Label>{tr('tabs.chat')}</NativeTabs.Trigger.Label>
           {icons.chat ? (
             <NativeTabs.Trigger.Icon src={icons.chat} renderingMode="template" md="chat" />
           ) : (
@@ -95,7 +97,7 @@ export default function TabsLayout() {
           )}
         </NativeTabs.Trigger>
         <NativeTabs.Trigger name="my" role="search" listeners={{ tabPress: onMyPress }}>
-          <NativeTabs.Trigger.Label>마이</NativeTabs.Trigger.Label>
+          <NativeTabs.Trigger.Label>{tr('tabs.my')}</NativeTabs.Trigger.Label>
           {my.icon ? (
             <NativeTabs.Trigger.Icon src={my.icon} renderingMode="original" md="person" />
           ) : icons.my ? (

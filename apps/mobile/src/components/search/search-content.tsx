@@ -1,18 +1,19 @@
-import { SORT_LABEL, type ProductSort } from '@shop/shared';
+import type { ProductSort } from '@shop/shared';
 import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { EMPTY_FILTERS, FilterButton, filterParams, type Filters } from '@/components/product/filter-sheet';
 import { ProductGrid } from '@/components/product/product-grid';
 import { Chips } from '@/components/ui/chips';
 import { Text } from '@/components/ui/text';
+import { label } from '@/i18n/labels';
 import { api } from '@/lib/api';
 import { secure } from '@/lib/secure';
 import { useTheme } from '@/theme';
 
 const RECENT_KEY = 'hwaso.recentSearches';
-export const SEARCH_PLACEHOLDER = '작품, 작가, 시대를 검색해보세요';
 const SORTS: ProductSort[] = ['relevance', 'latest', 'price_asc', 'price_desc', 'popular', 'ending_soon'];
 
 /** 검색 상태: 입력 중 텍스트(text), 제출한 검색어(q), 정렬·필터, 최근 검색어 */
@@ -75,11 +76,12 @@ export type SearchState = ReturnType<typeof useSearch>;
 /** 검색 본문: 입력 중이면 자동완성, 검색어가 있으면 결과 그리드(정렬·필터), 아니면 최근 검색어 */
 export function SearchContent({ s, onSubmit }: { s: SearchState; onSubmit: (value: string) => void }) {
   const t = useTheme();
+  const { t: tr } = useTranslation('home');
   if (s.typing)
     return (
       <ScrollView keyboardShouldPersistTaps="handled" contentInsetAdjustmentBehavior="automatic">
         <Pressable onPress={() => onSubmit(s.text)} style={[styles.item, { minHeight: t.touch }]}>
-          <Text>‘{s.text.trim()}’ 검색</Text>
+          <Text>{tr('search.searchFor', { query: s.text.trim() })}</Text>
         </Pressable>
         {s.suggest.data?.categories.map((c) => (
           <Pressable
@@ -89,7 +91,7 @@ export function SearchContent({ s, onSubmit }: { s: SearchState; onSubmit: (valu
           >
             <Text>{c.name}</Text>
             <Text variant="caption" color="muted">
-              카테고리
+              {tr('search.kind.category')}
             </Text>
           </Pressable>
         ))}
@@ -101,7 +103,7 @@ export function SearchContent({ s, onSubmit }: { s: SearchState; onSubmit: (valu
           >
             <Text>{a.name}</Text>
             <Text variant="caption" color="muted">
-              작가
+              {tr('search.kind.artist')}
             </Text>
           </Pressable>
         ))}
@@ -115,7 +117,7 @@ export function SearchContent({ s, onSubmit }: { s: SearchState; onSubmit: (valu
               {p.title}
             </Text>
             <Text variant="caption" color="muted">
-              작품
+              {tr('search.kind.artwork')}
             </Text>
           </Pressable>
         ))}
@@ -130,10 +132,10 @@ export function SearchContent({ s, onSubmit }: { s: SearchState; onSubmit: (valu
           <View style={styles.tools}>
             <View style={{ flex: 1 }}>
               <Chips
-                label="정렬"
+                label={tr('list.sort')}
                 value={s.sort}
                 onChange={s.setSort}
-                options={SORTS.map((o) => ({ value: o, label: SORT_LABEL[o] }))}
+                options={SORTS.map((o) => ({ value: o, label: label('sort', o) }))}
               />
             </View>
             <FilterButton value={s.filters} onChange={s.setFilters} />
@@ -151,11 +153,11 @@ export function SearchContent({ s, onSubmit }: { s: SearchState; onSubmit: (valu
       {s.recent.length > 0 && (
         <View style={styles.recentHead}>
           <Text variant="label" color="muted">
-            최근 검색어
+            {tr('search.recent')}
           </Text>
           <Pressable onPress={s.clearRecent} accessibilityRole="button">
             <Text variant="label" color="muted">
-              모두 지우기
+              {tr('search.clearRecent')}
             </Text>
           </Pressable>
         </View>

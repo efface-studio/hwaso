@@ -2,6 +2,7 @@ import type { AuthProvider, AuthTokens } from '@shop/shared';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
+import i18n from '@/i18n';
 import { useAuthStore } from '@/stores/auth';
 import { api } from './api';
 import { appDevice } from './device';
@@ -27,7 +28,7 @@ async function authorizeInBrowser(provider: AuthProvider) {
   const error = params.get('error');
   const code = params.get('code');
   const state = params.get('state');
-  if (error || !code || !state) throw new Error(error || '로그인이 취소되었어요.');
+  if (error || !code || !state) throw new Error(error || i18n.t('common:oauth.cancelled'));
   return { code, state, redirectUri: relayUri(provider) };
 }
 
@@ -52,7 +53,7 @@ export async function appleNativeLogin(): Promise<AuthTokens & { isNewUser: bool
         AppleAuthentication.AppleAuthenticationScope.EMAIL,
       ],
     });
-    if (!cred.identityToken) throw new Error('Apple 로그인 정보를 받지 못했어요.');
+    if (!cred.identityToken) throw new Error(i18n.t('common:oauth.appleNoToken'));
     const name = [cred.fullName?.familyName, cred.fullName?.givenName].filter(Boolean).join('') || undefined;
     const tokens = await api.auth.appleNative({
       identityToken: cred.identityToken,

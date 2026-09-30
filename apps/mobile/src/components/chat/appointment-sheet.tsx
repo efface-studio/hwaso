@@ -1,13 +1,15 @@
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { useState } from 'react';
 import { Modal, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
 import { Text } from '@/components/ui/text';
+import { currentLanguage, LOCALE } from '@/i18n';
 import { useTheme } from '@/theme';
 
 const fmt = (d: Date) =>
-  d.toLocaleString('ko-KR', {
+  d.toLocaleString(LOCALE[currentLanguage()], {
     month: 'long',
     day: 'numeric',
     weekday: 'short',
@@ -24,6 +26,8 @@ export function AppointmentSheet({
   onSubmit: (a: { at: string; place: string }) => void;
 }) {
   const t = useTheme();
+  const { t: tr } = useTranslation(['chat', 'common']);
+  const locale = LOCALE[currentLanguage()];
   const [at, setAt] = useState(() => {
     const d = new Date(Date.now() + 86_400_000);
     d.setMinutes(0, 0, 0);
@@ -48,11 +52,11 @@ export function AppointmentSheet({
       >
         <View style={styles.head}>
           <Text variant="h2" accessibilityRole="header">
-            거래 약속
+            {tr('appointment.title')}
           </Text>
-          <Button title="닫기" variant="ghost" size="sm" onPress={onClose} />
+          <Button title={tr('common:action.close')} variant="ghost" size="sm" onPress={onClose} />
         </View>
-        <Text variant="label">날짜와 시간</Text>
+        <Text variant="label">{tr('appointment.dateTime')}</Text>
         {Platform.OS === 'ios' ? (
           <DateTimePicker
             value={at}
@@ -60,19 +64,19 @@ export function AppointmentSheet({
             display="inline"
             minimumDate={new Date()}
             minuteInterval={10}
-            locale="ko-KR"
+            locale={locale}
             accentColor={t.colors.primary}
             onChange={(_, d) => d && setAt(d)}
           />
         ) : Platform.OS === 'android' ? (
           <View style={styles.row}>
             <Button
-              title={at.toLocaleDateString('ko-KR')}
+              title={at.toLocaleDateString(locale)}
               variant="outline"
               onPress={() => openAndroid('date')}
             />
             <Button
-              title={at.toLocaleTimeString('ko-KR', { hour: 'numeric', minute: '2-digit' })}
+              title={at.toLocaleTimeString(locale, { hour: 'numeric', minute: '2-digit' })}
               variant="outline"
               onPress={() => openAndroid('time')}
             />
@@ -80,7 +84,7 @@ export function AppointmentSheet({
         ) : (
           // 웹 미리보기용 대체 입력
           <Field
-            label="일시 (YYYY-MM-DD HH:mm)"
+            label={tr('appointment.webDateTime')}
             defaultValue={at.toISOString().slice(0, 16).replace('T', ' ')}
             onChangeText={(v) => {
               const d = new Date(v.replace(' ', 'T'));
@@ -92,14 +96,14 @@ export function AppointmentSheet({
           {fmt(at)}
         </Text>
         <Field
-          label="장소"
-          placeholder="예) 인사동 쌈지길 정문"
+          label={tr('appointment.place')}
+          placeholder={tr('appointment.placePlaceholder')}
           maxLength={100}
           value={place}
           onChangeText={setPlace}
         />
         <Button
-          title="약속 보내기"
+          title={tr('appointment.submit')}
           disabled={!valid}
           onPress={() => onSubmit({ at: at.toISOString(), place: place.trim() })}
         />

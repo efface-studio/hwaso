@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { Alert } from 'react-native';
 import { usePullRefresh } from '@/hooks/use-pull-refresh';
 import { CardList } from '@/components/product/card-list';
@@ -9,25 +10,26 @@ import { api } from '@/lib/api';
 
 export default function RecentScreen() {
   const qc = useQueryClient();
+  const { t: tr } = useTranslation(['product', 'common']);
   const q = useQuery({ queryKey: ['recent'], queryFn: api.market.recent });
   const pull = usePullRefresh(q.refetch);
   return (
     <>
       <Stack.Screen
         options={{
-          title: '최근 본 작품',
+          title: tr('recent.title'),
           headerLargeTitle: false,
           headerRight: () =>
             q.data?.length ? (
               <Button
-                title="모두 지우기"
+                title={tr('recent.clearAll')}
                 size="sm"
                 variant="ghost"
                 onPress={() =>
-                  Alert.alert('최근 본 작품을 모두 지울까요?', undefined, [
-                    { text: '취소', style: 'cancel' },
+                  Alert.alert(tr('recent.clearConfirm'), undefined, [
+                    { text: tr('common:action.cancel'), style: 'cancel' },
                     {
-                      text: '지우기',
+                      text: tr('recent.clear'),
                       style: 'destructive',
                       onPress: () =>
                         void api.market
@@ -45,7 +47,7 @@ export default function RecentScreen() {
         loading={q.isPending}
         refreshing={pull.refreshing}
         onRefresh={pull.onRefresh}
-        empty={<Empty title="최근 본 작품이 없어요" />}
+        empty={<Empty title={tr('recent.empty')} />}
       />
     </>
   );

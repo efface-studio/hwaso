@@ -1,6 +1,5 @@
 import {
-  ORDER_STATUS_LABEL,
-  formatPrice,
+  CARRIERS,
   type OrderItemDto,
   type OrderQuoteDto,
   type OrderStatus,
@@ -9,21 +8,43 @@ import {
 } from '@shop/shared';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Text } from '@/components/ui/text';
+import i18n from '@/i18n';
+import { formatPrice } from '@/i18n/format';
+import { label } from '@/i18n/labels';
 import { mediaUrl } from '@/lib/media';
 import { useTheme, type Colors } from '@/theme';
 
-export const PAY_METHODS: { value: PaymentMethod; label: string; description?: string }[] = [
-  { value: 'CARD', label: '신용·체크카드', description: '할부·카드사 간편결제 포함' },
-  { value: 'EASY_PAY', label: '토스페이' },
-  { value: 'BANK_TRANSFER', label: '계좌이체', description: '실시간 계좌이체' },
+/** 결제 수단 선택지 — 부를 때의 언어로 만든다 */
+export const payMethods = (): { value: PaymentMethod; label: string; description?: string }[] => [
+  {
+    value: 'CARD',
+    label: i18n.t('order:payMethod.card.label'),
+    description: i18n.t('order:payMethod.card.description'),
+  },
+  { value: 'EASY_PAY', label: i18n.t('order:payMethod.easyPay.label') },
+  {
+    value: 'BANK_TRANSFER',
+    label: i18n.t('order:payMethod.bankTransfer.label'),
+    description: i18n.t('order:payMethod.bankTransfer.description'),
+  },
   {
     value: 'VIRTUAL_ACCOUNT',
-    label: '무통장입금 (가상계좌)',
-    description: '고액 작품에 적합해요. 입금 기한 안에 입금하면 결제가 완료돼요.',
+    label: i18n.t('order:payMethod.virtualAccount.label'),
+    description: i18n.t('order:payMethod.virtualAccount.description'),
   },
 ];
+
+/** CARRIERS 순서와 같은 번역 키 (택배사 이름은 서버에 원문 그대로 저장된다) */
+const CARRIER_KEYS = ['cj', 'epost', 'hanjin', 'lotte', 'logen', 'artShipping', 'handDelivery'] as const;
+
+/** 택배사 이름(원문) → 지금 언어의 표시 이름. 목록에 없는 이름은 그대로 */
+export function carrierLabel(name: string): string {
+  const key = CARRIER_KEYS[CARRIERS.findIndex((c) => c.name === name)];
+  return key ? i18n.t(`order:carrier.${key}`) : name;
+}
 
 const TONE: Record<OrderStatus, keyof Colors> = {
   PENDING: 'muted',
@@ -40,10 +61,11 @@ const TONE: Record<OrderStatus, keyof Colors> = {
 
 export function OrderStatusBadge({ status }: { status: OrderStatus }) {
   const t = useTheme();
+  useTranslation();
   return (
     <View style={[styles.badge, { borderColor: t.colors[TONE[status]] }]}>
       <Text variant="caption" color={TONE[status]} style={{ fontWeight: '600' }}>
-        {ORDER_STATUS_LABEL[status]}
+        {label('orderStatus', status)}
       </Text>
     </View>
   );
@@ -54,18 +76,23 @@ const STEPS: OrderStatus[] = ['PAID', 'PREPARING', 'SHIPPED', 'DELIVERED', 'COMP
 
 export function OrderSteps({ status }: { status: OrderStatus }) {
   const t = useTheme();
+  const { t: tr } = useTranslation('order');
   const at = STEPS.indexOf(status === 'REFUND_REQUESTED' ? 'DELIVERED' : status);
   if (at < 0) return null;
   return (
     <View
       style={styles.steps}
-      accessibilityLabel={`주문 진행 ${at + 1}/${STEPS.length} 단계: ${ORDER_STATUS_LABEL[STEPS[at]!]}`}
+      accessibilityLabel={tr('steps.a11y', {
+        step: at + 1,
+        total: STEPS.length,
+        label: label('orderStatus', STEPS[at]!),
+      })}
     >
       {STEPS.map((s, i) => (
         <View key={s} style={{ flex: 1, gap: 4 }}>
           <View style={[styles.bar, { backgroundColor: i <= at ? t.colors.primary : t.colors.surface2 }]} />
           <Text variant="caption" color={i === at ? 'foreground' : 'muted'} numberOfLines={1}>
-            {ORDER_STATUS_LABEL[s]}
+            {label('orderStatus', s)}
           </Text>
         </View>
       ))}
@@ -76,6 +103,7 @@ export function OrderSteps({ status }: { status: OrderStatus }) {
 /** compact 는 목록 카드 안에서 쓰므로 작품으로 가는 링크를 두지 않는다 (카드 전체가 주문 링크) */
 export function OrderItemRow({ item, compact }: { item: OrderItemDto; compact?: boolean }) {
   const t = useTheme();
+  useTranslation();
   const size = compact ? 56 : 72;
   return (
     <Pressable
@@ -110,21 +138,22 @@ export function AmountSummary({
   q: Pick<OrderQuoteDto, 'itemsAmount' | 'shippingFee' | 'discountAmount' | 'totalAmount'>;
 }) {
   const t = useTheme();
-  const row = (label: string, v: string, strong?: boolean) => (
+  const { t: tr } = useTranslation('order');
+  const row = (name: string, v: string, strong?: boolean) => (
     <View style={styles.amount}>
       <Text variant={strong ? 'bodyStrong' : 'small'} color={strong ? 'foreground' : 'muted'}>
-        {label}
+        {name}
       </Text>
       <Text variant={strong ? 'bodyStrong' : 'small'}>{v}</Text>
     </View>
   );
   return (
     <View style={{ gap: 6 }}>
-      {row('작품 금액', formatPrice(q.itemsAmount))}
-      {row('배송비', q.shippingFee ? formatPrice(q.shippingFee) : '무료')}
-      {q.discountAmount > 0 && row('쿠폰 할인', `−${formatPrice(q.discountAmount)}`)}
+      {row(tr('amount.items'), formatPrice(q.itemsAmount))}
+      {row(tr('amount.shipping'), q.shippingFee ? formatPrice(q.shippingFee) : tr('amount.free'))}
+      {q.discountAmount > 0 && row(tr('amount.coupon'), `−${formatPrice(q.discountAmount)}`)}
       <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: t.colors.border }} />
-      {row('총 결제 금액', formatPrice(q.totalAmount), true)}
+      {row(tr('amount.total'), formatPrice(q.totalAmount), true)}
     </View>
   );
 }

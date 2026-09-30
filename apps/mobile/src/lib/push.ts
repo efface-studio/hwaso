@@ -3,6 +3,7 @@ import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import { router, type Href } from 'expo-router';
 import { Platform } from 'react-native';
+import i18n from '@/i18n';
 import { api } from './api';
 import { secure } from './secure';
 
@@ -30,7 +31,7 @@ export async function registerPush(): Promise<boolean> {
   if (Platform.OS === 'web' || !Device.isDevice) return false;
   if (Platform.OS === 'android')
     await Notifications.setNotificationChannelAsync('default', {
-      name: '기본 알림',
+      name: i18n.t('common:push.channelName'),
       importance: Notifications.AndroidImportance.HIGH,
       lightColor: '#2F7A58',
     });

@@ -3,20 +3,16 @@ import type { AuthProvider } from '@shop/shared';
 import { useQuery } from '@tanstack/react-query';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { useEffect, useState, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Alert, Platform, Pressable, StyleSheet, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { Text } from '@/components/ui/text';
+import { label } from '@/i18n/labels';
 import { api } from '@/lib/api';
 import { OAuthCancelled, appleNativeLogin, socialLogin } from '@/lib/oauth';
 import { useTheme, type Theme } from '@/theme';
 
 const ORDER: AuthProvider[] = ['KAKAO', 'NAVER', 'GOOGLE', 'APPLE'];
-const LABEL: Record<AuthProvider, string> = {
-  KAKAO: '카카오',
-  NAVER: '네이버',
-  GOOGLE: 'Google',
-  APPLE: 'Apple',
-};
 
 /**
  * 각 사 브랜드 가이드의 색·로고 (웹 components/auth/social-buttons.tsx 와 같은 값).
@@ -102,6 +98,8 @@ export function SocialButtons({
   compact?: boolean;
 }) {
   const t = useTheme();
+  const { t: tr } = useTranslation('auth');
+  const continueWith = (p: AuthProvider) => tr('social.continueWith', { provider: label('authProvider', p) });
   const [busy, setBusy] = useState<AuthProvider | null>(null);
   // Expo Go 에는 Sign in with Apple 네이티브 모듈이 없다 (개발 빌드·배포 빌드에서만 동작)
   const [appleModule, setAppleModule] = useState(false);
@@ -121,14 +119,14 @@ export function SocialButtons({
 
   const run = async (p: AuthProvider) => {
     if (!configured(p)) {
-      Alert.alert(`${LABEL[p]} 로그인 준비 중`, 'API 키 설정 후 사용할 수 있어요 (apps/api/.env).');
+      Alert.alert(
+        tr('social.notConfiguredTitle', { provider: label('authProvider', p) }),
+        tr('social.notConfiguredMessage'),
+      );
       return;
     }
     if (p === 'APPLE' && nativeApple && !appleModule) {
-      Alert.alert(
-        'Apple 로그인은 앱 빌드에서만 돼요',
-        'Expo Go 에서는 쓸 수 없어요. 개발 빌드(expo run:ios)로 실행해주세요.',
-      );
+      Alert.alert(tr('social.appleBuildOnlyTitle'), tr('social.appleBuildOnlyMessage'));
       return;
     }
     setBusy(p);
@@ -137,7 +135,7 @@ export function SocialButtons({
       onDone(r.isNewUser);
     } catch (e) {
       if (!(e instanceof OAuthCancelled))
-        Alert.alert('로그인하지 못했어요', e instanceof ApiError ? e.message : (e as Error).message);
+        Alert.alert(tr('social.failedTitle'), e instanceof ApiError ? e.message : (e as Error).message);
     } finally {
       setBusy(null);
     }
@@ -152,7 +150,7 @@ export function SocialButtons({
             <Pressable
               key={p}
               accessibilityRole="button"
-              accessibilityLabel={`${LABEL[p]}로 계속하기`}
+              accessibilityLabel={continueWith(p)}
               disabled={!!busy}
               onPress={() => void run(p)}
               style={({ pressed }) => [
@@ -179,7 +177,7 @@ export function SocialButtons({
           <Pressable
             key={p}
             accessibilityRole="button"
-            accessibilityLabel={`${LABEL[p]}로 계속하기`}
+            accessibilityLabel={continueWith(p)}
             disabled={!!busy}
             onPress={() => void run(p)}
             style={({ pressed }) => [
@@ -195,7 +193,7 @@ export function SocialButtons({
           >
             <View style={styles.icon}>{b.icon}</View>
             <Text variant="bodyStrong" style={{ color: b.fg }}>
-              {busy === p ? '이동 중…' : `${LABEL[p]}로 계속하기`}
+              {busy === p ? tr('social.redirecting') : continueWith(p)}
             </Text>
           </Pressable>
         );

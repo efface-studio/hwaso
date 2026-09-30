@@ -1,5 +1,6 @@
 import { Image } from 'expo-image';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
   Alert,
@@ -14,6 +15,7 @@ import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-na
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { Text } from '@/components/ui/text';
+import i18n from '@/i18n';
 import { cropSquare, normalizeImage, type LocalImage } from '@/lib/upload';
 
 /** 최대 확대 배율 (원 안을 꽉 채운 크기 기준) */
@@ -38,6 +40,7 @@ export function AvatarCropper({
   onDone: (cropped: LocalImage) => void;
 }) {
   const insets = useSafeAreaInsets();
+  const { t: tr } = useTranslation('common');
   const [src, setSrc] = useState<Source | null>(null);
   const [box, setBox] = useState<{ w: number; h: number } | null>(null);
   const [saving, setSaving] = useState(false);
@@ -58,7 +61,7 @@ export function AvatarCropper({
       .then((r) => alive && setSrc(r))
       .catch(() => {
         if (!alive) return;
-        Alert.alert('사진을 열지 못했어요', '다른 사진을 골라주세요.');
+        Alert.alert(i18n.t('common:cropper.openFailed'), i18n.t('common:cropper.openFailedMessage'));
         onCancel();
       });
     scale.value = 1;
@@ -141,7 +144,7 @@ export function AvatarCropper({
     try {
       onDone(await cropSquare(src.uri, rect, Math.min(OUTPUT, rect.width)));
     } catch {
-      Alert.alert('사진을 자르지 못했어요', '잠시 후 다시 시도해주세요.');
+      Alert.alert(tr('cropper.cropFailed'), tr('feedback.tryLater'));
     } finally {
       setSaving(false);
     }
@@ -157,11 +160,11 @@ export function AvatarCropper({
         <View style={[styles.bar, { paddingTop: insets.top + 8 }]}>
           <Pressable accessibilityRole="button" onPress={onCancel} hitSlop={12} disabled={saving}>
             <Text variant="bodyStrong" style={styles.light}>
-              취소
+              {tr('action.cancel')}
             </Text>
           </Pressable>
           <Text variant="h3" style={styles.light}>
-            사진 조정
+            {tr('cropper.title')}
           </Text>
           <Pressable
             accessibilityRole="button"
@@ -173,7 +176,7 @@ export function AvatarCropper({
               <ActivityIndicator color="#fff" />
             ) : (
               <Text variant="bodyStrong" style={[styles.light, !src && { opacity: 0.4 }]}>
-                완료
+                {tr('action.done')}
               </Text>
             )}
           </Pressable>
@@ -193,7 +196,7 @@ export function AvatarCropper({
                     source={src.uri}
                     style={StyleSheet.absoluteFill}
                     contentFit="fill"
-                    accessibilityLabel="자를 사진"
+                    accessibilityLabel={tr('cropper.image')}
                   />
                 </Animated.View>
                 {/* 원 밖은 어둡게 */}
@@ -222,7 +225,7 @@ export function AvatarCropper({
         </View>
 
         <Text variant="small" style={[styles.hint, { paddingBottom: insets.bottom + 20 }]}>
-          두 손가락으로 확대하고, 끌어서 위치를 맞춰요
+          {tr('cropper.hint')}
         </Text>
       </GestureHandlerRootView>
     </Modal>

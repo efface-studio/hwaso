@@ -1,15 +1,21 @@
 import type { ReviewDto, ReviewSummaryDto } from '@shop/shared';
 import { Image } from 'expo-image';
+import { useTranslation } from 'react-i18next';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { Avatar } from '@/components/ui/avatar';
 import { Text } from '@/components/ui/text';
+import { formatDate } from '@/i18n/format';
 import { mediaUrl } from '@/lib/media';
 import { useTheme } from '@/theme';
 
 export function Stars({ value, size = 14 }: { value: number; size?: number }) {
   const t = useTheme();
+  const { t: tr } = useTranslation('product');
   return (
-    <Text accessibilityLabel={`별점 ${value.toFixed(1)}점`} style={{ fontSize: size, lineHeight: size + 4 }}>
+    <Text
+      accessibilityLabel={tr('review.stars', { rating: value.toFixed(1) })}
+      style={{ fontSize: size, lineHeight: size + 4 }}
+    >
       {[1, 2, 3, 4, 5].map((n) => (
         <Text key={n} style={{ color: n <= Math.round(value) ? t.colors.warning : t.colors.border }}>
           ★
@@ -22,6 +28,7 @@ export function Stars({ value, size = 14 }: { value: number; size?: number }) {
 /** 평점 요약: 평균·개수·별점별 막대 */
 export function ReviewSummary({ s }: { s: ReviewSummaryDto }) {
   const t = useTheme();
+  const { t: tr } = useTranslation('product');
   const max = Math.max(1, ...s.distribution);
   return (
     <View style={styles.summary}>
@@ -29,7 +36,7 @@ export function ReviewSummary({ s }: { s: ReviewSummaryDto }) {
         <Text variant="h1">{s.ratingAvg.toFixed(1)}</Text>
         <Stars value={s.ratingAvg} />
         <Text variant="caption" color="muted">
-          후기 {s.ratingCount}
+          {tr('review.count', { count: s.ratingCount })}
         </Text>
       </View>
       <View style={{ flex: 1, gap: 3 }}>
@@ -56,6 +63,7 @@ export function ReviewSummary({ s }: { s: ReviewSummaryDto }) {
 
 export function ReviewItem({ r }: { r: ReviewDto }) {
   const t = useTheme();
+  const { t: tr } = useTranslation('product');
   return (
     <View style={[styles.item, { borderColor: t.colors.borderSoft }]}>
       <View style={styles.row}>
@@ -63,8 +71,8 @@ export function ReviewItem({ r }: { r: ReviewDto }) {
         <View style={{ flex: 1 }}>
           <Text variant="bodyStrong">{r.author.nickname}</Text>
           <Text variant="caption" color="muted">
-            {r.direction === 'BUYER_TO_SELLER' ? '구매자' : '판매자'} ·{' '}
-            {new Date(r.createdAt).toLocaleDateString('ko-KR')}
+            {r.direction === 'BUYER_TO_SELLER' ? tr('review.buyer') : tr('review.seller')} ·{' '}
+            {formatDate(r.createdAt)}
           </Text>
         </View>
         <Stars value={r.rating} />
@@ -78,7 +86,7 @@ export function ReviewItem({ r }: { r: ReviewDto }) {
               source={mediaUrl(img.key, 400)}
               style={{ width: 72, height: 72, borderRadius: 4, backgroundColor: img.dominantColor }}
               contentFit="cover"
-              accessibilityLabel="후기 사진"
+              accessibilityLabel={tr('review.photo')}
             />
           ))}
         </ScrollView>

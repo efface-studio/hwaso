@@ -1,28 +1,19 @@
 import { ApiError } from '@shop/api-client';
-import {
-  NOTIFICATION_CATEGORIES,
-  NOTIFICATION_CATEGORY_LABEL,
-  QUIET_HOURS,
-  type NotificationPrefs,
-} from '@shop/shared';
+import { NOTIFICATION_CATEGORIES, QUIET_HOURS, type NotificationPrefs } from '@shop/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as Notifications from 'expo-notifications';
 import { Stack } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Alert, AppState, Linking, Platform, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { Loading } from '@/components/ui/state';
 import { Text } from '@/components/ui/text';
+import { notificationCategoryLabel } from '@/i18n/labels';
 import { api } from '@/lib/api';
 import { registerPush } from '@/lib/push';
 import { useTheme } from '@/theme';
 
 type PushState = 'granted' | 'denied' | 'undetermined' | 'unsupported';
-const PUSH_TEXT: Record<PushState, string> = {
-  granted: '이 기기로 알림을 받고 있어요.',
-  denied: '기기 설정에서 꺼져 있어요. 켜면 설정 화면으로 이동해요.',
-  undetermined: '앱을 닫아도 입찰·주문·채팅 소식을 알려드려요.',
-  unsupported: '이 환경에서는 푸시 알림을 받을 수 없어요.',
-};
 
 function SwitchRow({
   label,
@@ -62,6 +53,7 @@ function SwitchRow({
 /** 알림 설정: 기기 푸시 권한 + 받을 알림 종류 + 방해 금지 시간 (알림함에는 항상 쌓인다) */
 export default function NotificationSettingsScreen() {
   const t = useTheme();
+  const { t: tr } = useTranslation(['my', 'common']);
   const qc = useQueryClient();
   const [push, setPush] = useState<PushState | null>(null);
   const q = useQuery({ queryKey: ['notification-prefs'], queryFn: api.notifications.prefs });
@@ -69,7 +61,7 @@ export default function NotificationSettingsScreen() {
     mutationFn: (p: NotificationPrefs) => api.notifications.setPrefs(p),
     onMutate: (p) => qc.setQueryData(['notification-prefs'], p),
     onError: (e) => {
-      Alert.alert(e instanceof ApiError ? e.message : '저장하지 못했어요.');
+      Alert.alert(e instanceof ApiError ? e.message : tr('common:state.saveFailed'));
       void qc.invalidateQueries({ queryKey: ['notification-prefs'] });
     },
   });
@@ -103,9 +95,9 @@ export default function NotificationSettingsScreen() {
   };
   // 켜진 알림은 앱에서 끌 수 없어 기기 설정으로 안내한다
   const disable = () =>
-    Alert.alert('기기 알림 끄기', '알림은 기기 설정에서 끌 수 있어요.', [
-      { text: '취소', style: 'cancel' },
-      { text: '설정 열기', onPress: () => void Linking.openSettings() },
+    Alert.alert(tr('notificationSettings.disableTitle'), tr('notificationSettings.disableMessage'), [
+      { text: tr('common:action.cancel'), style: 'cancel' },
+      { text: tr('common:action.openSettings'), onPress: () => void Linking.openSettings() },
     ]);
 
   if (q.isPending) return <Loading variant="plain-list" />;
@@ -113,32 +105,35 @@ export default function NotificationSettingsScreen() {
   if (!data) return null;
   return (
     <ScrollView style={{ backgroundColor: t.colors.background }} contentContainerStyle={styles.body}>
-      <Stack.Screen options={{ title: '알림 설정' }} />
+      <Stack.Screen options={{ title: tr('common:screen.notificationSettings') }} />
       <SwitchRow
-        label="기기 알림"
-        description={push ? PUSH_TEXT[push] : '확인 중…'}
+        label={tr('notificationSettings.device')}
+        description={push ? tr(`notificationSettings.push.${push}`) : tr('notificationSettings.checking')}
         value={push === 'granted'}
         disabled={!push || push === 'unsupported'}
         onChange={(on) => (on ? void enable() : disable())}
       />
       <Text variant="h3" style={{ marginTop: 16 }}>
-        푸시 알림 받기
+        {tr('notificationSettings.pushHeading')}
       </Text>
       <Text variant="small" color="muted">
-        꺼도 알림함에는 그대로 쌓여요. 계정·운영 공지는 끌 수 없어요.
+        {tr('notificationSettings.pushNotice')}
       </Text>
       {NOTIFICATION_CATEGORIES.map((c) => (
         <SwitchRow
           key={c}
-          label={NOTIFICATION_CATEGORY_LABEL[c].label}
-          description={NOTIFICATION_CATEGORY_LABEL[c].description}
+          label={notificationCategoryLabel(c).label}
+          description={notificationCategoryLabel(c).description}
           value={data.push[c]}
           onChange={(v) => save.mutate({ ...data, push: { ...data.push, [c]: v } })}
         />
       ))}
       <SwitchRow
-        label="방해 금지 시간"
-        description={`밤 ${QUIET_HOURS.start}시부터 아침 ${QUIET_HOURS.end}시까지 푸시를 보내지 않아요.`}
+        label={tr('notificationSettings.quietHours')}
+        description={tr('notificationSettings.quietHoursDescription', {
+          start: QUIET_HOURS.start,
+          end: QUIET_HOURS.end,
+        })}
         value={data.quietHours}
         onChange={(v) => save.mutate({ ...data, quietHours: v })}
       />

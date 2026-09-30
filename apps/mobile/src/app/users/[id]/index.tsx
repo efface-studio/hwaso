@@ -3,6 +3,7 @@ import type { PublicProfileDto } from '@shop/shared';
 import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Alert, Pressable, Share, StyleSheet, View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { ReviewItem, ReviewSummary } from '@/components/community/review-item';
@@ -14,6 +15,7 @@ import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { List } from '@/components/ui/list';
 import { useGrid } from '@/hooks/use-grid';
+import i18n, { currentLanguage, LOCALE } from '@/i18n';
 import { actionSheet } from '@/lib/action-sheet';
 import { api } from '@/lib/api';
 import { env } from '@/lib/env';
@@ -21,7 +23,7 @@ import { useAuthStore } from '@/stores/auth';
 import { useTheme } from '@/theme';
 
 type Tab = 'selling' | 'sold' | 'reviews';
-const errMsg = (e: unknown) => (e instanceof ApiError ? e.message : '처리하지 못했어요.');
+const errMsg = (e: unknown) => (e instanceof ApiError ? e.message : i18n.t('common:state.actionFailed'));
 
 function Stat({ label, value, onPress }: { label: string; value: string; onPress?: () => void }) {
   return (
@@ -71,6 +73,7 @@ function Tabs({
   setTab: (t: Tab) => void;
 }) {
   const t = useTheme();
+  const { t: tr } = useTranslation(['my', 'common']);
   const [width, setWidth] = useState(0);
   const x = useSharedValue<number | null>(null);
   const seg = width / TABS.length;
@@ -87,9 +90,9 @@ function Tabs({
   }));
 
   const counts: Record<Tab, [string, number]> = {
-    selling: ['판매 중', u.sellingCount],
-    sold: ['판매 완료', u.soldCount],
-    reviews: ['후기', u.ratingCount],
+    selling: [tr('user.tabs.selling'), u.sellingCount],
+    sold: [tr('user.tabs.sold'), u.soldCount],
+    reviews: [tr('user.tabs.reviews'), u.ratingCount],
   };
   return (
     <View
@@ -137,6 +140,7 @@ function Header({
   setTab: (t: Tab) => void;
 }) {
   const t = useTheme();
+  const { t: tr } = useTranslation(['my', 'common']);
   const qc = useQueryClient();
   const me = useAuthStore((s) => s.user);
   const mine = me?.id === u.id;
@@ -144,7 +148,10 @@ function Header({
   const follows = (type: 'followers' | 'following') =>
     router.push({ pathname: '/users/[id]/follows', params: { id: u.id, type } });
   const joined = new Date(u.joinedAt);
-  const joinedLabel = `${joined.getFullYear()}년 ${joined.getMonth() + 1}월`;
+  const joinedLabel = joined.toLocaleDateString(LOCALE[currentLanguage()], {
+    year: 'numeric',
+    month: 'long',
+  });
 
   const toggleFollow = async () => {
     if (!me) return router.push('/login');
@@ -159,11 +166,14 @@ function Header({
     }
   };
   const share = () =>
-    void Share.share({ message: `${u.nickname} · 화소`, url: `${env.webUrl}/users/${u.id}` });
+    void Share.share({
+      message: tr('user.shareMessage', { name: u.nickname }),
+      url: `${env.webUrl}/users/${u.id}`,
+    });
   const menu = () =>
     actionSheet(u.nickname, [
       {
-        label: '신고하기',
+        label: tr('user.report'),
         destructive: true,
         onPress: () =>
           me
@@ -171,18 +181,18 @@ function Header({
             : router.push('/login'),
       },
       {
-        label: '차단하기',
+        label: tr('user.block'),
         destructive: true,
         onPress: () => {
           if (!me) return router.push('/login');
-          Alert.alert(`${u.nickname}님을 차단할까요?`, '서로 채팅을 주고받을 수 없게 돼요.', [
-            { text: '취소', style: 'cancel' },
+          Alert.alert(tr('user.blockConfirm', { name: u.nickname }), tr('user.blockMessage'), [
+            { text: tr('common:action.cancel'), style: 'cancel' },
             {
-              text: '차단',
+              text: tr('user.blockAction'),
               style: 'destructive',
               onPress: () =>
                 void api.safety.block(u.id).then(
-                  () => Alert.alert('차단했어요', '설정 › 차단한 사용자에서 해제할 수 있어요.'),
+                  () => Alert.alert(tr('user.blockedTitle'), tr('user.blockedMessage')),
                   (e: unknown) => Alert.alert(errMsg(e)),
                 ),
             },
@@ -201,7 +211,7 @@ function Header({
             : () => [
                 {
                   type: 'button',
-                  label: '더보기',
+                  label: tr('user.more'),
                   icon: { type: 'sfSymbol', name: 'ellipsis' },
                   onPress: menu,
                 },
@@ -218,7 +228,7 @@ function Header({
                 styles.verified,
                 { backgroundColor: t.colors.primary, borderColor: t.colors.background },
               ]}
-              accessibilityLabel="인증 판매자"
+              accessibilityLabel={tr('user.verifiedSeller')}
             >
               <Icon ios="checkmark" android="check" color="primaryForeground" size={13} />
             </View>
@@ -229,7 +239,13 @@ function Header({
             {u.nickname}
           </Text>
           <Text variant="small" color="muted">
-            {[u.verified ? '인증 판매자' : null, u.region, `${joinedLabel} 가입`].filter(Boolean).join(' · ')}
+            {[
+              u.verified ? tr('user.verifiedSeller') : null,
+              u.region,
+              tr('user.joined', { date: joinedLabel }),
+            ]
+              .filter(Boolean)
+              .join(' · ')}
           </Text>
         </View>
         {u.bio ? (
@@ -239,35 +255,43 @@ function Header({
         ) : mine ? (
           <Pressable onPress={() => router.push('/settings/profile')} accessibilityRole="button">
             <Text variant="small" color="primary">
-              + 소개를 적어 판매자 프로필을 채워보세요
+              {tr('user.bioPrompt')}
             </Text>
           </Pressable>
         ) : null}
       </View>
 
       <View style={[styles.stats, { borderColor: t.colors.borderSoft }]}>
-        <Stat label="거래" value={String(u.tradeCount)} />
+        <Stat label={tr('people.trades')} value={String(u.tradeCount)} />
         <Stat
-          label={`후기 ${u.ratingCount}`}
+          label={tr('user.reviewsCount', { count: u.ratingCount })}
           value={u.ratingCount ? `★ ${u.ratingAvg.toFixed(1)}` : '–'}
           onPress={() => setTab('reviews')}
         />
-        <Stat label="팔로워" value={String(u.followerCount)} onPress={() => follows('followers')} />
-        <Stat label="팔로잉" value={String(u.followingCount)} onPress={() => follows('following')} />
+        <Stat
+          label={tr('people.followers')}
+          value={String(u.followerCount)}
+          onPress={() => follows('followers')}
+        />
+        <Stat
+          label={tr('people.following')}
+          value={String(u.followingCount)}
+          onPress={() => follows('following')}
+        />
       </View>
 
       <View style={styles.actions}>
         <View style={{ flex: 1 }}>
           {mine ? (
             <Button
-              title="프로필 수정"
+              title={tr('user.editProfile')}
               variant="outline"
               block
               onPress={() => router.push('/settings/profile')}
             />
           ) : (
             <Button
-              title={u.isFollowing ? '팔로잉' : '팔로우'}
+              title={u.isFollowing ? tr('people.following') : tr('people.follow')}
               variant={u.isFollowing ? 'outline' : 'primary'}
               block
               loading={busy}
@@ -276,7 +300,7 @@ function Header({
           )}
         </View>
         <Button
-          title="공유"
+          title={tr('common:action.share')}
           variant="outline"
           icon={<Icon ios="square.and.arrow.up" android="share" size={16} />}
           onPress={share}
@@ -285,11 +309,17 @@ function Header({
 
       {u.isSeller && (
         <View style={[styles.info, { backgroundColor: t.colors.surface2, borderRadius: t.radius.md }]}>
-          <Text variant="label">판매자 정보</Text>
-          <InfoRow label="판매자 인증" value={u.verified ? '완료' : '미인증'} />
-          <InfoRow label="판매 중 · 판매 완료" value={`${u.sellingCount} · ${u.soldCount}`} />
-          <InfoRow label="거래 횟수" value={`${u.tradeCount}회`} />
-          <InfoRow label="가입" value={joinedLabel} />
+          <Text variant="label">{tr('user.sellerInfo')}</Text>
+          <InfoRow
+            label={tr('user.sellerVerification')}
+            value={u.verified ? tr('user.verified') : tr('user.unverified')}
+          />
+          <InfoRow label={tr('user.sellingSold')} value={`${u.sellingCount} · ${u.soldCount}`} />
+          <InfoRow
+            label={tr('user.tradeCount')}
+            value={tr('user.tradeCountValue', { count: u.tradeCount })}
+          />
+          <InfoRow label={tr('user.joinedLabel')} value={joinedLabel} />
         </View>
       )}
 
@@ -302,6 +332,7 @@ function Header({
 export default function UserScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const t = useTheme();
+  const { t: tr } = useTranslation(['my', 'common']);
   const g = useGrid();
   const [tab, setTabState] = useState<Tab>('selling');
   // 탭 밑줄이 직전 탭에서 출발하도록 기억한다
@@ -330,7 +361,7 @@ export default function UserScreen() {
   });
   if (profile.isPending) return <Loading variant="text" />;
   const u = profile.data;
-  if (!u) return <Empty kind="notfound" title="사용자를 찾을 수 없어요" />;
+  if (!u) return <Empty kind="notfound" title={tr('user.notFound')} />;
   const header = <Header u={u} tab={tab} from={prevTab.current} setTab={setTab} />;
 
   if (tab === 'reviews')
@@ -351,11 +382,7 @@ export default function UserScreen() {
           </>
         }
         ListEmptyComponent={
-          reviews.isPending ? (
-            <Loading variant="list" />
-          ) : (
-            <Empty kind="doc" title="아직 거래 후기가 없어요" />
-          )
+          reviews.isPending ? <Loading variant="list" /> : <Empty kind="doc" title={tr('user.noReviews')} />
         }
         contentContainerStyle={{ flexGrow: 1, paddingBottom: 32 }}
       />
@@ -376,7 +403,7 @@ export default function UserScreen() {
         items.isPending ? (
           <Loading variant="grid" />
         ) : (
-          <Empty title={tab === 'selling' ? '판매 중인 작품이 없어요' : '판매 완료된 작품이 없어요'} />
+          <Empty title={tab === 'selling' ? tr('user.noSelling') : tr('user.noSold')} />
         )
       }
       ListHeaderComponent={header}

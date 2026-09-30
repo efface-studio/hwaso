@@ -21,6 +21,7 @@ import Animated, {
   type SharedValue,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { SocialButtons } from '@/components/auth/social-buttons';
 import { HwasoMark } from '@/components/brand/hwaso-mark';
 import { Button } from '@/components/ui/button';
@@ -66,6 +67,7 @@ const MAX_WIDTH = 420;
  */
 export default function LoginScreen() {
   const t = useTheme();
+  const { t: tr } = useTranslation('auth');
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
   const compact = height - insets.top - insets.bottom < COMPACT_HEIGHT;
@@ -87,7 +89,7 @@ export default function LoginScreen() {
       const tokens = await api.auth.login({ email: email.trim(), password, device: appDevice() });
       await useAuthStore.getState().setSession(tokens);
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : '로그인하지 못했어요. 네트워크를 확인해주세요.');
+      setError(e instanceof ApiError ? e.message : tr('login.failed'));
     } finally {
       setBusy(false);
     }
@@ -116,14 +118,14 @@ export default function LoginScreen() {
             <HwasoMark size={compact ? 52 : 64} />
             <View style={styles.titleRow}>
               <Text variant="h1" style={compact ? styles.titleCompact : styles.title}>
-                화소
+                {tr('login.brand')}
               </Text>
               <Text variant="small" color="muted">
                 畫所
               </Text>
             </View>
             <Text variant={compact ? 'small' : 'body'} color="muted">
-              작품과 사람이 만나는 곳
+              {tr('login.tagline')}
             </Text>
           </View>
         </Rise>
@@ -131,7 +133,7 @@ export default function LoginScreen() {
         <Rise v={form}>
           <View style={styles.form}>
             <Field
-              label="이메일"
+              label={tr('login.email')}
               autoCapitalize="none"
               autoComplete="email"
               keyboardType="email-address"
@@ -143,7 +145,7 @@ export default function LoginScreen() {
             />
             <Field
               ref={passwordRef}
-              label="비밀번호"
+              label={tr('login.password')}
               secureTextEntry
               autoComplete="current-password"
               textContentType="password"
@@ -154,7 +156,7 @@ export default function LoginScreen() {
               error={error}
             />
             <Button
-              title="로그인"
+              title={tr('login.submit')}
               size="lg"
               block
               loading={busy}
@@ -164,13 +166,13 @@ export default function LoginScreen() {
             <View style={styles.links}>
               <Pressable accessibilityRole="link" hitSlop={8} onPress={() => router.push('/forgot-password')}>
                 <Text variant="small" color="muted">
-                  비밀번호 찾기
+                  {tr('login.forgotPassword')}
                 </Text>
               </Pressable>
               <View style={[styles.dot, { backgroundColor: t.colors.borderStrong }]} />
               <Pressable accessibilityRole="link" hitSlop={8} onPress={() => router.push('/signup')}>
                 <Text variant="small" color="primary">
-                  이메일로 가입하기
+                  {tr('login.signupWithEmail')}
                 </Text>
               </Pressable>
             </View>
@@ -182,7 +184,7 @@ export default function LoginScreen() {
             <View style={styles.dividerRow}>
               <View style={[styles.line, { backgroundColor: t.colors.border }]} />
               <Text variant="caption" color="faint">
-                간편 로그인
+                {tr('login.socialDivider')}
               </Text>
               <View style={[styles.line, { backgroundColor: t.colors.border }]} />
             </View>

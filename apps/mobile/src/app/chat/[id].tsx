@@ -3,9 +3,6 @@ import {
   CHAT_IMAGES_MAX,
   CHAT_TRADE_STATUSES,
   chatPreview,
-  presenceLabel,
-  formatPrice,
-  PRODUCT_STATUS_LABEL,
   type ChatMessageDto,
   type ChatRoomDto,
   type Page,
@@ -27,15 +24,20 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppointmentSheet } from '@/components/chat/appointment-sheet';
 import { Bubble, type PendingMessage } from '@/components/chat/bubble';
+import { localizePreview, presenceText } from '@/components/chat/localize';
 import { PhrasesSheet } from '@/components/chat/phrases-sheet';
 import { Button } from '@/components/ui/button';
 import { Empty, Loading } from '@/components/ui/state';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
+import i18n from '@/i18n';
+import { formatPrice } from '@/i18n/format';
+import { label } from '@/i18n/labels';
 import { actionSheet } from '@/lib/action-sheet';
 import { api } from '@/lib/api';
 import { goBack } from '@/lib/nav';
@@ -46,12 +48,13 @@ import { useAuthStore } from '@/stores/auth';
 import { useTheme } from '@/theme';
 
 type Pages = InfiniteData<Page<ChatMessageDto>>;
-const errMsg = (e: unknown) => (e instanceof ApiError ? e.message : '처리하지 못했어요.');
+const errMsg = (e: unknown) => (e instanceof ApiError ? e.message : i18n.t('common:state.actionFailed'));
 const uuid = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
 
 export default function ChatRoomScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const t = useTheme();
+  const { t: tr } = useTranslation(['chat', 'common']);
   const insets = useSafeAreaInsets();
   const qc = useQueryClient();
   const me = useAuthStore((s) => s.user);
@@ -180,14 +183,14 @@ export default function ChatRoomScreen() {
     return (
       <Empty
         kind="lock"
-        title="로그인이 필요해요"
-        action={{ title: '로그인', onPress: () => router.push('/login') }}
+        title={tr('room.loginRequired')}
+        action={{ title: tr('login'), onPress: () => router.push('/login') }}
       />
     );
   if (room.isPending || msgs.isPending) return <Loading variant="plain-list" />;
   const r = room.data;
-  if (!r) return <Empty kind="notfound" title="대화를 찾을 수 없어요" />;
-  const presence = presenceLabel(r.counterpart);
+  if (!r) return <Empty kind="notfound" title={tr('room.notFound')} />;
+  const presence = presenceText(r.counterpart);
 
   const deliver = (m: PendingMessage, input: SendMessageInput) =>
     api.chat
@@ -201,11 +204,11 @@ export default function ChatRoomScreen() {
         setPending((ps) =>
           ps.map((x) => (x.clientId === m.clientId ? { ...x, pending: 'failed', retry: input } : x)),
         );
-        Alert.alert('보내지 못했어요', errMsg(e));
+        Alert.alert(tr('errors.sendFailed'), errMsg(e));
       });
 
   const replyPreview = (m: PendingMessage) => chatPreview({ ...m, imageCount: m.images.length });
-  const authorOf = (senderId: string) => (senderId === me.id ? '나' : r.counterpart.nickname);
+  const authorOf = (senderId: string) => (senderId === me.id ? tr('room.me') : r.counterpart.nickname);
 
   const send = (input: Omit<SendMessageInput, 'clientId'>, preview?: Partial<ChatMessageDto>) => {
     const clientId = uuid();
@@ -248,14 +251,19 @@ export default function ChatRoomScreen() {
   };
 
   const attach = () =>
-    actionSheet('보내기', [
-      { label: '사진 찍기', onPress: () => void sendPhoto('camera') },
-      { label: '앨범에서 선택', onPress: () => void sendPhoto('library') },
+    actionSheet(tr('attach.title'), [
+      { label: tr('attach.camera'), onPress: () => void sendPhoto('camera') },
+      { label: tr('attach.library'), onPress: () => void sendPhoto('library') },
       ...(r.product
-        ? [{ label: '이 작품 보내기', onPress: () => send({ kind: 'PRODUCT', productId: r.product!.id }) }]
+        ? [
+            {
+              label: tr('attach.product'),
+              onPress: () => send({ kind: 'PRODUCT', productId: r.product!.id }),
+            },
+          ]
         : []),
-      { label: '자주 쓰는 문구', onPress: () => setPhrases(true) },
-      { label: '거래 약속 잡기', onPress: () => setAppointment(true) },
+      { label: tr('attach.phrases'), onPress: () => setPhrases(true) },
+      { label: tr('attach.appointment'), onPress: () => setAppointment(true) },
     ]);
 
   const sendPhoto = async (source: 'camera' | 'library') => {
@@ -266,19 +274,19 @@ export default function ChatRoomScreen() {
       const imgs = await Promise.all(assets.slice(0, CHAT_IMAGES_MAX).map((a) => uploadAsset(a)));
       send({ kind: 'IMAGE', imageKeys: imgs.map((i) => i.key) }, { image: imgs[0], images: imgs });
     } catch (e) {
-      Alert.alert('사진을 올리지 못했어요', errMsg(e));
+      Alert.alert(tr('errors.uploadFailed'), errMsg(e));
     }
   };
 
   const menu = () =>
     actionSheet(r.counterpart.nickname, [
       {
-        label: r.muted ? '알림 켜기' : '알림 끄기',
+        label: r.muted ? tr('menu.unmute') : tr('menu.mute'),
         onPress: () =>
           void api.chat.mute(id, !r.muted).then(() => qc.invalidateQueries({ queryKey: roomKey })),
       },
       {
-        label: r.pinned ? '상단 고정 해제' : '상단 고정',
+        label: r.pinned ? tr('menu.unpin') : tr('menu.pin'),
         onPress: () =>
           void api.chat.pin(id, !r.pinned).then(() => {
             void qc.invalidateQueries({ queryKey: roomKey });
@@ -286,25 +294,25 @@ export default function ChatRoomScreen() {
           }),
       },
       {
-        label: '신고하기',
+        label: tr('menu.report'),
         onPress: () => router.push({ pathname: '/report', params: { type: 'USER', id: r.counterpart.id } }),
       },
       r.blocked
         ? {
-            label: '차단 해제',
+            label: tr('menu.unblock'),
             onPress: () =>
               void api.safety
                 .unblock(r.counterpart.id)
                 .then(() => qc.invalidateQueries({ queryKey: roomKey })),
           }
         : {
-            label: '차단하기',
+            label: tr('menu.block'),
             destructive: true,
             onPress: () =>
-              Alert.alert(`${r.counterpart.nickname}님을 차단할까요?`, '서로 메시지를 보낼 수 없게 돼요.', [
-                { text: '취소', style: 'cancel' },
+              Alert.alert(tr('block.title', { name: r.counterpart.nickname }), tr('block.message'), [
+                { text: tr('common:action.cancel'), style: 'cancel' },
                 {
-                  text: '차단',
+                  text: tr('block.confirm'),
                   style: 'destructive',
                   onPress: () =>
                     void api.safety
@@ -314,13 +322,13 @@ export default function ChatRoomScreen() {
               ]),
           },
       {
-        label: '채팅방 나가기',
+        label: tr('menu.leave'),
         destructive: true,
         onPress: () =>
-          Alert.alert('채팅방을 나갈까요?', '대화 기록이 목록에서 사라져요.', [
-            { text: '취소', style: 'cancel' },
+          Alert.alert(tr('leave.title'), tr('leave.message'), [
+            { text: tr('common:action.cancel'), style: 'cancel' },
             {
-              text: '나가기',
+              text: tr('leave.confirm'),
               style: 'destructive',
               onPress: () =>
                 void api.chat.leave(id).then(() => {
@@ -335,17 +343,17 @@ export default function ChatRoomScreen() {
   const onLongPress = (m: PendingMessage) => {
     if (m.pending || m.deleted) return;
     const reply = {
-      label: '답장',
+      label: tr('message.reply'),
       onPress: () => {
         setReplying(m);
         inputRef.current?.focus();
       },
     };
     if (m.senderId === me.id)
-      actionSheet('메시지', [
+      actionSheet(tr('message.menuTitle'), [
         reply,
         {
-          label: '삭제',
+          label: tr('common:action.delete'),
           destructive: true,
           onPress: () =>
             void api.chat
@@ -355,10 +363,10 @@ export default function ChatRoomScreen() {
         },
       ]);
     else
-      actionSheet('메시지', [
+      actionSheet(tr('message.menuTitle'), [
         reply,
         {
-          label: '신고',
+          label: tr('common:action.report'),
           destructive: true,
           onPress: () => router.push({ pathname: '/report', params: { type: 'MESSAGE', id: m.id } }),
         },
@@ -382,14 +390,14 @@ export default function ChatRoomScreen() {
   /** 판매자: 거래 상태 변경 — 바꾸면 방에 안내가 남는다 */
   const changeTrade = () =>
     actionSheet(
-      '거래 상태',
+      tr('room.tradeTitle'),
       CHAT_TRADE_STATUSES.filter((s) => s !== r.product?.status).map((s) => ({
-        label: PRODUCT_STATUS_LABEL[s],
+        label: label('productStatus', s),
         onPress: () =>
           void api.chat
             .trade(r.id, s)
             .then(() => qc.invalidateQueries({ queryKey: roomKey }))
-            .catch((e: unknown) => Alert.alert('바꾸지 못했어요', errMsg(e))),
+            .catch((e: unknown) => Alert.alert(tr('errors.tradeFailed'), errMsg(e))),
       })),
     );
 
@@ -417,7 +425,7 @@ export default function ChatRoomScreen() {
           headerRight: () => (
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="채팅방 메뉴"
+              accessibilityLabel={tr('room.menuLabel')}
               onPress={menu}
               hitSlop={10}
             >
@@ -449,22 +457,22 @@ export default function ChatRoomScreen() {
               </Text>
               <Text variant="bodyStrong">
                 {r.product.status === 'SOLD' || r.product.status === 'RESERVED'
-                  ? PRODUCT_STATUS_LABEL[r.product.status]
+                  ? label('productStatus', r.product.status)
                   : r.product.price != null
                     ? formatPrice(r.product.price)
-                    : '경매'}
+                    : label('saleType', 'AUCTION')}
               </Text>
             </View>
             {buyable && (
               <Button
-                title="구매하기"
+                title={tr('room.buy')}
                 size="sm"
                 onPress={() => router.push({ pathname: '/checkout', params: { productId: r.product!.id } })}
               />
             )}
             {r.role === 'seller' && tradable && (
               <Button
-                title={PRODUCT_STATUS_LABEL[r.product.status]}
+                title={label('productStatus', r.product.status)}
                 size="sm"
                 variant="outline"
                 onPress={changeTrade}
@@ -507,14 +515,14 @@ export default function ChatRoomScreen() {
         ListHeaderComponent={
           typing ? (
             <Text variant="small" color="muted">
-              {r.counterpart.nickname}님이 입력 중…
+              {tr('room.typing', { name: r.counterpart.nickname })}
             </Text>
           ) : null
         }
         ListFooterComponent={
           !msgs.hasNextPage ? (
             <Text variant="caption" color="muted" style={{ textAlign: 'center', marginVertical: 12 }}>
-              결제는 화소 안에서 해야 구매 보호를 받을 수 있어요.
+              {tr('room.safetyFooter')}
             </Text>
           ) : null
         }
@@ -525,14 +533,14 @@ export default function ChatRoomScreen() {
           style={[styles.replyBar, { borderColor: t.colors.border }]}
         >
           <View style={{ flex: 1 }}>
-            <Text variant="caption">{authorOf(replying.senderId)}에게 답장</Text>
+            <Text variant="caption">{tr('message.replyTo', { name: authorOf(replying.senderId) })}</Text>
             <Text variant="caption" color="muted" numberOfLines={1}>
-              {replyPreview(replying)}
+              {localizePreview({ kind: replying.kind, preview: replyPreview(replying) })}
             </Text>
           </View>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="답장 취소"
+            accessibilityLabel={tr('composer.cancelReply')}
             onPress={() => setReplying(null)}
             hitSlop={8}
             style={[styles.round, { width: t.touch, height: t.touch }]}
@@ -550,7 +558,7 @@ export default function ChatRoomScreen() {
         >
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="첨부"
+            accessibilityLabel={tr('composer.attach')}
             onPress={attach}
             style={[styles.round, { width: t.touch, height: t.touch }]}
           >
@@ -558,8 +566,8 @@ export default function ChatRoomScreen() {
           </Pressable>
           <TextInput
             ref={inputRef}
-            accessibilityLabel="메시지 입력"
-            placeholder="메시지를 입력하세요"
+            accessibilityLabel={tr('composer.inputLabel')}
+            placeholder={tr('composer.placeholder')}
             placeholderTextColor={t.colors.faint}
             multiline
             maxLength={1000}
@@ -586,7 +594,7 @@ export default function ChatRoomScreen() {
           />
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="보내기"
+            accessibilityLabel={tr('composer.send')}
             disabled={!text.trim()}
             onPress={sendText}
             style={[
@@ -612,10 +620,10 @@ export default function ChatRoomScreen() {
         >
           <Text color="muted">
             {r.counterpart.left
-              ? '탈퇴한 사용자와는 대화할 수 없어요.'
+              ? tr('room.unavailable.left')
               : r.blocked
-                ? '차단한 사용자예요.'
-                : '지금은 이 사용자와 대화할 수 없어요.'}
+                ? tr('room.unavailable.blocked')
+                : tr('room.unavailable.other')}
           </Text>
         </View>
       )}

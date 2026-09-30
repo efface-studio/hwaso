@@ -1,6 +1,9 @@
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { FlatList, Modal, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { currentLanguage, LOCALE } from '@/i18n';
+import { formatNumber } from '@/i18n/format';
 import { useTheme } from '@/theme';
 import { Button } from './button';
 import { Field } from './field';
@@ -28,7 +31,7 @@ export function PriceField({
       inputMode="numeric"
       editable={editable}
       placeholder={placeholder ?? '0'}
-      value={value != null ? value.toLocaleString('ko-KR') : ''}
+      value={value != null ? formatNumber(value) : ''}
       onChangeText={(t) => {
         const digits = t.replace(/[^\d]/g, '');
         onChange(digits ? Math.min(Number(digits), 99_999_999_999) : null);
@@ -38,7 +41,7 @@ export function PriceField({
 }
 
 const fmt = (d: Date, mode: 'date' | 'datetime') =>
-  d.toLocaleString('ko-KR', {
+  d.toLocaleString(LOCALE[currentLanguage()], {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
@@ -62,6 +65,7 @@ export function DateTimeField({
   minimumDate?: Date;
 }) {
   const t = useTheme();
+  const { t: tr } = useTranslation('common');
   const current = value ?? new Date();
   const openAndroid = () =>
     DateTimePickerAndroid.open({
@@ -109,7 +113,7 @@ export function DateTimeField({
             value={current}
             mode={mode}
             display="compact"
-            locale="ko-KR"
+            locale={LOCALE[currentLanguage()]}
             minimumDate={minimumDate}
             minuteInterval={10}
             accentColor={t.colors.primary}
@@ -119,7 +123,7 @@ export function DateTimeField({
       ) : (
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={`${label} ${value ? fmt(value, mode) : '선택'}`}
+          accessibilityLabel={`${label} ${value ? fmt(value, mode) : tr('action.select')}`}
           onPress={openAndroid}
           style={[
             styles.box,
@@ -130,7 +134,7 @@ export function DateTimeField({
             },
           ]}
         >
-          <Text color={value ? 'foreground' : 'faint'}>{value ? fmt(value, mode) : '선택'}</Text>
+          <Text color={value ? 'foreground' : 'faint'}>{value ? fmt(value, mode) : tr('action.select')}</Text>
         </Pressable>
       )}
       {error ? (
@@ -154,7 +158,7 @@ export function SelectField<T extends string>({
   value,
   onChange,
   options,
-  placeholder = '선택',
+  placeholder,
 }: Common & {
   value: T | undefined;
   onChange: (v: T) => void;
@@ -162,14 +166,16 @@ export function SelectField<T extends string>({
   placeholder?: string;
 }) {
   const t = useTheme();
+  const { t: tr } = useTranslation('common');
   const [open, setOpen] = useState(false);
   const selected = options.find((o) => o.value === value);
+  const empty = placeholder ?? tr('action.select');
   return (
     <View style={{ gap: 6 }}>
       <Text variant="label">{label}</Text>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={`${label}: ${selected?.label ?? placeholder}`}
+        accessibilityLabel={`${label}: ${selected?.label ?? empty}`}
         onPress={() => setOpen(true)}
         style={[
           styles.box,
@@ -182,7 +188,7 @@ export function SelectField<T extends string>({
         ]}
       >
         <Text color={selected ? 'foreground' : 'faint'} style={{ flex: 1 }} numberOfLines={1}>
-          {selected?.label ?? placeholder}
+          {selected?.label ?? empty}
         </Text>
         <Text color="muted">⌄</Text>
       </Pressable>
@@ -206,7 +212,7 @@ export function SelectField<T extends string>({
             <Text variant="h2" accessibilityRole="header" style={{ flex: 1 }}>
               {label}
             </Text>
-            <Button title="닫기" variant="ghost" size="sm" onPress={() => setOpen(false)} />
+            <Button title={tr('action.close')} variant="ghost" size="sm" onPress={() => setOpen(false)} />
           </View>
           <FlatList
             alwaysBounceVertical={false}

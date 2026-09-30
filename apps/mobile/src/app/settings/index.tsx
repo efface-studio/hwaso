@@ -1,34 +1,40 @@
 import * as LocalAuthentication from 'expo-local-authentication';
 import { router, Stack, type Href } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { Alert, Platform, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { Text } from '@/components/ui/text';
+import type ko from '@/i18n/locales/ko/my';
 import { useAuthStore } from '@/stores/auth';
 import { usePrefs } from '@/stores/prefs';
 import { useTheme } from '@/theme';
 
-const GROUPS: { title: string; rows: [Href, string][] }[] = [
+type GroupKey = keyof typeof ko.settings.group;
+type RowKey = keyof typeof ko.settings.row;
+
+/** 메뉴 묶음 (이름은 번역 키 — 그릴 때 지금 언어로 바꾼다) */
+const GROUPS: { title: GroupKey; rows: [Href, RowKey][] }[] = [
   {
-    title: '계정',
+    title: 'account',
     rows: [
-      ['/settings/profile', '프로필'],
-      ['/settings/identity', '본인인증 (PASS)'],
-      ['/addresses', '배송지 관리'],
+      ['/settings/profile', 'profile'],
+      ['/settings/identity', 'identity'],
+      ['/addresses', 'addresses'],
     ],
   },
   {
-    title: '로그인 · 보안',
+    title: 'security',
     rows: [
-      ['/settings/password', '비밀번호'],
-      ['/settings/social', '연결된 소셜 계정'],
-      ['/settings/devices', '로그인 기기'],
+      ['/settings/password', 'password'],
+      ['/settings/social', 'social'],
+      ['/settings/devices', 'devices'],
     ],
   },
   {
-    title: '알림 · 안전',
+    title: 'safety',
     rows: [
-      ['/settings/notifications', '알림 설정'],
-      ['/settings/blocks', '차단한 사용자'],
-      ['/settings/reports', '신고 내역'],
+      ['/settings/notifications', 'notifications'],
+      ['/settings/blocks', 'blocks'],
+      ['/settings/reports', 'reports'],
     ],
   },
 ];
@@ -36,6 +42,7 @@ const GROUPS: { title: string; rows: [Href, string][] }[] = [
 /** 설정: 계정·보안·알림·안전 메뉴와 앱 잠금 */
 export default function SettingsScreen() {
   const t = useTheme();
+  const { t: tr } = useTranslation(['my', 'common']);
   const user = useAuthStore((s) => s.user);
   const { appLock, setAppLock } = usePrefs();
   if (!user) return null;
@@ -47,11 +54,8 @@ export default function SettingsScreen() {
       LocalAuthentication.isEnrolledAsync(),
     ]);
     if (!hardware || !enrolled)
-      return Alert.alert(
-        '생체 인증을 사용할 수 없어요',
-        '기기 설정에서 Face ID·지문 또는 화면 잠금을 먼저 등록해주세요.',
-      );
-    const r = await LocalAuthentication.authenticateAsync({ promptMessage: '앱 잠금 켜기' });
+      return Alert.alert(tr('settings.appLock.unavailableTitle'), tr('settings.appLock.unavailableMessage'));
+    const r = await LocalAuthentication.authenticateAsync({ promptMessage: tr('settings.appLock.prompt') });
     if (r.success) setAppLock(true);
   };
 
@@ -71,38 +75,38 @@ export default function SettingsScreen() {
 
   return (
     <ScrollView style={{ backgroundColor: t.colors.background }} contentContainerStyle={styles.body}>
-      <Stack.Screen options={{ title: '설정' }} />
+      <Stack.Screen options={{ title: tr('common:screen.settings') }} />
       {GROUPS.map((g) => (
         <View key={g.title}>
           <Text variant="label" color="muted" style={styles.group}>
-            {g.title}
+            {tr(`settings.group.${g.title}`)}
           </Text>
-          {g.rows.map(([href, label]) => row(label, () => router.push(href)))}
+          {g.rows.map(([href, key]) => row(tr(`settings.row.${key}`), () => router.push(href)))}
         </View>
       ))}
       {Platform.OS !== 'web' && (
         <View>
           <Text variant="label" color="muted" style={styles.group}>
-            앱
+            {tr('settings.group.app')}
           </Text>
           <View style={[styles.row, { borderColor: t.colors.borderSoft, minHeight: t.touch + 12 }]}>
             <View style={{ flex: 1 }}>
-              <Text>앱 잠금</Text>
+              <Text>{tr('settings.appLock.label')}</Text>
               <Text variant="caption" color="muted">
-                1분 넘게 앱을 떠났다 돌아오면 Face ID·지문으로 잠금을 풀어요.
+                {tr('settings.appLock.description')}
               </Text>
             </View>
             <Switch
               value={appLock}
               onValueChange={(v) => void toggleLock(v)}
               trackColor={{ true: t.colors.primary }}
-              accessibilityLabel="앱 잠금"
+              accessibilityLabel={tr('settings.appLock.label')}
             />
           </View>
         </View>
       )}
       <View style={{ marginTop: 24 }}>
-        {row('회원 탈퇴', () => router.push('/settings/delete'), 'destructive')}
+        {row(tr('settings.row.deleteAccount'), () => router.push('/settings/delete'), 'destructive')}
       </View>
     </ScrollView>
   );

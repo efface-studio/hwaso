@@ -1,10 +1,12 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Alert, ScrollView, StyleSheet, View } from 'react-native';
 import { Button } from '@/components/ui/button';
 import { Loading } from '@/components/ui/state';
 import { Text } from '@/components/ui/text';
+import { currentLanguage, LOCALE } from '@/i18n';
 import { api } from '@/lib/api';
 import { BridgeCancelled, verifyIdentity } from '@/lib/bridge';
 import { useAuthStore } from '@/stores/auth';
@@ -13,6 +15,7 @@ import { useTheme } from '@/theme';
 /** PASS 본인인증: 휴대폰 명의 확인 (판매 정산·성인 인증에 필요) */
 export default function IdentityScreen() {
   const t = useTheme();
+  const { t: tr } = useTranslation(['my', 'common']);
   const qc = useQueryClient();
   const user = useAuthStore((s) => s.user);
   const setUser = useAuthStore((s) => s.setUser);
@@ -29,15 +32,15 @@ export default function IdentityScreen() {
   const verify = async () => {
     // 키가 없는 개발 환경에서도 화면은 보이게 두고, 눌렀을 때 안내한다
     if (!providers.data?.identity)
-      return Alert.alert('본인인증 준비 중', 'PASS 본인인증은 PortOne 키 설정 후 사용할 수 있어요.');
+      return Alert.alert(tr('identity.notReadyTitle'), tr('identity.notReadyMessage'));
     setPending(true);
     try {
       await verifyIdentity();
       setUser({ ...user, identityVerified: true });
       await qc.invalidateQueries({ queryKey: ['identity'] });
-      Alert.alert('본인인증을 완료했어요');
+      Alert.alert(tr('identity.doneTitle'));
     } catch (e) {
-      if (!(e instanceof BridgeCancelled)) Alert.alert('본인인증을 완료하지 못했어요', (e as Error).message);
+      if (!(e instanceof BridgeCancelled)) Alert.alert(tr('identity.failedTitle'), (e as Error).message);
     } finally {
       setPending(false);
     }
@@ -46,25 +49,25 @@ export default function IdentityScreen() {
   const s = status.data;
   return (
     <ScrollView style={{ backgroundColor: t.colors.background }} contentContainerStyle={styles.body}>
-      <Stack.Screen options={{ title: '본인인증' }} />
+      <Stack.Screen options={{ title: tr('common:screen.identity') }} />
       {s?.verified ? (
         <View style={[styles.card, { borderColor: t.colors.primary }]}>
-          <Text variant="bodyStrong">본인인증 완료 · PASS</Text>
+          <Text variant="bodyStrong">{tr('identity.verified')}</Text>
           <Text variant="small" color="muted">
-            {s.nameMasked} · {s.phoneMasked} · {s.isAdult ? '성인' : '미성년'}
+            {s.nameMasked} · {s.phoneMasked} · {s.isAdult ? tr('identity.adult') : tr('identity.minor')}
           </Text>
           {s.verifiedAt && (
             <Text variant="caption" color="muted">
-              {new Date(s.verifiedAt).toLocaleDateString('ko-KR')} 인증
+              {tr('identity.verifiedAt', {
+                date: new Date(s.verifiedAt).toLocaleDateString(LOCALE[currentLanguage()]),
+              })}
             </Text>
           )}
         </View>
       ) : (
         <>
-          <Text color="muted">
-            휴대폰 PASS 인증으로 명의를 확인합니다. 인증 정보는 중복 가입 방지를 위한 값만 안전하게 보관돼요.
-          </Text>
-          <Button title="PASS 본인인증" size="lg" loading={pending} onPress={() => void verify()} />
+          <Text color="muted">{tr('identity.description')}</Text>
+          <Button title={tr('identity.button')} size="lg" loading={pending} onPress={() => void verify()} />
         </>
       )}
     </ScrollView>

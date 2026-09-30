@@ -85,6 +85,8 @@ const config: ExpoConfig = {
       },
     ],
     ['expo-notifications', { color: PRIMARY }],
+    // 앱이 지원하는 언어 (iOS 설정 > 앱 > 언어 에서 앱별로 고를 수 있다)
+    ['expo-localization', { supportedLocales: ['ko', 'en', 'ja', 'zh-Hans', 'zh-Hant'] }],
     ['expo-local-authentication', { faceIDPermission: '앱 잠금을 Face ID 로 해제할 때 사용해요.' }],
   ],
   experiments: { typedRoutes: true },
