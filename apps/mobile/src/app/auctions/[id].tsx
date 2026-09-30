@@ -1,10 +1,11 @@
 import { ApiError, newIdempotencyKey } from '@shop/api-client';
-import { AUCTION_STATUS_LABEL, formatPrice, formatRemaining, type AuctionDto } from '@shop/shared';
+import { formatRemaining, type AuctionDto } from '@shop/shared';
 import { useQueryClient } from '@tanstack/react-query';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import { Link, router, Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Alert, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '@/components/ui/button';
@@ -12,6 +13,9 @@ import { Sheet } from '@/components/ui/sheet';
 import { Empty, Loading } from '@/components/ui/state';
 import { Text } from '@/components/ui/text';
 import { useAuctionLive } from '@/hooks/use-auction-live';
+import { currentLanguage, LOCALE } from '@/i18n';
+import { formatPrice } from '@/i18n/format';
+import { label } from '@/i18n/labels';
 import { api } from '@/lib/api';
 import { useServerNow } from '@/lib/clock';
 import { mediaUrl } from '@/lib/media';
@@ -23,19 +27,26 @@ const haptic = (type: Haptics.NotificationFeedbackType) => {
 };
 
 function Countdown({ a }: { a: AuctionDto }) {
+  const { t: tr } = useTranslation(['product', 'common']);
   const now = useServerNow();
   const target = a.status === 'SCHEDULED' ? Date.parse(a.startsAt) : Date.parse(a.endsAt);
   const left = Math.max(0, target - now);
   const urgent = a.status === 'LIVE' && left < 60_000;
+  // 하루 이상 남으면 일 수만 언어에 맞춰 붙인다 (시:분:초는 formatRemaining 그대로)
+  const days = Math.floor(left / 86_400_000);
+  const remaining =
+    days > 0
+      ? tr('auction.daysLeft', { days, time: formatRemaining(left % 86_400_000) })
+      : formatRemaining(left);
   if (a.status !== 'LIVE' && a.status !== 'SCHEDULED')
-    return <Text variant="h2">{AUCTION_STATUS_LABEL[a.status]}</Text>;
+    return <Text variant="h2">{label('auctionStatus', a.status)}</Text>;
   return (
     <View accessibilityLiveRegion={urgent ? 'assertive' : 'none'}>
       <Text variant="caption" color="muted">
-        {a.status === 'SCHEDULED' ? '시작까지' : '남은 시간'}
+        {a.status === 'SCHEDULED' ? tr('auction.untilStart') : tr('auction.timeLeft')}
       </Text>
       <Text variant="h1" color={urgent ? 'live' : 'foreground'} style={{ fontVariant: ['tabular-nums'] }}>
-        {formatRemaining(left)}
+        {remaining}
       </Text>
     </View>
   );
@@ -51,12 +62,13 @@ function AmountSheet({
   onClose: () => void;
   onBid: (amount: number) => void;
 }) {
+  const { t: tr } = useTranslation(['product', 'common']);
   const [amount, setAmount] = useState(a.minNextBid);
   const step = a.bidIncrement;
   return (
-    <Sheet title="입찰 금액" onClose={onClose}>
+    <Sheet title={tr('auction.amountTitle')} onClose={onClose}>
       <Text variant="small" color="muted">
-        최소 {formatPrice(a.minNextBid)} · 호가 단위 {formatPrice(step)}
+        {tr('auction.amountHint', { min: formatPrice(a.minNextBid), step: formatPrice(step) })}
       </Text>
       <View style={styles.stepper}>
         <Button
@@ -65,7 +77,7 @@ function AmountSheet({
           size="lg"
           disabled={amount - step < a.minNextBid}
           onPress={() => setAmount(amount - step)}
-          accessibilityLabel={`${formatPrice(step)} 내리기`}
+          accessibilityLabel={tr('auction.decrease', { amount: formatPrice(step) })}
         />
         <Text variant="priceLg" style={{ flex: 1, textAlign: 'center' }} accessibilityLiveRegion="polite">
           {formatPrice(amount)}
@@ -75,7 +87,7 @@ function AmountSheet({
           variant="outline"
           size="lg"
           onPress={() => setAmount(amount + step)}
-          accessibilityLabel={`${formatPrice(step)} 올리기`}
+          accessibilityLabel={tr('auction.increase', { amount: formatPrice(step) })}
         />
       </View>
       <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -89,7 +101,12 @@ function AmountSheet({
           />
         ))}
       </View>
-      <Button title={`${formatPrice(amount)} 입찰하기`} size="lg" block onPress={() => onBid(amount)} />
+      <Button
+        title={tr('auction.placeBid', { amount: formatPrice(amount) })}
+        size="lg"
+        block
+        onPress={() => onBid(amount)}
+      />
     </Sheet>
   );
 }
@@ -98,6 +115,7 @@ export default function AuctionScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const t = useTheme();
   const insets = useSafeAreaInsets();
+  const { t: tr } = useTranslation(['product', 'common']);
   const qc = useQueryClient();
   const user = useAuthStore((s) => s.user);
   const live = useAuctionLive(id);
@@ -106,7 +124,7 @@ export default function AuctionScreen() {
 
   if (live.loading) return <Loading variant="detail" />;
   const s = live.snapshot;
-  if (!s) return <Empty kind="notfound" title="경매를 찾을 수 없어요" />;
+  if (!s) return <Empty kind="notfound" title={tr('auction.notFound')} />;
   const a = s.auction;
   const mine = !!user && a.sellerId === user.id;
   const leading = !!user && a.highestBidderId === user.id;
@@ -115,12 +133,12 @@ export default function AuctionScreen() {
   const place = (amount: number, buyNow = false) => {
     if (!user) return router.push('/login');
     Alert.alert(
-      buyNow ? '즉시 구매할까요?' : `${formatPrice(amount)}에 입찰할까요?`,
-      buyNow ? '경매가 바로 종료되고 결제 단계로 넘어가요.' : '입찰은 취소할 수 없어요.',
+      buyNow ? tr('auction.confirmBuyNow') : tr('auction.confirmBid', { amount: formatPrice(amount) }),
+      buyNow ? tr('auction.buyNowBody') : tr('auction.bidBody'),
       [
-        { text: '취소', style: 'cancel' },
+        { text: tr('common:action.cancel'), style: 'cancel' },
         {
-          text: buyNow ? '즉시 구매' : '입찰',
+          text: buyNow ? tr('auction.buyNow') : tr('auction.bid'),
           onPress: async () => {
             setBusy(true);
             setSheet(false);
@@ -130,12 +148,12 @@ export default function AuctionScreen() {
                 ? await api.auctions.buyNow(a.id, key)
                 : await api.auctions.bid(a.id, amount, key);
               haptic(Haptics.NotificationFeedbackType.Success);
-              if (r.extended) Alert.alert('마감 직전 입찰로 경매가 연장되었어요');
+              if (r.extended) Alert.alert(tr('auction.extended'));
             } catch (e) {
               haptic(Haptics.NotificationFeedbackType.Error);
               Alert.alert(
-                '입찰하지 못했어요',
-                e instanceof ApiError ? e.message : '네트워크를 확인해주세요.',
+                tr('auction.bidFailed'),
+                e instanceof ApiError ? e.message : tr('common:state.network'),
               );
               void qc.invalidateQueries({ queryKey: ['auction', a.id] });
             } finally {
@@ -149,7 +167,7 @@ export default function AuctionScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: t.colors.background }}>
-      <Stack.Screen options={{ title: '경매' }} />
+      <Stack.Screen options={{ title: tr('common:screen.auction') }} />
       <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={{ paddingBottom: 24 }}>
         <Link href={{ pathname: '/products/[id]', params: { id: s.product.id } }} asChild>
           <Pressable accessibilityRole="link" style={styles.product}>
@@ -166,7 +184,7 @@ export default function AuctionScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <Text variant="small" color="muted">
-                {s.product.artistName ?? '작자 미상'}
+                {s.product.artistName ?? tr('detail.unknownArtist')}
               </Text>
               <Text variant="bodyStrong" numberOfLines={2}>
                 {s.product.title}
@@ -179,33 +197,33 @@ export default function AuctionScreen() {
           <Countdown a={a} />
           <View>
             <Text variant="caption" color="muted">
-              {a.bidCount ? '현재가' : '시작가'}
+              {a.bidCount ? tr('auction.currentPrice') : tr('auction.startPrice')}
             </Text>
             <Text variant="priceLg" accessibilityLiveRegion="polite">
               {formatPrice(a.currentPrice)}
             </Text>
             <Text variant="small" color="muted">
-              입찰 {a.bidCount}회 · 참여 {a.bidderCount}명 · 지금 {s.watchers}명이 보는 중
-              {live.connected ? '' : ' · 연결 중…'}
+              {tr('auction.stats', { bids: a.bidCount, bidders: a.bidderCount, watchers: s.watchers })}
+              {live.connected ? '' : ` · ${tr('auction.connecting')}`}
             </Text>
           </View>
           {leading && a.status === 'LIVE' && (
             <Text variant="bodyStrong" color="primary">
-              현재 최고 입찰자예요
+              {tr('auction.leading')}
             </Text>
           )}
           {s.myLastBid != null && !leading && a.status === 'LIVE' && (
             <Text variant="small" color="destructive">
-              내 마지막 입찰 {formatPrice(s.myLastBid)} — 더 높은 입찰이 있어요
+              {tr('auction.outbid', { amount: formatPrice(s.myLastBid) })}
             </Text>
           )}
           {won && (
             <View style={{ gap: 8 }}>
               <Text variant="bodyStrong" color="primary">
-                낙찰되었어요! 결제 기한 안에 주문을 결제해주세요.
+                {tr('auction.won')}
               </Text>
               <Button
-                title="결제하러 가기"
+                title={tr('auction.goPay')}
                 onPress={() => router.push({ pathname: '/orders', params: { filter: 'pending' } })}
               />
             </View>
@@ -216,34 +234,36 @@ export default function AuctionScreen() {
             </Text>
           )}
           <Text variant="caption" color="muted">
-            호가 단위 {formatPrice(a.bidIncrement)}
-            {a.buyNowPrice ? ` · 즉시 구매가 ${formatPrice(a.buyNowPrice)}` : ''}
-            {a.autoExtend ? ` · 종료 ${a.extensionWindowSec}초 안 입찰 시 ${a.extensionSec}초 연장` : ''}
+            {tr('auction.increment', { amount: formatPrice(a.bidIncrement) })}
+            {a.buyNowPrice ? ` · ${tr('auction.buyNowPrice', { amount: formatPrice(a.buyNowPrice) })}` : ''}
+            {a.autoExtend
+              ? ` · ${tr('auction.autoExtend', { window: a.extensionWindowSec, extension: a.extensionSec })}`
+              : ''}
           </Text>
         </View>
 
         {a.description ? (
           <View style={styles.block}>
-            <Text variant="h3">경매 안내</Text>
+            <Text variant="h3">{tr('auction.about')}</Text>
             <Text>{a.description}</Text>
           </View>
         ) : null}
 
         <View style={styles.block}>
           <Text variant="h3" accessibilityRole="header">
-            입찰 기록
+            {tr('auction.history')}
           </Text>
           {live.bids.length === 0 ? (
-            <Text color="muted">아직 입찰이 없어요. 첫 입찰자가 되어보세요.</Text>
+            <Text color="muted">{tr('auction.noBids')}</Text>
           ) : (
             live.bids.map((b) => (
               <View key={b.id} style={[styles.bid, { borderColor: t.colors.borderSoft }]}>
                 <Text variant="small" style={{ flex: 1 }}>
-                  {b.isMine ? '나' : b.bidderMasked}
-                  {b.isBuyNow ? ' · 즉시 구매' : ''}
+                  {b.isMine ? tr('auction.me') : b.bidderMasked}
+                  {b.isBuyNow ? ` · ${tr('auction.buyNow')}` : ''}
                 </Text>
                 <Text variant="small" color="muted">
-                  {new Date(b.createdAt).toLocaleTimeString('ko-KR', {
+                  {new Date(b.createdAt).toLocaleTimeString(LOCALE[currentLanguage()], {
                     hour: '2-digit',
                     minute: '2-digit',
                     second: '2-digit',
@@ -271,18 +291,18 @@ export default function AuctionScreen() {
         >
           {leading ? (
             <Text variant="bodyStrong" color="primary" style={{ flex: 1, textAlign: 'center' }}>
-              최고 입찰 중 — 다른 입찰을 기다려요
+              {tr('auction.leadingBar')}
             </Text>
           ) : (
             <>
               <Button
-                title="금액 입력"
+                title={tr('auction.enterAmount')}
                 variant="outline"
                 size="lg"
                 onPress={() => (user ? setSheet(true) : router.push('/login'))}
               />
               <Button
-                title={`${formatPrice(a.minNextBid)} 입찰`}
+                title={tr('auction.bidShort', { amount: formatPrice(a.minNextBid) })}
                 size="lg"
                 loading={busy}
                 style={{ flex: 1 }}
@@ -292,7 +312,7 @@ export default function AuctionScreen() {
           )}
           {a.buyNowPrice != null && !leading && (
             <Button
-              title="즉시 구매"
+              title={tr('auction.buyNow')}
               variant="secondary"
               size="lg"
               onPress={() => place(a.buyNowPrice!, true)}

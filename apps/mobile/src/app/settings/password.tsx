@@ -2,6 +2,7 @@ import { ApiError } from '@shop/api-client';
 import { passwordSchema } from '@shop/shared';
 import { Stack } from 'expo-router';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Alert, ScrollView, StyleSheet } from 'react-native';
 import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
@@ -10,10 +11,12 @@ import { api } from '@/lib/api';
 import { goBack } from '@/lib/nav';
 import { useAuthStore } from '@/stores/auth';
 import { useTheme } from '@/theme';
+import { passwordIssueMessage } from '@/components/auth/validation';
 
 /** 비밀번호 변경 (소셜 가입자는 비밀번호 설정). 바꾸면 다른 기기는 로그아웃된다 */
 export default function PasswordScreen() {
   const t = useTheme();
+  const { t: tr } = useTranslation(['my', 'common']);
   const user = useAuthStore((s) => s.user);
   const setUser = useAuthStore((s) => s.setUser);
   const [current, setCurrent] = useState('');
@@ -24,7 +27,7 @@ export default function PasswordScreen() {
 
   const save = async () => {
     const p = passwordSchema.safeParse(next);
-    if (!p.success) return setError(p.error.issues[0]!.message);
+    if (!p.success) return setError(passwordIssueMessage(p.error.issues[0]!, next));
     setError(null);
     setPending(true);
     try {
@@ -33,10 +36,10 @@ export default function PasswordScreen() {
         newPassword: next,
       });
       setUser({ ...user, hasPassword: true });
-      Alert.alert('비밀번호를 바꿨어요', '다른 기기에서는 로그아웃됩니다.');
+      Alert.alert(tr('password.changedTitle'), tr('password.changedMessage'));
       goBack();
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : '바꾸지 못했어요.');
+      setError(e instanceof ApiError ? e.message : tr('password.failed'));
     } finally {
       setPending(false);
     }
@@ -48,15 +51,11 @@ export default function PasswordScreen() {
       contentContainerStyle={styles.body}
       keyboardShouldPersistTaps="handled"
     >
-      <Stack.Screen options={{ title: user.hasPassword ? '비밀번호 변경' : '비밀번호 설정' }} />
-      {!user.hasPassword && (
-        <Text color="muted">
-          소셜 로그인으로 가입했어요. 비밀번호를 설정하면 이메일로도 로그인할 수 있어요.
-        </Text>
-      )}
+      <Stack.Screen options={{ title: user.hasPassword ? tr('password.change') : tr('password.set') }} />
+      {!user.hasPassword && <Text color="muted">{tr('password.socialNotice')}</Text>}
       {user.hasPassword && (
         <Field
-          label="현재 비밀번호"
+          label={tr('password.current')}
           secureTextEntry
           autoComplete="current-password"
           textContentType="password"
@@ -65,17 +64,17 @@ export default function PasswordScreen() {
         />
       )}
       <Field
-        label="새 비밀번호"
+        label={tr('password.new')}
         secureTextEntry
         autoComplete="new-password"
         textContentType="newPassword"
         value={next}
         onChangeText={setNext}
-        hint="8자 이상, 영문과 숫자를 포함해주세요."
+        hint={tr('password.hint')}
         error={error}
       />
       <Button
-        title={user.hasPassword ? '비밀번호 변경' : '비밀번호 설정'}
+        title={user.hasPassword ? tr('password.change') : tr('password.set')}
         size="lg"
         loading={pending}
         disabled={!next || (user.hasPassword && !current)}

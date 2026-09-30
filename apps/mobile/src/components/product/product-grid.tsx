@@ -1,6 +1,7 @@
 import type { ProductCardDto, ProductListParams } from '@shop/shared';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import type { ReactElement } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ActivityIndicator } from 'react-native';
 import { AppRefreshControl } from '@/components/ui/app-refresh-control';
 import { Empty, Loading } from '@/components/ui/state';
@@ -15,13 +16,14 @@ import { ProductCard } from './product-card';
 export function ProductGrid({
   params,
   header,
-  emptyTitle = '조건에 맞는 작품이 없어요',
+  emptyTitle,
 }: {
   params: ProductListParams;
   header?: ReactElement;
   emptyTitle?: string;
 }) {
   const t = useTheme();
+  const { t: tr } = useTranslation('home');
   const g = useGrid();
   const q = useInfiniteQuery({
     queryKey: ['products', params],
@@ -44,7 +46,7 @@ export function ProductGrid({
         q.isPending || pull.refreshing ? (
           <Loading variant="grid" />
         ) : (
-          <Empty kind="search" title={emptyTitle} />
+          <Empty kind="search" title={emptyTitle ?? tr('list.empty')} />
         )
       }
       ListFooterComponent={

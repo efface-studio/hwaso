@@ -1,5 +1,6 @@
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 import Animated, {
   Easing,
@@ -27,6 +28,7 @@ const easeOut = Easing.out(Easing.cubic);
  */
 export function AnimatedSplash({ ready, onFinish }: { ready: boolean; onFinish: () => void }) {
   const t = useTheme();
+  const { t: tr } = useTranslation('common');
   const reduceMotion = useReducedMotion();
   const [started, setStarted] = useState(false);
   const [introDone, setIntroDone] = useState(false);
@@ -114,7 +116,7 @@ export function AnimatedSplash({ ready, onFinish }: { ready: boolean; onFinish: 
       pointerEvents={introDone && ready ? 'none' : 'auto'}
       onLayout={onLayout}
       style={[StyleSheet.absoluteFill, styles.center, { backgroundColor: t.colors.background }, overlayStyle]}
-      accessibilityLabel="화소"
+      accessibilityLabel={tr('brand.name')}
       accessibilityRole="image"
     >
       <Animated.View style={[styles.mark, markStyle]}>
@@ -132,14 +134,14 @@ export function AnimatedSplash({ ready, onFinish }: { ready: boolean; onFinish: 
       <Animated.View style={[styles.word, wordStyle]}>
         <View style={styles.titleRow}>
           <Text variant="h1" style={styles.title}>
-            화소
+            {tr('brand.name')}
           </Text>
           <Text variant="small" color="muted">
             畫所
           </Text>
         </View>
         <Text variant="small" color="muted">
-          작품과 사람이 만나는 곳
+          {tr('splash.tagline')}
         </Text>
       </Animated.View>
     </Animated.View>

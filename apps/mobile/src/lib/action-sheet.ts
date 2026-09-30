@@ -1,5 +1,6 @@
 import { ActionSheetIOS, Platform } from 'react-native';
 import { create } from 'zustand';
+import i18n from '@/i18n';
 
 export type SheetOption = { label: string; destructive?: boolean; onPress: () => void };
 
@@ -14,7 +15,7 @@ export const useActionSheet = create<{ sheet: { title: string; options: SheetOpt
  */
 export function actionSheet(title: string, options: SheetOption[]) {
   if (Platform.OS === 'ios') {
-    const labels = [...options.map((o) => o.label), '취소'];
+    const labels = [...options.map((o) => o.label), i18n.t('common:action.cancel')];
     ActionSheetIOS.showActionSheetWithOptions(
       {
         title,

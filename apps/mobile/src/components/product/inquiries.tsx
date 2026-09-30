@@ -1,20 +1,23 @@
 import { ApiError } from '@shop/api-client';
-import { formatRelativeTime } from '@shop/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Alert, Pressable, StyleSheet, Switch, TextInput, View } from 'react-native';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
+import i18n from '@/i18n';
+import { formatRelative } from '@/i18n/format';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
 import { useTheme } from '@/theme';
 
-const errMsg = (e: unknown) => (e instanceof ApiError ? e.message : '잠시 문제가 발생했어요.');
+const errMsg = (e: unknown) => (e instanceof ApiError ? e.message : i18n.t('product:inquiry.genericError'));
 
 /** 상품 문의: 작성(비밀 문의) ↔ 삭제, 판매자 답변 ↔ 답변 수정 (웹과 같은 규칙) */
 export function Inquiries({ productId, isMine }: { productId: string; isMine: boolean }) {
   const t = useTheme();
+  const { t: tr } = useTranslation(['product', 'common']);
   const user = useAuthStore((s) => s.user);
   const qc = useQueryClient();
   const key = ['inquiries', productId, user?.id ?? 'anon'];
@@ -31,7 +34,7 @@ export function Inquiries({ productId, isMine }: { productId: string; isMine: bo
     onSuccess: () => {
       setQuestion('');
       setPrivate(false);
-      Alert.alert('문의를 등록했어요', '판매자가 답변하면 알려드릴게요.');
+      Alert.alert(tr('inquiry.submitted'), tr('inquiry.submittedBody'));
       void refresh();
     },
     onError,
@@ -57,15 +60,13 @@ export function Inquiries({ productId, isMine }: { productId: string; isMine: bo
       {!isMine && (
         <View style={{ gap: 8 }}>
           <TextInput
-            accessibilityLabel="문의 내용"
+            accessibilityLabel={tr('inquiry.inputLabel')}
             multiline
             maxLength={1000}
             value={question}
             onChangeText={setQuestion}
             editable={!!user}
-            placeholder={
-              user ? '작품 상태, 배송, 추가 사진 등 궁금한 점을 남겨주세요.' : '로그인 후 문의할 수 있어요.'
-            }
+            placeholder={user ? tr('inquiry.placeholder') : tr('inquiry.loginPlaceholder')}
             placeholderTextColor={t.colors.faint}
             style={inputStyle}
           />
@@ -74,19 +75,19 @@ export function Inquiries({ productId, isMine }: { productId: string; isMine: bo
               value={isPrivate}
               onValueChange={setPrivate}
               trackColor={{ true: t.colors.primary }}
-              accessibilityLabel="비밀 문의"
+              accessibilityLabel={tr('inquiry.private')}
             />
             <Text variant="small" style={{ flex: 1 }}>
-              비밀 문의
+              {tr('inquiry.private')}
             </Text>
             <Button
-              title="문의하기"
+              title={tr('inquiry.submit')}
               variant="secondary"
               size="sm"
               loading={ask.isPending}
               onPress={() => {
                 if (!user) return router.push('/login');
-                if (question.trim().length < 2) return Alert.alert('문의 내용을 2자 이상 입력해주세요.');
+                if (question.trim().length < 2) return Alert.alert(tr('inquiry.tooShort'));
                 ask.mutate();
               }}
             />
@@ -95,11 +96,11 @@ export function Inquiries({ productId, isMine }: { productId: string; isMine: bo
       )}
       {q.isPending ? (
         <Text variant="small" color="muted">
-          불러오는 중…
+          {tr('common:state.loading')}…
         </Text>
       ) : !q.data?.length ? (
         <Text variant="small" color="muted">
-          아직 문의가 없어요.
+          {tr('inquiry.empty')}
         </Text>
       ) : (
         q.data.map((x) => (
@@ -112,28 +113,32 @@ export function Inquiries({ productId, isMine }: { productId: string; isMine: bo
               {x.isMine && (
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel="문의 삭제"
+                  accessibilityLabel={tr('inquiry.deleteA11y')}
                   hitSlop={8}
                   onPress={() =>
-                    Alert.alert('문의를 삭제할까요?', undefined, [
-                      { text: '취소', style: 'cancel' },
-                      { text: '삭제', style: 'destructive', onPress: () => remove.mutate(x.id) },
+                    Alert.alert(tr('inquiry.deleteConfirm'), undefined, [
+                      { text: tr('common:action.cancel'), style: 'cancel' },
+                      {
+                        text: tr('common:action.delete'),
+                        style: 'destructive',
+                        onPress: () => remove.mutate(x.id),
+                      },
                     ])
                   }
                 >
                   <Text variant="caption" color="muted">
-                    삭제
+                    {tr('common:action.delete')}
                   </Text>
                 </Pressable>
               )}
             </View>
             <Text variant="caption" color="muted">
-              {x.authorNickname} · {formatRelativeTime(x.createdAt)}
+              {x.authorNickname} · {formatRelative(x.createdAt)}
             </Text>
             {x.answer && (
               <View style={[styles.answer, { backgroundColor: t.colors.backgroundSoft }]}>
                 <Text variant="caption" color="primary" style={{ fontWeight: '600' }}>
-                  판매자 답변
+                  {tr('inquiry.sellerAnswer')}
                 </Text>
                 <Text>{x.answer}</Text>
               </View>
@@ -143,7 +148,7 @@ export function Inquiries({ productId, isMine }: { productId: string; isMine: bo
               (answering === x.id ? (
                 <View style={{ gap: 8 }}>
                   <TextInput
-                    accessibilityLabel="답변"
+                    accessibilityLabel={tr('inquiry.answerLabel')}
                     multiline
                     maxLength={1000}
                     value={answer}
@@ -152,9 +157,14 @@ export function Inquiries({ productId, isMine }: { productId: string; isMine: bo
                     style={inputStyle}
                   />
                   <View style={[styles.row, { justifyContent: 'flex-end' }]}>
-                    <Button title="취소" variant="ghost" size="sm" onPress={() => setAnswering(null)} />
                     <Button
-                      title="답변 등록"
+                      title={tr('common:action.cancel')}
+                      variant="ghost"
+                      size="sm"
+                      onPress={() => setAnswering(null)}
+                    />
+                    <Button
+                      title={tr('inquiry.submitAnswer')}
                       size="sm"
                       loading={reply.isPending}
                       disabled={!answer.trim()}
@@ -164,7 +174,7 @@ export function Inquiries({ productId, isMine }: { productId: string; isMine: bo
                 </View>
               ) : (
                 <Button
-                  title={x.answer ? '답변 수정' : '답변하기'}
+                  title={x.answer ? tr('inquiry.editAnswer') : tr('inquiry.answer')}
                   variant="ghost"
                   size="sm"
                   onPress={() => {

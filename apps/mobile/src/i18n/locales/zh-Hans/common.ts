@@ -47,6 +47,7 @@ const zhHans: Translation<typeof ko> = {
     justNow: '刚刚',
     minutesAgo: '{{count}}分钟前',
     hoursAgo: '{{count}}小时前',
+    yesterday: '昨天',
     daysAgo: '{{count}}天前',
   },
   count: {
@@ -94,6 +95,91 @@ const zhHans: Translation<typeof ko> = {
     title: '语言',
     system: '设备语言',
     systemHint: '跟随设备的语言设置',
+  },
+  brand: {
+    name: 'Hwaso',
+  },
+  cta: {
+    browseArtworks: '浏览作品',
+  },
+  ui: {
+    showPassword: '显示密码',
+    hidePassword: '隐藏密码',
+    profilePhoto: '{{name}}的头像',
+  },
+  feedback: {
+    saved: '已保存',
+    deleted: '已删除',
+    unknownError: '出了点问题，请重试。',
+    tryLater: '请稍后再试。',
+  },
+  upload: {
+    permissionTitle: '需要{{what}}访问权限',
+    permissionMessage: '请在设置中允许 Hwaso 访问。',
+    camera: '相机',
+    photos: '照片',
+    failed: '照片上传失败',
+  },
+  cropper: {
+    title: '调整照片',
+    image: '待裁剪的照片',
+    hint: '双指缩放，拖动调整位置',
+    openFailed: '无法打开照片',
+    openFailedMessage: '请选择其他照片。',
+    cropFailed: '无法裁剪照片',
+  },
+  theme: {
+    title: '显示模式',
+    system: '跟随系统',
+    light: '浅色',
+    dark: '深色',
+  },
+  appLock: {
+    prompt: '解锁 Hwaso',
+    locked: '应用已锁定',
+    unlock: '解锁',
+  },
+  splash: {
+    tagline: '让作品与人相遇',
+  },
+  header: {
+    refreshHome: '刷新 Hwaso 首页',
+  },
+  notFound: {
+    title: '找不到该页面',
+    goHome: '返回首页',
+  },
+  bridge: {
+    paymentFailed: '支付失败。',
+  },
+  oauth: {
+    cancelled: '已取消登录。',
+    appleNoToken: '未能获取 Apple 登录信息。',
+  },
+  device: {
+    phone: '手机',
+    web: '网页',
+  },
+  push: {
+    channelName: '默认通知',
+  },
+  auctionLive: {
+    outbid: '有人出了更高的价',
+    extended: '因截止前有人出价，已延长 {{seconds}} 秒',
+  },
+  validation: {
+    accountNumber: '请确认账号。',
+    bank: '请选择银行。',
+    reason: '请输入原因。',
+    reasonMin: '请输入至少5个字的原因。',
+    photos: '请至少上传1张照片。',
+    titleMin: '作品名称至少2个字。',
+    price: '请输入售价。',
+    reserveStart: '请输入预售开始日期。',
+    startPrice: '起拍价不得低于1,000韩元。',
+    bidIncrement: '加价幅度不得低于100韩元。',
+    endAfterStart: '结束时间必须晚于开始时间。',
+    buyNowAboveStart: '一口价必须高于起拍价。',
   },
 };
 

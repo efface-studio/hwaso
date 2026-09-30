@@ -1,18 +1,21 @@
 import { ApiError } from '@shop/api-client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { Alert, StyleSheet, View } from 'react-native';
 import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Empty, Loading } from '@/components/ui/state';
 import { Text } from '@/components/ui/text';
 import { List } from '@/components/ui/list';
+import { currentLanguage, LOCALE } from '@/i18n';
 import { api } from '@/lib/api';
 import { useTheme } from '@/theme';
 
 /** 차단한 사용자: 차단한 사용자와는 채팅을 주고받을 수 없다 */
 export default function BlocksScreen() {
   const t = useTheme();
+  const { t: tr } = useTranslation(['my', 'common']);
   const qc = useQueryClient();
   const q = useQuery({ queryKey: ['blocks'], queryFn: api.safety.blocks });
   const unblock = useMutation({
@@ -21,7 +24,7 @@ export default function BlocksScreen() {
       void qc.invalidateQueries({ queryKey: ['blocks'] });
       void qc.invalidateQueries({ queryKey: ['chat'] });
     },
-    onError: (e) => Alert.alert(e instanceof ApiError ? e.message : '해제하지 못했어요.'),
+    onError: (e) => Alert.alert(e instanceof ApiError ? e.message : tr('blocks.unblockFailed')),
   });
   if (q.isPending) return <Loading variant="list" />;
 
@@ -33,18 +36,14 @@ export default function BlocksScreen() {
       keyExtractor={(u) => u.id}
       ListHeaderComponent={
         <>
-          <Stack.Screen options={{ title: '차단한 사용자' }} />
+          <Stack.Screen options={{ title: tr('common:screen.blocks') }} />
           <Text variant="small" color="muted" style={{ marginBottom: 8 }}>
-            차단한 사용자와는 채팅을 주고받을 수 없어요.
+            {tr('blocks.notice')}
           </Text>
         </>
       }
       ListEmptyComponent={
-        <Empty
-          kind="people"
-          title="차단한 사용자가 없어요"
-          description="채팅방 메뉴에서 사용자를 차단할 수 있어요."
-        />
+        <Empty kind="people" title={tr('blocks.emptyTitle')} description={tr('blocks.emptyDescription')} />
       }
       renderItem={({ item: u }) => (
         <View style={[styles.row, { borderColor: t.colors.borderSoft }]}>
@@ -52,11 +51,13 @@ export default function BlocksScreen() {
           <View style={{ flex: 1 }}>
             <Text numberOfLines={1}>{u.nickname}</Text>
             <Text variant="caption" color="muted">
-              {new Date(u.blockedAt).toLocaleDateString('ko-KR')} 차단
+              {tr('blocks.blockedAt', {
+                date: new Date(u.blockedAt).toLocaleDateString(LOCALE[currentLanguage()]),
+              })}
             </Text>
           </View>
           <Button
-            title="차단 해제"
+            title={tr('blocks.unblock')}
             size="sm"
             variant="outline"
             loading={unblock.isPending && unblock.variables === u.id}

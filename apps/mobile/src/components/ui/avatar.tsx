@@ -1,4 +1,5 @@
 import { Image } from 'expo-image';
+import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 import { mediaUrl } from '@/lib/media';
 import { useTheme } from '@/theme';
@@ -14,9 +15,10 @@ export function Avatar({
   size?: number;
 }) {
   const t = useTheme();
+  const { t: tr } = useTranslation('common');
   return (
     <View
-      accessibilityLabel={`${name} 프로필 사진`}
+      accessibilityLabel={tr('ui.profilePhoto', { name })}
       style={{
         width: size,
         height: size,

@@ -1,11 +1,13 @@
-import { BANK_GROUP_LABEL, BANKS, bankByName, type Bank, type BankGroup } from '@shop/shared';
+import { BANKS, bankByName, type Bank, type BankGroup } from '@shop/shared';
 import { Image } from 'expo-image';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, TextInput, useWindowDimensions, View } from 'react-native';
 import { BANK_LOGOS } from '@/components/bank-logos';
 import { Icon } from '@/components/ui/icon';
 import { Sheet } from '@/components/ui/sheet';
 import { Text } from '@/components/ui/text';
+import { label as groupLabel } from '@/i18n/labels';
 import { selectionHaptic } from '@/lib/haptics';
 import { useTheme } from '@/theme';
 
@@ -58,6 +60,7 @@ export function BankField({
   error?: string;
 }) {
   const t = useTheme();
+  const { t: tr } = useTranslation(['sell', 'common']);
   const { width: screen } = useWindowDimensions();
   // 시트 안 격자의 실제 폭 (아이패드는 시트가 화면보다 좁다). 재기 전에는 화면 폭 - 좌우 여백
   const [gridWidth, setGridWidth] = useState(screen - 40);
@@ -83,7 +86,7 @@ export function BankField({
       <Text variant="label">{label}</Text>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={`${label}: ${value ?? '선택 안 됨'}`}
+        accessibilityLabel={`${label}: ${value ?? tr('bank.notSelected')}`}
         onPress={() => setOpen(true)}
         style={({ pressed }) => [
           styles.field,
@@ -102,7 +105,7 @@ export function BankField({
           </>
         ) : (
           <Text color="faint" style={{ flex: 1 }}>
-            은행 선택
+            {tr('bank.select')}
           </Text>
         )}
         <Icon ios="chevron.down" android="expand_more" color="muted" size={16} />
@@ -115,7 +118,7 @@ export function BankField({
 
       {open && (
         <Sheet
-          title="은행 선택"
+          title={tr('bank.select')}
           onClose={() => {
             setOpen(false);
             setQ('');
@@ -129,10 +132,10 @@ export function BankField({
             <TextInput
               value={q}
               onChangeText={setQ}
-              placeholder="은행 이름 검색"
+              placeholder={tr('bank.search')}
               placeholderTextColor={t.colors.faint}
               clearButtonMode="while-editing"
-              accessibilityLabel="은행 이름 검색"
+              accessibilityLabel={tr('bank.search')}
               style={[t.inputType(), styles.searchInput, { color: t.colors.foreground }]}
             />
           </View>
@@ -142,7 +145,7 @@ export function BankField({
             return (
               <View key={g} style={{ gap: 10 }}>
                 <Text variant="label" color="muted">
-                  {BANK_GROUP_LABEL[g]}
+                  {groupLabel('bankGroup', g)}
                 </Text>
                 <View style={[styles.grid, { gap }]}>
                   {list.map((b) => {

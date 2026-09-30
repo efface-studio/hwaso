@@ -47,6 +47,7 @@ const ja: Translation<typeof ko> = {
     justNow: 'たった今',
     minutesAgo: '{{count}}分前',
     hoursAgo: '{{count}}時間前',
+    yesterday: '昨日',
     daysAgo: '{{count}}日前',
   },
   count: {
@@ -94,6 +95,91 @@ const ja: Translation<typeof ko> = {
     title: '言語',
     system: '端末の言語',
     systemHint: '端末の設定言語に合わせます',
+  },
+  brand: {
+    name: 'Hwaso',
+  },
+  cta: {
+    browseArtworks: '作品を見る',
+  },
+  ui: {
+    showPassword: 'パスワードを表示',
+    hidePassword: 'パスワードを隠す',
+    profilePhoto: '{{name}}のプロフィール写真',
+  },
+  feedback: {
+    saved: '保存しました',
+    deleted: '削除しました',
+    unknownError: '問題が発生しました。もう一度お試しください。',
+    tryLater: 'しばらくしてからもう一度お試しください。',
+  },
+  upload: {
+    permissionTitle: '{{what}}へのアクセス許可が必要です',
+    permissionMessage: '設定でHwasoへのアクセスを許可してください。',
+    camera: 'カメラ',
+    photos: '写真',
+    failed: '写真をアップロードできませんでした',
+  },
+  cropper: {
+    title: '写真を調整',
+    image: '切り抜く写真',
+    hint: '2本の指で拡大し、ドラッグして位置を合わせます',
+    openFailed: '写真を開けませんでした',
+    openFailedMessage: '別の写真を選んでください。',
+    cropFailed: '写真を切り抜けませんでした',
+  },
+  theme: {
+    title: '画面モード',
+    system: 'システム',
+    light: 'ライト',
+    dark: 'ダーク',
+  },
+  appLock: {
+    prompt: 'Hwasoのロックを解除',
+    locked: 'アプリはロックされています',
+    unlock: 'ロックを解除',
+  },
+  splash: {
+    tagline: '作品と人が出会う場所',
+  },
+  header: {
+    refreshHome: 'Hwasoホームを更新',
+  },
+  notFound: {
+    title: 'ページが見つかりません',
+    goHome: 'ホームへ',
+  },
+  bridge: {
+    paymentFailed: '決済できませんでした。',
+  },
+  oauth: {
+    cancelled: 'ログインがキャンセルされました。',
+    appleNoToken: 'Appleのログイン情報を取得できませんでした。',
+  },
+  device: {
+    phone: 'スマートフォン',
+    web: 'Web',
+  },
+  push: {
+    channelName: '一般通知',
+  },
+  auctionLive: {
+    outbid: 'より高い入札がありました',
+    extended: '終了間際の入札により{{seconds}}秒延長されました',
+  },
+  validation: {
+    accountNumber: '口座番号をご確認ください。',
+    bank: '銀行を選択してください。',
+    reason: '理由を入力してください。',
+    reasonMin: '理由を5文字以上入力してください。',
+    photos: '写真を1枚以上追加してください。',
+    titleMin: '作品名は2文字以上で入力してください。',
+    price: '販売価格を入力してください。',
+    reserveStart: '予約販売の開始日を入力してください。',
+    startPrice: '開始価格は1,000ウォン以上にしてください。',
+    bidIncrement: '入札単位は100ウォン以上にしてください。',
+    endAfterStart: '終了時刻は開始時刻より後にしてください。',
+    buyNowAboveStart: '即決価格は開始価格より高くしてください。',
   },
 };
 

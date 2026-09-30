@@ -1,6 +1,7 @@
 import { ApiError } from '@shop/api-client';
 import type { VerificationPurpose } from '@shop/shared';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
@@ -15,6 +16,7 @@ export function EmailCodeStep({
   purpose: VerificationPurpose;
   onVerified: (email: string, token: string) => void;
 }) {
+  const { t: tr } = useTranslation(['auth', 'common']);
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [sent, setSent] = useState(false);
@@ -36,7 +38,7 @@ export function EmailCodeStep({
       setSent(true);
       setCooldown(r.retryAfterSec);
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : '인증번호를 보내지 못했어요.');
+      setError(e instanceof ApiError ? e.message : tr('emailCode.sendFailed'));
     } finally {
       setBusy(false);
     }
@@ -49,7 +51,7 @@ export function EmailCodeStep({
       const r = await api.auth.verifyCode({ email: email.trim(), purpose, code: code.trim() });
       onVerified(email.trim(), r.verificationToken);
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : '인증하지 못했어요.');
+      setError(e instanceof ApiError ? e.message : tr('emailCode.verifyFailed'));
     } finally {
       setBusy(false);
     }
@@ -58,7 +60,7 @@ export function EmailCodeStep({
   return (
     <View style={{ gap: 14 }}>
       <Field
-        label="이메일"
+        label={tr('emailCode.email')}
         autoCapitalize="none"
         autoComplete="email"
         keyboardType="email-address"
@@ -69,7 +71,7 @@ export function EmailCodeStep({
       />
       {!sent ? (
         <Button
-          title="인증번호 받기"
+          title={tr('emailCode.send')}
           size="lg"
           block
           loading={busy}
@@ -79,10 +81,10 @@ export function EmailCodeStep({
       ) : (
         <>
           <Text variant="small" color="muted">
-            {email} 로 보낸 6자리 번호를 입력해주세요. 10분 동안 쓸 수 있어요.
+            {tr('emailCode.sentGuide', { email })}
           </Text>
           <Field
-            label="인증번호"
+            label={tr('emailCode.code')}
             keyboardType="number-pad"
             textContentType="oneTimeCode"
             autoComplete="one-time-code"
@@ -92,7 +94,7 @@ export function EmailCodeStep({
             error={error}
           />
           <Button
-            title="확인"
+            title={tr('common:action.ok')}
             size="lg"
             block
             loading={busy}
@@ -100,13 +102,13 @@ export function EmailCodeStep({
             onPress={() => void verify()}
           />
           <Button
-            title={cooldown > 0 ? `다시 받기 (${cooldown}초)` : '인증번호 다시 받기'}
+            title={cooldown > 0 ? tr('emailCode.resendIn', { seconds: cooldown }) : tr('emailCode.resend')}
             variant="ghost"
             disabled={cooldown > 0 || busy}
             onPress={() => void send()}
           />
           <Button
-            title="이메일 바꾸기"
+            title={tr('emailCode.changeEmail')}
             variant="ghost"
             onPress={() => {
               setSent(false);

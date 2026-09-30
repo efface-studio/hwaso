@@ -1,10 +1,12 @@
 import { CARRIERS } from '@shop/shared';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
 import { RadioList } from '@/components/ui/radio';
 import { Sheet } from '@/components/ui/sheet';
 import { Text } from '@/components/ui/text';
+import { carrierLabel } from './order-ui';
 
 /** 사유 입력 (주문 취소·환불 요청·환불 거절 공용) */
 export function ReasonSheet({
@@ -26,18 +28,19 @@ export function ReasonSheet({
   onClose: () => void;
   onSubmit: (reason: string) => void;
 }) {
+  const { t: tr } = useTranslation(['order', 'common']);
   const [reason, setReason] = useState('');
   return (
     <Sheet title={title} onClose={onClose}>
       {description && <Text color="muted">{description}</Text>}
       <Field
-        label="사유"
+        label={tr('sheet.reason')}
         multiline
         maxLength={1000}
         value={reason}
         onChangeText={setReason}
         style={{ minHeight: 120, textAlignVertical: 'top' }}
-        hint={minLength > 1 ? `${minLength}자 이상 입력해주세요.` : undefined}
+        hint={minLength > 1 ? tr('sheet.minLength', { count: minLength }) : undefined}
       />
       <Button
         title={confirmLabel}
@@ -63,28 +66,29 @@ export function ShipSheet({
   onClose: () => void;
   onSubmit: (v: { carrier: string; trackingNumber: string }) => void;
 }) {
+  const { t: tr } = useTranslation(['order', 'common']);
   const [carrier, setCarrier] = useState<string>(initial?.carrier ?? CARRIERS[0].name);
   const [tracking, setTracking] = useState(initial?.trackingNumber ?? '');
   const noTracking = CARRIERS.find((c) => c.name === carrier)?.url === null;
   return (
-    <Sheet title={initial ? '송장 정보 수정' : '발송 처리'} onClose={onClose}>
-      <Text color="muted">구매자에게 배송 조회 링크와 함께 안내돼요.</Text>
+    <Sheet title={initial ? tr('sheet.editTracking') : tr('sheet.ship')} onClose={onClose}>
+      <Text color="muted">{tr('sheet.shipNotice')}</Text>
       <RadioList
-        label="택배사"
+        label={tr('sheet.carrier')}
         value={carrier}
         onChange={setCarrier}
-        options={CARRIERS.map((c) => ({ value: c.name, label: c.name }))}
+        options={CARRIERS.map((c) => ({ value: c.name, label: carrierLabel(c.name) }))}
       />
       <Field
-        label={noTracking ? '운송장·접수 번호 (또는 연락처)' : '운송장 번호'}
-        hint={noTracking ? '전문 운송·직접 전달은 예약 번호나 연락처 뒷자리를 적어주세요.' : undefined}
+        label={noTracking ? tr('sheet.trackingOrContact') : tr('sheet.trackingNumber')}
+        hint={noTracking ? tr('sheet.trackingHint') : undefined}
         keyboardType={noTracking ? 'default' : 'number-pad'}
         maxLength={50}
         value={tracking}
         onChangeText={setTracking}
       />
       <Button
-        title={initial ? '수정' : '발송 완료'}
+        title={initial ? tr('common:action.edit') : tr('sheet.shipped')}
         size="lg"
         loading={pending}
         disabled={tracking.trim().length < 4}

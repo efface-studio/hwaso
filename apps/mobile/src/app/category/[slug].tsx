@@ -1,16 +1,19 @@
-import { SORT_LABEL, type ProductSort } from '@shop/shared';
+import type { ProductSort } from '@shop/shared';
 import { useQuery } from '@tanstack/react-query';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 import { EMPTY_FILTERS, FilterButton, filterParams, type Filters } from '@/components/product/filter-sheet';
 import { ProductGrid } from '@/components/product/product-grid';
 import { Chips } from '@/components/ui/chips';
+import { label } from '@/i18n/labels';
 import { api } from '@/lib/api';
 
 const SORTS: ProductSort[] = ['latest', 'popular', 'price_asc', 'price_desc', 'ending_soon'];
 
 export default function CategoryScreen() {
+  const { t: tr } = useTranslation('home');
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const [sort, setSort] = useState<ProductSort>('latest');
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
@@ -26,10 +29,10 @@ export default function CategoryScreen() {
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingRight: 16 }}>
             <View style={{ flex: 1 }}>
               <Chips
-                label="정렬"
+                label={tr('list.sort')}
                 value={sort}
                 onChange={setSort}
-                options={SORTS.map((s) => ({ value: s, label: SORT_LABEL[s] }))}
+                options={SORTS.map((s) => ({ value: s, label: label('sort', s) }))}
               />
             </View>
             <FilterButton value={filters} onChange={setFilters} category={slug} />

@@ -1,21 +1,21 @@
 import {
-  CONDITION_LABEL,
   ITEM_CONDITIONS,
   PROVENANCE_KINDS,
-  PROVENANCE_KIND_LABEL,
-  formatPrice,
   suggestIncrement,
   toLocalInput,
   type AuctionDraft,
   type CategoryNode,
   type ProductDraft,
 } from '@shop/shared';
+import { useTranslation } from 'react-i18next';
 import { StyleSheet, Switch, View } from 'react-native';
 import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
 import { DateTimeField, PriceField, SelectField } from '@/components/ui/inputs';
 import { RadioList } from '@/components/ui/radio';
 import { Text } from '@/components/ui/text';
+import { formatNumber, formatPrice } from '@/i18n/format';
+import { label } from '@/i18n/labels';
 import { useTheme } from '@/theme';
 
 type Set = <K extends keyof ProductDraft>(key: K, value: ProductDraft[K]) => void;
@@ -65,34 +65,35 @@ export function BasicFields({
   categories: CategoryNode[];
   errors: Errors;
 }) {
+  const { t: tr } = useTranslation(['sell', 'common']);
   const options = categories.flatMap((g) =>
     g.children.map((c) => ({ value: c.id, label: `${g.name} › ${c.name}` })),
   );
   return (
     <>
       <Field
-        label="작품명"
+        label={tr('basic.title')}
         maxLength={100}
         value={d.title}
         onChangeText={(v) => set('title', v)}
-        placeholder="예) 무제 (Untitled), 백자 달항아리"
+        placeholder={tr('basic.titlePlaceholder')}
         error={errors.title}
       />
       <SelectField
-        label="카테고리"
+        label={tr('basic.category')}
         value={d.categoryId}
         onChange={(v) => set('categoryId', v)}
         options={options}
-        placeholder="카테고리 선택"
+        placeholder={tr('basic.categoryPlaceholder')}
         error={errors.categoryId}
       />
       <Field
-        label="작가 · 제작자"
+        label={tr('basic.artist')}
         maxLength={100}
         value={d.artistName}
         onChangeText={(v) => set('artistName', v)}
-        placeholder="예) 김환기"
-        hint="모르면 비워두세요. 작가 페이지에 자동으로 연결돼요."
+        placeholder={tr('basic.artistPlaceholder')}
+        hint={tr('basic.artistHint')}
       />
     </>
   );
@@ -109,23 +110,36 @@ export function PriceFields({
   errors: Errors;
   lockSaleType?: boolean;
 }) {
+  const { t: tr } = useTranslation(['sell', 'common']);
   return (
     <>
       {!lockSaleType && (
         <RadioList
-          label="판매 방식"
+          label={tr('pricing.saleType')}
           value={d.saleType}
           onChange={(v) => set('saleType', v)}
           options={[
-            { value: 'FIXED', label: '즉시 구매', description: '정한 가격에 바로 판매해요' },
-            { value: 'AUCTION', label: '경매', description: '시작가와 일정을 정하면 실시간 입찰로 판매해요' },
-            { value: 'RESERVATION', label: '예약 판매', description: '정한 날짜부터 구매할 수 있어요' },
+            {
+              value: 'FIXED',
+              label: label('saleType', 'FIXED'),
+              description: tr('pricing.saleTypeHint.FIXED'),
+            },
+            {
+              value: 'AUCTION',
+              label: label('saleType', 'AUCTION'),
+              description: tr('pricing.saleTypeHint.AUCTION'),
+            },
+            {
+              value: 'RESERVATION',
+              label: label('saleType', 'RESERVATION'),
+              description: tr('pricing.saleTypeHint.RESERVATION'),
+            },
           ]}
         />
       )}
       {d.saleType !== 'AUCTION' && (
         <PriceField
-          label="판매 가격 (원)"
+          label={tr('pricing.price')}
           value={d.price}
           onChange={(v) => set('price', v)}
           error={errors.price}
@@ -133,7 +147,7 @@ export function PriceFields({
       )}
       {d.saleType === 'RESERVATION' && (
         <DateTimeField
-          label="판매 시작일"
+          label={tr('pricing.availableAt')}
           value={toDate(d.availableAt)}
           minimumDate={new Date()}
           onChange={(v) => set('availableAt', toLocalInput(v))}
@@ -142,17 +156,17 @@ export function PriceFields({
       )}
       {d.saleType === 'AUCTION' && (
         <Text variant="small" color="muted">
-          시작가·일정은 다음 단계에서 정해요.
+          {tr('pricing.auctionNext')}
         </Text>
       )}
       <PriceField
-        label="배송비 (원)"
+        label={tr('pricing.shippingFee')}
         value={d.shippingFee}
         onChange={(v) => set('shippingFee', v)}
-        hint="0원이면 무료배송"
+        hint={tr('pricing.shippingFeeHint')}
       />
       <Field
-        label="배송 방법"
+        label={tr('pricing.shippingMethod')}
         maxLength={100}
         value={d.shippingMethod}
         onChangeText={(v) => set('shippingMethod', v)}
@@ -171,57 +185,62 @@ export function AuctionFields({
   set: (patch: Partial<AuctionDraft>) => void;
   errors: Errors;
 }) {
+  const { t: tr } = useTranslation(['sell', 'common']);
   const suggested = a.startPrice ? suggestIncrement(a.startPrice) : null;
   return (
     <>
       <PriceField
-        label="시작가 (원)"
+        label={tr('auctionFields.startPrice')}
         value={a.startPrice}
         onChange={(v) => set({ startPrice: v })}
         error={errors.startPrice}
       />
       <PriceField
-        label="호가 단위 (원)"
+        label={tr('auctionFields.bidIncrement')}
         value={a.bidIncrement}
         onChange={(v) => set({ bidIncrement: v })}
-        placeholder={suggested?.toLocaleString('ko-KR')}
-        hint={suggested ? `추천 ${formatPrice(suggested)}` : '한 번에 올릴 최소 금액'}
+        placeholder={suggested ? formatNumber(suggested) : undefined}
+        hint={
+          suggested
+            ? tr('auctionFields.suggested', { price: formatPrice(suggested) })
+            : tr('auctionFields.bidIncrementHint')
+        }
         error={errors.bidIncrement}
       />
       <PriceField
-        label="즉시 구매가 (선택, 원)"
+        label={tr('auctionFields.buyNowPrice')}
         value={a.buyNowPrice}
         onChange={(v) => set({ buyNowPrice: v })}
-        hint="이 금액이면 경매를 기다리지 않고 바로 낙찰돼요."
+        hint={tr('auctionFields.buyNowHint')}
         error={errors.buyNowPrice}
       />
       <DateTimeField
-        label="시작"
+        label={tr('auctionFields.startsAt')}
         value={toDate(a.startsAt)}
         minimumDate={new Date()}
         onChange={(v) => set({ startsAt: toLocalInput(v) })}
         error={errors.startsAt}
       />
       <DateTimeField
-        label="종료"
+        label={tr('auctionFields.endsAt')}
         value={toDate(a.endsAt)}
         minimumDate={toDate(a.startsAt) ?? new Date()}
         onChange={(v) => set({ endsAt: toLocalInput(v) })}
         error={errors.endsAt}
       />
       <SwitchRow
-        label="마감 직전 자동 연장"
-        description="종료 30초 안에 입찰이 있으면 30초 연장돼요 (최대 30분)"
+        label={tr('auctionFields.autoExtend')}
+        description={tr('auctionFields.autoExtendHint')}
         value={a.autoExtend}
         onChange={(v) => set({ autoExtend: v })}
       />
       <Field
-        label="경매 안내 (선택)"
+        label={tr('auctionFields.note')}
         multiline
         maxLength={2000}
         value={a.description}
         onChangeText={(v) => set({ description: v })}
-        placeholder="예) 낙찰 후 전문 운송으로 발송합니다."
+        placeholder={tr('auctionFields.notePlaceholder')}
         style={styles.area}
       />
     </>
@@ -229,31 +248,32 @@ export function AuctionFields({
 }
 
 export function DetailFields({ d, set, errors }: { d: ProductDraft; set: Set; errors: Errors }) {
+  const { t: tr } = useTranslation(['sell', 'common']);
   return (
     <>
       <Field
-        label="작품 설명"
+        label={tr('detail.description')}
         multiline
         maxLength={5000}
         value={d.description}
         onChangeText={(v) => set('description', v)}
-        placeholder="작품의 이야기, 소장 경위, 특징을 적어주세요."
+        placeholder={tr('detail.descriptionPlaceholder')}
         style={styles.area}
         error={errors.description}
       />
       <View style={styles.row}>
         <View style={{ flex: 1 }}>
           <Field
-            label="시대"
+            label={tr('detail.era')}
             maxLength={50}
             value={d.era}
             onChangeText={(v) => set('era', v)}
-            placeholder="예) 조선 후기"
+            placeholder={tr('detail.eraPlaceholder')}
           />
         </View>
         <View style={{ flex: 1 }}>
           <Field
-            label="제작 연도"
+            label={tr('detail.year')}
             keyboardType="number-pad"
             maxLength={5}
             value={d.productionYear}
@@ -263,17 +283,17 @@ export function DetailFields({ d, set, errors }: { d: ProductDraft; set: Set; er
         </View>
       </View>
       <Field
-        label="소재 · 기법"
+        label={tr('detail.material')}
         maxLength={100}
         value={d.material}
         onChangeText={(v) => set('material', v)}
-        placeholder="예) 캔버스에 유채"
+        placeholder={tr('detail.materialPlaceholder')}
       />
       <View style={styles.row}>
         {(['widthCm', 'heightCm', 'depthCm'] as const).map((k, i) => (
           <View key={k} style={{ flex: 1 }}>
             <Field
-              label={['가로 (cm)', '세로 (cm)', '깊이 (cm)'][i]!}
+              label={[tr('detail.width'), tr('detail.height'), tr('detail.depth')][i]!}
               keyboardType="decimal-pad"
               maxLength={8}
               value={d[k]}
@@ -284,71 +304,76 @@ export function DetailFields({ d, set, errors }: { d: ProductDraft; set: Set; er
         ))}
       </View>
       <SelectField
-        label="상태"
+        label={tr('detail.condition')}
         value={d.condition}
         onChange={(v) => set('condition', v)}
-        options={ITEM_CONDITIONS.map((c) => ({ value: c, label: CONDITION_LABEL[c] }))}
+        options={ITEM_CONDITIONS.map((c) => ({ value: c, label: label('condition', c) }))}
       />
       <Field
-        label="상태 설명"
+        label={tr('detail.conditionNote')}
         multiline
         maxLength={1000}
         value={d.conditionNote}
         onChangeText={(v) => set('conditionNote', v)}
-        hint="손상·복원 이력이 있다면 꼭 적어주세요."
+        hint={tr('detail.conditionNoteHint')}
         style={styles.area}
       />
       <Field
-        label="거래 지역"
+        label={tr('detail.region')}
         maxLength={50}
         value={d.region}
         onChangeText={(v) => set('region', v)}
-        placeholder="예) 서울 종로구"
+        placeholder={tr('detail.regionPlaceholder')}
       />
     </>
   );
 }
 
 export function AuthenticityFields({ d, set, errors }: { d: ProductDraft; set: Set; errors: Errors }) {
+  const { t: tr } = useTranslation(['sell', 'common']);
   return (
     <>
       <RadioList
-        label="인증서"
+        label={tr('authenticity.certificate')}
         value={d.hasCertificate ? 'yes' : 'no'}
         onChange={(v) => set('hasCertificate', v === 'yes')}
         options={[
-          { value: 'no', label: '인증서 없음' },
+          { value: 'no', label: tr('authenticity.none') },
           {
             value: 'yes',
-            label: '감정서·인증서 있음',
-            description: '운영팀 검수 후 “플랫폼 검수 완료”가 표시돼요',
+            label: tr('authenticity.has'),
+            description: tr('authenticity.hasHint', { verified: label('verification', 'VERIFIED') }),
           },
         ]}
       />
       {d.hasCertificate && (
         <>
           <Field
-            label="발급 기관"
+            label={tr('authenticity.issuer')}
             value={d.certIssuer}
             onChangeText={(v) => set('certIssuer', v)}
             error={errors['certificate.issuer']}
           />
           <Field
-            label="인증서 번호"
+            label={tr('authenticity.number')}
             value={d.certNumber}
             onChangeText={(v) => set('certNumber', v)}
             error={errors['certificate.number']}
           />
           <DateTimeField
-            label="발급일"
+            label={tr('authenticity.issuedAt')}
             mode="date"
             value={toDate(d.certIssuedAt)}
             onChange={(v) => set('certIssuedAt', toLocalInput(v).slice(0, 10))}
           />
-          <Field label="비고" value={d.certNote} onChangeText={(v) => set('certNote', v)} />
+          <Field
+            label={tr('authenticity.note')}
+            value={d.certNote}
+            onChangeText={(v) => set('certNote', v)}
+          />
         </>
       )}
-      <Text variant="label">출처 · 전시 · 출판 이력</Text>
+      <Text variant="label">{tr('authenticity.provenance')}</Text>
       {d.provenance.map((v, i) => {
         const patch = (p: Partial<(typeof d.provenance)[number]>) =>
           set(
@@ -360,31 +385,31 @@ export function AuthenticityFields({ d, set, errors }: { d: ProductDraft; set: S
             <View style={styles.row}>
               <View style={{ flex: 1 }}>
                 <SelectField
-                  label="종류"
+                  label={tr('authenticity.kind')}
                   value={v.kind}
                   onChange={(kind) => patch({ kind })}
-                  options={PROVENANCE_KINDS.map((k) => ({ value: k, label: PROVENANCE_KIND_LABEL[k] }))}
+                  options={PROVENANCE_KINDS.map((k) => ({ value: k, label: label('provenanceKind', k) }))}
                 />
               </View>
               <View style={{ flex: 1 }}>
                 <Field
-                  label="시기"
+                  label={tr('authenticity.period')}
                   maxLength={50}
                   value={v.period}
                   onChangeText={(period) => patch({ period })}
-                  placeholder="예) 1998"
+                  placeholder={tr('authenticity.periodPlaceholder')}
                 />
               </View>
             </View>
             <Field
-              label="내용"
+              label={tr('authenticity.entry')}
               maxLength={200}
               value={v.title}
               onChangeText={(title) => patch({ title })}
-              placeholder="예) 국립현대미술관 소장"
+              placeholder={tr('authenticity.entryPlaceholder')}
             />
             <Button
-              title="이 이력 삭제"
+              title={tr('authenticity.remove')}
               size="sm"
               variant="ghost"
               onPress={() =>
@@ -399,7 +424,7 @@ export function AuthenticityFields({ d, set, errors }: { d: ProductDraft; set: S
       })}
       {d.provenance.length < 20 && (
         <Button
-          title="+ 이력 추가"
+          title={tr('authenticity.add')}
           variant="outline"
           onPress={() => set('provenance', [...d.provenance, { kind: 'OWNERSHIP', period: '', title: '' }])}
         />

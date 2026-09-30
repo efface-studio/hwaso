@@ -1,6 +1,7 @@
 import { MAX_PRODUCT_IMAGES, type ImageDto } from '@shop/shared';
 import { Image } from 'expo-image';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
@@ -22,6 +23,7 @@ export function PhotoManager({
   locked?: boolean;
 }) {
   const t = useTheme();
+  const { t: tr } = useTranslation(['sell', 'common']);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const left = MAX_PRODUCT_IMAGES - images.length;
 
@@ -42,11 +44,7 @@ export function PhotoManager({
     }
     setProgress(null);
     onChange([...images, ...uploaded].slice(0, MAX_PRODUCT_IMAGES));
-    if (failed)
-      Alert.alert(
-        `${failed}장을 올리지 못했어요`,
-        '사진 형식(JPG·PNG·HEIC)과 크기(20MB 이하)를 확인해주세요.',
-      );
+    if (failed) Alert.alert(tr('photos.uploadFailed', { count: failed }), tr('photos.uploadFailedMessage'));
   };
   const move = (i: number, dir: -1 | 1) => {
     const j = i + dir;
@@ -61,14 +59,14 @@ export function PhotoManager({
       {!locked && (
         <View style={styles.actions}>
           <Button
-            title="사진 찍기"
+            title={tr('photos.takePhoto')}
             variant="outline"
             style={{ flex: 1 }}
             disabled={left <= 0 || !!progress}
             onPress={() => void add('camera')}
           />
           <Button
-            title="앨범에서 선택"
+            title={tr('photos.pickLibrary')}
             variant="outline"
             style={{ flex: 1 }}
             disabled={left <= 0 || !!progress}
@@ -78,8 +76,8 @@ export function PhotoManager({
       )}
       <Text variant="small" color="muted" accessibilityLiveRegion="polite">
         {progress
-          ? `사진 올리는 중 ${progress.done}/${progress.total}`
-          : `${images.length}/${MAX_PRODUCT_IMAGES}장 · 첫 번째 사진이 대표 사진이에요. 정면·뒷면·서명·손상 부위를 찍어주세요.`}
+          ? tr('photos.uploading', { done: progress.done, total: progress.total })
+          : tr('photos.summary', { count: images.length, max: MAX_PRODUCT_IMAGES })}
       </Text>
       <View style={styles.grid}>
         {images.map((img, i) => (
@@ -91,7 +89,7 @@ export function PhotoManager({
             {i === 0 && (
               <View style={[styles.badge, { backgroundColor: t.colors.primary }]}>
                 <Text variant="caption" color="primaryForeground">
-                  대표
+                  {tr('photos.cover')}
                 </Text>
               </View>
             )}
@@ -99,7 +97,7 @@ export function PhotoManager({
               <View style={[styles.tools, { backgroundColor: t.colors.overlay }]}>
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel={`${i + 1}번째 사진 앞으로`}
+                  accessibilityLabel={tr('photos.moveEarlier', { index: i + 1 })}
                   disabled={i === 0}
                   onPress={() => move(i, -1)}
                   hitSlop={6}
@@ -110,7 +108,7 @@ export function PhotoManager({
                 </Pressable>
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel={`${i + 1}번째 사진 삭제`}
+                  accessibilityLabel={tr('photos.remove', { index: i + 1 })}
                   onPress={() => onChange(images.filter((x) => x.key !== img.key))}
                   hitSlop={6}
                 >
@@ -120,7 +118,7 @@ export function PhotoManager({
                 </Pressable>
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel={`${i + 1}번째 사진 뒤로`}
+                  accessibilityLabel={tr('photos.moveLater', { index: i + 1 })}
                   disabled={i === images.length - 1}
                   onPress={() => move(i, 1)}
                   hitSlop={6}

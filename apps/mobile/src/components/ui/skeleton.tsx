@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useRef, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   ScrollView,
   StyleSheet,
@@ -100,12 +101,13 @@ export function Skeleton({
  */
 export function SkeletonFrame({ children, style }: { children: ReactNode; style?: ViewStyle }) {
   const clock = useSweep(true);
+  const { t: tr } = useTranslation('common');
   return (
     <ShimmerClock.Provider value={clock}>
       <View
         accessible
         accessibilityRole="progressbar"
-        accessibilityLabel="불러오는 중"
+        accessibilityLabel={tr('state.loading')}
         pointerEvents="none"
         style={style}
       >

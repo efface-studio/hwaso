@@ -1,26 +1,23 @@
 import { ApiError } from '@shop/api-client';
-import {
-  PRODUCT_STATUS_LABEL,
-  draftFromProduct,
-  draftToInput,
-  updateProductSchema,
-  type ProductDraft,
-} from '@shop/shared';
+import { draftFromProduct, draftToInput, updateProductSchema, type ProductDraft } from '@shop/shared';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Alert, ScrollView, StyleSheet, View } from 'react-native';
 import { AuthenticityFields, BasicFields, DetailFields, PriceFields } from '@/components/sell/fields';
 import { PhotoManager } from '@/components/sell/photo-manager';
 import { Button } from '@/components/ui/button';
 import { Empty, Loading } from '@/components/ui/state';
 import { Text } from '@/components/ui/text';
+import i18n from '@/i18n';
+import { label } from '@/i18n/labels';
 import { api } from '@/lib/api';
 import { goBack } from '@/lib/nav';
 import { useTheme } from '@/theme';
+import { schemaMessage } from '@/i18n/validation';
 
-const errMsg = (e: unknown) =>
-  e instanceof ApiError ? e.message : '잠시 문제가 발생했어요. 다시 시도해주세요.';
+const errMsg = (e: unknown) => (e instanceof ApiError ? e.message : i18n.t('sell:error.generic'));
 
 function Section({
   title,
@@ -51,6 +48,7 @@ function Section({
 export default function EditProductScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const t = useTheme();
+  const { t: tr } = useTranslation(['sell', 'common']);
   const qc = useQueryClient();
   const key = ['product-edit', id];
   const product = useQuery({ queryKey: key, queryFn: () => api.market.product(id) });
@@ -68,10 +66,10 @@ export default function EditProductScreen() {
   }, [product.data, d]);
 
   if (product.isError)
-    return <Empty kind="error" title="작품을 불러오지 못했어요" description={errMsg(product.error)} />;
+    return <Empty kind="error" title={tr('edit.loadFailed')} description={errMsg(product.error)} />;
   if (!product.data || !d) return <Loading variant="text" />;
   const p = product.data;
-  if (!p.isMine) return <Empty kind="lock" title="내 작품만 수정할 수 있어요" />;
+  if (!p.isMine) return <Empty kind="lock" title={tr('edit.notMine')} />;
 
   const auctionStarted = !!p.auction && ['LIVE', 'ENDED', 'SETTLED'].includes(p.auction.status);
   const set = <K extends keyof ProductDraft>(k: K, v: ProductDraft[K]) =>
@@ -102,18 +100,18 @@ export default function EditProductScreen() {
     const r = updateProductSchema.safeParse(body);
     if (!r.success) {
       const e: Record<string, string> = {};
-      for (const i of r.error.issues) e[i.path.join('.')] ??= i.message;
+      for (const i of r.error.issues) e[i.path.join('.')] ??= schemaMessage(i.message);
       setErrors(e);
       return;
     }
     setErrors({});
-    void run('save', () => api.market.updateProduct(id, r.data), '저장했어요');
+    void run('save', () => api.market.updateProduct(id, r.data), tr('edit.saved'));
   };
   const remove = () =>
-    Alert.alert('작품을 삭제할까요?', '삭제하면 판매 페이지와 관심 목록에서 사라지며 되돌릴 수 없어요.', [
-      { text: '취소', style: 'cancel' },
+    Alert.alert(tr('manage.deleteConfirm'), tr('edit.deleteMessage'), [
+      { text: tr('common:action.cancel'), style: 'cancel' },
       {
-        text: '삭제',
+        text: tr('common:action.delete'),
         style: 'destructive',
         onPress: async () => {
           setPending('delete');
@@ -135,13 +133,13 @@ export default function EditProductScreen() {
       contentContainerStyle={styles.body}
       keyboardShouldPersistTaps="handled"
     >
-      <Stack.Screen options={{ title: '작품 수정' }} />
+      <Stack.Screen options={{ title: tr('common:screen.sellEdit') }} />
       <View style={styles.actions}>
         <Text variant="label" color={p.status === 'ACTIVE' ? 'primary' : 'muted'}>
-          {PRODUCT_STATUS_LABEL[p.status]}
+          {label('productStatus', p.status)}
         </Text>
         <Button
-          title="판매 페이지 보기"
+          title={tr('manage.viewListing')}
           size="sm"
           variant="ghost"
           onPress={() => router.push({ pathname: '/products/[id]', params: { id } })}
@@ -150,58 +148,58 @@ export default function EditProductScreen() {
       <View style={styles.actions}>
         {p.status === 'DRAFT' && p.saleType !== 'AUCTION' && (
           <Button
-            title="게시하기"
+            title={tr('manage.publish')}
             size="sm"
             loading={pending === 'publish'}
-            onPress={() => void run('publish', () => api.market.publishProduct(id), '작품을 게시했어요')}
+            onPress={() => void run('publish', () => api.market.publishProduct(id), tr('manage.published'))}
           />
         )}
         {p.saleType === 'AUCTION' && (!p.auction || p.auction.status === 'DRAFT') && (
           <Button
-            title="경매 등록"
+            title={tr('manage.registerAuction')}
             size="sm"
             onPress={() => router.push({ pathname: '/sell/[id]/auction', params: { id } })}
           />
         )}
         {p.status === 'ACTIVE' && (
           <Button
-            title="판매 중지"
+            title={tr('manage.pause')}
             size="sm"
             variant="outline"
             loading={pending === 'pause'}
-            onPress={() => void run('pause', () => api.market.pauseProduct(id), '판매를 중지했어요')}
+            onPress={() => void run('pause', () => api.market.pauseProduct(id), tr('manage.paused'))}
           />
         )}
         {p.status === 'HIDDEN' && (
           <Button
-            title="판매 재개"
+            title={tr('manage.resume')}
             size="sm"
             variant="outline"
             loading={pending === 'resume'}
-            onPress={() => void run('resume', () => api.market.resumeProduct(id), '판매를 다시 시작했어요')}
+            onPress={() => void run('resume', () => api.market.resumeProduct(id), tr('manage.resumed'))}
           />
         )}
       </View>
       {auctionStarted && (
         <Text variant="small" color="muted">
-          경매가 시작된 작품은 가격·판매 방식·사진을 바꿀 수 없어요.
+          {tr('edit.locked')}
         </Text>
       )}
-      <Section title="사진">
+      <Section title={tr('section.photos')}>
         <PhotoManager images={d.images} onChange={(v) => set('images', v)} locked={auctionStarted} />
       </Section>
-      <Section title="기본 정보">
+      <Section title={tr('section.basic')}>
         <BasicFields d={d} set={set} categories={categories.data ?? []} errors={errors} />
       </Section>
       {!auctionStarted && (
-        <Section title="가격 · 배송">
+        <Section title={tr('section.price')}>
           <PriceFields d={d} set={set} errors={errors} lockSaleType={!!p.auction} />
         </Section>
       )}
-      <Section title="작품 정보">
+      <Section title={tr('section.detail')}>
         <DetailFields d={d} set={set} errors={errors} />
       </Section>
-      <Section title="진위 정보" description="인증서를 바꾸면 다시 검수 대기 상태가 돼요.">
+      <Section title={tr('section.authenticity')} description={tr('section.authenticityHint')}>
         <AuthenticityFields d={d} set={set} errors={errors} />
       </Section>
       {Object.keys(errors).length > 0 && (
@@ -209,8 +207,8 @@ export default function EditProductScreen() {
           {Object.values(errors)[0]}
         </Text>
       )}
-      <Button title="저장" size="lg" loading={pending === 'save'} onPress={save} />
-      <Button title="작품 삭제" variant="ghost" loading={pending === 'delete'} onPress={remove} />
+      <Button title={tr('common:action.save')} size="lg" loading={pending === 'save'} onPress={save} />
+      <Button title={tr('edit.delete')} variant="ghost" loading={pending === 'delete'} onPress={remove} />
     </ScrollView>
   );
 }

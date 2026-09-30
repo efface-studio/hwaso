@@ -1,6 +1,6 @@
-import { SETTLEMENT_STATUS_LABEL, formatPrice } from '@shop/shared';
 import { useQuery } from '@tanstack/react-query';
 import { router, Stack } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { AppRefreshControl } from '@/components/ui/app-refresh-control';
 import { usePullRefresh } from '@/hooks/use-pull-refresh';
@@ -8,17 +8,20 @@ import { Button } from '@/components/ui/button';
 import { Empty, Loading } from '@/components/ui/state';
 import { Text } from '@/components/ui/text';
 import { List } from '@/components/ui/list';
+import { formatDate, formatPrice } from '@/i18n/format';
+import { label } from '@/i18n/labels';
 import { api } from '@/lib/api';
 import { useTheme } from '@/theme';
 
 /** 판매자 정산: 구매 확정 후 수수료를 뺀 금액이 지급 예정으로 쌓인다 */
 export default function SettlementsScreen() {
   const t = useTheme();
+  const { t: tr } = useTranslation(['sell', 'common']);
   const q = useQuery({ queryKey: ['settlements'], queryFn: api.orders.settlements });
   const pull = usePullRefresh(q.refetch);
   if (q.isPending) return <Loading variant="plain-list" />;
   const data = q.data;
-  if (!data) return <Empty kind="error" title="정산 정보를 불러오지 못했어요" />;
+  if (!data) return <Empty kind="error" title={tr('settlements.loadFailed')} />;
 
   return (
     <List
@@ -29,13 +32,13 @@ export default function SettlementsScreen() {
       refreshControl={<AppRefreshControl refreshing={pull.refreshing} onRefresh={pull.onRefresh} />}
       ListHeaderComponent={
         <View style={{ gap: 12, marginBottom: 8 }}>
-          <Stack.Screen options={{ title: '정산' }} />
+          <Stack.Screen options={{ title: tr('common:screen.settlements') }} />
           <View style={styles.cards}>
             {(
               [
-                ['지급 예정', data.scheduled],
-                ['대기·보류', data.pending],
-                ['지급 완료', data.paid],
+                [label('settlementStatus', 'SCHEDULED'), data.scheduled],
+                [tr('settlements.pendingHeld'), data.pending],
+                [label('settlementStatus', 'PAID'), data.paid],
               ] as const
             ).map(([label, v]) => (
               <View key={label} style={[styles.card, { borderColor: t.colors.border }]}>
@@ -47,11 +50,10 @@ export default function SettlementsScreen() {
             ))}
           </View>
           <Text variant="caption" color="muted">
-            구매 확정 2일 뒤 등록된 정산 계좌로 지급돼요. 판매 수수료는 작품 금액의 8%이며 배송비에는 붙지
-            않아요.
+            {tr('settlements.notice')}
           </Text>
           <Button
-            title="정산 계좌 관리"
+            title={tr('settlements.manageAccount')}
             variant="outline"
             size="sm"
             onPress={() => router.push('/seller/register')}
@@ -62,7 +64,11 @@ export default function SettlementsScreen() {
         pull.refreshing ? (
           <Loading variant="plain-list" />
         ) : (
-          <Empty kind="doc" title="정산 내역이 없어요" description="구매 확정된 주문부터 정산돼요." />
+          <Empty
+            kind="doc"
+            title={tr('settlements.empty')}
+            description={tr('settlements.emptyDescription')}
+          />
         )
       }
       renderItem={({ item: s }) => (
@@ -74,7 +80,11 @@ export default function SettlementsScreen() {
           <View style={{ flex: 1, gap: 2 }}>
             <Text numberOfLines={1}>{s.title}</Text>
             <Text variant="caption" color="muted">
-              {s.orderNumber} · 판매 {formatPrice(s.grossAmount)} − 수수료 {formatPrice(s.feeAmount)}
+              {s.orderNumber} ·{' '}
+              {tr('settlements.breakdown', {
+                gross: formatPrice(s.grossAmount),
+                fee: formatPrice(s.feeAmount),
+              })}
             </Text>
           </View>
           <View style={{ alignItems: 'flex-end', gap: 2 }}>
@@ -83,8 +93,7 @@ export default function SettlementsScreen() {
               variant="caption"
               color={s.status === 'PAID' ? 'muted' : s.status === 'HELD' ? 'destructive' : 'primary'}
             >
-              {SETTLEMENT_STATUS_LABEL[s.status]} ·{' '}
-              {new Date(s.paidAt ?? s.scheduledAt).toLocaleDateString('ko-KR')}
+              {label('settlementStatus', s.status)} · {formatDate(s.paidAt ?? s.scheduledAt)}
             </Text>
           </View>
         </Pressable>

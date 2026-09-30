@@ -9,21 +9,23 @@ import {
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Alert, ScrollView, StyleSheet } from 'react-native';
 import { AuctionFields } from '@/components/sell/fields';
 import { Button } from '@/components/ui/button';
 import { Empty, Loading } from '@/components/ui/state';
 import { Text } from '@/components/ui/text';
+import i18n from '@/i18n';
 import { api } from '@/lib/api';
 import { useTheme } from '@/theme';
 
-const errMsg = (e: unknown) =>
-  e instanceof ApiError ? e.message : '잠시 문제가 발생했어요. 다시 시도해주세요.';
+const errMsg = (e: unknown) => (e instanceof ApiError ? e.message : i18n.t('sell:error.generic'));
 
 /** 이미 등록한 작품의 경매 등록·예약 (등록 중 예약이 실패했을 때도 여기로 온다) */
 export default function AuctionSetupScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const t = useTheme();
+  const { t: tr } = useTranslation(['sell', 'common']);
   const qc = useQueryClient();
   const product = useQuery({ queryKey: ['product-edit', id], queryFn: () => api.market.product(id) });
   const [a, setA] = useState<AuctionDraft>(defaultAuction);
@@ -32,7 +34,7 @@ export default function AuctionSetupScreen() {
 
   if (product.isPending) return <Loading variant="text" />;
   const p = product.data;
-  if (!p?.isMine) return <Empty kind="lock" title="내 작품만 경매로 등록할 수 있어요" />;
+  if (!p?.isMine) return <Empty kind="lock" title={tr('auction.notMine')} />;
 
   const submit = async () => {
     const input = auctionToInput(
@@ -61,10 +63,10 @@ export default function AuctionSetupScreen() {
       await api.auctions.schedule(auctionId);
       void qc.invalidateQueries({ queryKey: ['seller'] });
       void qc.invalidateQueries({ queryKey: ['product-edit', id] });
-      Alert.alert('경매를 예약했어요');
+      Alert.alert(tr('auction.scheduled'));
       router.replace({ pathname: '/auctions/[id]', params: { id: auctionId } });
     } catch (e) {
-      Alert.alert('경매를 예약하지 못했어요', errMsg(e));
+      Alert.alert(tr('auction.scheduleFailed'), errMsg(e));
     } finally {
       setPending(false);
     }
@@ -76,7 +78,7 @@ export default function AuctionSetupScreen() {
       contentContainerStyle={styles.body}
       keyboardShouldPersistTaps="handled"
     >
-      <Stack.Screen options={{ title: '경매 등록' }} />
+      <Stack.Screen options={{ title: tr('common:screen.auctionNew') }} />
       <Text variant="h2">{p.title}</Text>
       <AuctionFields a={a} set={(patch) => setA((x) => ({ ...x, ...patch }))} errors={errors} />
       {Object.keys(errors).length > 0 && (
@@ -84,7 +86,7 @@ export default function AuctionSetupScreen() {
           {Object.values(errors)[0]}
         </Text>
       )}
-      <Button title="경매 예약하기" size="lg" loading={pending} onPress={() => void submit()} />
+      <Button title={tr('auction.submit')} size="lg" loading={pending} onPress={() => void submit()} />
     </ScrollView>
   );
 }

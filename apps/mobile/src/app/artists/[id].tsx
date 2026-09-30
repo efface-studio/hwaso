@@ -1,11 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
 import { Stack, useLocalSearchParams } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 import { ProductGrid } from '@/components/product/product-grid';
 import { Text } from '@/components/ui/text';
 import { api } from '@/lib/api';
 
 export default function ArtistScreen() {
+  const { t: tr } = useTranslation('home');
   const { id } = useLocalSearchParams<{ id: string }>();
   const q = useQuery({ queryKey: ['artist', id], queryFn: () => api.market.artist(id) });
   const a = q.data;
@@ -15,7 +17,7 @@ export default function ArtistScreen() {
       <Stack.Screen options={{ title: a?.name ?? '' }} />
       <ProductGrid
         params={{ artist: id, sort: 'latest' }}
-        emptyTitle="판매 중인 작품이 없어요"
+        emptyTitle={tr('artist.empty')}
         header={
           a ? (
             <View style={{ padding: 16, gap: 4 }}>

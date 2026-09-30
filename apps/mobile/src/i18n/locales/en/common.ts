@@ -47,6 +47,7 @@ const en: Translation<typeof ko> = {
     justNow: 'Just now',
     minutesAgo: '{{count}}m ago',
     hoursAgo: '{{count}}h ago',
+    yesterday: 'Yesterday',
     daysAgo: '{{count}}d ago',
   },
   count: {
@@ -94,6 +95,91 @@ const en: Translation<typeof ko> = {
     title: 'Language',
     system: 'Device language',
     systemHint: 'Follows your device settings',
+  },
+  brand: {
+    name: 'Hwaso',
+  },
+  cta: {
+    browseArtworks: 'Browse artworks',
+  },
+  ui: {
+    showPassword: 'Show password',
+    hidePassword: 'Hide password',
+    profilePhoto: "{{name}}'s profile photo",
+  },
+  feedback: {
+    saved: 'Saved',
+    deleted: 'Deleted',
+    unknownError: 'Something went wrong. Please try again.',
+    tryLater: 'Please try again in a moment.',
+  },
+  upload: {
+    permissionTitle: '{{what}} access needed',
+    permissionMessage: 'Allow access for Hwaso in Settings.',
+    camera: 'Camera',
+    photos: 'Photos',
+    failed: "Couldn't upload the photo",
+  },
+  cropper: {
+    title: 'Adjust photo',
+    image: 'Photo to crop',
+    hint: 'Pinch to zoom and drag to reposition',
+    openFailed: "Couldn't open the photo",
+    openFailedMessage: 'Please choose another photo.',
+    cropFailed: "Couldn't crop the photo",
+  },
+  theme: {
+    title: 'Appearance',
+    system: 'System',
+    light: 'Light',
+    dark: 'Dark',
+  },
+  appLock: {
+    prompt: 'Unlock Hwaso',
+    locked: 'The app is locked',
+    unlock: 'Unlock',
+  },
+  splash: {
+    tagline: 'Where art meets people',
+  },
+  header: {
+    refreshHome: 'Refresh Hwaso home',
+  },
+  notFound: {
+    title: "We couldn't find this page",
+    goHome: 'Go home',
+  },
+  bridge: {
+    paymentFailed: "Payment didn't go through.",
+  },
+  oauth: {
+    cancelled: 'Sign-in was canceled.',
+    appleNoToken: "Couldn't get your Apple sign-in details.",
+  },
+  device: {
+    phone: 'Phone',
+    web: 'Web',
+  },
+  push: {
+    channelName: 'General notifications',
+  },
+  auctionLive: {
+    outbid: "You've been outbid",
+    extended: 'Extended by {{seconds}}s after a last-minute bid',
+  },
+  validation: {
+    accountNumber: 'Check the account number.',
+    bank: 'Select a bank.',
+    reason: 'Enter a reason.',
+    reasonMin: 'Enter a reason of at least 5 characters.',
+    photos: 'Add at least 1 photo.',
+    titleMin: 'Enter a title of at least 2 characters.',
+    price: 'Enter a price.',
+    reserveStart: 'Enter the pre-sale start date.',
+    startPrice: 'The starting price must be at least ₩1,000.',
+    bidIncrement: 'The bid increment must be at least ₩100.',
+    endAfterStart: 'The end time must be after the start time.',
+    buyNowAboveStart: 'The buy-now price must be higher than the starting price.',
   },
 };
 

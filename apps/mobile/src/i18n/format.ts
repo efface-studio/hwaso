@@ -29,7 +29,7 @@ export const formatDateTime = (iso: string | Date): string =>
     minute: '2-digit',
   });
 
-/** 방금 전 · n분 전 · n시간 전 · n일 전, 일주일이 넘으면 날짜 */
+/** 방금 전 · n분 전 · n시간 전 · 어제 · n일 전, 일주일이 넘으면 날짜 */
 export function formatRelative(iso: string | Date, now = Date.now()): string {
   const diff = Math.max(0, now - new Date(iso).getTime());
   const min = Math.floor(diff / 60_000);
@@ -37,6 +37,7 @@ export function formatRelative(iso: string | Date, now = Date.now()): string {
   if (min < 60) return i18n.t('common:time.minutesAgo', { count: min });
   const hours = Math.floor(min / 60);
   if (hours < 24) return i18n.t('common:time.hoursAgo', { count: hours });
+  if (hours < 48) return i18n.t('common:time.yesterday');
   const days = Math.floor(hours / 24);
   if (days < 7) return i18n.t('common:time.daysAgo', { count: days });
   return formatDate(iso);

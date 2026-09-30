@@ -88,6 +88,7 @@ function MySkeleton() {
 
 function ProfileHeader({ user }: { user: MeDto }) {
   const t = useTheme();
+  const { t: tr } = useTranslation(['my', 'common']);
   // 공개 프로필 화면과 같은 캐시 (수정 후 돌아와도 최신 숫자)
   const pub = useQuery({ queryKey: ['user', user.id], queryFn: () => api.market.user(user.id) });
   const p = pub.data;
@@ -110,7 +111,7 @@ function ProfileHeader({ user }: { user: MeDto }) {
     <View style={styles.profile}>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="프로필 수정"
+        accessibilityLabel={tr('myTab.editProfile')}
         onPress={() => router.push('/settings/profile')}
         style={({ pressed }) => [styles.identity, { opacity: pressed ? 0.7 : 1 }]}
       >
@@ -123,13 +124,13 @@ function ProfileHeader({ user }: { user: MeDto }) {
             {p?.verified && (
               <View style={[styles.badge, { backgroundColor: t.colors.primarySoft }]}>
                 <Text variant="caption" color="primary" style={{ fontWeight: '600' }}>
-                  인증 판매자
+                  {tr('myTab.verifiedSeller')}
                 </Text>
               </View>
             )}
           </View>
           <Text variant="small" color="muted" numberOfLines={1}>
-            {user.email.endsWith('.invalid') ? '소셜 계정' : user.email}
+            {user.email.endsWith('.invalid') ? tr('myTab.socialAccount') : user.email}
           </Text>
           {!!user.profile.bio && (
             <Text variant="small" numberOfLines={2}>
@@ -140,22 +141,26 @@ function ProfileHeader({ user }: { user: MeDto }) {
       </Pressable>
 
       <View style={[styles.stats, { borderColor: t.colors.borderSoft }]}>
-        {stat('팔로워', String(p?.followerCount ?? '–'), {
+        {stat(tr('people.followers'), String(p?.followerCount ?? '–'), {
           pathname: '/users/[id]/follows',
           params: { id: user.id, type: 'followers' },
         })}
-        {stat('팔로잉', String(p?.followingCount ?? '–'), {
+        {stat(tr('people.following'), String(p?.followingCount ?? '–'), {
           pathname: '/users/[id]/follows',
           params: { id: user.id, type: 'following' },
         })}
-        {stat('후기', p ? (p.ratingCount ? `★ ${p.ratingAvg.toFixed(1)}` : '0') : '–', profileHref)}
-        {stat('거래', String(p?.tradeCount ?? '–'), profileHref)}
+        {stat(
+          tr('people.reviews'),
+          p ? (p.ratingCount ? `★ ${p.ratingAvg.toFixed(1)}` : '0') : '–',
+          profileHref,
+        )}
+        {stat(tr('people.trades'), String(p?.tradeCount ?? '–'), profileHref)}
       </View>
 
       <View style={styles.actions}>
         <View style={{ flex: 1 }}>
           <Button
-            title="프로필 수정"
+            title={tr('myTab.editProfile')}
             variant="outline"
             size="sm"
             block
@@ -164,7 +169,7 @@ function ProfileHeader({ user }: { user: MeDto }) {
         </View>
         <View style={{ flex: 1 }}>
           <Button
-            title="내 프로필 보기"
+            title={tr('myTab.viewProfile')}
             variant="outline"
             size="sm"
             block
@@ -181,7 +186,7 @@ export default function MyScreen() {
   const user = useAuthStore((s) => s.user);
   const { theme, senior, setTheme, setSenior } = usePrefs();
   const language = usePrefs((s) => s.language);
-  const { t: tr } = useTranslation();
+  const { t: tr } = useTranslation(['my', 'common']);
   const qc = useQueryClient();
   const [refreshing, setRefreshing] = useState(false);
   // 당겨서 새로고침: 내 계정(프로필 사진·닉네임 등)과 팔로워·후기 숫자
@@ -219,40 +224,45 @@ export default function MyScreen() {
             <ProfileHeader user={user} />
           ) : (
             <View style={styles.profile}>
-              <Text variant="h3">로그인하고 입찰·구매·채팅을 시작하세요</Text>
-              <Button title="로그인" onPress={() => router.push('/login')} block style={{ marginTop: 12 }} />
+              <Text variant="h3">{tr('myTab.loginPrompt')}</Text>
+              <Button
+                title={tr('myTab.login')}
+                onPress={() => router.push('/login')}
+                block
+                style={{ marginTop: 12 }}
+              />
             </View>
           )}
           {user &&
             (
               [
                 [
-                  '쇼핑',
+                  tr('myTab.group.shopping'),
                   [
-                    ['/orders', '구매 내역'],
-                    ['/my/bids', '입찰·낙찰 내역'],
-                    ['/cart', '장바구니'],
-                    ['/my/favorites', '관심 작품'],
-                    ['/my/recent', '최근 본 작품'],
+                    ['/orders', tr('myTab.menu.orders')],
+                    ['/my/bids', tr('myTab.menu.bids')],
+                    ['/cart', tr('myTab.menu.cart')],
+                    ['/my/favorites', tr('myTab.menu.favorites')],
+                    ['/my/recent', tr('myTab.menu.recent')],
                   ],
                 ],
                 [
-                  '커뮤니티',
+                  tr('myTab.group.community'),
                   [
-                    ['/feed', '팔로잉 새 작품'],
+                    ['/feed', tr('myTab.menu.feed')],
                     [
                       { pathname: '/users/[id]/follows', params: { id: user.id, type: 'following' } },
-                      '팔로잉',
+                      tr('myTab.menu.following'),
                     ],
-                    [{ pathname: '/users/[id]', params: { id: user.id } }, '내 프로필 · 받은 후기'],
+                    [{ pathname: '/users/[id]', params: { id: user.id } }, tr('myTab.menu.profileReviews')],
                   ],
                 ],
                 [
-                  '계정',
+                  tr('myTab.group.account'),
                   [
-                    ['/notifications', '알림'],
-                    ['/addresses', '배송지 관리'],
-                    ['/settings', '설정'],
+                    ['/notifications', tr('myTab.menu.notifications')],
+                    ['/addresses', tr('myTab.menu.addresses')],
+                    ['/settings', tr('myTab.menu.settings')],
                   ],
                 ],
               ] as [string, [Href, string][]][]
@@ -271,42 +281,39 @@ export default function MyScreen() {
               </View>
             ))}
           <Pressable accessibilityRole="link" onPress={() => router.push('/support')}>
-            <Row label="고객센터 · 약관">
+            <Row label={tr('myTab.menu.support')}>
               <Text color="faint">›</Text>
             </Row>
           </Pressable>
           <Text variant="label" color="muted" style={styles.group}>
-            화면
+            {tr('myTab.group.display')}
           </Text>
           <ThemePicker value={theme} onChange={setTheme} />
-          <Row
-            label="큰 글씨 모드 (시니어 모드)"
-            description="글자와 버튼을 크게, 글자색을 진하게 하고 움직임을 줄여요."
-          >
+          <Row label={tr('myTab.senior.label')} description={tr('myTab.senior.description')}>
             <Switch
               value={senior}
               onValueChange={setSenior}
               trackColor={{ true: t.colors.primary }}
-              accessibilityLabel="큰 글씨 모드"
+              accessibilityLabel={tr('myTab.senior.a11y')}
             />
           </Row>
           <Pressable accessibilityRole="link" onPress={() => router.push('/settings/language')}>
-            <Row label={tr('language.title')}>
+            <Row label={tr('common:language.title')}>
               <Text color="muted">
-                {language === 'system' ? tr('language.system') : LANGUAGE_NAME[language]}
+                {language === 'system' ? tr('common:language.system') : LANGUAGE_NAME[language]}
               </Text>
               <Text color="faint">›</Text>
             </Row>
           </Pressable>
           {user && (
             <Button
-              title="로그아웃"
+              title={tr('myTab.logout')}
               variant="ghost"
               style={{ marginTop: 24 }}
               onPress={() =>
-                Alert.alert('로그아웃할까요?', undefined, [
-                  { text: '취소', style: 'cancel' },
-                  { text: '로그아웃', style: 'destructive', onPress: () => void logout() },
+                Alert.alert(tr('myTab.logoutConfirm'), undefined, [
+                  { text: tr('common:action.cancel'), style: 'cancel' },
+                  { text: tr('myTab.logout'), style: 'destructive', onPress: () => void logout() },
                 ])
               }
             />

@@ -1,4 +1,66 @@
 /** auth — 한국어 원문 */
-const ko = {};
+const ko = {
+  login: {
+    brand: '화소',
+    tagline: '작품과 사람이 만나는 곳',
+    email: '이메일',
+    password: '비밀번호',
+    submit: '로그인',
+    forgotPassword: '비밀번호 찾기',
+    signupWithEmail: '이메일로 가입하기',
+    socialDivider: '간편 로그인',
+    failed: '로그인하지 못했어요. 네트워크를 확인해주세요.',
+  },
+  signup: {
+    title: '이메일로 가입하기',
+    almostDone: '거의 다 됐어요',
+    password: '비밀번호',
+    passwordHint: '8자 이상, 영문·숫자·기호 중 2가지 이상',
+    nickname: '닉네임',
+    nicknameHint: '2~20자, 다른 회원에게 보이는 이름',
+    agreeTerms: '이용약관·개인정보처리방침 동의 (필수)',
+    viewTerms: '보기',
+    agreeMarketing: '이벤트·혜택 알림 받기 (선택)',
+    submit: '가입하기',
+    failed: '가입하지 못했어요.',
+  },
+  forgotPassword: {
+    title: '비밀번호 찾기',
+    newPassword: '새 비밀번호',
+    submit: '비밀번호 바꾸기',
+    doneTitle: '비밀번호를 바꿨어요',
+    doneMessage: '새 비밀번호로 로그인해주세요.',
+    failed: '바꾸지 못했어요.',
+  },
+  emailCode: {
+    email: '이메일',
+    send: '인증번호 받기',
+    sentGuide: '{{email}} 로 보낸 6자리 번호를 입력해주세요. 10분 동안 쓸 수 있어요.',
+    code: '인증번호',
+    resendIn: '다시 받기 ({{seconds}}초)',
+    resend: '인증번호 다시 받기',
+    changeEmail: '이메일 바꾸기',
+    sendFailed: '인증번호를 보내지 못했어요.',
+    verifyFailed: '인증하지 못했어요.',
+  },
+  social: {
+    continueWith: '{{provider}}로 계속하기',
+    redirecting: '이동 중…',
+    notConfiguredTitle: '{{provider}} 로그인 준비 중',
+    notConfiguredMessage: 'API 키 설정 후 사용할 수 있어요 (apps/api/.env).',
+    appleBuildOnlyTitle: 'Apple 로그인은 앱 빌드에서만 돼요',
+    appleBuildOnlyMessage: 'Expo Go 에서는 쓸 수 없어요. 개발 빌드(expo run:ios)로 실행해주세요.',
+    failedTitle: '로그인하지 못했어요',
+  },
+  validation: {
+    passwordMin: '비밀번호는 8자 이상이어야 합니다.',
+    passwordMax: '비밀번호는 72자 이하여야 합니다.',
+    passwordLetter: '영문을 포함해주세요.',
+    passwordDigit: '숫자를 포함해주세요.',
+    nicknameMin: '닉네임은 2자 이상이어야 합니다.',
+    nicknameMax: '닉네임은 20자 이하여야 합니다.',
+    nicknameChars: '한글, 영문, 숫자, _ . 만 사용할 수 있습니다.',
+  },
+} as const;
 
 export default ko;

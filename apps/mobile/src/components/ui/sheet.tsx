@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Modal, ScrollView, StyleSheet, View } from 'react-native';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
@@ -15,6 +16,7 @@ export function Sheet({
   children: ReactNode;
 }) {
   const t = useTheme();
+  const { t: tr } = useTranslation('common');
   return (
     // 큰 글씨 모드는 움직임을 줄인다
     <Modal
@@ -32,7 +34,7 @@ export function Sheet({
           <Text variant="h2" accessibilityRole="header" style={{ flex: 1 }}>
             {title}
           </Text>
-          <Button title="닫기" variant="ghost" size="sm" onPress={onClose} />
+          <Button title={tr('action.close')} variant="ghost" size="sm" onPress={onClose} />
         </View>
         {children}
       </ScrollView>

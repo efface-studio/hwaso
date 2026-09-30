@@ -45,6 +45,7 @@ const ko = {
     justNow: '방금 전',
     minutesAgo: '{{count}}분 전',
     hoursAgo: '{{count}}시간 전',
+    yesterday: '어제',
     daysAgo: '{{count}}일 전',
   },
   count: {
@@ -92,6 +93,91 @@ const ko = {
     title: '언어',
     system: '기기 언어',
     systemHint: '기기 설정 언어를 따라요',
+  },
+  brand: {
+    name: '화소',
+  },
+  cta: {
+    browseArtworks: '작품 둘러보기',
+  },
+  ui: {
+    showPassword: '비밀번호 보기',
+    hidePassword: '비밀번호 숨기기',
+    profilePhoto: '{{name}} 프로필 사진',
+  },
+  feedback: {
+    saved: '저장했어요',
+    deleted: '삭제했어요',
+    unknownError: '잠시 문제가 발생했어요. 다시 시도해주세요.',
+    tryLater: '잠시 후 다시 시도해주세요.',
+  },
+  upload: {
+    permissionTitle: '{{what}} 접근 권한이 필요해요',
+    permissionMessage: '설정에서 화소의 권한을 허용해주세요.',
+    camera: '카메라',
+    photos: '사진',
+    failed: '사진을 올리지 못했어요',
+  },
+  cropper: {
+    title: '사진 조정',
+    image: '자를 사진',
+    hint: '두 손가락으로 확대하고, 끌어서 위치를 맞춰요',
+    openFailed: '사진을 열지 못했어요',
+    openFailedMessage: '다른 사진을 골라주세요.',
+    cropFailed: '사진을 자르지 못했어요',
+  },
+  theme: {
+    title: '화면 모드',
+    system: '시스템',
+    light: '라이트',
+    dark: '다크',
+  },
+  appLock: {
+    prompt: '화소 잠금 해제',
+    locked: '앱이 잠겨 있어요',
+    unlock: '잠금 해제',
+  },
+  splash: {
+    tagline: '작품과 사람이 만나는 곳',
+  },
+  header: {
+    refreshHome: '화소 홈 새로고침',
+  },
+  notFound: {
+    title: '페이지를 찾을 수 없어요',
+    goHome: '홈으로',
+  },
+  bridge: {
+    paymentFailed: '결제하지 못했어요.',
+  },
+  oauth: {
+    cancelled: '로그인이 취소되었어요.',
+    appleNoToken: 'Apple 로그인 정보를 받지 못했어요.',
+  },
+  device: {
+    phone: '휴대폰',
+    web: '웹',
+  },
+  push: {
+    channelName: '기본 알림',
+  },
+  auctionLive: {
+    outbid: '더 높은 입찰이 들어왔어요',
+    extended: '마감 직전 입찰로 {{seconds}}초 연장되었어요',
+  },
+  validation: {
+    accountNumber: '계좌번호를 확인해주세요.',
+    bank: '은행을 선택해주세요.',
+    reason: '사유를 입력해주세요.',
+    reasonMin: '사유를 5자 이상 입력해주세요.',
+    photos: '사진을 1장 이상 올려주세요.',
+    titleMin: '상품명은 2자 이상 입력해주세요.',
+    price: '판매 가격을 입력해주세요.',
+    reserveStart: '예약 판매 시작일을 입력해주세요.',
+    startPrice: '시작가는 1,000원 이상이어야 합니다.',
+    bidIncrement: '입찰 단위는 100원 이상이어야 합니다.',
+    endAfterStart: '종료 시간은 시작 시간 이후여야 합니다.',
+    buyNowAboveStart: '즉시 구매가는 시작가보다 높아야 합니다.',
   },
 } as const;
 

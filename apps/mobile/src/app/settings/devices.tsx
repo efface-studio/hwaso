@@ -1,6 +1,7 @@
 import { ApiError } from '@shop/api-client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { Alert, StyleSheet, View } from 'react-native';
 import { AppRefreshControl } from '@/components/ui/app-refresh-control';
 import { usePullRefresh } from '@/hooks/use-pull-refresh';
@@ -8,13 +9,13 @@ import { Button } from '@/components/ui/button';
 import { Loading } from '@/components/ui/state';
 import { Text } from '@/components/ui/text';
 import { List } from '@/components/ui/list';
+import i18n, { currentLanguage, LOCALE } from '@/i18n';
 import { api } from '@/lib/api';
 import { useTheme } from '@/theme';
 
-const PLATFORM: Record<string, string> = { ios: 'iPhone·iPad', android: 'Android', web: '웹 브라우저' };
-const errMsg = (e: unknown) => (e instanceof ApiError ? e.message : '처리하지 못했어요.');
+const errMsg = (e: unknown) => (e instanceof ApiError ? e.message : i18n.t('common:state.actionFailed'));
 const when = (iso: string) =>
-  new Date(iso).toLocaleString('ko-KR', {
+  new Date(iso).toLocaleString(LOCALE[currentLanguage()], {
     month: 'long',
     day: 'numeric',
     hour: '2-digit',
@@ -24,12 +25,18 @@ const when = (iso: string) =>
 /** 로그인 기기: 모르는 기기는 로그아웃시키고 비밀번호를 바꾸도록 안내한다 */
 export default function DevicesScreen() {
   const t = useTheme();
+  const { t: tr } = useTranslation(['my', 'common']);
   const qc = useQueryClient();
   const q = useQuery({ queryKey: ['sessions'], queryFn: api.auth.sessions });
   const pull = usePullRefresh(q.refetch);
   const refresh = () => void qc.invalidateQueries({ queryKey: ['sessions'] });
   if (q.isPending) return <Loading variant="plain-list" />;
   const others = (q.data ?? []).filter((s) => !s.current).length;
+  const platform: Record<string, string> = {
+    ios: tr('devices.platform.ios'),
+    android: tr('devices.platform.android'),
+    web: tr('devices.platform.web'),
+  };
 
   return (
     <List
@@ -41,19 +48,19 @@ export default function DevicesScreen() {
       ListEmptyComponent={pull.refreshing ? <Loading variant="plain-list" /> : null}
       ListHeaderComponent={
         <View style={{ gap: 8, marginBottom: 8 }}>
-          <Stack.Screen options={{ title: '로그인 기기' }} />
+          <Stack.Screen options={{ title: tr('common:screen.devices') }} />
           <Text variant="small" color="muted">
-            모르는 기기가 있다면 로그아웃시키고 비밀번호를 바꿔주세요.
+            {tr('devices.notice')}
           </Text>
           {others > 0 && (
             <Button
-              title={`다른 기기 ${others}대 모두 로그아웃`}
+              title={tr('devices.logoutOthers', { count: others })}
               variant="outline"
               onPress={() =>
-                Alert.alert('다른 기기에서 모두 로그아웃할까요?', undefined, [
-                  { text: '취소', style: 'cancel' },
+                Alert.alert(tr('devices.logoutOthersConfirm'), undefined, [
+                  { text: tr('common:action.cancel'), style: 'cancel' },
                   {
-                    text: '로그아웃',
+                    text: tr('devices.logout'),
                     style: 'destructive',
                     onPress: () =>
                       void api.auth.revokeOtherSessions().then(refresh, (e) => Alert.alert(errMsg(e))),
@@ -71,17 +78,19 @@ export default function DevicesScreen() {
               {s.deviceName}
               {s.current ? (
                 <Text variant="small" color="primary">
-                  {'  '}이 기기
+                  {'  '}
+                  {tr('devices.thisDevice')}
                 </Text>
               ) : null}
             </Text>
             <Text variant="caption" color="muted">
-              {PLATFORM[s.platform] ?? s.platform} · {s.ipMasked} · 최근 사용 {when(s.lastUsedAt)}
+              {platform[s.platform] ?? s.platform} · {s.ipMasked} ·{' '}
+              {tr('devices.lastUsed', { date: when(s.lastUsedAt) })}
             </Text>
           </View>
           {!s.current && (
             <Button
-              title="로그아웃"
+              title={tr('devices.logout')}
               size="sm"
               variant="ghost"
               onPress={() => void api.auth.revokeSession(s.id).then(refresh, (e) => Alert.alert(errMsg(e)))}

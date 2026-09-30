@@ -1,6 +1,68 @@
 import type ko from '../ko/auth';
 import type { Translation } from '../../types';
 
-const zhHans: Translation<typeof ko> = {};
+const zhHans: Translation<typeof ko> = {
+  login: {
+    brand: 'Hwaso',
+    tagline: '作品与人相遇的地方',
+    email: '邮箱',
+    password: '密码',
+    submit: '登录',
+    forgotPassword: '忘记密码',
+    signupWithEmail: '使用邮箱注册',
+    socialDivider: '快捷登录',
+    failed: '登录失败，请检查网络连接。',
+  },
+  signup: {
+    title: '使用邮箱注册',
+    almostDone: '马上就好',
+    password: '密码',
+    passwordHint: '至少 8 位，包含字母、数字、符号中的至少 2 种',
+    nickname: '昵称',
+    nicknameHint: '2–20 个字符，其他用户可见',
+    agreeTerms: '同意用户协议和隐私政策（必选）',
+    viewTerms: '查看',
+    agreeMarketing: '接收活动和优惠通知（可选）',
+    submit: '注册',
+    failed: '注册失败。',
+  },
+  forgotPassword: {
+    title: '找回密码',
+    newPassword: '新密码',
+    submit: '修改密码',
+    doneTitle: '密码已修改',
+    doneMessage: '请使用新密码登录。',
+    failed: '修改失败。',
+  },
+  emailCode: {
+    email: '邮箱',
+    send: '获取验证码',
+    sentGuide: '请输入发送至 {{email}} 的 6 位验证码，10 分钟内有效。',
+    code: '验证码',
+    resendIn: '重新获取（{{seconds}}秒）',
+    resend: '重新获取验证码',
+    changeEmail: '更换邮箱',
+    sendFailed: '验证码发送失败。',
+    verifyFailed: '验证失败。',
+  },
+  social: {
+    continueWith: '通过{{provider}}继续',
+    redirecting: '正在跳转…',
+    notConfiguredTitle: '{{provider}}登录暂未开放',
+    notConfiguredMessage: '配置 API 密钥后即可使用（apps/api/.env）。',
+    appleBuildOnlyTitle: 'Apple 登录仅在应用构建版本中可用',
+    appleBuildOnlyMessage: 'Expo Go 中无法使用，请使用开发构建（expo run:ios）运行。',
+    failedTitle: '登录失败',
+  },
+  validation: {
+    passwordMin: '密码至少需要 8 个字符。',
+    passwordMax: '密码不能超过 72 个字符。',
+    passwordLetter: '请包含英文字母。',
+    passwordDigit: '请包含数字。',
+    nicknameMin: '昵称至少需要 2 个字符。',
+    nicknameMax: '昵称不能超过 20 个字符。',
+    nicknameChars: '仅可使用韩文、英文字母、数字、_ 和 .。',
+  },
+};
 
 export default zhHans;

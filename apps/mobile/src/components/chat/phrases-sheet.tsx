@@ -3,6 +3,8 @@ import { CHAT_PHRASE_MAX, CHAT_PHRASES_MAX } from '@shop/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
+import { localizePhrase } from '@/components/chat/localize';
 import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
 import { Loading } from '@/components/ui/state';
@@ -16,6 +18,7 @@ const PHRASES_KEY = ['chat', 'phrases'];
 /** 자주 쓰는 문구: 누르면 입력창에 넣고, 편집에서 추가·삭제 (웹과 같은 목록) */
 export function PhrasesSheet({ onPick, onClose }: { onPick: (text: string) => void; onClose: () => void }) {
   const t = useTheme();
+  const { t: tr } = useTranslation(['chat', 'common']);
   const qc = useQueryClient();
   const list = useQuery({ queryKey: PHRASES_KEY, queryFn: () => api.chat.phrases() });
   const [draft, setDraft] = useState<string[] | null>(null);
@@ -26,35 +29,41 @@ export function PhrasesSheet({ onPick, onClose }: { onPick: (text: string) => vo
       qc.setQueryData(PHRASES_KEY, res);
       setDraft(null);
     },
-    onError: (e) => Alert.alert(e instanceof ApiError ? e.message : '문구를 저장하지 못했어요.'),
+    onError: (e) => Alert.alert(e instanceof ApiError ? e.message : tr('phrases.saveFailed')),
   });
-  const phrases = list.data?.phrases ?? [];
+  // 기본 문구(서버가 주는 한국어)는 지금 언어로 보여주고, 편집해 저장하면 그 언어로 저장된다
+  const phrases = (list.data?.phrases ?? []).map(localizePhrase);
   const row = [styles.row, { borderColor: t.colors.borderSoft, minHeight: t.touch }];
 
   return (
-    <Sheet title="자주 쓰는 문구" onClose={onClose}>
+    <Sheet title={tr('phrases.title')} onClose={onClose}>
       {list.isPending ? (
         <Loading variant="spinner" />
       ) : draft ? (
         <>
-          <Text color="muted">최대 {CHAT_PHRASES_MAX}개까지 저장할 수 있어요.</Text>
+          <Text color="muted">{tr('phrases.max', { count: CHAT_PHRASES_MAX })}</Text>
           {draft.map((p, i) => (
             <View key={`${i}-${p}`} style={row}>
               <Text style={{ flex: 1 }}>{p}</Text>
               <Button
-                title="삭제"
+                title={tr('common:action.delete')}
                 size="sm"
                 variant="ghost"
-                accessibilityLabel={`${p} 삭제`}
+                accessibilityLabel={tr('phrases.deleteLabel', { phrase: p })}
                 onPress={() => setDraft(draft.filter((_, j) => j !== i))}
               />
             </View>
           ))}
           {draft.length < CHAT_PHRASES_MAX && (
             <>
-              <Field label="새 문구" maxLength={CHAT_PHRASE_MAX} value={added} onChangeText={setAdded} />
+              <Field
+                label={tr('phrases.newPhrase')}
+                maxLength={CHAT_PHRASE_MAX}
+                value={added}
+                onChangeText={setAdded}
+              />
               <Button
-                title="추가"
+                title={tr('phrases.add')}
                 variant="outline"
                 disabled={!added.trim()}
                 onPress={() => {
@@ -64,12 +73,17 @@ export function PhrasesSheet({ onPick, onClose }: { onPick: (text: string) => vo
               />
             </>
           )}
-          <Button title="저장" block loading={save.isPending} onPress={() => save.mutate(draft)} />
-          <Button title="취소" block variant="ghost" onPress={() => setDraft(null)} />
+          <Button
+            title={tr('common:action.save')}
+            block
+            loading={save.isPending}
+            onPress={() => save.mutate(draft)}
+          />
+          <Button title={tr('common:action.cancel')} block variant="ghost" onPress={() => setDraft(null)} />
         </>
       ) : (
         <>
-          <Text color="muted">누르면 입력창에 넣어드려요.</Text>
+          <Text color="muted">{tr('phrases.pickHint')}</Text>
           {phrases.length ? (
             phrases.map((p) => (
               <Pressable key={p} accessibilityRole="button" onPress={() => onPick(p)} style={row}>
@@ -77,9 +91,9 @@ export function PhrasesSheet({ onPick, onClose }: { onPick: (text: string) => vo
               </Pressable>
             ))
           ) : (
-            <Text color="muted">저장한 문구가 없어요. 편집에서 추가해보세요.</Text>
+            <Text color="muted">{tr('phrases.empty')}</Text>
           )}
-          <Button title="편집" block variant="outline" onPress={() => setDraft(phrases)} />
+          <Button title={tr('phrases.edit')} block variant="outline" onPress={() => setDraft(phrases)} />
         </>
       )}
     </Sheet>

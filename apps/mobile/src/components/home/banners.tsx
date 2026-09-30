@@ -2,6 +2,7 @@ import type { BannerDto } from '@shop/shared';
 import { Image } from 'expo-image';
 import { useIsFocused } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { FlatList, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { mediaUrl } from '@/lib/media';
@@ -14,6 +15,7 @@ const INTERVAL_MS = 5000;
 /** 홈 배너: 좌우로 넘기고 5초마다 자동으로 넘어간다 (큰 글씨 모드에서는 움직임을 줄여 자동 넘김을 끈다) */
 export function BannerCarousel({ banners }: { banners: BannerDto[] }) {
   const t = useTheme();
+  const { t: tr } = useTranslation('home');
   const senior = usePrefs((s) => s.senior);
   const { width: screen } = useWindowDimensions();
   const width = Math.min(screen, 900);
@@ -78,7 +80,10 @@ export function BannerCarousel({ banners }: { banners: BannerDto[] }) {
         )}
       />
       {banners.length > 1 && (
-        <View style={styles.dots} accessibilityLabel={`배너 ${index + 1}/${banners.length}`}>
+        <View
+          style={styles.dots}
+          accessibilityLabel={tr('home.bannerA11y', { current: index + 1, total: banners.length })}
+        >
           {banners.map((b, i) => (
             <View
               key={b.id}

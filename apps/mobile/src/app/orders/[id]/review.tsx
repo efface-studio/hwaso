@@ -4,11 +4,13 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
 import { Loading } from '@/components/ui/state';
 import { Text } from '@/components/ui/text';
+import i18n from '@/i18n';
 import { api } from '@/lib/api';
 import { mediaUrl } from '@/lib/media';
 import { goBack } from '@/lib/nav';
@@ -17,12 +19,13 @@ import { useTheme } from '@/theme';
 
 const MAX_IMAGES = 5;
 const errMsg = (e: unknown) =>
-  e instanceof ApiError || e instanceof Error ? e.message : '처리하지 못했어요.';
+  e instanceof ApiError || e instanceof Error ? e.message : i18n.t('common:state.actionFailed');
 
 /** 거래 후기: 별점 + 내용 + 사진(최대 5장). 작성 후 30일 안에는 수정·삭제할 수 있다 */
 export default function ReviewScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const t = useTheme();
+  const { t: tr } = useTranslation(['order', 'common']);
   const qc = useQueryClient();
   const mine = useQuery({ queryKey: ['review', id], queryFn: () => api.community.myReview(id) });
   const existing = mine.data;
@@ -66,14 +69,17 @@ export default function ReviewScreen() {
       const keys = (await Promise.all(assets.map(uploadAsset))).map((i) => i.key);
       setImages((prev) => [...prev, ...keys].slice(0, MAX_IMAGES));
     } catch (e) {
-      Alert.alert('사진을 올리지 못했어요', errMsg(e));
+      Alert.alert(tr('review.uploadFailed'), errMsg(e));
     } finally {
       setUploading(false);
     }
   };
   const submit = () => {
     const r = createReviewSchema.safeParse({ rating, comment, imageKeys: images });
-    if (!r.success) return setError(r.error.issues[0]?.message ?? '내용을 확인해주세요.');
+    if (!r.success)
+      return setError(
+        r.error.issues[0]?.path[0] === 'comment' ? tr('review.commentMin') : tr('review.checkContent'),
+      );
     setError(null);
     save.mutate();
   };
@@ -87,14 +93,14 @@ export default function ReviewScreen() {
       contentContainerStyle={styles.body}
       keyboardShouldPersistTaps="handled"
     >
-      <Stack.Screen options={{ title: existing ? '내 거래 후기' : '거래 후기 쓰기' }} />
-      <Text variant="label">거래는 어떠셨나요?</Text>
-      <View style={styles.stars} accessibilityLabel={`별점 ${rating}점`}>
+      <Stack.Screen options={{ title: existing ? tr('review.myTitle') : tr('review.writeTitle') }} />
+      <Text variant="label">{tr('review.question')}</Text>
+      <View style={styles.stars} accessibilityLabel={tr('review.ratingA11y', { rating })}>
         {[1, 2, 3, 4, 5].map((n) => (
           <Pressable
             key={n}
             accessibilityRole="button"
-            accessibilityLabel={`${n}점`}
+            accessibilityLabel={tr('review.starA11y', { count: n })}
             accessibilityState={{ selected: n === rating }}
             disabled={locked}
             onPress={() => setRating(n)}
@@ -113,19 +119,17 @@ export default function ReviewScreen() {
         ))}
       </View>
       <Field
-        label="후기"
+        label={tr('review.label')}
         multiline
         maxLength={1000}
         editable={!locked}
         value={comment}
         onChangeText={setComment}
         style={{ minHeight: 140, textAlignVertical: 'top' }}
-        placeholder="작품 상태, 포장, 응대는 어땠는지 알려주세요. (5자 이상)"
+        placeholder={tr('review.placeholder')}
         error={error}
       />
-      <Text variant="label">
-        사진 ({images.length}/{MAX_IMAGES})
-      </Text>
+      <Text variant="label">{tr('review.photos', { count: images.length, max: MAX_IMAGES })}</Text>
       <View style={styles.photos}>
         {images.map((key) => (
           <View key={key} style={[styles.photo, { backgroundColor: t.colors.surface2 }]}>
@@ -133,7 +137,7 @@ export default function ReviewScreen() {
             {!locked && (
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel="사진 빼기"
+                accessibilityLabel={tr('review.removePhoto')}
                 onPress={() => setImages((prev) => prev.filter((k) => k !== key))}
                 style={[styles.remove, { backgroundColor: t.colors.overlay }]}
               >
@@ -145,16 +149,21 @@ export default function ReviewScreen() {
           </View>
         ))}
         {!locked && images.length < MAX_IMAGES && (
-          <Button title="+ 사진" variant="outline" loading={uploading} onPress={() => void addPhotos()} />
+          <Button
+            title={tr('review.addPhoto')}
+            variant="outline"
+            loading={uploading}
+            onPress={() => void addPhotos()}
+          />
         )}
       </View>
       {locked ? (
         <Text variant="small" color="muted">
-          작성 후 30일이 지나 수정할 수 없어요.
+          {tr('review.locked')}
         </Text>
       ) : (
         <Button
-          title={existing ? '수정하기' : '후기 남기기'}
+          title={existing ? tr('review.update') : tr('review.submit')}
           size="lg"
           loading={save.isPending}
           disabled={uploading}
@@ -163,13 +172,13 @@ export default function ReviewScreen() {
       )}
       {existing?.editable && (
         <Button
-          title="후기 삭제"
+          title={tr('review.delete')}
           variant="ghost"
           loading={remove.isPending}
           onPress={() =>
-            Alert.alert('후기를 삭제할까요?', undefined, [
-              { text: '취소', style: 'cancel' },
-              { text: '삭제', style: 'destructive', onPress: () => remove.mutate() },
+            Alert.alert(tr('review.deleteTitle'), undefined, [
+              { text: tr('common:action.cancel'), style: 'cancel' },
+              { text: tr('common:action.delete'), style: 'destructive', onPress: () => remove.mutate() },
             ])
           }
         />

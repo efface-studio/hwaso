@@ -47,6 +47,7 @@ const zhHant: Translation<typeof ko> = {
     justNow: '剛剛',
     minutesAgo: '{{count}}分鐘前',
     hoursAgo: '{{count}}小時前',
+    yesterday: '昨天',
     daysAgo: '{{count}}天前',
   },
   count: {
@@ -94,6 +95,91 @@ const zhHant: Translation<typeof ko> = {
     title: '語言',
     system: '裝置語言',
     systemHint: '依照裝置的語言設定',
+  },
+  brand: {
+    name: 'Hwaso',
+  },
+  cta: {
+    browseArtworks: '瀏覽作品',
+  },
+  ui: {
+    showPassword: '顯示密碼',
+    hidePassword: '隱藏密碼',
+    profilePhoto: '{{name}}的大頭貼',
+  },
+  feedback: {
+    saved: '已儲存',
+    deleted: '已刪除',
+    unknownError: '發生問題，請再試一次。',
+    tryLater: '請稍後再試。',
+  },
+  upload: {
+    permissionTitle: '需要{{what}}存取權限',
+    permissionMessage: '請在設定中允許 Hwaso 存取。',
+    camera: '相機',
+    photos: '照片',
+    failed: '無法上傳照片',
+  },
+  cropper: {
+    title: '調整照片',
+    image: '要裁切的照片',
+    hint: '用兩指縮放，拖曳調整位置',
+    openFailed: '無法開啟照片',
+    openFailedMessage: '請選擇其他照片。',
+    cropFailed: '無法裁切照片',
+  },
+  theme: {
+    title: '顯示模式',
+    system: '跟隨系統',
+    light: '淺色',
+    dark: '深色',
+  },
+  appLock: {
+    prompt: '解鎖 Hwaso',
+    locked: 'App 已鎖定',
+    unlock: '解鎖',
+  },
+  splash: {
+    tagline: '讓作品與人相遇',
+  },
+  header: {
+    refreshHome: '重新整理 Hwaso 首頁',
+  },
+  notFound: {
+    title: '找不到這個頁面',
+    goHome: '回首頁',
+  },
+  bridge: {
+    paymentFailed: '付款失敗。',
+  },
+  oauth: {
+    cancelled: '已取消登入。',
+    appleNoToken: '無法取得 Apple 登入資訊。',
+  },
+  device: {
+    phone: '手機',
+    web: '網頁',
+  },
+  push: {
+    channelName: '預設通知',
+  },
+  auctionLive: {
+    outbid: '有人出了更高的價',
+    extended: '因截止前有人出價，已延長 {{seconds}} 秒',
+  },
+  validation: {
+    accountNumber: '請確認帳號。',
+    bank: '請選擇銀行。',
+    reason: '請輸入原因。',
+    reasonMin: '請輸入至少5個字的原因。',
+    photos: '請至少上傳1張照片。',
+    titleMin: '作品名稱至少2個字。',
+    price: '請輸入售價。',
+    reserveStart: '請輸入預售開始日期。',
+    startPrice: '起標價不得低於1,000韓元。',
+    bidIncrement: '加價幅度不得低於100韓元。',
+    endAfterStart: '結束時間必須晚於開始時間。',
+    buyNowAboveStart: '直購價必須高於起標價。',
   },
 };
 

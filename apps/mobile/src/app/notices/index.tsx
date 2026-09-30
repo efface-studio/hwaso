@@ -1,11 +1,13 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { router, Stack } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet } from 'react-native';
 import { AppRefreshControl } from '@/components/ui/app-refresh-control';
 import { usePullRefresh } from '@/hooks/use-pull-refresh';
 import { Empty, Loading } from '@/components/ui/state';
 import { Text } from '@/components/ui/text';
 import { List } from '@/components/ui/list';
+import { formatDate } from '@/i18n/format';
 import { api } from '@/lib/api';
 import { useTheme } from '@/theme';
 
@@ -14,6 +16,7 @@ const SIZE = 20;
 /** 공지사항 목록 (고정 공지가 먼저) */
 export default function NoticesScreen() {
   const t = useTheme();
+  const { t: tr } = useTranslation(['home', 'common']);
   const q = useInfiniteQuery({
     queryKey: ['notices'],
     queryFn: ({ pageParam }) => api.notices.list({ page: pageParam, size: SIZE }),
@@ -30,9 +33,9 @@ export default function NoticesScreen() {
       keyExtractor={(n) => n.id}
       refreshControl={<AppRefreshControl refreshing={pull.refreshing} onRefresh={pull.onRefresh} />}
       onEndReached={() => q.hasNextPage && !q.isFetchingNextPage && void q.fetchNextPage()}
-      ListHeaderComponent={<Stack.Screen options={{ title: '공지사항' }} />}
+      ListHeaderComponent={<Stack.Screen options={{ title: tr('common:screen.notices') }} />}
       ListEmptyComponent={
-        pull.refreshing ? <Loading variant="plain-list" /> : <Empty kind="doc" title="공지사항이 없어요" />
+        pull.refreshing ? <Loading variant="plain-list" /> : <Empty kind="doc" title={tr('notices.empty')} />
       }
       renderItem={({ item: n }) => (
         <Pressable
@@ -45,7 +48,7 @@ export default function NoticesScreen() {
             {n.title}
           </Text>
           <Text variant="caption" color="muted">
-            {new Date(n.publishedAt).toLocaleDateString('ko-KR')}
+            {formatDate(n.publishedAt)}
           </Text>
         </Pressable>
       )}

@@ -1,6 +1,7 @@
 import type { ProductDetailDto } from '@shop/shared';
 import { useQueryClient } from '@tanstack/react-query';
 import { Stack, useLocalSearchParams } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { FlatList, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ZoomableImage } from '@/components/product/zoomable-image';
@@ -13,6 +14,7 @@ export default function ViewerScreen() {
   const { id, index } = useLocalSearchParams<{ id: string; index?: string }>();
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
+  const { t: tr } = useTranslation(['product', 'common']);
   const p = useQueryClient().getQueryData<ProductDetailDto>(['product', id]);
   const images = p?.images ?? [];
   return (
@@ -27,13 +29,13 @@ export default function ViewerScreen() {
         keyExtractor={(i) => i.key}
         renderItem={({ item }) => (
           <View style={{ width, height }}>
-            <ZoomableImage uri={mediaUrl(item.key, 1600)} label={p?.title ?? '작품 사진'} />
+            <ZoomableImage uri={mediaUrl(item.key, 1600)} label={p?.title ?? tr('viewer.imageFallback')} />
           </View>
         )}
       />
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="닫기"
+        accessibilityLabel={tr('common:action.close')}
         onPress={goBack}
         style={[styles.close, { top: insets.top + 8 }]}
         hitSlop={12}

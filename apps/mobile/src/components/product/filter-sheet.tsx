@@ -1,17 +1,13 @@
-import {
-  CONDITION_LABEL,
-  ITEM_CONDITIONS,
-  SALE_TYPE_LABEL,
-  SALE_TYPES,
-  type ItemCondition,
-  type SaleType,
-} from '@shop/shared';
+import { ITEM_CONDITIONS, SALE_TYPES, type ItemCondition, type SaleType } from '@shop/shared';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Modal, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { Button } from '@/components/ui/button';
 import { PriceField } from '@/components/ui/inputs';
 import { Text } from '@/components/ui/text';
+import { formatPrice } from '@/i18n/format';
+import { label } from '@/i18n/labels';
 import { api } from '@/lib/api';
 import { useTheme } from '@/theme';
 
@@ -120,6 +116,7 @@ export function FilterButton({
   category?: string;
 }) {
   const t = useTheme();
+  const { t: tr } = useTranslation(['home', 'common']);
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(value);
   const facets = useQuery({
@@ -137,10 +134,10 @@ export function FilterButton({
   return (
     <>
       <Button
-        title={n ? `필터 ${n}` : '필터'}
+        title={n ? tr('filter.titleCount', { count: n }) : tr('filter.title')}
         size="sm"
         variant={n ? 'secondary' : 'outline'}
-        accessibilityLabel={n ? `필터 ${n}개 적용됨` : '필터'}
+        accessibilityLabel={n ? tr('filter.appliedA11y', { count: n }) : tr('filter.title')}
         onPress={() => {
           setDraft(value);
           setOpen(true);
@@ -155,35 +152,38 @@ export function FilterButton({
         <View style={{ flex: 1, backgroundColor: t.colors.background }}>
           <View style={styles.head}>
             <Text variant="h2" accessibilityRole="header" style={{ flex: 1 }}>
-              필터
+              {tr('filter.title')}
             </Text>
-            <Button title="닫기" variant="ghost" size="sm" onPress={() => setOpen(false)} />
+            <Button
+              title={tr('common:action.close')}
+              variant="ghost"
+              size="sm"
+              onPress={() => setOpen(false)}
+            />
           </View>
           <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
             <MultiChips
-              label="판매 방식"
+              label={tr('filter.saleType')}
               value={draft.saleType}
               onChange={(saleType) => set({ saleType })}
-              options={SALE_TYPES.map((s) => ({ value: s, label: SALE_TYPE_LABEL[s] }))}
+              options={SALE_TYPES.map((s) => ({ value: s, label: label('saleType', s) }))}
             />
             <View style={{ gap: 8 }}>
               <Text variant="label">
-                가격
-                {range
-                  ? `  (${range.min.toLocaleString('ko-KR')}~${range.max.toLocaleString('ko-KR')}원)`
-                  : ''}
+                {tr('filter.price')}
+                {range ? `  (${formatPrice(range.min)}~${formatPrice(range.max)})` : ''}
               </Text>
               <View style={styles.row}>
                 <View style={{ flex: 1 }}>
                   <PriceField
-                    label="최저"
+                    label={tr('filter.min')}
                     value={draft.minPrice}
                     onChange={(minPrice) => set({ minPrice })}
                   />
                 </View>
                 <View style={{ flex: 1 }}>
                   <PriceField
-                    label="최고"
+                    label={tr('filter.max')}
                     value={draft.maxPrice}
                     onChange={(maxPrice) => set({ maxPrice })}
                   />
@@ -191,43 +191,47 @@ export function FilterButton({
               </View>
             </View>
             <MultiChips
-              label="상태"
+              label={tr('filter.condition')}
               value={draft.condition}
               onChange={(condition) => set({ condition })}
-              options={ITEM_CONDITIONS.map((c) => ({ value: c, label: CONDITION_LABEL[c] }))}
+              options={ITEM_CONDITIONS.map((c) => ({ value: c, label: label('condition', c) }))}
             />
             <MultiChips
-              label="시대"
+              label={tr('filter.era')}
               value={draft.era}
               onChange={(era) => set({ era })}
               options={facet(facets.data?.eras)}
             />
             <MultiChips
-              label="소재"
+              label={tr('filter.material')}
               value={draft.material}
               onChange={(material) => set({ material })}
               options={facet(facets.data?.materials)}
             />
             <MultiChips
-              label="거래 지역"
+              label={tr('filter.region')}
               value={draft.region}
               onChange={(region) => set({ region })}
               options={facet(facets.data?.regions)}
             />
             <View style={styles.row}>
-              <Text style={{ flex: 1 }}>검수 완료 작품만</Text>
+              <Text style={{ flex: 1 }}>{tr('filter.verifiedOnly')}</Text>
               <Switch
                 value={draft.verifiedOnly}
                 onValueChange={(verifiedOnly) => set({ verifiedOnly })}
                 trackColor={{ true: t.colors.primary }}
-                accessibilityLabel="검수 완료 작품만"
+                accessibilityLabel={tr('filter.verifiedOnly')}
               />
             </View>
           </ScrollView>
           <View style={[styles.foot, { borderColor: t.colors.border }]}>
-            <Button title="초기화" variant="ghost" onPress={() => setDraft(EMPTY_FILTERS)} />
             <Button
-              title="적용"
+              title={tr('common:action.reset')}
+              variant="ghost"
+              onPress={() => setDraft(EMPTY_FILTERS)}
+            />
+            <Button
+              title={tr('common:action.apply')}
               style={{ flex: 1 }}
               onPress={() => {
                 onChange(draft);

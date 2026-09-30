@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { router, type Href } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { AppRefreshControl } from '@/components/ui/app-refresh-control';
 import { SellOnboardingIllustration } from '@/components/illustrations/sell-onboarding';
@@ -8,6 +9,8 @@ import { Empty, RefreshSkeleton } from '@/components/ui/state';
 import { usePullRefresh } from '@/hooks/use-pull-refresh';
 import { Text } from '@/components/ui/text';
 import { CenteredScroll } from '@/components/ui/centered-scroll';
+import { formatNumber } from '@/i18n/format';
+import { label } from '@/i18n/labels';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
 import { useTheme } from '@/theme';
@@ -15,6 +18,7 @@ import { useTheme } from '@/theme';
 /** 판매 탭: 작품 등록 바로가기 + 판매 현황 + 판매 관리 메뉴 (판매자가 아니면 판매자 등록 안내) */
 export default function SellScreen() {
   const t = useTheme();
+  const { t: tr } = useTranslation(['sell', 'common']);
   const user = useAuthStore((s) => s.user);
   const stats = useQuery({
     queryKey: ['seller', 'stats'],
@@ -27,8 +31,8 @@ export default function SellScreen() {
     return (
       <Empty
         kind="lock"
-        title="작품을 판매하려면 로그인해주세요"
-        action={{ title: '로그인', onPress: () => router.push('/login') }}
+        title={tr('tab.loginTitle')}
+        action={{ title: tr('gate.login'), onPress: () => router.push('/login') }}
       />
     );
   if (!user.isSeller) return <SellerOnboarding />;
@@ -36,41 +40,41 @@ export default function SellScreen() {
   const s = stats.data;
   const tiles: { label: string; value: number | undefined; href: Href }[] = [
     {
-      label: '판매 중',
+      label: label('productStatus', 'ACTIVE'),
       value: s?.selling,
       href: { pathname: '/seller/products', params: { status: 'selling' } },
     },
     {
-      label: '임시 저장',
+      label: label('productStatus', 'DRAFT'),
       value: s?.draft,
       href: { pathname: '/seller/products', params: { status: 'draft' } },
     },
     {
-      label: '판매 중지',
+      label: label('productStatus', 'HIDDEN'),
       value: s?.hidden,
       href: { pathname: '/seller/products', params: { status: 'hidden' } },
     },
     {
-      label: '판매 완료',
+      label: label('productStatus', 'SOLD'),
       value: s?.sold,
       href: { pathname: '/seller/products', params: { status: 'sold' } },
     },
     {
-      label: '발송 대기',
+      label: tr('tab.ordersToShip'),
       value: s?.ordersToShip,
       href: { pathname: '/orders', params: { as: 'seller', filter: 'progress' } },
     },
     {
-      label: '진행 경매',
+      label: tr('tab.liveAuctions'),
       value: s?.liveAuctions,
       href: { pathname: '/seller/products', params: { status: 'selling' } },
     },
   ];
   const menu: [Href, string][] = [
-    ['/seller/products', '내 작품'],
-    [{ pathname: '/orders', params: { as: 'seller' } }, '판매 주문'],
-    ['/seller/settlements', '정산'],
-    ['/seller/register', '판매자 정보 · 정산 계좌'],
+    ['/seller/products', tr('common:screen.sellerProducts')],
+    [{ pathname: '/orders', params: { as: 'seller' } }, tr('tab.salesOrders')],
+    ['/seller/settlements', tr('common:screen.settlements')],
+    ['/seller/register', tr('tab.sellerInfo')],
   ];
 
   return (
@@ -81,7 +85,7 @@ export default function SellScreen() {
       refreshControl={<AppRefreshControl refreshing={pull.refreshing} onRefresh={pull.onRefresh} />}
     >
       <RefreshSkeleton refreshing={pull.refreshing} variant="plain-list">
-        <Button title="+ 작품 등록하기" size="lg" block onPress={() => router.push('/sell/new')} />
+        <Button title={tr('tab.newProduct')} size="lg" block onPress={() => router.push('/sell/new')} />
         <View style={styles.grid}>
           {tiles.map((x) => (
             <Pressable
@@ -100,8 +104,12 @@ export default function SellScreen() {
         </View>
         {s && (
           <Text variant="small" color="muted">
-            누적 조회 {s.views.toLocaleString('ko-KR')} · 관심 {s.favorites.toLocaleString('ko-KR')} · 예약
-            경매 {s.scheduledAuctions} · 답변 대기 문의 {s.unansweredInquiries}
+            {tr('tab.summary', {
+              views: formatNumber(s.views),
+              favorites: formatNumber(s.favorites),
+              scheduled: s.scheduledAuctions,
+              inquiries: s.unansweredInquiries,
+            })}
           </Text>
         )}
         <View style={{ marginTop: 8 }}>
@@ -124,19 +132,24 @@ export default function SellScreen() {
 
 /** 판매자 등록 전 안내: 그림 · 소개 · 등록 버튼 (모두 가운데 정렬) */
 function SellerOnboarding() {
-  const t = useTheme();
+  const { t: tr } = useTranslation(['sell', 'common']);
   return (
     <CenteredScroll style={styles.onboarding}>
       <SellOnboardingIllustration width={220} />
       <View style={styles.center}>
         <Text variant="h2" style={styles.centerText}>
-          화소에서 작품을 판매해보세요
+          {tr('tab.onboardingTitle')}
         </Text>
         <Text color="muted" style={styles.centerText}>
-          판매 대금을 받을 계좌만 등록하면{'\n'}사진 촬영부터 경매 예약까지 앱에서 바로 할 수 있어요.
+          {tr('tab.onboardingDescription')}
         </Text>
       </View>
-      <Button title="판매자 등록하기" size="lg" block onPress={() => router.push('/seller/register')} />
+      <Button
+        title={tr('gate.registerSeller')}
+        size="lg"
+        block
+        onPress={() => router.push('/seller/register')}
+      />
     </CenteredScroll>
   );
 }

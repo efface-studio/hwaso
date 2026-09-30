@@ -1,20 +1,16 @@
 import { ApiError } from '@shop/api-client';
-import {
-  REPORT_REASONS,
-  REPORT_REASON_LABEL,
-  REPORT_TARGETS,
-  REPORT_TARGET_LABEL,
-  type ReportReason,
-} from '@shop/shared';
+import { REPORT_REASONS, REPORT_TARGETS, type ReportReason } from '@shop/shared';
 import { useMutation } from '@tanstack/react-query';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Alert, ScrollView, StyleSheet } from 'react-native';
 import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
 import { RadioList } from '@/components/ui/radio';
 import { Empty } from '@/components/ui/state';
 import { Text } from '@/components/ui/text';
+import { label } from '@/i18n/labels';
 import { api } from '@/lib/api';
 import { goBack } from '@/lib/nav';
 import { useTheme } from '@/theme';
@@ -23,39 +19,45 @@ import { useTheme } from '@/theme';
 export default function ReportScreen() {
   const { type, id } = useLocalSearchParams<{ type: string; id: string }>();
   const t = useTheme();
+  const { t: tr } = useTranslation('product');
   const [reason, setReason] = useState<ReportReason>('FRAUD');
   const [detail, setDetail] = useState('');
   const target = REPORT_TARGETS.find((x) => x === type);
   const m = useMutation({
     mutationFn: () => api.safety.report({ targetType: target!, targetId: id, reason, detail: detail.trim() }),
     onSuccess: () => {
-      Alert.alert('신고를 접수했어요', '운영팀이 확인 후 처리 결과를 알려드릴게요.');
+      Alert.alert(tr('report.received'), tr('report.receivedBody'));
       goBack();
     },
-    onError: (e) => Alert.alert(e instanceof ApiError ? e.message : '신고하지 못했어요.'),
+    onError: (e) => Alert.alert(e instanceof ApiError ? e.message : tr('report.failed')),
   });
-  if (!target || !id) return <Empty kind="error" title="잘못된 요청이에요" />;
+  if (!target || !id) return <Empty kind="error" title={tr('report.invalid')} />;
 
   return (
     <ScrollView style={{ backgroundColor: t.colors.background }} contentContainerStyle={styles.body}>
-      <Stack.Screen options={{ title: `${REPORT_TARGET_LABEL[target]} 신고` }} />
-      <Text variant="label">신고 사유</Text>
+      <Stack.Screen options={{ title: tr('report.title', { target: label('reportTarget', target) }) }} />
+      <Text variant="label">{tr('report.reason')}</Text>
       <RadioList
-        label="신고 사유"
+        label={tr('report.reason')}
         value={reason}
         onChange={setReason}
-        options={REPORT_REASONS.map((r) => ({ value: r, label: REPORT_REASON_LABEL[r] }))}
+        options={REPORT_REASONS.map((r) => ({ value: r, label: label('reportReason', r) }))}
       />
       <Field
-        label="자세한 내용 (선택)"
+        label={tr('report.detail')}
         multiline
         maxLength={1000}
         value={detail}
         onChangeText={setDetail}
         style={{ minHeight: 120, textAlignVertical: 'top' }}
-        hint="허위 신고는 이용 제한 사유가 될 수 있어요."
+        hint={tr('report.hint')}
       />
-      <Button title="신고하기" variant="destructive" loading={m.isPending} onPress={() => m.mutate()} />
+      <Button
+        title={tr('report.submit')}
+        variant="destructive"
+        loading={m.isPending}
+        onPress={() => m.mutate()}
+      />
     </ScrollView>
   );
 }

@@ -1,14 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ApiError } from '@shop/api-client';
 import {
-  SALE_TYPE_LABEL,
   auctionToInput,
   createAuctionSchema,
   createProductSchema,
   defaultAuction,
   draftToInput,
   emptyDraft,
-  formatPrice,
   suggestIncrement,
   type AuctionDraft,
   type ProductDraft,
@@ -16,6 +14,7 @@ import {
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, Stack } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Alert, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -29,27 +28,22 @@ import { PhotoManager } from '@/components/sell/photo-manager';
 import { Button } from '@/components/ui/button';
 import { Empty } from '@/components/ui/state';
 import { Text } from '@/components/ui/text';
+import i18n from '@/i18n';
+import { formatDateTime, formatPrice } from '@/i18n/format';
+import { label } from '@/i18n/labels';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
 import { useTheme } from '@/theme';
+import { schemaMessage } from '@/i18n/validation';
 
 const DRAFT_KEY = 'hwaso.sell-draft';
 type Step = 'photos' | 'basic' | 'price' | 'auction' | 'detail' | 'review';
-const TITLE: Record<Step, string> = {
-  photos: '작품 사진을 올려주세요',
-  basic: '어떤 작품인가요?',
-  price: '어떻게 판매할까요?',
-  auction: '경매 조건을 정해주세요',
-  detail: '작품 정보를 더해주세요',
-  review: '마지막으로 확인해주세요',
-};
 const issuesToErrors = (issues: { path: PropertyKey[]; message: string }[]) => {
   const out: Record<string, string> = {};
-  for (const i of issues) out[i.path.join('.')] ??= i.message;
+  for (const i of issues) out[i.path.join('.')] ??= schemaMessage(i.message);
   return out;
 };
-const errMsg = (e: unknown) =>
-  e instanceof ApiError ? e.message : '잠시 문제가 발생했어요. 다시 시도해주세요.';
+const errMsg = (e: unknown) => (e instanceof ApiError ? e.message : i18n.t('sell:error.generic'));
 
 /**
  * 작품 등록 — 한 화면에 한 가지 질문 (웹 /sell 과 같은 단계). 필수 입력만 먼저 받고 상세 정보는 선택.
@@ -57,6 +51,7 @@ const errMsg = (e: unknown) =>
  */
 export default function SellNewScreen() {
   const t = useTheme();
+  const { t: tr } = useTranslation(['sell', 'common']);
   const insets = useSafeAreaInsets();
   const qc = useQueryClient();
   const user = useAuthStore((s) => s.user);
@@ -96,17 +91,17 @@ export default function SellNewScreen() {
     return (
       <Empty
         kind="lock"
-        title="로그인이 필요해요"
-        action={{ title: '로그인', onPress: () => router.push('/login') }}
+        title={tr('gate.loginRequired')}
+        action={{ title: tr('gate.login'), onPress: () => router.push('/login') }}
       />
     );
   if (!user.isSeller)
     return (
       <Empty
         kind="lock"
-        title="판매자 등록이 필요해요"
-        description="판매 대금을 받을 계좌를 등록하면 바로 작품을 올릴 수 있어요."
-        action={{ title: '판매자 등록하기', onPress: () => router.replace('/seller/register') }}
+        title={tr('gate.sellerRequired')}
+        description={tr('gate.sellerRequiredDescription')}
+        action={{ title: tr('gate.registerSeller'), onPress: () => router.replace('/seller/register') }}
       />
     );
 
@@ -123,14 +118,14 @@ export default function SellNewScreen() {
 
   const validate = (s: Step): boolean => {
     const e: Record<string, string> = {};
-    if (s === 'photos' && d.images.length === 0) e.images = '사진을 1장 이상 올려주세요.';
+    if (s === 'photos' && d.images.length === 0) e.images = tr('new.validation.images');
     if (s === 'basic') {
-      if (d.title.trim().length < 2) e.title = '작품명을 2자 이상 입력해주세요.';
-      if (!d.categoryId) e.categoryId = '카테고리를 선택해주세요.';
+      if (d.title.trim().length < 2) e.title = tr('new.validation.title');
+      if (!d.categoryId) e.categoryId = tr('new.validation.category');
     }
-    if (s === 'price' && d.saleType !== 'AUCTION' && !d.price) e.price = '판매 가격을 입력해주세요.';
+    if (s === 'price' && d.saleType !== 'AUCTION' && !d.price) e.price = tr('new.validation.price');
     if (s === 'price' && d.saleType === 'RESERVATION' && !d.availableAt)
-      e.availableAt = '판매 시작일을 입력해주세요.';
+      e.availableAt = tr('new.validation.availableAt');
     if (s === 'auction') {
       const r = createAuctionSchema.safeParse(auctionToInput(withIncrement(auction), 'x'));
       if (!r.success) Object.assign(e, issuesToErrors(r.error.issues));
@@ -166,17 +161,17 @@ export default function SellNewScreen() {
         } catch (e) {
           // 작품은 만들어졌으니 경매 조건만 다시 정하게 한다
           await AsyncStorage.removeItem(DRAFT_KEY);
-          Alert.alert('경매를 예약하지 못했어요', `${errMsg(e)} 경매 조건을 다시 확인해주세요.`);
+          Alert.alert(tr('auction.scheduleFailed'), tr('new.scheduleFailedMessage', { message: errMsg(e) }));
           router.replace({ pathname: '/sell/[id]/auction', params: { id: product.id } });
           return;
         }
       }
       await AsyncStorage.removeItem(DRAFT_KEY);
       void qc.invalidateQueries({ queryKey: ['seller'] });
-      Alert.alert('작품을 등록했어요', isAuction ? '경매가 예약되었어요.' : undefined);
+      Alert.alert(tr('new.created'), isAuction ? tr('new.auctionScheduled') : undefined);
       router.replace({ pathname: '/products/[id]', params: { id: product.id } });
     } catch (e) {
-      Alert.alert('등록하지 못했어요', errMsg(e));
+      Alert.alert(tr('new.createFailed'), errMsg(e));
     } finally {
       setPending(false);
     }
@@ -187,9 +182,11 @@ export default function SellNewScreen() {
     <View style={{ flex: 1, backgroundColor: t.colors.background }}>
       <Stack.Screen
         options={{
-          title: `작품 등록 ${idx + 1}/${steps.length}`,
+          title: tr('new.title', { step: idx + 1, total: steps.length }),
           headerLeft:
-            idx > 0 ? () => <Button title="이전" variant="ghost" size="sm" onPress={back} /> : undefined,
+            idx > 0
+              ? () => <Button title={tr('common:action.back')} variant="ghost" size="sm" onPress={back} />
+              : undefined,
         }}
       />
       <View style={[styles.progress, { backgroundColor: t.colors.surface2 }]}>
@@ -205,15 +202,15 @@ export default function SellNewScreen() {
       </View>
       <ScrollView ref={scroll} contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
         <Text variant="h1" accessibilityRole="header">
-          {TITLE[step]}
+          {tr(`new.steps.${step}`)}
         </Text>
         {restored && idx === 0 && (
           <View style={[styles.note, { backgroundColor: t.colors.surface2 }]}>
             <Text variant="small" style={{ flex: 1 }}>
-              작성하던 내용을 불러왔어요.
+              {tr('new.restored')}
             </Text>
             <Button
-              title="새로 작성"
+              title={tr('new.startOver')}
               size="sm"
               variant="ghost"
               onPress={() => {
@@ -235,11 +232,11 @@ export default function SellNewScreen() {
         {step === 'detail' && (
           <>
             <Text variant="small" color="muted">
-              모두 선택 입력이에요. 자세할수록 신뢰도가 높아져요.
+              {tr('new.detailHint')}
             </Text>
             <DetailFields d={d} set={set} errors={errors} />
             <Text variant="h3" style={{ marginTop: 8 }}>
-              진위 정보
+              {tr('section.authenticity')}
             </Text>
             <AuthenticityFields d={d} set={set} errors={errors} />
           </>
@@ -247,18 +244,26 @@ export default function SellNewScreen() {
         {step === 'review' &&
           (
             [
-              ['사진', `${d.images.length}장`],
-              ['작품명', d.title],
-              ['작가', d.artistName || '—'],
-              ['판매 방식', SALE_TYPE_LABEL[d.saleType]],
+              [tr('new.review.photos'), tr('new.review.photoCount', { count: d.images.length })],
+              [tr('new.review.title'), d.title],
+              [tr('new.review.artist'), d.artistName || '—'],
+              [tr('new.review.saleType'), label('saleType', d.saleType)],
               [
-                d.saleType === 'AUCTION' ? '시작가 · 일정' : '가격',
+                d.saleType === 'AUCTION' ? tr('new.review.startSchedule') : tr('new.review.price'),
                 d.saleType === 'AUCTION'
-                  ? `${formatPrice(auction.startPrice ?? 0)} · ${new Date(auction.startsAt).toLocaleString('ko-KR')} ~ ${new Date(auction.endsAt).toLocaleString('ko-KR')}`
+                  ? `${formatPrice(auction.startPrice ?? 0)} · ${formatDateTime(auction.startsAt)} ~ ${formatDateTime(auction.endsAt)}`
                   : formatPrice(d.price ?? 0),
               ],
-              ['배송', `${d.shippingFee ? formatPrice(d.shippingFee) : '무료'} · ${d.shippingMethod}`],
-              ['인증서', d.hasCertificate ? `${d.certIssuer} ${d.certNumber} (검수 대기)` : '없음'],
+              [
+                tr('new.review.shipping'),
+                `${d.shippingFee ? formatPrice(d.shippingFee) : tr('new.review.free')} · ${d.shippingMethod}`,
+              ],
+              [
+                tr('new.review.certificate'),
+                d.hasCertificate
+                  ? tr('new.review.certPending', { issuer: d.certIssuer, number: d.certNumber })
+                  : tr('new.review.none'),
+              ],
             ] as const
           ).map(([k, v]) => (
             <View key={k} style={[styles.review, { borderColor: t.colors.borderSoft }]}>
@@ -288,14 +293,14 @@ export default function SellNewScreen() {
       >
         {step === 'review' ? (
           <Button
-            title={d.saleType === 'AUCTION' ? '작품 등록하고 경매 예약하기' : '작품 등록하기'}
+            title={d.saleType === 'AUCTION' ? tr('new.submitAuction') : tr('new.submit')}
             size="lg"
             block
             loading={pending}
             onPress={() => void submit()}
           />
         ) : (
-          <Button title="다음" size="lg" block onPress={next} />
+          <Button title={tr('common:action.next')} size="lg" block onPress={next} />
         )}
       </View>
     </View>

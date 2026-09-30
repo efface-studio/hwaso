@@ -1,20 +1,23 @@
 import { ApiError } from '@shop/api-client';
 import { router, Stack } from 'expo-router';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Alert, ScrollView, StyleSheet } from 'react-native';
 import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
 import { Text } from '@/components/ui/text';
+import i18n from '@/i18n';
 import { api } from '@/lib/api';
 import { unregisterPush } from '@/lib/push';
 import { useAuthStore } from '@/stores/auth';
 import { useTheme } from '@/theme';
 
-const errMsg = (e: unknown) => (e instanceof ApiError ? e.message : '처리하지 못했어요.');
+const errMsg = (e: unknown) => (e instanceof ApiError ? e.message : i18n.t('common:state.actionFailed'));
 
 /** 회원 탈퇴: 비밀번호(소셜 가입자는 이메일 인증번호)로 본인 확인 후 탈퇴 */
 export default function DeleteAccountScreen() {
   const t = useTheme();
+  const { t: tr } = useTranslation(['my', 'common']);
   const user = useAuthStore((s) => s.user);
   const [password, setPassword] = useState('');
   const [code, setCode] = useState('');
@@ -49,7 +52,7 @@ export default function DeleteAccountScreen() {
       await unregisterPush();
       await useAuthStore.getState().clear();
       router.replace('/home');
-      Alert.alert('탈퇴가 완료되었어요', '그동안 화소를 이용해 주셔서 감사합니다.');
+      Alert.alert(tr('deleteAccount.doneTitle'), tr('deleteAccount.doneMessage'));
     } catch (e) {
       setError(errMsg(e));
     } finally {
@@ -57,14 +60,10 @@ export default function DeleteAccountScreen() {
     }
   };
   const confirm = () =>
-    Alert.alert(
-      '정말 탈퇴하시겠어요?',
-      '관심 작품, 판매 중인 작품, 팔로우 정보가 삭제되며 되돌릴 수 없어요.',
-      [
-        { text: '취소', style: 'cancel' },
-        { text: '탈퇴하기', style: 'destructive', onPress: () => void remove() },
-      ],
-    );
+    Alert.alert(tr('deleteAccount.confirmTitle'), tr('deleteAccount.confirmMessage'), [
+      { text: tr('common:action.cancel'), style: 'cancel' },
+      { text: tr('deleteAccount.submit'), style: 'destructive', onPress: () => void remove() },
+    ]);
 
   const ready = user.hasPassword ? !!password : code.length === 6;
   return (
@@ -73,13 +72,11 @@ export default function DeleteAccountScreen() {
       contentContainerStyle={styles.body}
       keyboardShouldPersistTaps="handled"
     >
-      <Stack.Screen options={{ title: '회원 탈퇴' }} />
-      <Text color="muted">
-        진행 중인 거래·경매가 있으면 탈퇴할 수 없어요. 거래 기록은 관련 법령에 따라 익명으로 보관돼요.
-      </Text>
+      <Stack.Screen options={{ title: tr('common:screen.deleteAccount') }} />
+      <Text color="muted">{tr('deleteAccount.notice')}</Text>
       {user.hasPassword ? (
         <Field
-          label="비밀번호 확인"
+          label={tr('deleteAccount.password')}
           secureTextEntry
           autoComplete="current-password"
           value={password}
@@ -88,13 +85,13 @@ export default function DeleteAccountScreen() {
       ) : (
         <>
           <Button
-            title={codeSent ? '인증번호를 보냈어요' : '이메일로 인증번호 받기'}
+            title={codeSent ? tr('deleteAccount.codeSent') : tr('deleteAccount.sendCode')}
             variant="outline"
             disabled={codeSent}
             onPress={() => void sendCode()}
           />
           <Field
-            label="인증번호"
+            label={tr('deleteAccount.code')}
             keyboardType="number-pad"
             maxLength={6}
             value={code}
@@ -108,7 +105,7 @@ export default function DeleteAccountScreen() {
         </Text>
       )}
       <Button
-        title="탈퇴하기"
+        title={tr('deleteAccount.submit')}
         variant="destructive"
         size="lg"
         disabled={!ready}

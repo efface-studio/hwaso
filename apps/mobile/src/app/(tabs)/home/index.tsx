@@ -1,10 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
 import { router, Stack, useIsFocused } from 'expo-router';
 import { useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import type { SearchBarCommands } from 'react-native-screens';
 import { AppRefreshControl } from '@/components/ui/app-refresh-control';
-import { SEARCH_PLACEHOLDER, SearchContent, useSearch } from '@/components/search/search-content';
+import { SearchContent, useSearch } from '@/components/search/search-content';
 import { tabHeaderOptions } from '@/components/tab-header';
 import { Chips } from '@/components/ui/chips';
 import { ArtistRail } from '@/components/home/artist-rail';
@@ -24,6 +25,7 @@ import { useTheme } from '@/theme';
  */
 export default function HomeScreen() {
   const t = useTheme();
+  const { t: tr } = useTranslation(['home', 'common']);
   const signedIn = !!useAuthStore((s) => s.user);
   const focused = useIsFocused();
   const q = useQuery({ queryKey: ['home'], queryFn: api.market.home });
@@ -79,7 +81,7 @@ export default function HomeScreen() {
           placement: 'integratedButton',
           allowToolbarIntegration: false,
           hideWhenScrolling: false,
-          placeholder: SEARCH_PLACEHOLDER,
+          placeholder: tr('search.placeholder'),
           onFocus: () => setSearching(true),
           onChangeText: (e) => search.setText(e.nativeEvent.text),
           onSearchButtonPress: (e) => submit(e.nativeEvent.text),
@@ -91,7 +93,9 @@ export default function HomeScreen() {
         unstable_headerRightItems: () => [
           {
             type: 'button',
-            label: unread ? `알림 ${unread}개 안 읽음` : '알림',
+            label: unread
+              ? tr('home.notificationsUnread', { count: unread })
+              : tr('common:screen.notifications'),
             icon: { type: 'sfSymbol', name: 'bell' },
             onPress: () => router.push('/notifications'),
             ...(unread > 0 ? { badge: { value: unread > 99 ? '99+' : unread } } : {}),
@@ -123,9 +127,9 @@ export default function HomeScreen() {
         {header}
         <Empty
           kind="error"
-          title="홈을 불러오지 못했어요"
-          description="네트워크를 확인하고 다시 시도해주세요."
-          action={{ title: '다시 시도', onPress: () => void q.refetch() }}
+          title={tr('home.loadFailed.title')}
+          description={tr('home.loadFailed.description')}
+          action={{ title: tr('common:action.retry'), onPress: () => void q.refetch() }}
         />
       </>
     );
@@ -148,7 +152,7 @@ export default function HomeScreen() {
             style={[styles.notice, { borderColor: t.colors.borderSoft }]}
           >
             <Text variant="caption" color="primary" style={{ fontWeight: '600' }}>
-              공지
+              {tr('home.notice')}
             </Text>
             <Text variant="small" numberOfLines={1} style={{ flex: 1 }}>
               {h.notices[0].title}
@@ -158,18 +162,18 @@ export default function HomeScreen() {
         )}
         {!!cats.data?.length && (
           <Chips
-            label="카테고리"
+            label={tr('home.categories')}
             value=""
             onChange={(slug) => router.push({ pathname: '/category/[slug]', params: { slug } })}
             options={cats.data.map((c) => ({ value: c.slug, label: c.name }))}
           />
         )}
-        <Rail title="지금 진행 중인 경매" items={h.liveAuctions} />
-        <Rail title="곧 마감되는 경매" items={h.endingSoon} />
-        <Rail title="곧 시작하는 경매" items={h.upcomingAuctions} />
-        <Rail title="새로 들어온 작품" items={h.newArrivals} />
+        <Rail title={tr('home.sections.live')} items={h.liveAuctions} />
+        <Rail title={tr('home.sections.endingSoon')} items={h.endingSoon} />
+        <Rail title={tr('home.sections.upcoming')} items={h.upcomingAuctions} />
+        <Rail title={tr('home.sections.newArrivals')} items={h.newArrivals} />
         <ArtistRail artists={h.popularArtists} />
-        <Rail title="인기 작품" items={h.popular} />
+        <Rail title={tr('home.sections.popular')} items={h.popular} />
         {h.collections.map((c) => (
           <Rail key={c.category.slug} title={c.category.name} items={c.items} />
         ))}

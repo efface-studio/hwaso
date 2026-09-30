@@ -1,16 +1,18 @@
 import { useQuery } from '@tanstack/react-query';
 import { router, Stack } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { usePullRefresh } from '@/hooks/use-pull-refresh';
 import { CardList } from '@/components/product/card-list';
 import { Empty } from '@/components/ui/state';
 import { api } from '@/lib/api';
 
 export default function FavoritesScreen() {
+  const { t: tr } = useTranslation('product');
   const q = useQuery({ queryKey: ['favorites'], queryFn: api.market.favorites });
   const pull = usePullRefresh(q.refetch);
   return (
     <>
-      <Stack.Screen options={{ title: '관심 작품', headerLargeTitle: false }} />
+      <Stack.Screen options={{ title: tr('favorites.title'), headerLargeTitle: false }} />
       <CardList
         items={q.data}
         loading={q.isPending}
@@ -19,9 +21,9 @@ export default function FavoritesScreen() {
         empty={
           <Empty
             kind="heart"
-            title="관심 작품이 없어요"
-            description="마음에 드는 작품의 ♡ 를 눌러 모아보세요."
-            action={{ title: '작품 둘러보기', onPress: () => router.push('/home') }}
+            title={tr('favorites.empty')}
+            description={tr('favorites.emptyDescription')}
+            action={{ title: tr('favorites.browse'), onPress: () => router.push('/home') }}
           />
         }
       />

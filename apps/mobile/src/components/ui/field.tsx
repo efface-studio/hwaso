@@ -1,4 +1,5 @@
 import { forwardRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, TextInput, View, type TextInputProps } from 'react-native';
 import { selectionHaptic } from '@/lib/haptics';
 import { useTheme } from '@/theme';
@@ -15,6 +16,7 @@ export const Field = forwardRef<
   TextInputProps & { label: string; error?: string | null; hint?: string; counter?: boolean }
 >(function Field({ label, error, hint, counter, style, secureTextEntry, ...props }, ref) {
   const t = useTheme();
+  const { t: tr } = useTranslation('common');
   const showCounter = counter && props.maxLength != null;
   const [revealed, setRevealed] = useState(false);
   const secret = !!secureTextEntry;
@@ -52,7 +54,7 @@ export const Field = forwardRef<
         {secret && (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={revealed ? '비밀번호 숨기기' : '비밀번호 보기'}
+            accessibilityLabel={revealed ? tr('ui.hidePassword') : tr('ui.showPassword')}
             onPress={() => {
               selectionHaptic();
               setRevealed((v) => !v);

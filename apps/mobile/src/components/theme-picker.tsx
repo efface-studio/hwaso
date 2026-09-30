@@ -1,5 +1,6 @@
 import { palette } from '@shop/tokens';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, View } from 'react-native';
 import Svg, { Circle, ClipPath, Defs, G, Path, Rect } from 'react-native-svg';
 import { Icon } from '@/components/ui/icon';
@@ -8,11 +9,7 @@ import { selectionHaptic } from '@/lib/haptics';
 import type { ThemePreference } from '@/stores/prefs';
 import { useTheme } from '@/theme';
 
-const OPTIONS: { value: ThemePreference; label: string }[] = [
-  { value: 'system', label: '시스템' },
-  { value: 'light', label: '라이트' },
-  { value: 'dark', label: '다크' },
-];
+const OPTIONS: ThemePreference[] = ['system', 'light', 'dark'];
 
 /** 미리보기 좌표계 (휴대폰 화면 비율) */
 const VW = 100;
@@ -90,10 +87,12 @@ export function ThemePicker({
   onChange: (v: ThemePreference) => void;
 }) {
   const t = useTheme();
+  const { t: tr } = useTranslation('common');
   const [cardWidth, setCardWidth] = useState(0);
   return (
-    <View style={styles.row} accessibilityRole="radiogroup" accessibilityLabel="화면 모드">
-      {OPTIONS.map((o) => {
+    <View style={styles.row} accessibilityRole="radiogroup" accessibilityLabel={tr('theme.title')}>
+      {OPTIONS.map((mode) => {
+        const o = { value: mode, label: tr(`theme.${mode}`) };
         const on = value === o.value;
         return (
           <Pressable

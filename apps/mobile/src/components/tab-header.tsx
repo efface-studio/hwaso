@@ -1,5 +1,6 @@
 import { Image } from 'expo-image';
 import type { NativeStackNavigationOptions } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet } from 'react-native';
 import logoDark from '../../assets/header-logo-dark.png';
 import logoLight from '../../assets/header-logo.png';
@@ -11,6 +12,7 @@ const LOGO = { light: logoLight, dark: logoDark };
 
 export function HeaderLogo({ onPress }: { onPress?: () => void }) {
   const t = useTheme();
+  const { t: tr } = useTranslation('common');
   const logo = (
     <Image
       source={LOGO[t.scheme]}
@@ -18,14 +20,14 @@ export function HeaderLogo({ onPress }: { onPress?: () => void }) {
       contentFit="contain"
       accessible={!onPress}
       accessibilityRole="image"
-      accessibilityLabel="화소"
+      accessibilityLabel={tr('brand.name')}
     />
   );
   if (!onPress) return logo;
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel="화소 홈 새로고침"
+      accessibilityLabel={tr('header.refreshHome')}
       hitSlop={8}
       onPress={onPress}
       style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}

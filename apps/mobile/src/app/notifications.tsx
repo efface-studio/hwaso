@@ -1,6 +1,7 @@
 import type { NotificationDto } from '@shop/shared';
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { router, Stack, type Href } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { AppRefreshControl } from '@/components/ui/app-refresh-control';
 import { usePullRefresh } from '@/hooks/use-pull-refresh';
@@ -9,23 +10,33 @@ import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { Separator } from '@/components/ui/separator';
 import { List } from '@/components/ui/list';
+import i18n, { currentLanguage, LOCALE } from '@/i18n';
+import { label } from '@/i18n/labels';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
 import { useTheme } from '@/theme';
 
 const ago = (iso: string) => {
   const s = (Date.now() - new Date(iso).getTime()) / 1000;
-  if (s < 60) return '방금';
-  if (s < 3600) return `${Math.floor(s / 60)}분 전`;
-  if (s < 86400) return `${Math.floor(s / 3600)}시간 전`;
-  return new Date(iso).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' });
+  if (s < 60) return i18n.t('common:time.justNow');
+  if (s < 3600) return i18n.t('common:time.minutesAgo', { count: Math.floor(s / 60) });
+  if (s < 86400) return i18n.t('common:time.hoursAgo', { count: Math.floor(s / 3600) });
+  return new Date(iso).toLocaleDateString(LOCALE[currentLanguage()], { month: 'long', day: 'numeric' });
 };
+
+/**
+ * 알림 제목은 서버가 한국어로 만들어 보낸다. 다른 언어에서는 종류 이름으로 보여준다
+ * (운영 공지(SYSTEM)는 제목 자체가 내용이라 그대로 둔다)
+ */
+const titleOf = (n: NotificationDto) =>
+  currentLanguage() === 'ko' || n.type === 'SYSTEM' ? n.title : label('notificationType', n.type);
 
 /** 알림함: 누르면 읽음 처리 후 해당 화면으로, 길게 눌러 삭제 */
 const Sep = () => <Separator />;
 
 export default function NotificationsScreen() {
   const t = useTheme();
+  const { t: tr } = useTranslation(['my', 'common']);
   const qc = useQueryClient();
   const me = useAuthStore((s) => s.user);
   const q = useInfiniteQuery({
@@ -44,31 +55,34 @@ export default function NotificationsScreen() {
     if (n.link) router.push(n.link as Href);
   };
   const remove = (n: NotificationDto) =>
-    Alert.alert('알림을 삭제할까요?', undefined, [
-      { text: '취소', style: 'cancel' },
+    Alert.alert(tr('notifications.deleteConfirm'), undefined, [
+      { text: tr('common:action.cancel'), style: 'cancel' },
       {
-        text: '삭제',
+        text: tr('common:action.delete'),
         style: 'destructive',
         onPress: () => void api.notifications.remove(n.id).then(refresh),
       },
     ]);
   const menu = () =>
-    Alert.alert('알림함', undefined, [
-      { text: '모두 읽음', onPress: () => void api.notifications.read({ all: true }).then(refresh) },
+    Alert.alert(tr('notifications.inbox'), undefined, [
       {
-        text: '읽은 알림 삭제',
+        text: tr('notifications.markAllRead'),
+        onPress: () => void api.notifications.read({ all: true }).then(refresh),
+      },
+      {
+        text: tr('notifications.clearRead'),
         style: 'destructive',
         onPress: () => void api.notifications.clearRead().then(refresh),
       },
-      { text: '취소', style: 'cancel' },
+      { text: tr('common:action.cancel'), style: 'cancel' },
     ]);
 
   if (!me)
     return (
       <Empty
         kind="lock"
-        title="로그인이 필요해요"
-        action={{ title: '로그인', onPress: () => router.push('/login') }}
+        title={tr('notifications.loginRequired')}
+        action={{ title: tr('notifications.login'), onPress: () => router.push('/login') }}
       />
     );
   if (q.isPending) return <Loading variant="list" />;
@@ -78,11 +92,11 @@ export default function NotificationsScreen() {
     <>
       <Stack.Screen
         options={{
-          title: '알림',
+          title: tr('common:screen.notifications'),
           headerRight: () => (
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="알림함 메뉴"
+              accessibilityLabel={tr('notifications.menuA11y')}
               onPress={menu}
               hitSlop={10}
             >
@@ -105,8 +119,8 @@ export default function NotificationsScreen() {
           ) : (
             <Empty
               kind="bell"
-              title="새 알림이 없어요"
-              description="입찰·주문·채팅 소식을 여기서 알려드려요."
+              title={tr('notifications.emptyTitle')}
+              description={tr('notifications.emptyDescription')}
             />
           )
         }
@@ -115,7 +129,7 @@ export default function NotificationsScreen() {
           <Pressable
             accessibilityRole="button"
             accessibilityState={{ selected: !n.readAt }}
-            accessibilityHint="길게 눌러 삭제"
+            accessibilityHint={tr('notifications.deleteHint')}
             onPress={() => void open(n)}
             onLongPress={() => remove(n)}
             style={[
@@ -124,7 +138,7 @@ export default function NotificationsScreen() {
             ]}
           >
             <View style={{ flex: 1, gap: 2 }}>
-              <Text variant="bodyStrong">{n.title}</Text>
+              <Text variant="bodyStrong">{titleOf(n)}</Text>
               <Text variant="small" color="foreground2">
                 {n.body}
               </Text>
@@ -134,7 +148,7 @@ export default function NotificationsScreen() {
             </View>
             {!n.readAt && (
               <View
-                accessibilityLabel="읽지 않음"
+                accessibilityLabel={tr('notifications.unread')}
                 style={[styles.dot, { backgroundColor: t.colors.primary }]}
               />
             )}
