@@ -1,7 +1,6 @@
-import { useSegments } from 'expo-router';
 import { useCallback, useRef, useState, type ReactNode } from 'react';
-import { ActivityIndicator, StyleSheet, useWindowDimensions, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { useVisibleBottom } from '@/hooks/use-visible-bottom';
 import { useTheme } from '@/theme';
 import { Button } from './button';
 import { EmptyIllustration, type EmptyKind } from '@/components/illustrations/empty';
@@ -46,18 +45,6 @@ export function RefreshSkeleton({
   children: ReactNode;
 }) {
   return refreshing ? <Loading variant={variant} /> : <>{children}</>;
-}
-
-/** 떠 있는 탭 바(iOS 26)가 화면 아래에서 가리는 높이 — 홈 인디케이터 영역 포함 */
-const TAB_BAR_COVER = 82;
-
-/** 화면에서 실제로 보이는 영역의 아래 끝 (탭 바·홈 인디케이터 위) */
-function useVisibleBottom() {
-  const { height } = useWindowDimensions();
-  const insets = useSafeAreaInsets();
-  const root = useSegments()[0];
-  const inTabs = root === '(tabs)' || root === 'admin';
-  return height - (inTabs ? Math.max(TAB_BAR_COVER, insets.bottom) : insets.bottom);
 }
 
 /**

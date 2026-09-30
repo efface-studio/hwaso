@@ -1,11 +1,12 @@
 import { ApiError } from '@shop/api-client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
-import { Alert, FlatList, StyleSheet, View } from 'react-native';
+import { Alert, StyleSheet, View } from 'react-native';
 import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Empty, Loading } from '@/components/ui/state';
 import { Text } from '@/components/ui/text';
+import { List } from '@/components/ui/list';
 import { api } from '@/lib/api';
 import { useTheme } from '@/theme';
 
@@ -25,8 +26,7 @@ export default function BlocksScreen() {
   if (q.isPending) return <Loading variant="list" />;
 
   return (
-    <FlatList
-      alwaysBounceVertical={false}
+    <List
       style={{ backgroundColor: t.colors.background }}
       contentContainerStyle={{ flexGrow: 1, padding: 16 }}
       data={q.data ?? []}

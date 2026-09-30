@@ -2,13 +2,14 @@ import { ORDER_LIST_FILTERS, formatPrice, type OrderListQuery } from '@shop/shar
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { AppRefreshControl } from '@/components/ui/app-refresh-control';
 import { usePullRefresh } from '@/hooks/use-pull-refresh';
 import { OrderItemRow, OrderStatusBadge } from '@/components/order/order-ui';
 import { Chips } from '@/components/ui/chips';
 import { Empty, Loading } from '@/components/ui/state';
 import { Text } from '@/components/ui/text';
+import { List } from '@/components/ui/list';
 import { api } from '@/lib/api';
 import { useTheme } from '@/theme';
 
@@ -51,8 +52,7 @@ export default function OrdersScreen() {
       {q.isPending ? (
         <Loading variant="list" />
       ) : (
-        <FlatList
-          alwaysBounceVertical={false}
+        <List
           data={pull.refreshing ? [] : rows}
           keyExtractor={(o) => o.id}
           contentContainerStyle={{ flexGrow: 1, padding: 16, gap: 12 }}

@@ -1,10 +1,11 @@
 import { router, Stack } from 'expo-router';
-import { FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { useAddresses } from '@/components/order/address-list';
 import { AddressText } from '@/components/order/order-ui';
 import { Button } from '@/components/ui/button';
 import { Empty, Loading } from '@/components/ui/state';
 import { Text } from '@/components/ui/text';
+import { List } from '@/components/ui/list';
 import { useTheme } from '@/theme';
 
 /** 배송지 관리: 눌러서 수정·삭제, 기본 배송지 표시 */
@@ -15,8 +16,7 @@ export default function AddressesScreen() {
   return (
     <>
       <Stack.Screen options={{ title: '배송지 관리' }} />
-      <FlatList
-        alwaysBounceVertical={false}
+      <List
         style={{ backgroundColor: t.colors.background }}
         contentContainerStyle={{ flexGrow: 1, padding: 16, gap: 10 }}
         contentInsetAdjustmentBehavior="automatic"

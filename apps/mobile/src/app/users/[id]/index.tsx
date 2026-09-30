@@ -3,7 +3,7 @@ import type { PublicProfileDto } from '@shop/shared';
 import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Alert, FlatList, Pressable, Share, StyleSheet, View } from 'react-native';
+import { Alert, Pressable, Share, StyleSheet, View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { ReviewItem, ReviewSummary } from '@/components/community/review-item';
 import { ProductCard } from '@/components/product/product-card';
@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Empty, Loading } from '@/components/ui/state';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
+import { List } from '@/components/ui/list';
 import { useGrid } from '@/hooks/use-grid';
 import { actionSheet } from '@/lib/action-sheet';
 import { api } from '@/lib/api';
@@ -334,8 +335,7 @@ export default function UserScreen() {
 
   if (tab === 'reviews')
     return (
-      <FlatList
-        alwaysBounceVertical={false}
+      <List
         style={{ backgroundColor: t.colors.background }}
         contentInsetAdjustmentBehavior="automatic"
         data={reviews.data?.pages.flatMap((p) => p.items) ?? []}
@@ -362,8 +362,7 @@ export default function UserScreen() {
     );
 
   return (
-    <FlatList
-      alwaysBounceVertical={false}
+    <List
       key={g.columns}
       style={{ backgroundColor: t.colors.background }}
       contentInsetAdjustmentBehavior="automatic"

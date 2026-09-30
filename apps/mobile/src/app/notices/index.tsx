@@ -1,10 +1,11 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { router, Stack } from 'expo-router';
-import { FlatList, Pressable, StyleSheet } from 'react-native';
+import { Pressable, StyleSheet } from 'react-native';
 import { AppRefreshControl } from '@/components/ui/app-refresh-control';
 import { usePullRefresh } from '@/hooks/use-pull-refresh';
 import { Empty, Loading } from '@/components/ui/state';
 import { Text } from '@/components/ui/text';
+import { List } from '@/components/ui/list';
 import { api } from '@/lib/api';
 import { useTheme } from '@/theme';
 
@@ -22,8 +23,7 @@ export default function NoticesScreen() {
   const pull = usePullRefresh(q.refetch);
   if (q.isPending) return <Loading variant="plain-list" />;
   return (
-    <FlatList
-      alwaysBounceVertical={false}
+    <List
       contentContainerStyle={{ flexGrow: 1 }}
       style={{ backgroundColor: t.colors.background }}
       data={pull.refreshing ? [] : (q.data?.pages.flatMap((p) => p.items) ?? [])}

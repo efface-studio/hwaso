@@ -1,12 +1,13 @@
 import { SETTLEMENT_STATUS_LABEL, formatPrice } from '@shop/shared';
 import { useQuery } from '@tanstack/react-query';
 import { router, Stack } from 'expo-router';
-import { FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { AppRefreshControl } from '@/components/ui/app-refresh-control';
 import { usePullRefresh } from '@/hooks/use-pull-refresh';
 import { Button } from '@/components/ui/button';
 import { Empty, Loading } from '@/components/ui/state';
 import { Text } from '@/components/ui/text';
+import { List } from '@/components/ui/list';
 import { api } from '@/lib/api';
 import { useTheme } from '@/theme';
 
@@ -20,8 +21,7 @@ export default function SettlementsScreen() {
   if (!data) return <Empty kind="error" title="정산 정보를 불러오지 못했어요" />;
 
   return (
-    <FlatList
-      alwaysBounceVertical={false}
+    <List
       style={{ backgroundColor: t.colors.background }}
       contentContainerStyle={{ flexGrow: 1, padding: 16, gap: 10 }}
       data={pull.refreshing ? [] : data.items}

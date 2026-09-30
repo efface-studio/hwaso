@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { router, Stack } from 'expo-router';
 import { useState } from 'react';
-import { FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { AppRefreshControl } from '@/components/ui/app-refresh-control';
 import { usePullRefresh } from '@/hooks/use-pull-refresh';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,7 @@ import { Chips } from '@/components/ui/chips';
 import { Empty, Loading } from '@/components/ui/state';
 import { Text } from '@/components/ui/text';
 import { Separator } from '@/components/ui/separator';
+import { List } from '@/components/ui/list';
 import { api } from '@/lib/api';
 import { mediaUrl } from '@/lib/media';
 import { useTheme, type Colors } from '@/theme';
@@ -58,8 +59,7 @@ export default function MyBidsScreen() {
       {q.isPending ? (
         <Loading variant="list" />
       ) : (
-        <FlatList
-          alwaysBounceVertical={false}
+        <List
           contentContainerStyle={{ flexGrow: 1 }}
           data={pull.refreshing ? [] : (q.data ?? [])}
           keyExtractor={(b) => b.auction.id}

@@ -2,12 +2,13 @@ import type { ProductCardDto } from '@shop/shared';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { useIsFocused } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, FlatList, View } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
 import { AppRefreshControl } from '@/components/ui/app-refresh-control';
 import { usePullRefresh } from '@/hooks/use-pull-refresh';
 import { ProductCard } from '@/components/product/product-card';
 import { Chips } from '@/components/ui/chips';
 import { Empty, Loading } from '@/components/ui/state';
+import { List } from '@/components/ui/list';
 import { useGrid } from '@/hooks/use-grid';
 import { api } from '@/lib/api';
 import { useTheme } from '@/theme';
@@ -42,8 +43,7 @@ export default function AuctionsScreen() {
   const label = TABS.find((x) => x.value === tab)!.label;
 
   return (
-    <FlatList
-      alwaysBounceVertical={false}
+    <List
       key={g.columns}
       contentInsetAdjustmentBehavior="automatic"
       style={{ backgroundColor: t.colors.background }}
