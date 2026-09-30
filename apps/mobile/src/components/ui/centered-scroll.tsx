@@ -1,6 +1,6 @@
-import { useCallback, useRef, useState, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { ScrollView, View, type ViewStyle } from 'react-native';
-import { useVisibleBottom } from '@/hooks/use-visible-bottom';
+import { useVisibleHeight } from '@/hooks/use-visible-height';
 import { useTheme } from '@/theme';
 
 /**
@@ -9,32 +9,16 @@ import { useTheme } from '@/theme';
  */
 export function CenteredScroll({ children, style }: { children: ReactNode; style?: ViewStyle }) {
   const t = useTheme();
-  const visibleBottom = useVisibleBottom();
-  const box = useRef<View>(null);
-  const [visibleH, setVisibleH] = useState<number | null>(null);
+  const visibleH = useVisibleHeight();
   const [contentH, setContentH] = useState(0);
-
-  // 내용 틀이 화면의 어디서 시작하는지 재서, 보이는 영역 높이를 구한다
-  const measure = useCallback(() => {
-    box.current?.measureInWindow((_x, y) => setVisibleH(Math.max(0, visibleBottom - y)));
-  }, [visibleBottom]);
-
   return (
     <ScrollView
       contentInsetAdjustmentBehavior="automatic"
       alwaysBounceVertical={false}
-      scrollEnabled={visibleH !== null && contentH > visibleH + 1}
+      scrollEnabled={contentH > visibleH + 1}
       style={{ backgroundColor: t.colors.background }}
     >
-      <View
-        ref={box}
-        onLayout={measure}
-        style={{
-          minHeight: visibleH ?? undefined,
-          justifyContent: 'center',
-          opacity: visibleH === null ? 0 : 1,
-        }}
-      >
+      <View style={{ minHeight: visibleH, justifyContent: 'center' }}>
         <View style={style} onLayout={(e) => setContentH(e.nativeEvent.layout.height)}>
           {children}
         </View>

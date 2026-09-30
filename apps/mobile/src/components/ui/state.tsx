@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState, type ReactNode } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
-import { useVisibleBottom } from '@/hooks/use-visible-bottom';
+import { useVisibleHeight } from '@/hooks/use-visible-height';
 import { useTheme } from '@/theme';
 import { Button } from './button';
 import { EmptyIllustration, type EmptyKind } from '@/components/illustrations/empty';
@@ -67,18 +67,21 @@ export function Empty({
   /** 직접 넣는 그림 (kind 대신) */
   illustration?: ReactNode;
 }) {
-  const visibleBottom = useVisibleBottom();
+  const visibleH = useVisibleHeight();
   const box = useRef<View>(null);
   const contentH = useRef(0);
   const [offset, setOffset] = useState<number | null>(null);
 
   const place = useCallback(() => {
-    box.current?.measureInWindow((_x, y, _w, h) => {
-      if (!contentH.current) return;
-      const bottom = Math.min(y + h, visibleBottom);
-      setOffset(Math.max(0, (bottom - y - contentH.current) / 2));
-    });
-  }, [visibleBottom]);
+    const read = () =>
+      // y 는 스크롤 내용 안에서의 위치 (헤더 여백 제외) — 보이는 높이에서 빼면 남은 공간
+      box.current?.measureInWindow((_x, y, _w, h) => {
+        if (!contentH.current) return;
+        const bottom = Math.min(y + h, visibleH);
+        setOffset(Math.max(0, (bottom - y - contentH.current) / 2));
+      });
+    read();
+  }, [visibleH]);
 
   return (
     <View ref={box} style={styles.fill} onLayout={place}>
