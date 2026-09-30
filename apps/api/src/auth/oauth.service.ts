@@ -151,20 +151,25 @@ export class OAuthService {
     return { user, issued, isNew: true };
   }
 
+  /** iOS 네이티브 Sign in with Apple 의 identityToken 을 Apple 공개키로 검증해 프로필을 얻는다 */
+  async appleProfile(identityToken: string): Promise<OAuthProfile> {
+    const bundle = env().APPLE_BUNDLE_ID;
+    if (!bundle) throw new AppException('PROVIDER_NOT_CONFIGURED', undefined, undefined, 400);
+    return verifyAppleIdToken(identityToken, [
+      bundle,
+      ...(env().APPLE_CLIENT_ID ? [env().APPLE_CLIENT_ID!] : []),
+      // 개발 중 Expo Go 로 실행하면 토큰 대상(aud)이 Expo Go 번들 ID 다
+      ...(isProd() ? [] : [EXPO_GO_BUNDLE_ID]),
+    ]);
+  }
+
   async appleNative(
     identityToken: string,
     name: string | undefined,
     device: DeviceInput,
     client: ClientInfo,
   ) {
-    const bundle = env().APPLE_BUNDLE_ID;
-    if (!bundle) throw new AppException('PROVIDER_NOT_CONFIGURED', undefined, undefined, 400);
-    const profile = await verifyAppleIdToken(identityToken, [
-      bundle,
-      ...(env().APPLE_CLIENT_ID ? [env().APPLE_CLIENT_ID!] : []),
-      // 개발 중 Expo Go 로 실행하면 토큰 대상(aud)이 Expo Go 번들 ID 다
-      ...(isProd() ? [] : [EXPO_GO_BUNDLE_ID]),
-    ]);
+    const profile = await this.appleProfile(identityToken);
     return this.signIn('APPLE', profile, device, client, name);
   }
 

@@ -104,6 +104,10 @@ export const appleNativeSchema = z.strictObject({
 });
 export type AppleNativeInput = z.infer<typeof appleNativeSchema>;
 
+/** 로그인한 계정에 iOS 네이티브 Apple 계정 연결 */
+export const appleLinkSchema = appleNativeSchema.pick({ identityToken: true });
+export type AppleLinkInput = z.infer<typeof appleLinkSchema>;
+
 export const identityCompleteSchema = z.strictObject({
   identityVerificationId: z.string().min(8).max(100),
 });
