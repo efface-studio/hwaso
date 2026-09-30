@@ -102,9 +102,12 @@ export default function SocialScreen() {
           </View>
         );
       })}
-      <Text variant="caption" color="muted">
-        {tr('social.footnote')}
-      </Text>
+      {/* 해제 규칙은 연결된 계정이 있을 때만 의미가 있다 */}
+      {user.socialProviders.length > 0 && (
+        <Text variant="caption" color="muted">
+          {tr('social.footnote')}
+        </Text>
+      )}
     </ScrollView>
   );
 }
