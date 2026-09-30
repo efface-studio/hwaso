@@ -27,6 +27,8 @@ export const ERROR_MESSAGES = {
   IDENTITY_REQUIRED: '본인인증 후 이용할 수 있습니다.',
   IDENTITY_ALREADY_USED: '이미 다른 계정에서 본인인증에 사용된 명의입니다.',
   IDENTITY_FAILED: '본인인증에 실패했습니다. 다시 시도해주세요.',
+  REAUTH_REQUIRED: '안전을 위해 본인 확인이 필요해요.',
+  REAUTH_FAILED: '본인 확인에 실패했습니다. 다시 시도해주세요.',
   ACCOUNT_HAS_ACTIVE_TRADES:
     '진행 중인 거래나 경매가 있어 탈퇴할 수 없습니다. 거래를 마친 뒤 다시 시도해주세요.',
 

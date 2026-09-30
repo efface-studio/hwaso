@@ -1,5 +1,5 @@
 import { createTestApp, type TestContext } from './app';
-import { createCategory, createProduct, createUser } from './fixtures';
+import { createCategory, createProduct, createUser, reauth } from './fixtures';
 
 let t: TestContext;
 let seq = 0;
@@ -53,6 +53,7 @@ async function paidOrder() {
   const prep = await t.http
     .post(`/api/v1/orders/${order.body.id}/payments`)
     .set(buyer.auth)
+    .set(await reauth(t, buyer))
     .send({ method: 'CARD' });
   await t.http
     .post('/api/v1/payments/confirm')

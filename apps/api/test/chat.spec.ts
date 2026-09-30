@@ -1,5 +1,5 @@
 import { createTestApp, type TestContext } from './app';
-import { createCategory, createProduct, createUser, fakeUpload } from './fixtures';
+import { createCategory, createProduct, createUser, fakeUpload, reauth } from './fixtures';
 import { PresenceService } from '../src/realtime/presence';
 
 let t: TestContext;
@@ -256,6 +256,7 @@ describe('trade status & system messages (거래 상태·주문 진행)', () => 
     const prep = await t.http
       .post(`/api/v1/orders/${created.body.id}/payments`)
       .set(buyer.auth)
+      .set(await reauth(t, buyer))
       .send({ method: 'CARD' })
       .expect(201);
     await t.http
