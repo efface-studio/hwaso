@@ -1,6 +1,8 @@
 import { BANK_GROUP_LABEL, BANKS, bankByName, type Bank, type BankGroup } from '@shop/shared';
+import { Image } from 'expo-image';
 import { useState } from 'react';
 import { Pressable, StyleSheet, TextInput, useWindowDimensions, View } from 'react-native';
+import { BANK_LOGOS } from '@/components/bank-logos';
 import { Icon } from '@/components/ui/icon';
 import { Sheet } from '@/components/ui/sheet';
 import { Text } from '@/components/ui/text';
@@ -8,22 +10,28 @@ import { selectionHaptic } from '@/lib/haptics';
 import { useTheme } from '@/theme';
 
 /** 은행 로고 자리: 대표 색 원형 배지 + 약칭 (공식 로고 이미지를 받으면 여기서 바꿔 끼운다) */
-export function BankLogo({ bank, name, size = 44 }: { bank?: Bank; name?: string; size?: number }) {
+/**
+ * 은행 로고 타일 (가로로 긴 둥근 사각형). 로고 이미지가 있으면 흰 바탕에 로고 전체를,
+ * 없으면 대표 색 바탕에 약칭을 보여준다 — 가로로 긴 워드마크 로고도 읽히도록 원형 대신 타일로 둔다.
+ */
+export function BankLogo({ bank, name, height = 36 }: { bank?: Bank; name?: string; height?: number }) {
   const t = useTheme();
+  const width = Math.round(height * 2.2);
+  const logo = bank ? BANK_LOGOS[bank.code] : undefined;
+  const box = { width, height, borderRadius: Math.round(height * 0.22) };
+  if (logo)
+    return (
+      <View accessible={false} style={[styles.logoBox, box, { borderColor: t.colors.border }]}>
+        <Image source={logo} style={styles.logoImage} contentFit="contain" />
+      </View>
+    );
   const mark = bank?.mark ?? (name ?? '?').slice(0, 2);
   // 약칭 길이에 맞춰 글자 크기를 줄인다
-  const fontSize = Math.round(size * (mark.length <= 2 ? 0.34 : mark.length <= 3 ? 0.28 : 0.22));
+  const fontSize = Math.round(height * (mark.length <= 3 ? 0.4 : 0.32));
   return (
     <View
       accessible={false}
-      style={{
-        width: size,
-        height: size,
-        borderRadius: size / 2,
-        backgroundColor: bank?.color ?? t.colors.surface2,
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
+      style={[box, styles.markBox, { backgroundColor: bank?.color ?? t.colors.surface2 }]}
     >
       <Text style={{ color: bank?.fg ?? t.colors.muted, fontSize, fontWeight: '800', letterSpacing: -0.3 }}>
         {mark}
@@ -89,7 +97,7 @@ export function BankField({
       >
         {value ? (
           <>
-            <BankLogo bank={selected} name={value} size={32} />
+            <BankLogo bank={selected} name={value} height={28} />
             <Text style={{ flex: 1 }}>{value}</Text>
           </>
         ) : (
@@ -196,4 +204,15 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth * 2,
   },
   tileName: { textAlign: 'center', fontWeight: '600' },
+  // 로고는 흰 바탕용으로 만들어져 다크 모드에서도 흰 타일에 둔다
+  logoBox: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: 6,
+    paddingVertical: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  logoImage: { width: '100%', height: '100%' },
+  markBox: { alignItems: 'center', justifyContent: 'center' },
 });
