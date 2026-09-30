@@ -1,5 +1,6 @@
 import type { MeDto } from '@shop/shared';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import Constants from 'expo-constants';
 import { router, type Href } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useState } from 'react';
@@ -180,6 +181,52 @@ function ProfileHeader({ user }: { user: MeDto }) {
   );
 }
 
+/** 로그인 전: 로그인·회원가입 */
+function GuestHeader() {
+  const { t: tr } = useTranslation(['my', 'common']);
+  return (
+    <View style={styles.profile}>
+      <Text variant="h3">{tr('myTab.loginPrompt')}</Text>
+      <View style={styles.actions}>
+        <View style={{ flex: 1 }}>
+          <Button title={tr('myTab.login')} block onPress={() => router.push('/login')} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Button title={tr('myTab.signup')} variant="outline" block onPress={() => router.push('/signup')} />
+        </View>
+      </View>
+    </View>
+  );
+}
+
+/** 로그인 전 메뉴: 고객센터 · 약관 · 앱 정보 */
+function GuestMenu() {
+  const { t: tr } = useTranslation(['my', 'common']);
+  const policy = (slug: 'terms' | 'privacy'): Href => ({ pathname: '/policies/[slug]', params: { slug } });
+  const rows: [Href, string][] = [
+    ['/support', tr('common:screen.support')],
+    [policy('terms'), tr('policy.title.terms')],
+    [policy('privacy'), tr('policy.title.privacy')],
+  ];
+  return (
+    <View>
+      <Text variant="label" color="muted" style={styles.group}>
+        {tr('myTab.group.service')}
+      </Text>
+      {rows.map(([href, label]) => (
+        <Pressable key={label} accessibilityRole="link" onPress={() => router.push(href)}>
+          <Row label={label}>
+            <Text color="faint">›</Text>
+          </Row>
+        </Pressable>
+      ))}
+      <Row label={tr('myTab.appInfo')}>
+        <Text color="muted">{tr('myTab.appVersion', { version: Constants.expoConfig?.version ?? '' })}</Text>
+      </Row>
+    </View>
+  );
+}
+
 export default function MyScreen() {
   const t = useTheme();
   const user = useAuthStore((s) => s.user);
@@ -218,19 +265,7 @@ export default function MyScreen() {
         <MySkeleton />
       ) : (
         <>
-          {user ? (
-            <ProfileHeader user={user} />
-          ) : (
-            <View style={styles.profile}>
-              <Text variant="h3">{tr('myTab.loginPrompt')}</Text>
-              <Button
-                title={tr('myTab.login')}
-                onPress={() => router.push('/login')}
-                block
-                style={{ marginTop: 12 }}
-              />
-            </View>
-          )}
+          {user ? <ProfileHeader user={user} /> : <GuestHeader />}
           {user &&
             (
               [
@@ -278,11 +313,15 @@ export default function MyScreen() {
                 ))}
               </View>
             ))}
-          <Pressable accessibilityRole="link" onPress={() => router.push('/support')}>
-            <Row label={tr('myTab.menu.support')}>
-              <Text color="faint">›</Text>
-            </Row>
-          </Pressable>
+          {user ? (
+            <Pressable accessibilityRole="link" onPress={() => router.push('/support')}>
+              <Row label={tr('myTab.menu.support')}>
+                <Text color="faint">›</Text>
+              </Row>
+            </Pressable>
+          ) : (
+            <GuestMenu />
+          )}
           <Text variant="label" color="muted" style={styles.group}>
             {tr('myTab.group.display')}
           </Text>

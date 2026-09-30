@@ -8,9 +8,11 @@ import { useTranslation } from 'react-i18next';
 import { Alert, AppState, Linking, Platform, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { Loading } from '@/components/ui/state';
 import { Text } from '@/components/ui/text';
+import { formatDate } from '@/i18n/format';
 import { notificationCategoryLabel } from '@/i18n/labels';
 import { api } from '@/lib/api';
 import { registerPush } from '@/lib/push';
+import { useAuthStore } from '@/stores/auth';
 import { useTheme } from '@/theme';
 
 type OsState = 'granted' | 'denied' | 'undetermined' | 'unsupported';
@@ -80,6 +82,21 @@ export default function NotificationSettingsScreen() {
     },
   });
   const data = q.data;
+  const user = useAuthStore((s) => s.user);
+  // 마케팅(광고성 정보) 수신 동의 — 바꾸면 처리 결과와 날짜를 알린다 (정보통신망법 수신 동의 처리 결과 고지)
+  const marketing = useMutation({
+    mutationFn: (on: boolean) =>
+      api.auth.consent({ terms: true, privacy: true, ageOver14: true, marketing: on }),
+    onSuccess: (me, on) => {
+      useAuthStore.getState().setUser(me);
+      Alert.alert(
+        on
+          ? tr('notificationSettings.marketingAgreed', { date: formatDate(new Date()) })
+          : tr('notificationSettings.marketingDeclined', { date: formatDate(new Date()) }),
+      );
+    },
+    onError: (e) => Alert.alert(e instanceof ApiError ? e.message : tr('common:state.saveFailed')),
+  });
 
   const check = useCallback(async (): Promise<OsState> => {
     if (Platform.OS === 'web') {
@@ -197,6 +214,20 @@ export default function NotificationSettingsScreen() {
       <Text variant="caption" color="muted" style={{ marginTop: 8 }}>
         {tr('notificationSettings.always')}
       </Text>
+      {user && (
+        <>
+          <Text variant="label" color="muted" style={styles.group}>
+            {tr('notificationSettings.marketingGroup')}
+          </Text>
+          <SwitchRow
+            label={tr('notificationSettings.marketing')}
+            description={tr('notificationSettings.marketingDescription')}
+            value={marketing.isPending ? !!marketing.variables : user.marketingOptIn}
+            disabled={marketing.isPending}
+            onChange={(v) => marketing.mutate(v)}
+          />
+        </>
+      )}
     </ScrollView>
   );
 }

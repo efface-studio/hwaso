@@ -18,6 +18,8 @@ import { useGrid } from '@/hooks/use-grid';
 import i18n, { currentLanguage, LOCALE } from '@/i18n';
 import { actionSheet } from '@/lib/action-sheet';
 import { api } from '@/lib/api';
+import { askPushInContext } from '@/lib/push-prompt';
+import { requireLogin } from '@/lib/require-login';
 import { env } from '@/lib/env';
 import { useAuthStore } from '@/stores/auth';
 import { useTheme } from '@/theme';
@@ -154,11 +156,12 @@ function Header({
   });
 
   const toggleFollow = async () => {
-    if (!me) return router.push('/login');
+    if (!requireLogin()) return;
     setBusy(true);
     try {
       await (u.isFollowing ? api.community.unfollow(u.id) : api.community.follow(u.id));
       await qc.invalidateQueries({ queryKey: ['user', u.id] });
+      if (!u.isFollowing) void askPushInContext('follow');
     } catch (e) {
       Alert.alert(errMsg(e));
     } finally {
@@ -176,15 +179,13 @@ function Header({
         label: tr('user.report'),
         destructive: true,
         onPress: () =>
-          me
-            ? router.push({ pathname: '/report', params: { type: 'USER', id: u.id } })
-            : router.push('/login'),
+          requireLogin() && router.push({ pathname: '/report', params: { type: 'USER', id: u.id } }),
       },
       {
         label: tr('user.block'),
         destructive: true,
         onPress: () => {
-          if (!me) return router.push('/login');
+          if (!requireLogin()) return;
           Alert.alert(tr('user.blockConfirm', { name: u.nickname }), tr('user.blockMessage'), [
             { text: tr('common:action.cancel'), style: 'cancel' },
             {

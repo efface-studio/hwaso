@@ -42,6 +42,8 @@ const en: Translation<typeof ko> = {
     agree: "I've reviewed my order and agree to the payment (required)",
     escrowNotice:
       'Hwaso is a marketplace intermediary. Your payment is held securely until you confirm the purchase.',
+    withdrawal: 'You can cancel and return within 7 days of receiving the item, including auction wins.',
+    withdrawalLink: 'Cancellation and refunds',
     addAddress: 'Please add a shipping address.',
   },
   pay: {

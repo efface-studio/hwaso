@@ -1,5 +1,5 @@
 import { ApiError } from '@shop/api-client';
-import { createReviewSchema } from '@shop/shared';
+import { containsProhibited, createReviewSchema } from '@shop/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { Stack, useLocalSearchParams } from 'expo-router';
@@ -80,6 +80,7 @@ export default function ReviewScreen() {
       return setError(
         r.error.issues[0]?.path[0] === 'comment' ? tr('review.commentMin') : tr('review.checkContent'),
       );
+    if (containsProhibited(comment)) return setError(tr('common:validation.prohibited'));
     setError(null);
     save.mutate();
   };

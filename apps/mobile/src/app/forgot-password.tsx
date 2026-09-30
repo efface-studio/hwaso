@@ -1,6 +1,5 @@
 import { ApiError } from '@shop/api-client';
 import { passwordSchema } from '@shop/shared';
-import { router } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert, KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
@@ -10,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
 import { Text } from '@/components/ui/text';
 import { api } from '@/lib/api';
+import { goBack } from '@/lib/nav';
 import { useTheme } from '@/theme';
 
 /** 비밀번호 찾기: 이메일 인증 → 새 비밀번호 (모든 기기에서 로그아웃된다) */
@@ -28,7 +28,8 @@ export default function ForgotPasswordScreen() {
     try {
       await api.auth.resetPassword({ verificationToken: token!, newPassword: password });
       Alert.alert(tr('forgotPassword.doneTitle'), tr('forgotPassword.doneMessage'), [
-        { text: tr('common:action.ok'), onPress: () => router.replace('/login') },
+        // 로그인 화면 위에서 열렸다 — 돌아가서 새 비밀번호로 로그인한다
+        { text: tr('common:action.ok'), onPress: goBack },
       ]);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : tr('forgotPassword.failed'));

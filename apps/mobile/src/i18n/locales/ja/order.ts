@@ -41,6 +41,9 @@ const ja: Translation<typeof ko> = {
     couponApplied: '{{name}}を適用しました',
     agree: '注文内容を確認し、決済に同意します（必須）',
     escrowNotice: 'Hwasoは通信販売の仲介者です。代金は購入確定まで安全にお預かりします。',
+    withdrawal:
+      '受け取った日から7日以内であれば申込みの撤回（返品）を依頼できます。オークションで落札した作品も同様です。',
+    withdrawalLink: '申込みの撤回・返金について',
     addAddress: 'お届け先を追加してください。',
   },
   pay: {

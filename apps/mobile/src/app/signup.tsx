@@ -1,17 +1,9 @@
 import { ApiError } from '@shop/api-client';
-import { nicknameSchema, passwordSchema } from '@shop/shared';
-import { router } from 'expo-router';
+import { containsProhibited, nicknameSchema, passwordSchema } from '@shop/shared';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Switch,
-  View,
-} from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { Agreements, NO_AGREEMENT, requiredAgreed } from '@/components/auth/agreements';
 import { EmailCodeStep } from '@/components/auth/email-code';
 import { nicknameIssueMessage, passwordIssueMessage } from '@/components/auth/validation';
 import { Button } from '@/components/ui/button';
@@ -22,15 +14,14 @@ import { appDevice } from '@/lib/device';
 import { useAuthStore } from '@/stores/auth';
 import { useTheme } from '@/theme';
 
-/** 회원가입: 이메일 인증 → 비밀번호·닉네임·약관 */
+/** 회원가입: 이메일 인증 → 비밀번호·닉네임·약관 (이용약관·개인정보·만 14세는 필수, 마케팅은 선택) */
 export default function SignupScreen() {
   const t = useTheme();
-  const { t: tr } = useTranslation('auth');
+  const { t: tr } = useTranslation(['auth', 'common']);
   const [token, setToken] = useState<string | null>(null);
   const [password, setPassword] = useState('');
   const [nickname, setNickname] = useState('');
-  const [terms, setTerms] = useState(false);
-  const [marketing, setMarketing] = useState(false);
+  const [agreement, setAgreement] = useState(NO_AGREEMENT);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
 
@@ -40,6 +31,7 @@ export default function SignupScreen() {
     const next: Record<string, string> = {};
     if (!pw.success) next.password = passwordIssueMessage(pw.error.issues[0]!, password);
     if (!nn.success) next.nickname = nicknameIssueMessage(nn.error.issues[0]!);
+    else if (containsProhibited(nn.data)) next.nickname = tr('common:validation.prohibited');
     setErrors(next);
     if (Object.keys(next).length || !token) return;
     setBusy(true);
@@ -49,10 +41,12 @@ export default function SignupScreen() {
         password,
         nickname: nn.data!,
         agreeTerms: true,
-        agreeMarketing: marketing,
+        agreePrivacy: true,
+        ageOver14: true,
+        agreeMarketing: agreement.marketing,
         device: appDevice(),
       });
-      // 로그인 상태가 되면 루트 가드가 홈으로 보낸다
+      // 로그인 상태가 되면 루트 가드가 로그인·가입 화면을 빼서 보던 화면으로 돌아간다
       await useAuthStore.getState().setSession(tokens);
     } catch (e) {
       if (e instanceof ApiError && e.code === 'NICKNAME_TAKEN') setErrors({ nickname: e.message });
@@ -92,35 +86,7 @@ export default function SignupScreen() {
               hint={tr('signup.nicknameHint')}
               maxLength={20}
             />
-            <View style={[styles.row, { minHeight: t.touch }]}>
-              <Switch
-                style={{ alignSelf: 'center' }}
-                value={terms}
-                onValueChange={setTerms}
-                trackColor={{ true: t.colors.primary }}
-                accessibilityLabel={tr('signup.agreeTerms')}
-              />
-              <Text style={{ flex: 1 }}>{tr('signup.agreeTerms')}</Text>
-              <Pressable
-                accessibilityRole="link"
-                onPress={() => router.push({ pathname: '/policies/[slug]', params: { slug: 'terms' } })}
-                hitSlop={8}
-              >
-                <Text variant="small" color="muted">
-                  {tr('signup.viewTerms')}
-                </Text>
-              </Pressable>
-            </View>
-            <View style={[styles.row, { minHeight: t.touch }]}>
-              <Switch
-                style={{ alignSelf: 'center' }}
-                value={marketing}
-                onValueChange={setMarketing}
-                trackColor={{ true: t.colors.primary }}
-                accessibilityLabel={tr('signup.agreeMarketing')}
-              />
-              <Text style={{ flex: 1 }}>{tr('signup.agreeMarketing')}</Text>
-            </View>
+            <Agreements value={agreement} onChange={setAgreement} />
             {errors.form && (
               <Text variant="small" color="destructive">
                 {errors.form}
@@ -131,7 +97,7 @@ export default function SignupScreen() {
               size="lg"
               block
               loading={busy}
-              disabled={!terms || !password || !nickname}
+              disabled={!requiredAgreed(agreement) || !password || !nickname}
               onPress={() => void submit()}
             />
           </View>
@@ -143,5 +109,4 @@ export default function SignupScreen() {
 
 const styles = StyleSheet.create({
   body: { padding: 20, gap: 16, paddingBottom: 40 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 12 },
 });

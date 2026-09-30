@@ -10,11 +10,13 @@ const zhHant: Translation<typeof ko> = {
     viewProfile: '查看我的個人頁面',
     loginPrompt: '登入後即可出價、購買和聊天',
     login: '登入',
+    signup: '註冊',
     group: {
       shopping: '購物',
       community: '社群',
       account: '帳號',
       display: '顯示',
+      service: '客戶支援',
     },
     menu: {
       orders: '購買紀錄',
@@ -37,6 +39,8 @@ const zhHant: Translation<typeof ko> = {
     },
     logout: '登出',
     logoutConfirm: '確定要登出嗎？',
+    appInfo: 'App 資訊',
+    appVersion: '版本 {{version}}',
   },
   people: {
     followers: '粉絲',
@@ -105,7 +109,7 @@ const zhHant: Translation<typeof ko> = {
   },
   identity: {
     notReadyTitle: '實名認證準備中',
-    notReadyMessage: '設定 PortOne 金鑰後才能使用 PASS 實名認證。',
+    notReadyMessage: '目前無法進行身分驗證，請稍後再試。',
     doneTitle: '已完成實名認證',
     failedTitle: '無法完成實名認證',
     verified: '已完成實名認證 · PASS',
@@ -156,6 +160,11 @@ const zhHant: Translation<typeof ko> = {
     always: '帳號與營運公告會一律傳送。',
     quietHours: '勿擾時段',
     quietHoursDescription: '晚上{{start}}點到早上{{end}}點不會傳送推播。',
+    marketingGroup: '行銷資訊',
+    marketing: '接收行銷資訊（選填）',
+    marketingDescription: '透過推播與電子郵件接收活動與優惠消息。',
+    marketingAgreed: '已於 {{date}} 同意接收行銷資訊。',
+    marketingDeclined: '已於 {{date}} 拒絕接收行銷資訊。',
   },
   blocks: {
     notice: '無法與已封鎖的使用者互傳訊息。',
@@ -181,6 +190,11 @@ const zhHant: Translation<typeof ko> = {
     confirmMessage: '收藏的作品、販售中的作品及追蹤資訊都將被刪除，且無法復原。',
     doneTitle: '帳號已刪除',
     doneMessage: '感謝你一直以來使用 Hwaso。',
+    socialTitle: '使用註冊時的社群帳號驗證身分',
+    socialOr: '或使用社群帳號驗證身分',
+    socialVerify: '使用 {{provider}} 帳號驗證',
+    socialVerified: '已使用 {{provider}} 帳號驗證。',
+    contactSupport: '目前無法在 App 內驗證身分，請聯絡客服（{{email}}）申請刪除帳號。',
   },
   user: {
     verifiedSeller: '認證賣家',
@@ -265,6 +279,7 @@ const zhHant: Translation<typeof ko> = {
     title: {
       terms: '服務條款',
       privacy: '隱私權政策',
+      refund: '撤銷訂購與退款說明',
       auction: '拍賣營運政策',
       authenticity: '鑑定·正品保證政策',
     },

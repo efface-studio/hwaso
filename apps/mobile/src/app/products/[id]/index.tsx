@@ -19,9 +19,10 @@ import { formatPrice } from '@/i18n/format';
 import { label } from '@/i18n/labels';
 import { actionSheet } from '@/lib/action-sheet';
 import { api } from '@/lib/api';
+import { askPushInContext } from '@/lib/push-prompt';
+import { requireLogin } from '@/lib/require-login';
 import { env } from '@/lib/env';
 import { selectionHaptic } from '@/lib/haptics';
-import { useAuthStore } from '@/stores/auth';
 import { useTheme } from '@/theme';
 
 function Spec({ label, value }: { label: string; value: string | null | undefined }) {
@@ -62,7 +63,6 @@ const when = (iso: string) =>
 function Cta({ p }: { p: ProductDetailDto }) {
   const { t: tr } = useTranslation(['product', 'common']);
   const qc = useQueryClient();
-  const user = useAuthStore((s) => s.user);
   const add = useMutation({
     mutationFn: () => api.orders.putCart(p.id, 1),
     onSuccess: () => {
@@ -113,15 +113,13 @@ function Cta({ p }: { p: ProductDetailDto }) {
         variant="outline"
         size="lg"
         loading={add.isPending}
-        onPress={() => (user ? add.mutate() : router.push('/login'))}
+        onPress={() => requireLogin() && add.mutate()}
       />
       <Button
         title={tr('cta.buy')}
         size="lg"
         style={{ flex: 1 }}
-        onPress={() =>
-          user ? router.push({ pathname: '/checkout', params: { productId: p.id } }) : router.push('/login')
-        }
+        onPress={() => requireLogin() && router.push({ pathname: '/checkout', params: { productId: p.id } })}
       />
     </View>
   );
@@ -133,11 +131,10 @@ function BottomBar({ p }: { p: ProductDetailDto }) {
   const { t: tr } = useTranslation(['product', 'common']);
   const insets = useSafeAreaInsets();
   const qc = useQueryClient();
-  const user = useAuthStore((s) => s.user);
   const [fav, setFav] = useState({ on: p.isFavorite, count: p.favoriteCount });
   const [opening, setOpening] = useState(false);
   const chat = async () => {
-    if (!user) return router.push('/login');
+    if (!requireLogin()) return;
     setOpening(true);
     try {
       const { id } = await api.chat.open(p.id);
@@ -149,12 +146,13 @@ function BottomBar({ p }: { p: ProductDetailDto }) {
     }
   };
   const toggle = async () => {
-    if (!user) return router.push('/login');
+    if (!requireLogin()) return;
     const next = { on: !fav.on, count: fav.count + (fav.on ? -1 : 1) };
     setFav(next);
     try {
       await (next.on ? api.market.favorite(p.id) : api.market.unfavorite(p.id));
       void qc.invalidateQueries({ queryKey: ['favorites'] });
+      if (next.on) void askPushInContext('favorite');
     } catch (e) {
       setFav(fav);
       Alert.alert(e instanceof ApiError ? e.message : tr('common:state.actionFailed'));
@@ -225,7 +223,6 @@ export default function ProductScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const t = useTheme();
   const { t: tr } = useTranslation(['product', 'common']);
-  const user = useAuthStore((s) => s.user);
   const q = useQuery({ queryKey: ['product', id], queryFn: () => api.market.product(id) });
   const related = useQuery({
     queryKey: ['related', id],
@@ -269,9 +266,8 @@ export default function ProductScreen() {
                           label: tr('detail.reportProduct'),
                           destructive: true,
                           onPress: () =>
-                            user
-                              ? router.push({ pathname: '/report', params: { type: 'PRODUCT', id: p.id } })
-                              : router.push('/login'),
+                            requireLogin() &&
+                            router.push({ pathname: '/report', params: { type: 'PRODUCT', id: p.id } }),
                         },
                       ]),
                 ])
@@ -285,6 +281,11 @@ export default function ProductScreen() {
       <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={{ paddingBottom: 24 }}>
         {p.images.length > 0 && <Gallery productId={p.id} images={p.images} title={p.title} />}
         <View style={styles.head}>
+          {p.blockedByMe && (
+            <Text variant="small" color="muted" style={{ marginBottom: 6 }}>
+              {tr('detail.blockedSeller')}
+            </Text>
+          )}
           <Text variant="label" color="primary">
             {p.auction
               ? tr('detail.auctionStatus', { status: label('auctionStatus', p.auction.status) })
@@ -315,6 +316,22 @@ export default function ProductScreen() {
                 method: p.shippingMethod,
               })}
             </Text>
+          )}
+          {/* 청약철회 안내 (전자상거래법) — 경매 낙찰도 같다 */}
+          {!p.isMine && (
+            <Pressable
+              accessibilityRole="link"
+              hitSlop={6}
+              onPress={() => router.push({ pathname: '/policies/[slug]', params: { slug: 'refund' } })}
+              style={{ marginTop: 4 }}
+            >
+              <Text variant="caption" color="muted">
+                {tr('detail.withdrawal')}{' '}
+                <Text variant="caption" color="primary">
+                  {tr('detail.withdrawalLink')}
+                </Text>
+              </Text>
+            </Pressable>
           )}
         </View>
 
@@ -402,7 +419,8 @@ export default function ProductScreen() {
 
         {!!related.data?.length && <Rail title={tr('detail.section.related')} items={related.data} />}
       </ScrollView>
-      <BottomBar key={p.id} p={p} />
+      {/* 로그인하면 관심 여부가 계정 기준으로 다시 오므로 그때 하단 바 상태를 새로 맞춘다 */}
+      <BottomBar key={`${p.id}:${p.isFavorite}`} p={p} />
     </View>
   );
 }

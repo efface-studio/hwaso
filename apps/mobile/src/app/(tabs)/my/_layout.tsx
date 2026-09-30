@@ -8,7 +8,8 @@ import { useTheme } from '@/theme';
 export default function Layout() {
   const t = useTheme();
   const { t: tr } = useTranslation(['my', 'common']);
-  const admin = isAdmin(useAuthStore((s) => s.user));
+  const user = useAuthStore((s) => s.user);
+  const admin = isAdmin(user);
   return (
     <Stack
       screenOptions={{
@@ -35,6 +36,12 @@ export default function Layout() {
             : undefined,
         }}
       />
+      {/* 내 입찰·관심·최근 본 작품은 로그인해야 연다 (딥링크로 들어와도) */}
+      <Stack.Protected guard={!!user}>
+        <Stack.Screen name="bids" />
+        <Stack.Screen name="favorites" />
+        <Stack.Screen name="recent" />
+      </Stack.Protected>
     </Stack>
   );
 }

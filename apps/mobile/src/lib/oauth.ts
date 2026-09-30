@@ -1,4 +1,4 @@
-import type { AuthProvider, AuthTokens } from '@shop/shared';
+import type { AuthProvider, AuthTokens, DeleteAccountInput } from '@shop/shared';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
@@ -44,26 +44,53 @@ export async function linkSocial(provider: AuthProvider): Promise<void> {
   await api.auth.linkSocial(provider, await authorizeInBrowser(provider));
 }
 
-/** iOS: 시스템 Sign in with Apple — identityToken 을 서버가 Apple 공개키로 검증 */
-export async function appleNativeLogin(): Promise<AuthTokens & { isNewUser: boolean }> {
+/** 시스템 Sign in with Apple 창 — 취소하면 OAuthCancelled */
+async function appleCredential(scopes: AppleAuthentication.AppleAuthenticationScope[]) {
   try {
-    const cred = await AppleAuthentication.signInAsync({
-      requestedScopes: [
-        AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
-        AppleAuthentication.AppleAuthenticationScope.EMAIL,
-      ],
-    });
+    const cred = await AppleAuthentication.signInAsync({ requestedScopes: scopes });
     if (!cred.identityToken) throw new Error(i18n.t('common:oauth.appleNoToken'));
-    const name = [cred.fullName?.familyName, cred.fullName?.givenName].filter(Boolean).join('') || undefined;
-    const tokens = await api.auth.appleNative({
-      identityToken: cred.identityToken,
-      name,
-      device: appDevice(),
-    });
-    await useAuthStore.getState().setSession(tokens);
-    return tokens;
+    return { ...cred, identityToken: cred.identityToken };
   } catch (e) {
     if ((e as { code?: string }).code === 'ERR_REQUEST_CANCELED') throw new OAuthCancelled();
     throw e;
   }
+}
+
+/**
+ * iOS: 시스템 Sign in with Apple — identityToken 을 서버가 Apple 공개키로 검증한다.
+ * authorizationCode 도 함께 보내 서버가 refresh 토큰으로 바꿔 두고, 탈퇴·연결 해제 때 Apple 에 폐기(revoke)한다.
+ */
+export async function appleNativeLogin(): Promise<AuthTokens & { isNewUser: boolean }> {
+  const cred = await appleCredential([
+    AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+    AppleAuthentication.AppleAuthenticationScope.EMAIL,
+  ]);
+  const name = [cred.fullName?.familyName, cred.fullName?.givenName].filter(Boolean).join('') || undefined;
+  const tokens = await api.auth.appleNative({
+    identityToken: cred.identityToken,
+    authorizationCode: cred.authorizationCode ?? undefined,
+    name,
+    device: appDevice(),
+  });
+  await useAuthStore.getState().setSession(tokens);
+  return tokens;
+}
+
+/**
+ * 탈퇴 전 본인 확인: 연결된 소셜 계정으로 한 번 더 인증한다 (비밀번호·실제 이메일이 없는 소셜 가입자용).
+ * 서버가 인증 결과 계정이 이 회원에게 연결돼 있는지 대조한다. iOS 의 Apple 은 시스템 창(nativeApple).
+ */
+export async function socialDeleteProof(
+  provider: AuthProvider,
+  nativeApple: boolean,
+): Promise<DeleteAccountInput> {
+  if (provider === 'APPLE' && nativeApple) {
+    const cred = await appleCredential([]);
+    return {
+      provider,
+      identityToken: cred.identityToken,
+      authorizationCode: cred.authorizationCode ?? undefined,
+    };
+  }
+  return { provider, ...(await authorizeInBrowser(provider)) };
 }

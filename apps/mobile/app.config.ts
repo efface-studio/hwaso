@@ -8,6 +8,30 @@ import { withAppDelegate, withInfoPlist, type ConfigPlugin } from 'expo/config-p
 const APP_LINK_HOST = process.env.APP_LINK_HOST ?? 'hwaso.kr';
 const PRIMARY = '#2F7A58';
 
+/**
+ * App Store 개인정보 매니페스트(PrivacyInfo.xcprivacy)에 적는 수집 항목 — 모두 계정에 연결되고(Linked),
+ * 추적(Tracking)에는 쓰지 않으며, 앱 기능 제공 목적이다. App Store Connect 의 "앱 개인정보" 답변과 맞춘다.
+ */
+const COLLECTED_DATA = [
+  'EmailAddress', // 가입·로그인·알림 메일
+  'Name', // 배송 수령인·정산 예금주·본인인증
+  'PhoneNumber', // 배송 연락처·본인인증
+  'PhysicalAddress', // 배송지
+  'PaymentInfo', // 결제는 토스페이먼츠·포트원 결제창에서 (앱은 카드 정보를 저장하지 않는다)
+  'PhotosorVideos', // 작품·후기·채팅·프로필 사진
+  'EmailsOrTextMessages', // 채팅 메시지
+  'OtherUserContent', // 작품 설명·후기·문의
+  'UserID', // 회원 식별자
+  'DeviceID', // 푸시 토큰
+  'PurchaseHistory', // 주문·입찰 내역
+  'CustomerSupport', // 신고·문의
+].map((type) => ({
+  NSPrivacyCollectedDataType: `NSPrivacyCollectedDataType${type}`,
+  NSPrivacyCollectedDataTypeLinked: true,
+  NSPrivacyCollectedDataTypeTracking: false,
+  NSPrivacyCollectedDataTypePurposes: ['NSPrivacyCollectedDataTypePurposeAppFunctionality'],
+}));
+
 const config: ExpoConfig = {
   name: '화소',
   slug: 'hwaso',
@@ -21,7 +45,8 @@ const config: ExpoConfig = {
   ios: {
     bundleIdentifier: 'dev.efface.hwaso',
     buildNumber: '1',
-    supportsTablet: true,
+    // iPhone 전용 (iPad 화면은 심사 대상이 되지 않게 지원하지 않는다)
+    supportsTablet: false,
     usesAppleSignIn: true,
     associatedDomains: [`applinks:${APP_LINK_HOST}`],
     config: { usesNonExemptEncryption: false },
@@ -31,6 +56,30 @@ const config: ExpoConfig = {
         '판매할 작품 사진과 채팅 사진을 앨범에서 고르려면 사진 접근이 필요해요.',
       NSFaceIDUsageDescription: '앱 잠금을 Face ID 로 해제할 때 사용해요.',
       CFBundleAllowMixedLocalizations: true,
+    },
+    privacyManifests: {
+      NSPrivacyTracking: false,
+      NSPrivacyTrackingDomains: [],
+      // 필수 사유 API: React Native·Expo 모듈이 쓰는 항목 (설정 저장·파일 캐시·경과 시간·저장 공간 확인)
+      NSPrivacyAccessedAPITypes: [
+        {
+          NSPrivacyAccessedAPIType: 'NSPrivacyAccessedAPICategoryUserDefaults',
+          NSPrivacyAccessedAPITypeReasons: ['CA92.1'],
+        },
+        {
+          NSPrivacyAccessedAPIType: 'NSPrivacyAccessedAPICategoryFileTimestamp',
+          NSPrivacyAccessedAPITypeReasons: ['C617.1'],
+        },
+        {
+          NSPrivacyAccessedAPIType: 'NSPrivacyAccessedAPICategorySystemBootTime',
+          NSPrivacyAccessedAPITypeReasons: ['35F9.1'],
+        },
+        {
+          NSPrivacyAccessedAPIType: 'NSPrivacyAccessedAPICategoryDiskSpace',
+          NSPrivacyAccessedAPITypeReasons: ['E174.1'],
+        },
+      ],
+      NSPrivacyCollectedDataTypes: COLLECTED_DATA,
     },
   },
   android: {

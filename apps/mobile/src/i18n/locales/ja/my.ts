@@ -10,11 +10,13 @@ const ja: Translation<typeof ko> = {
     viewProfile: 'マイプロフィールを見る',
     loginPrompt: 'ログインして入札・購入・チャットを始めましょう',
     login: 'ログイン',
+    signup: '会員登録',
     group: {
       shopping: 'ショッピング',
       community: 'コミュニティ',
       account: 'アカウント',
       display: '表示',
+      service: 'サポート',
     },
     menu: {
       orders: '購入履歴',
@@ -37,6 +39,8 @@ const ja: Translation<typeof ko> = {
     },
     logout: 'ログアウト',
     logoutConfirm: 'ログアウトしますか？',
+    appInfo: 'アプリ情報',
+    appVersion: 'バージョン {{version}}',
   },
   people: {
     followers: 'フォロワー',
@@ -106,7 +110,7 @@ const ja: Translation<typeof ko> = {
   },
   identity: {
     notReadyTitle: '本人確認は準備中です',
-    notReadyMessage: 'PASS本人確認はPortOneのキー設定後に利用できます。',
+    notReadyMessage: '現在、本人確認を行えません。しばらくしてからもう一度お試しください。',
     doneTitle: '本人確認が完了しました',
     failedTitle: '本人確認を完了できませんでした',
     verified: '本人確認済み・PASS',
@@ -159,6 +163,11 @@ const ja: Translation<typeof ko> = {
     always: 'アカウント・運営からのお知らせは常に送信されます。',
     quietHours: 'おやすみ時間',
     quietHoursDescription: '{{start}}時から翌朝{{end}}時までプッシュ通知を送りません。',
+    marketingGroup: '広告情報',
+    marketing: 'マーケティング情報の受信（任意）',
+    marketingDescription: 'イベントや特典のお知らせをプッシュ通知とメールで受け取ります。',
+    marketingAgreed: '{{date}}、マーケティング情報の受信に同意しました。',
+    marketingDeclined: '{{date}}、マーケティング情報の受信を拒否しました。',
   },
   blocks: {
     notice: 'ブロックしたユーザーとはチャットできません。',
@@ -185,6 +194,12 @@ const ja: Translation<typeof ko> = {
     confirmMessage: 'お気に入り作品、出品中の作品、フォロー情報が削除され、元に戻せません。',
     doneTitle: '退会が完了しました',
     doneMessage: 'これまでHwasoをご利用いただきありがとうございました。',
+    socialTitle: '登録したソーシャルアカウントで本人確認',
+    socialOr: 'またはソーシャルアカウントで本人確認',
+    socialVerify: '{{provider}}アカウントで確認',
+    socialVerified: '{{provider}}アカウントで確認しました。',
+    contactSupport:
+      '現在アプリで本人確認を行えません。カスタマーセンター（{{email}}）に退会をご依頼ください。',
   },
   user: {
     verifiedSeller: '認証済み出品者',
@@ -269,6 +284,7 @@ const ja: Translation<typeof ko> = {
     title: {
       terms: '利用規約',
       privacy: 'プライバシーポリシー',
+      refund: '申込みの撤回・返金について',
       auction: 'オークション運営ポリシー',
       authenticity: '検品・真正品保証ポリシー',
     },

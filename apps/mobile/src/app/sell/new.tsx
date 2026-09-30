@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ApiError } from '@shop/api-client';
 import {
   auctionToInput,
+  containsProhibited,
   createAuctionSchema,
   createProductSchema,
   defaultAuction,
@@ -121,6 +122,7 @@ export default function SellNewScreen() {
     if (s === 'photos' && d.images.length === 0) e.images = tr('new.validation.images');
     if (s === 'basic') {
       if (d.title.trim().length < 2) e.title = tr('new.validation.title');
+      else if (containsProhibited(d.title)) e.title = tr('common:validation.prohibited');
       if (!d.categoryId) e.categoryId = tr('new.validation.category');
     }
     if (s === 'price' && d.saleType !== 'AUCTION' && !d.price) e.price = tr('new.validation.price');
@@ -130,7 +132,11 @@ export default function SellNewScreen() {
       const r = createAuctionSchema.safeParse(auctionToInput(withIncrement(auction), 'x'));
       if (!r.success) Object.assign(e, issuesToErrors(r.error.issues));
     }
+    // 쓸 수 없는 표현은 서버도 막지만, 입력한 자리에서 먼저 알려 준다
+    if ((s === 'detail' || s === 'review') && containsProhibited(d.description))
+      e.description = tr('common:validation.prohibited');
     if (s === 'review') {
+      if (containsProhibited(d.title)) e.title = tr('common:validation.prohibited');
       const r = createProductSchema.safeParse(draftToInput(d, true));
       if (!r.success) Object.assign(e, issuesToErrors(r.error.issues));
     }

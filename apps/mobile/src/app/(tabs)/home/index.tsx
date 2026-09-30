@@ -16,6 +16,7 @@ import { SkeletonHome, SkeletonScreen } from '@/components/ui/skeleton';
 import { Empty, RefreshSkeleton } from '@/components/ui/state';
 import { usePullRefresh } from '@/hooks/use-pull-refresh';
 import { api } from '@/lib/api';
+import { requireLogin } from '@/lib/require-login';
 import { useAuthStore } from '@/stores/auth';
 import { useTheme } from '@/theme';
 
@@ -97,7 +98,8 @@ export default function HomeScreen() {
               ? tr('home.notificationsUnread', { count: unread })
               : tr('common:screen.notifications'),
             icon: { type: 'sfSymbol', name: 'bell' },
-            onPress: () => router.push('/notifications'),
+            // 알림함은 로그인해야 연다
+            onPress: () => requireLogin() && router.push('/notifications'),
             ...(unread > 0 ? { badge: { value: unread > 99 ? '99+' : unread } } : {}),
           },
         ],

@@ -10,11 +10,13 @@ const zhHans: Translation<typeof ko> = {
     viewProfile: '查看我的主页',
     loginPrompt: '登录后即可出价、购买和聊天',
     login: '登录',
+    signup: '注册',
     group: {
       shopping: '购物',
       community: '社区',
       account: '账号',
       display: '显示',
+      service: '客户支持',
     },
     menu: {
       orders: '购买记录',
@@ -37,6 +39,8 @@ const zhHans: Translation<typeof ko> = {
     },
     logout: '退出登录',
     logoutConfirm: '确定要退出登录吗？',
+    appInfo: '应用信息',
+    appVersion: '版本 {{version}}',
   },
   people: {
     followers: '粉丝',
@@ -105,7 +109,7 @@ const zhHans: Translation<typeof ko> = {
   },
   identity: {
     notReadyTitle: '实名认证暂不可用',
-    notReadyMessage: '配置PortOne密钥后才能使用PASS实名认证。',
+    notReadyMessage: '目前无法进行实名认证，请稍后再试。',
     doneTitle: '实名认证已完成',
     failedTitle: '实名认证未完成',
     verified: '已实名认证 · PASS',
@@ -156,6 +160,11 @@ const zhHans: Translation<typeof ko> = {
     always: '账号及运营公告会始终发送。',
     quietHours: '免打扰时段',
     quietHoursDescription: '晚上{{start}}点至早上{{end}}点不发送推送。',
+    marketingGroup: '营销信息',
+    marketing: '接收营销信息（可选）',
+    marketingDescription: '通过推送和邮件接收活动与优惠消息。',
+    marketingAgreed: '已于 {{date}} 同意接收营销信息。',
+    marketingDeclined: '已于 {{date}} 拒绝接收营销信息。',
   },
   blocks: {
     notice: '无法与已屏蔽的用户互发消息。',
@@ -181,6 +190,11 @@ const zhHans: Translation<typeof ko> = {
     confirmMessage: '收藏的作品、在售作品和关注信息都将被删除，且无法恢复。',
     doneTitle: '账号已注销',
     doneMessage: '感谢你一直以来使用Hwaso。',
+    socialTitle: '使用注册时的社交账号验证身份',
+    socialOr: '或使用社交账号验证身份',
+    socialVerify: '使用 {{provider}} 账号验证',
+    socialVerified: '已使用 {{provider}} 账号验证。',
+    contactSupport: '目前无法在应用内验证身份，请联系客服（{{email}}）申请注销。',
   },
   user: {
     verifiedSeller: '认证卖家',
@@ -265,6 +279,7 @@ const zhHans: Translation<typeof ko> = {
     title: {
       terms: '用户协议',
       privacy: '隐私政策',
+      refund: '撤回订单与退款说明',
       auction: '拍卖规则',
       authenticity: '鉴定·正品保证政策',
     },

@@ -1,5 +1,5 @@
 import { ApiError } from '@shop/api-client';
-import { nicknameSchema } from '@shop/shared';
+import { containsProhibited, nicknameSchema } from '@shop/shared';
 import { router, Stack } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -37,6 +37,8 @@ export default function ProfileScreen() {
   const [uploading, setUploading] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** 소개·지역에 쓸 수 없는 표현이 있을 때 (닉네임·서버 오류는 error) */
+  const [fieldError, setFieldError] = useState<{ bio?: string; region?: string }>({});
   /** 고른 사진 — 자르기 화면에서 영역을 맞춘 뒤 올린다 */
   const [cropping, setCropping] = useState<LocalImage | null>(null);
   const cancelCrop = useCallback(() => setCropping(null), []);
@@ -74,8 +76,16 @@ export default function ProfileScreen() {
     ]);
   const save = async () => {
     const n = nicknameSchema.safeParse(nickname);
+    const prohibited = tr('common:validation.prohibited');
+    const fields = {
+      bio: containsProhibited(bio) ? prohibited : undefined,
+      region: containsProhibited(region) ? prohibited : undefined,
+    };
+    setFieldError(fields);
     if (!n.success) return setError(nicknameIssueMessage(n.error.issues[0]!));
+    if (containsProhibited(n.data)) return setError(prohibited);
     setError(null);
+    if (fields.bio || fields.region) return;
     setPending(true);
     try {
       setUser(await api.auth.updateProfile({ nickname: n.data, bio, region: region || null, avatarKey }));
@@ -158,6 +168,7 @@ export default function ProfileScreen() {
           onChangeText={setBio}
           placeholder={tr('profile.bioPlaceholder')}
           hint={tr('profile.bioHint')}
+          error={fieldError.bio}
           style={styles.bio}
         />
         <Field
@@ -166,6 +177,7 @@ export default function ProfileScreen() {
           value={region}
           onChangeText={setRegion}
           placeholder={tr('profile.regionPlaceholder')}
+          error={fieldError.region}
           returnKeyType="done"
         />
       </View>

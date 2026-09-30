@@ -3,6 +3,7 @@ import {
   CHAT_IMAGES_MAX,
   CHAT_TRADE_STATUSES,
   chatPreview,
+  containsProhibited,
   type ChatMessageDto,
   type ChatRoomDto,
   type Page,
@@ -40,6 +41,7 @@ import { formatPrice } from '@/i18n/format';
 import { label } from '@/i18n/labels';
 import { actionSheet } from '@/lib/action-sheet';
 import { api } from '@/lib/api';
+import { askPushInContext } from '@/lib/push-prompt';
 import { goBack } from '@/lib/nav';
 import { mediaUrl } from '@/lib/media';
 import { getRealtime } from '@/lib/realtime';
@@ -76,6 +78,8 @@ export default function ChatRoomScreen() {
   });
   const [pending, setPending] = useState<PendingMessage[]>([]);
   const [text, setText] = useState('');
+  /** 보내기 전에 걸러진 표현 안내 (서버도 같은 기준으로 막는다) */
+  const [prohibited, setProhibited] = useState(false);
   const [typing, setTyping] = useState(false);
   const [appointment, setAppointment] = useState(false);
   const [phrases, setPhrases] = useState(false);
@@ -199,6 +203,7 @@ export default function ChatRoomScreen() {
         upsert(saved);
         setPending((ps) => ps.filter((x) => x.clientId !== m.clientId));
         void qc.invalidateQueries({ queryKey: ['chat', 'rooms'] });
+        void askPushInContext('chat');
       })
       .catch((e: unknown) => {
         setPending((ps) =>
@@ -246,6 +251,7 @@ export default function ChatRoomScreen() {
   const sendText = () => {
     const body = text.trim();
     if (!body) return;
+    if (containsProhibited(body)) return setProhibited(true);
     setText('');
     send({ kind: 'TEXT', body });
   };
@@ -549,6 +555,16 @@ export default function ChatRoomScreen() {
           </Pressable>
         </Animated.View>
       )}
+      {canSend && prohibited && (
+        <Text
+          variant="caption"
+          color="destructive"
+          accessibilityLiveRegion="polite"
+          style={styles.prohibited}
+        >
+          {tr('common:validation.prohibited')}
+        </Text>
+      )}
       {canSend ? (
         <View
           style={[
@@ -574,6 +590,7 @@ export default function ChatRoomScreen() {
             value={text}
             onChangeText={(v) => {
               setText(v);
+              setProhibited(false);
               if (Date.now() - lastTyping.current > 1000) {
                 lastTyping.current = Date.now();
                 getRealtime().emit('chat:typing', { roomId: id });
@@ -651,6 +668,7 @@ export default function ChatRoomScreen() {
 }
 
 const styles = StyleSheet.create({
+  prohibited: { paddingHorizontal: 16, paddingVertical: 6 },
   product: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -90,6 +90,7 @@ const zhHans: Translation<typeof ko> = {
     notices: '公告',
     support: '客服中心',
     feed: '关注的新作品',
+    consent: '同意条款',
   },
   language: {
     title: '语言',
@@ -163,6 +164,18 @@ const zhHans: Translation<typeof ko> = {
   push: {
     channelName: '默认通知',
   },
+  pushPrompt: {
+    title: '要开启通知吗？',
+    reason: {
+      chat: '对方回复时会第一时间通知你。',
+      bid: '有人出价更高或拍卖结束时会通知你。',
+      favorite: '收藏的作品价格变动或开始拍卖时会通知你。',
+      follow: '你关注的卖家发布新作品时会通知你。',
+    },
+    hint: '可随时在设置中更改接收的通知类型和时间。',
+    allow: '开启通知',
+    later: '以后再说',
+  },
   auctionLive: {
     outbid: '有人出了更高的价',
     extended: '因截止前有人出价，已延长 {{seconds}} 秒',
@@ -180,6 +193,7 @@ const zhHans: Translation<typeof ko> = {
     bidIncrement: '加价幅度不得低于100韩元。',
     endAfterStart: '结束时间必须晚于开始时间。',
     buyNowAboveStart: '一口价必须高于起拍价。',
+    prohibited: '内容中含有不允许使用的词语，请修改后重新输入。',
   },
 };
 
