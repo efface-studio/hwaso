@@ -1,7 +1,6 @@
-import { useSegments } from 'expo-router';
 import { useCallback, useRef, useState, type ReactNode } from 'react';
-import { ActivityIndicator, StyleSheet, useWindowDimensions, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { useVisibleHeight } from '@/hooks/use-visible-height';
 import { useTheme } from '@/theme';
 import { Button } from './button';
 import { EmptyIllustration, type EmptyKind } from '@/components/illustrations/empty';
@@ -48,18 +47,6 @@ export function RefreshSkeleton({
   return refreshing ? <Loading variant={variant} /> : <>{children}</>;
 }
 
-/** 떠 있는 탭 바(iOS 26)가 화면 아래에서 가리는 높이 — 홈 인디케이터 영역 포함 */
-const TAB_BAR_COVER = 82;
-
-/** 화면에서 실제로 보이는 영역의 아래 끝 (탭 바·홈 인디케이터 위) */
-function useVisibleBottom() {
-  const { height } = useWindowDimensions();
-  const insets = useSafeAreaInsets();
-  const root = useSegments()[0];
-  const inTabs = root === '(tabs)' || root === 'admin';
-  return height - (inTabs ? Math.max(TAB_BAR_COVER, insets.bottom) : insets.bottom);
-}
-
 /**
  * 빈 상태 (그림 + 글 + 동작).
  * 목록은 헤더·탭 바 밑까지 스크롤 영역이라 flex 가운데 정렬만 하면 그만큼 아래로 처진다 —
@@ -80,18 +67,21 @@ export function Empty({
   /** 직접 넣는 그림 (kind 대신) */
   illustration?: ReactNode;
 }) {
-  const visibleBottom = useVisibleBottom();
+  const visibleH = useVisibleHeight();
   const box = useRef<View>(null);
   const contentH = useRef(0);
   const [offset, setOffset] = useState<number | null>(null);
 
   const place = useCallback(() => {
-    box.current?.measureInWindow((_x, y, _w, h) => {
-      if (!contentH.current) return;
-      const bottom = Math.min(y + h, visibleBottom);
-      setOffset(Math.max(0, (bottom - y - contentH.current) / 2));
-    });
-  }, [visibleBottom]);
+    const read = () =>
+      // y 는 스크롤 내용 안에서의 위치 (헤더 여백 제외) — 보이는 높이에서 빼면 남은 공간
+      box.current?.measureInWindow((_x, y, _w, h) => {
+        if (!contentH.current) return;
+        const bottom = Math.min(y + h, visibleH);
+        setOffset(Math.max(0, (bottom - y - contentH.current) / 2));
+      });
+    read();
+  }, [visibleH]);
 
   return (
     <View ref={box} style={styles.fill} onLayout={place}>

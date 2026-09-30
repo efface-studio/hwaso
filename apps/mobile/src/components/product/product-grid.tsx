@@ -1,9 +1,10 @@
 import type { ProductCardDto, ProductListParams } from '@shop/shared';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import type { ReactElement } from 'react';
-import { ActivityIndicator, FlatList } from 'react-native';
+import { ActivityIndicator } from 'react-native';
 import { AppRefreshControl } from '@/components/ui/app-refresh-control';
 import { Empty, Loading } from '@/components/ui/state';
+import { List } from '@/components/ui/list';
 import { useGrid } from '@/hooks/use-grid';
 import { usePullRefresh } from '@/hooks/use-pull-refresh';
 import { api } from '@/lib/api';
@@ -32,8 +33,7 @@ export function ProductGrid({
   const pull = usePullRefresh(q.refetch);
   const items: ProductCardDto[] = pull.refreshing ? [] : (q.data?.pages.flatMap((p) => p.items) ?? []);
   return (
-    <FlatList
-      alwaysBounceVertical={false}
+    <List
       key={g.columns}
       data={items}
       numColumns={g.columns}

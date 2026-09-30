@@ -4,8 +4,6 @@ import type { ImageSourcePropType } from 'react-native';
 
 /** 탭 아이콘 크기 (pt). 시스템 SF Symbol(약 25pt)보다 작게 그린다 */
 const TAB_ICON_SIZE = 20;
-/** 아이콘이 준비되지 않아도 탭 바를 그리기 시작하는 시간 */
-const READY_TIMEOUT_MS = 1000;
 
 type IoniconName = keyof typeof Ionicons.glyphMap;
 type IconSet = Record<string, readonly [IoniconName, IoniconName]>;
@@ -55,42 +53,32 @@ function fromCache<S extends IconSet>(set: S) {
 
 /**
  * 탭 아이콘 이미지 (선형 · 선택 시 채움). 템플릿 이미지로 쓰므로 색은 탭 바가 입힌다.
- * 폰트 아이콘을 이미지로 만드는 동안은 비어 있다 — 호출하는 쪽에서 SF Symbol 로 대신한다.
- * 탭마다 따로 바꾸면 이미지(20pt)와 SF Symbol(약 25pt)이 섞여 라벨 높이가 어긋나므로, 전부 준비된 뒤 한 번에 바꾼다.
- * 보통은 preloadTabIcons() 로 캐시가 채워져 있어 첫 렌더부터 이미지다. 그렇지 않을 때는 ready 가 될 때까지
- * 탭 바를 그리지 않는다 — 대체 아이콘으로 그렸다가 바꾸면 iOS 가 라벨 위치를 다시 잡지 않아 글자가 밀린다.
+ * 탭 바는 먼저 SF Symbol 로 그리고, 다음 프레임에 모든 탭을 한 번에 이미지로 바꾼다.
+ * iOS 26 탭 바는 처음부터 이 이미지로 만들면 선택되지 않은 탭의 라벨을 아래로 밀어 그리고,
+ * 탭마다 따로 바꾸면 SF Symbol 과 이미지가 섞여 라벨 높이가 어긋난다 (시뮬레이터에서 재현·확인).
  */
 export function useTabIconSet<S extends IconSet>(set: S) {
-  const [icons, setIcons] = useState<Partial<Record<keyof S, TabIcon>>>(() => fromCache(set) ?? {});
-  // 아이콘을 못 만들면(드문 오류) 탭 바를 영영 못 그리지 않도록 잠시 뒤에는 그대로 그린다
-  const [timedOut, setTimedOut] = useState(false);
+  const [icons, setIcons] = useState<Partial<Record<keyof S, TabIcon>>>({});
   useEffect(() => {
-    const id = setTimeout(() => setTimedOut(true), READY_TIMEOUT_MS);
-    return () => clearTimeout(id);
-  }, []);
-  useEffect(() => {
-    if (fromCache(set)) return;
     let cancelled = false;
+    let frame = 0;
     const entries = Object.entries(set);
     void Promise.all(entries.map(([, [off, on]]) => Promise.all([load(off), load(on)]))).then((loaded) => {
       if (cancelled || loaded.some(([d, s]) => !d || !s)) return;
-      setIcons(fromCache(set) ?? {});
+      // SF Symbol 로 한 번 그려진 뒤에 바꾼다 (캐시가 있어도 첫 프레임은 SF Symbol)
+      frame = requestAnimationFrame(() => setIcons(fromCache(set) ?? {}));
     });
     return () => {
       cancelled = true;
+      cancelAnimationFrame(frame);
     };
   }, [set]);
-  const ready = timedOut || Object.keys(icons).length === Object.keys(set).length;
-  return { icons, ready };
+  return icons;
 }
 
 export const useTabIcons = () => useTabIconSet(TAB_ICONS);
 
-/**
- * 앱을 켤 때 사용자·관리자 탭 아이콘을 미리 만들어 둔다.
- * 탭 바가 대체 SF Symbol 로 먼저 그려진 뒤 이미지로 바뀌면 iOS 가 일부 탭의 라벨 위치를 다시 잡지 않아
- * 글자가 아래로 밀리므로, 탭 바가 처음부터 최종 아이콘으로 그려지게 한다.
- */
+/** 앱을 켤 때 사용자·관리자 탭 아이콘 이미지를 미리 만들어 둔다 (탭 바가 SF Symbol → 이미지로 바로 바뀌게) */
 export function preloadTabIcons() {
   for (const set of [TAB_ICONS, ADMIN_TAB_ICONS] as IconSet[])
     for (const [off, on] of Object.values(set)) {

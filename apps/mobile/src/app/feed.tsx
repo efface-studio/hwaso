@@ -1,10 +1,10 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { router, Stack } from 'expo-router';
-import { FlatList } from 'react-native';
 import { AppRefreshControl } from '@/components/ui/app-refresh-control';
 import { usePullRefresh } from '@/hooks/use-pull-refresh';
 import { ProductCard } from '@/components/product/product-card';
 import { Empty, Loading } from '@/components/ui/state';
+import { List } from '@/components/ui/list';
 import { useGrid } from '@/hooks/use-grid';
 import { api } from '@/lib/api';
 import { useTheme } from '@/theme';
@@ -22,8 +22,7 @@ export default function FeedScreen() {
   const pull = usePullRefresh(q.refetch);
   if (q.isPending) return <Loading variant="grid" />;
   return (
-    <FlatList
-      alwaysBounceVertical={false}
+    <List
       key={g.columns}
       style={{ backgroundColor: t.colors.background }}
       data={pull.refreshing ? [] : (q.data?.pages.flatMap((p) => p.items) ?? [])}

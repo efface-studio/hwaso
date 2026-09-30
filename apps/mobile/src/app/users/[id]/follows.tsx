@@ -3,7 +3,7 @@ import type { FollowUserDto } from '@shop/shared';
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Alert, FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { AppRefreshControl } from '@/components/ui/app-refresh-control';
 import { usePullRefresh } from '@/hooks/use-pull-refresh';
 import { Avatar } from '@/components/ui/avatar';
@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Chips } from '@/components/ui/chips';
 import { Empty, Loading } from '@/components/ui/state';
 import { Text } from '@/components/ui/text';
+import { List } from '@/components/ui/list';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
 import { useTheme } from '@/theme';
@@ -93,8 +94,7 @@ export default function FollowsScreen() {
       {q.isPending ? (
         <Loading variant="list" />
       ) : (
-        <FlatList
-          alwaysBounceVertical={false}
+        <List
           contentContainerStyle={{ flexGrow: 1 }}
           data={pull.refreshing ? [] : (q.data?.pages.flatMap((p) => p.items) ?? [])}
           keyExtractor={(u) => u.id}

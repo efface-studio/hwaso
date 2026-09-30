@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { Stack } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Pressable, StyleSheet, Switch, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, StyleSheet, Switch, View } from 'react-native';
 import { useAdminAction } from '@/components/admin/admin-list';
 import { AdminRow, RowSeparator } from '@/components/admin/row';
 import { StatusText } from '@/components/admin/status';
@@ -16,6 +16,7 @@ import { RadioList } from '@/components/ui/radio';
 import { Sheet } from '@/components/ui/sheet';
 import { Empty, Loading } from '@/components/ui/state';
 import { Text } from '@/components/ui/text';
+import { List } from '@/components/ui/list';
 import { usePullRefresh } from '@/hooks/use-pull-refresh';
 import { actionSheet } from '@/lib/action-sheet';
 import { dt } from '@/lib/admin';
@@ -325,8 +326,7 @@ export default function AdminBannersScreen() {
           ],
         }}
       />
-      <FlatList
-        alwaysBounceVertical={false}
+      <List
         style={{ backgroundColor: t.colors.background }}
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={styles.list}

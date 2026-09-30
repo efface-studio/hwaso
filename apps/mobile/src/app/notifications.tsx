@@ -1,13 +1,14 @@
 import type { NotificationDto } from '@shop/shared';
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { router, Stack, type Href } from 'expo-router';
-import { Alert, FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { AppRefreshControl } from '@/components/ui/app-refresh-control';
 import { usePullRefresh } from '@/hooks/use-pull-refresh';
 import { Empty, Loading } from '@/components/ui/state';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { Separator } from '@/components/ui/separator';
+import { List } from '@/components/ui/list';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
 import { useTheme } from '@/theme';
@@ -90,8 +91,7 @@ export default function NotificationsScreen() {
           ),
         }}
       />
-      <FlatList
-        alwaysBounceVertical={false}
+      <List
         contentContainerStyle={{ flexGrow: 1 }}
         style={{ backgroundColor: t.colors.background }}
         contentInsetAdjustmentBehavior="automatic"

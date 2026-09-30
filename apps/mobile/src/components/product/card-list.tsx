@@ -1,8 +1,8 @@
 import type { ProductCardDto } from '@shop/shared';
 import type { ReactElement } from 'react';
-import { FlatList } from 'react-native';
 import { AppRefreshControl } from '@/components/ui/app-refresh-control';
 import { Loading } from '@/components/ui/state';
+import { List } from '@/components/ui/list';
 import { useGrid } from '@/hooks/use-grid';
 import { useTheme } from '@/theme';
 import { ProductCard } from './product-card';
@@ -27,8 +27,7 @@ export function CardList({
   const g = useGrid();
   if (loading) return <Loading variant="grid" />;
   return (
-    <FlatList
-      alwaysBounceVertical={false}
+    <List
       key={g.columns}
       data={refreshing ? [] : (items ?? [])}
       numColumns={g.columns}

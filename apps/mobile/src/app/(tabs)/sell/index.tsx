@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Empty, RefreshSkeleton } from '@/components/ui/state';
 import { usePullRefresh } from '@/hooks/use-pull-refresh';
 import { Text } from '@/components/ui/text';
+import { CenteredScroll } from '@/components/ui/centered-scroll';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
 import { useTheme } from '@/theme';
@@ -125,11 +126,7 @@ export default function SellScreen() {
 function SellerOnboarding() {
   const t = useTheme();
   return (
-    <ScrollView
-      contentInsetAdjustmentBehavior="automatic"
-      style={{ backgroundColor: t.colors.background }}
-      contentContainerStyle={styles.onboarding}
-    >
+    <CenteredScroll style={styles.onboarding}>
       <SellOnboardingIllustration width={220} />
       <View style={styles.center}>
         <Text variant="h2" style={styles.centerText}>
@@ -140,14 +137,12 @@ function SellerOnboarding() {
         </Text>
       </View>
       <Button title="판매자 등록하기" size="lg" block onPress={() => router.push('/seller/register')} />
-    </ScrollView>
+    </CenteredScroll>
   );
 }
 
 const styles = StyleSheet.create({
   onboarding: {
-    flexGrow: 1,
-    justifyContent: 'center',
     alignItems: 'center',
     padding: 24,
     gap: 24,

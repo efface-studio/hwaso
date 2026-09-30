@@ -3,11 +3,12 @@ import type { Paged } from '@shop/shared';
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Stack, type NativeStackHeaderItem } from 'expo-router';
 import { useEffect, useMemo, useRef, useState, type ReactElement, type ReactNode } from 'react';
-import { ActivityIndicator, Alert, FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, StyleSheet, View } from 'react-native';
 import { RowSeparator } from '@/components/admin/row';
 import { AppRefreshControl } from '@/components/ui/app-refresh-control';
 import { Empty, Loading, type LoadingVariant } from '@/components/ui/state';
 import { Text } from '@/components/ui/text';
+import { List } from '@/components/ui/list';
 import { usePullRefresh } from '@/hooks/use-pull-refresh';
 import { selectionHaptic } from '@/lib/haptics';
 import { useTheme } from '@/theme';
@@ -186,8 +187,7 @@ export function AdminList<T extends { id: string }>({
           ...(rightItems.length > 0 && { unstable_headerRightItems: () => rightItems }),
         }}
       />
-      <FlatList
-        alwaysBounceVertical={false}
+      <List
         style={{ backgroundColor: t.colors.background }}
         contentInsetAdjustmentBehavior="automatic"
         keyboardShouldPersistTaps="handled"
