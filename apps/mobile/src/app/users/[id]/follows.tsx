@@ -40,7 +40,13 @@ function Row({ u, onToggle, busy }: { u: FollowUserDto; onToggle: () => void; bu
       </View>
       {me && me.id !== u.id && (
         <Button
-          title={u.isFollowing ? tr('people.following') : tr('people.follow')}
+          title={
+            u.isFollowing
+              ? tr('people.following')
+              : u.followsMe
+                ? tr('people.followBack')
+                : tr('people.follow')
+          }
           size="sm"
           variant={u.isFollowing ? 'outline' : 'primary'}
           loading={busy}

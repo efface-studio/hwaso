@@ -72,7 +72,7 @@ export default async function UserPage({ params, searchParams }: Props) {
             </p>
             {u.bio && <p className="mt-1 max-w-xl text-body">{u.bio}</p>}
           </div>
-          <ProfileFollow userId={u.id} initial={u.isFollowing} />
+          <ProfileFollow userId={u.id} initial={u.isFollowing} followsMe={u.followsMe} />
           <ProfileMenu userId={u.id} nickname={u.nickname} />
         </div>
         <dl className="flex gap-6">

@@ -34,7 +34,7 @@ export class UsersController {
       },
     });
     if (!u?.profile) throw new AppException('NOT_FOUND', '사용자를 찾을 수 없습니다.');
-    const [sellingCount, soldCount, following] = await Promise.all([
+    const [sellingCount, soldCount, following, followsMe] = await Promise.all([
       this.prisma.product.count({
         where: {
           sellerId: id,
@@ -47,6 +47,11 @@ export class UsersController {
       viewer
         ? this.prisma.follow.findUnique({
             where: { followerId_followingId: { followerId: viewer.id, followingId: id } },
+          })
+        : null,
+      viewer && viewer.id !== id
+        ? this.prisma.follow.findUnique({
+            where: { followerId_followingId: { followerId: id, followingId: viewer.id } },
           })
         : null,
     ]);
@@ -66,6 +71,7 @@ export class UsersController {
       sellingCount,
       soldCount,
       isFollowing: !!following,
+      followsMe: !!followsMe,
       joinedAt: u.createdAt.toISOString(),
     };
   }

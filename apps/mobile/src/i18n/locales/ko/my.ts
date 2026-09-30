@@ -40,6 +40,7 @@ const ko = {
     followers: '팔로워',
     following: '팔로잉',
     follow: '팔로우',
+    followBack: '맞팔로우',
     reviews: '후기',
     trades: '거래',
   },
