@@ -1,21 +1,26 @@
 import { Image } from 'expo-image';
 import { useEffect, useRef, useState, type RefObject } from 'react';
-import { PixelRatio, StyleSheet, Text, View, type ImageSourcePropType } from 'react-native';
+import { PixelRatio, Platform, StyleSheet, Text, View, type ImageSourcePropType } from 'react-native';
 import { captureRef } from 'react-native-view-shot';
 import { mediaUrl } from '@/lib/media';
 import { useTheme } from '@/theme';
 
 /** 원형 프로필 크기 (pt) */
 const AVATAR = 24;
-/** 캡처할 아이콘 크기 (pt): 원형 프로필 + 아래 글자 */
-const W = 36;
-const H = 42;
+/**
+ * iOS 27 부터는 오른쪽에 분리된 탭(search 역할)에도 시스템이 글자를 그린다 — 그때는 이미지에 글자를 넣지 않는다
+ * (넣으면 '마이' 가 두 번 보인다). iOS 26 은 글자를 그리지 않아 이미지에 담는다.
+ */
+const SYSTEM_DRAWS_LABEL = Platform.OS === 'ios' && Number.parseInt(String(Platform.Version), 10) >= 27;
+/** 캡처할 아이콘 크기 (pt): 원형 프로필 (+ iOS 26 은 아래 글자) */
+const W = SYSTEM_DRAWS_LABEL ? AVATAR : 36;
+const H = SYSTEM_DRAWS_LABEL ? AVATAR : 42;
 
 type Icon = { default: ImageSourcePropType; selected: ImageSourcePropType };
 
 /**
- * 마이 탭 아이콘: 원형 프로필 사진(없으면 이니셜) 아래에 "마이" 글자.
- * iOS 26 에서 오른쪽에 분리된 탭(search 역할)은 시스템이 글자를 그리지 않아 글자까지 이미지에 담는다.
+ * 마이 탭 아이콘: 원형 프로필 사진(없으면 이니셜), iOS 26 은 아래에 "마이" 글자까지.
+ * iOS 26 에서 오른쪽에 분리된 탭(search 역할)은 시스템이 글자를 그리지 않아 글자까지 이미지에 담는다 (iOS 27 은 시스템이 그린다).
  * 탭 아이콘은 UIImage 를 그대로 그려 모양을 자를 수 없으므로, 화면 뒤에 그린 뒤 투명 PNG 로 캡처해 넘긴다
  * (기본·선택 두 장 — 선택되면 테두리와 글자가 브랜드 색). 캡처 전에는 null (기본 아이콘을 쓴다).
  */
@@ -113,18 +118,20 @@ function MyTabCapture({
         )}
         {selected && <View style={[styles.round, styles.ring, { borderColor: t.colors.primary }]} />}
       </View>
-      <Text
-        style={[
-          styles.label,
-          {
-            color: selected ? t.colors.primary : t.colors.foreground,
-            fontSize: t.senior ? 13 : 11,
-            lineHeight: t.senior ? 16 : 14,
-          },
-        ]}
-      >
-        {label}
-      </Text>
+      {!SYSTEM_DRAWS_LABEL && (
+        <Text
+          style={[
+            styles.label,
+            {
+              color: selected ? t.colors.primary : t.colors.foreground,
+              fontSize: t.senior ? 13 : 11,
+              lineHeight: t.senior ? 16 : 14,
+            },
+          ]}
+        >
+          {label}
+        </Text>
+      )}
     </View>
   );
 
