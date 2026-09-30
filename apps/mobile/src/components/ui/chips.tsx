@@ -3,7 +3,10 @@ import { selectionHaptic } from '@/lib/haptics';
 import { useTheme } from '@/theme';
 import { Text } from './text';
 
-/** 가로 스크롤 선택 칩 (정렬·필터) */
+/**
+ * 가로 스크롤 선택 칩 (정렬·필터·카테고리).
+ * 테두리 없이 옅은 배경만 두고, 고른 칩은 강조 색을 옅게 깔고 글자를 강조 색·굵게 — 한 줄에 여러 개가 있어도 시끄럽지 않게.
+ */
 export function Chips<T extends string>({
   options,
   value,
@@ -35,17 +38,21 @@ export function Chips<T extends string>({
               selectionHaptic();
               onChange(o.value);
             }}
-            style={[
+            style={({ pressed }) => [
               styles.chip,
               {
                 minHeight: t.senior ? 44 : 34,
                 borderRadius: t.radius.full,
-                borderColor: on ? t.colors.foreground : t.colors.border,
-                backgroundColor: on ? t.colors.foreground : 'transparent',
+                backgroundColor: on ? `${t.colors.primary}29` : t.colors.surface2,
+                opacity: pressed ? 0.7 : 1,
               },
             ]}
           >
-            <Text variant="label" color={on ? 'background' : 'foreground'}>
+            <Text
+              variant="label"
+              color={on ? 'primary' : 'foreground2'}
+              style={on ? styles.onLabel : undefined}
+            >
               {o.label}
             </Text>
           </Pressable>
@@ -56,6 +63,7 @@ export function Chips<T extends string>({
 }
 
 const styles = StyleSheet.create({
-  row: { gap: 8, paddingHorizontal: 16, paddingVertical: 8 },
-  chip: { borderWidth: StyleSheet.hairlineWidth * 2, paddingHorizontal: 14, justifyContent: 'center' },
+  row: { gap: 6, paddingHorizontal: 16, paddingVertical: 8 },
+  chip: { paddingHorizontal: 14, justifyContent: 'center' },
+  onLabel: { fontWeight: '700' },
 });
