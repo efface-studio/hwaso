@@ -6,8 +6,8 @@ import { ChevronLeft } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useState, type FormEvent } from 'react';
+import { ConsentChecklist, EMPTY_CONSENT, hasRequiredConsent } from '@/components/auth/consent-checklist';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/choice';
 import { Alert, Progress } from '@/components/ui/display';
 import { Field, Input } from '@/components/ui/field';
 import { api } from '@/lib/api';
@@ -37,8 +37,7 @@ function SignupFlow() {
   const [token, setToken] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
-  const [agree, setAgree] = useState(false);
-  const [marketing, setMarketing] = useState(false);
+  const [consent, setConsent] = useState(EMPTY_CONSENT);
   const [nickname, setNickname] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -88,7 +87,7 @@ function SignupFlow() {
       const p = passwordSchema.safeParse(password);
       if (!p.success) return setError(p.error.issues[0]!.message);
       if (password !== confirm) return setError('비밀번호가 서로 다릅니다.');
-      if (!agree) return setError('필수 약관에 동의해주세요.');
+      if (!hasRequiredConsent(consent)) return setError('필수 항목에 모두 동의해주세요.');
       setError(null);
       return setStep('profile');
     }
@@ -101,7 +100,9 @@ function SignupFlow() {
           password,
           nickname: n.data,
           agreeTerms: true,
-          agreeMarketing: marketing,
+          agreePrivacy: true,
+          ageOver14: true,
+          agreeMarketing: consent.marketing,
           device: webDevice(),
         });
         completeLogin(tokens);
@@ -227,29 +228,8 @@ function SignupFlow() {
               />
             )}
           </Field>
-          <div className="flex flex-col border-t border-border pt-2">
-            <Checkbox
-              checked={agree}
-              onCheckedChange={setAgree}
-              label={
-                <span>
-                  (필수){' '}
-                  <Link href="/terms" target="_blank" className="underline underline-offset-2">
-                    이용약관
-                  </Link>{' '}
-                  및{' '}
-                  <Link href="/privacy" target="_blank" className="underline underline-offset-2">
-                    개인정보 처리방침
-                  </Link>
-                  에 동의합니다
-                </span>
-              }
-            />
-            <Checkbox
-              checked={marketing}
-              onCheckedChange={setMarketing}
-              label="(선택) 새 작품·경매 소식 받기"
-            />
+          <div className="border-t border-border pt-2">
+            <ConsentChecklist value={consent} onChange={setConsent} />
           </div>
         </>
       )}

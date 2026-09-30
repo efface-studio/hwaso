@@ -1,7 +1,8 @@
 import type { PolicyDoc } from '@shop/shared';
+import type { ReactNode } from 'react';
 
-/** 약관·정책 문서 (본문은 @shop/shared POLICIES — 앱 화면과 같은 내용) */
-export function PolicyArticle({ doc }: { doc: PolicyDoc }) {
+/** 약관·정책 문서 (본문은 @shop/shared POLICIES — 앱 화면과 같은 내용). children 은 본문 뒤 웹 전용 안내 */
+export function PolicyArticle({ doc, children }: { doc: PolicyDoc; children?: ReactNode }) {
   return (
     <article className="page-x mx-auto max-w-2xl py-8 md:py-12">
       <h1 className="text-h1">{doc.title}</h1>
@@ -40,6 +41,7 @@ export function PolicyArticle({ doc }: { doc: PolicyDoc }) {
           </section>
         ))}
       </div>
+      {children}
     </article>
   );
 }

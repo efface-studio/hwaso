@@ -1,7 +1,7 @@
 'use client';
 
 import { ApiError } from '@shop/api-client';
-import { formatPrice, type PaymentMethod } from '@shop/shared';
+import { formatPrice, POLICIES, type PaymentMethod } from '@shop/shared';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
@@ -144,6 +144,10 @@ export function Checkout({ items, fromCart }: { items: CheckoutItem[]; fromCart:
             화소는 통신판매중개자이며 결제 대금은 구매 확정 전까지 안전하게 보관됩니다.{' '}
             <Link href="/terms" className="underline">
               이용약관
+            </Link>{' '}
+            ·{' '}
+            <Link href={POLICIES.refund.path} className="underline">
+              {POLICIES.refund.title}
             </Link>
           </p>
           <Button size="lg" block disabled={!canPay} loading={busy} onClick={() => place.mutate()}>
