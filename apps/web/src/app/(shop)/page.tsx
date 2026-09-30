@@ -34,7 +34,8 @@ export default async function HomePage() {
               description="실시간으로 입찰이 이어지고 있어요"
               href="/auctions"
             >
-              <ProductRail items={home.liveAuctions} priority />
+              {/* 배너가 있으면 배너 첫 장이 LCP — 레일 이미지가 우선순위를 다투지 않게 한다 */}
+              <ProductRail items={home.liveAuctions} priority={home.banners.length === 0} />
             </Section>
           )}
 

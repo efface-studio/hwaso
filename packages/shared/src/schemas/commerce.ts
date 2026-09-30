@@ -1,4 +1,5 @@
-import { z } from 'zod';
+import '../zod-config';
+import * as z from 'zod';
 import { PAYMENT_METHODS } from '../enums';
 import { cursorQuery, id, positiveMoney } from './common';
 
