@@ -77,10 +77,7 @@ export default function SettingsScreen() {
       />
     ) : key === 'social' ? (
       <View style={styles.badges}>
-        {SOCIAL_ORDER.filter(
-          // iOS 의 Apple 은 소셜 계정 화면에서 연결할 수 없으므로 이미 연결된 경우만
-          (p) => !(p === 'APPLE' && Platform.OS === 'ios') || user.socialProviders.includes(p),
-        ).map((p) => (
+        {SOCIAL_ORDER.map((p) => (
           <ProviderBadge key={p} provider={p} size={22} dim={!user.socialProviders.includes(p)} />
         ))}
       </View>

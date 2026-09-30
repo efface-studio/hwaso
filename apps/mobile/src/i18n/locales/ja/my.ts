@@ -118,6 +118,9 @@ const ja: Translation<typeof ko> = {
     button: 'PASSで本人確認',
   },
   social: {
+    emptyTitle: '連携中のSNSアカウントはありません',
+    linkedCount: 'SNSアカウントを{{count}}件連携中です',
+    intro: '連携しておくと、パスワードなしでそのアカウントでもログインできます。',
     linkedTitle: '{{provider}}アカウントを連携しました',
     linkFailed: '連携できませんでした',
     unlinkConfirm: '{{provider}}の連携を解除しますか？',

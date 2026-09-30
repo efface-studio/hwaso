@@ -116,6 +116,9 @@ const zhHans: Translation<typeof ko> = {
     button: 'PASS实名认证',
   },
   social: {
+    emptyTitle: '尚未关联社交账号',
+    linkedCount: '已关联{{count}}个社交账号',
+    intro: '关联后，无需密码即可用该账号登录。',
     linkedTitle: '已绑定{{provider}}账号',
     linkFailed: '绑定失败',
     unlinkConfirm: '要解除{{provider}}绑定吗？',

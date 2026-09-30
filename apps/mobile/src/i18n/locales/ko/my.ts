@@ -115,6 +115,9 @@ const ko = {
     button: 'PASS 본인인증',
   },
   social: {
+    emptyTitle: '연결된 소셜 계정이 없어요',
+    linkedCount: '소셜 계정 {{count}}개가 연결돼 있어요',
+    intro: '연결해 두면 비밀번호 없이 그 계정으로도 로그인할 수 있어요.',
     linkedTitle: '{{provider}} 계정을 연결했어요',
     linkFailed: '연결하지 못했어요',
     unlinkConfirm: '{{provider}} 연결을 해제할까요?',

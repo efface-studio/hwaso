@@ -12,7 +12,7 @@ import { Text } from '@/components/ui/text';
 import i18n from '@/i18n';
 import { label } from '@/i18n/labels';
 import { api } from '@/lib/api';
-import { OAuthCancelled, linkSocial } from '@/lib/oauth';
+import { OAuthCancelled, linkAppleNative, linkSocial } from '@/lib/oauth';
 import { useAuthStore } from '@/stores/auth';
 import { useTheme } from '@/theme';
 
@@ -35,16 +35,13 @@ export default function SocialScreen() {
   const [busy, setBusy] = useState<AuthProvider | null>(null);
   if (!user) return null;
   if (providers.isPending) return <Loading variant="plain-list" />;
-  // iOS 의 Apple 로그인은 시스템 방식이라 여기서는 브라우저로 연결할 수 있는 제공자만 연결한다
+  // iOS 의 Apple 은 시스템 Sign in with Apple 로, 나머지는 브라우저 OAuth 로 연결한다
+  const nativeApple = (p: AuthProvider) => p === 'APPLE' && Platform.OS === 'ios';
   const configured = (p: AuthProvider) =>
-    !!providers.data?.oauth.includes(p) && !(p === 'APPLE' && Platform.OS === 'ios');
+    nativeApple(p) ? !!providers.data?.appleNative : !!providers.data?.oauth.includes(p);
   // 로그인 화면과 같이: 운영에서는 연결할 수 있거나 이미 연결된 것만, 개발에서는 모두 보인다
-  const available = ORDER.filter(
-    (p) =>
-      user.socialProviders.includes(p) ||
-      configured(p) ||
-      (__DEV__ && !(p === 'APPLE' && Platform.OS === 'ios')),
-  );
+  const available = ORDER.filter((p) => __DEV__ || configured(p) || user.socialProviders.includes(p));
+  const linkedCount = user.socialProviders.length;
 
   const link = async (p: AuthProvider) => {
     if (!configured(p))
@@ -54,7 +51,7 @@ export default function SocialScreen() {
       );
     setBusy(p);
     try {
-      await linkSocial(p);
+      await (nativeApple(p) ? linkAppleNative() : linkSocial(p));
       setUser(await api.auth.me());
       Alert.alert(tr('social.linkedTitle', { provider: label('authProvider', p) }));
     } catch (e) {
@@ -90,6 +87,14 @@ export default function SocialScreen() {
   return (
     <ScrollView style={{ backgroundColor: t.colors.background }} contentContainerStyle={styles.body}>
       <Stack.Screen options={{ title: tr('common:screen.social') }} />
+      <View style={styles.intro}>
+        <Text variant="bodyStrong">
+          {linkedCount ? tr('social.linkedCount', { count: linkedCount }) : tr('social.emptyTitle')}
+        </Text>
+        <Text variant="small" color="muted">
+          {tr('social.intro')}
+        </Text>
+      </View>
       {!available.length && <Text color="muted">{tr('social.none')}</Text>}
       {available.map((p) => {
         const linked = user.socialProviders.includes(p);
@@ -127,6 +132,7 @@ export default function SocialScreen() {
 
 const styles = StyleSheet.create({
   body: { padding: 16, gap: 8 },
+  intro: { gap: 4, marginBottom: 8 },
   row: {
     flexDirection: 'row',
     alignItems: 'center',

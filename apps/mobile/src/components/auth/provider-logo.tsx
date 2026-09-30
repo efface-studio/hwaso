@@ -7,7 +7,7 @@ import { useTheme } from '@/theme';
 
 /**
  * 각 사 브랜드 가이드의 색·로고 (웹 components/auth/social-buttons.tsx 와 같은 값).
- * Google 은 테마 배경 + 테두리, Apple 은 테마 반대색(라이트: 검정, 다크: 흰색). size 는 로고 크기 (네이버는 0.8배)
+ * Google 은 흰 배경 + 회색 테두리(공식 가이드 기본), Apple 은 테마 반대색(라이트: 검정, 다크: 흰색). size 는 로고 크기 (네이버는 0.8배)
  */
 export function providerBrand(
   p: AuthProvider,
@@ -40,9 +40,10 @@ export function providerBrand(
       };
     case 'GOOGLE':
       return {
-        bg: t.colors.background,
-        fg: t.colors.foreground,
-        border: t.colors.borderStrong,
+        // Google 버튼 가이드의 기본(라이트) 모양 — 다크 모드에서도 흰 배경
+        bg: '#FFFFFF',
+        fg: '#1F1F1F',
+        border: '#747775',
         icon: (
           <Svg width={size} height={size} viewBox="0 0 24 24">
             <Path
