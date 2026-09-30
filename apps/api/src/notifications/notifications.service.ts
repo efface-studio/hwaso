@@ -22,6 +22,8 @@ export interface NotifyInput {
   data?: Record<string, unknown>;
   /** false 면 알림함에 남기지 않고 푸시만 (채팅) */
   store?: boolean;
+  /** false 면 푸시 없이 알림함에만 (야간 광고성 알림 등) */
+  push?: boolean;
 }
 
 const PAGE = 30;
@@ -79,7 +81,7 @@ export class NotificationsService {
         }
         const prefs = resolveNotificationPrefs(u.notificationPrefs);
         const allowed = category === 'system' || prefs.push[category];
-        if (allowed && !(prefs.quietHours && inQuietHours()))
+        if (input.push !== false && allowed && !(prefs.quietHours && inQuietHours()))
           void this.push
             .send(u.id, { title: input.title, body: input.body, link: input.link })
             .catch((err: unknown) => this.logger.warn({ err }, 'push failed'));

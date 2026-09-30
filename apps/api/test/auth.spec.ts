@@ -7,6 +7,7 @@ let n = 0;
 const email = () => `user${Date.now()}${++n}@test.local`;
 const web = { name: 'Chrome', platform: 'web' as const };
 const ios = { name: 'iPhone 17', platform: 'ios' as const };
+const agree = { agreeTerms: true, agreePrivacy: true, ageOver14: true } as const;
 
 beforeAll(async () => {
   t = await createTestApp();
@@ -41,7 +42,7 @@ async function signup(addr = email(), device: typeof web | typeof ios = ios, pas
   const verificationToken = await verifiedToken(addr);
   const res = await t.http
     .post('/api/v1/auth/signup')
-    .send({ verificationToken, password, nickname: `닉${Date.now() % 1e7}${n}`, agreeTerms: true, device })
+    .send({ verificationToken, password, nickname: `닉${Date.now() % 1e7}${n}`, ...agree, device })
     .expect(201);
   return { addr, password, res };
 }
@@ -100,7 +101,7 @@ describe('회원가입 (Signup)', () => {
       verificationToken: token,
       password: 'abcd1234',
       nickname: `중복${n}`,
-      agreeTerms: true,
+      ...agree,
       device: ios,
     };
     await t.http.post('/api/v1/auth/signup').send(body).expect(201);

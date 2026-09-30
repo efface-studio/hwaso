@@ -12,6 +12,7 @@ export * from './admin';
 export * from './sell';
 export * from './company';
 export * from './policies';
+export * from './moderation';
 export * from './banks';
 export * from './dto';
 export * from './realtime';

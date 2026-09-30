@@ -19,7 +19,8 @@ import {
   type PushTokenInput,
 } from '@shop/shared';
 import { z } from 'zod';
-import { CurrentUser, Public, type AuthUser } from '../common/auth';
+import { ConsentExempt, CurrentUser, Public, type AuthUser } from '../common/auth';
+import { Clock } from '../common/clock';
 import { ZodPipe } from '../common/zod.pipe';
 import { NotificationEvents } from './notification-events';
 import { NotificationsService } from './notifications.service';
@@ -83,7 +84,8 @@ export class NotificationsController {
     return this.n.registerToken(u.id, body);
   }
 
-  /** 로그아웃·알림 끄기 시 이 기기 토큰 해제 */
+  /** 로그아웃·알림 끄기 시 이 기기 토큰 해제 (동의 화면에서 로그아웃할 때도 호출되므로 동의 전에도 허용) */
+  @ConsentExempt()
   @Delete('me/push-tokens')
   unregister(@CurrentUser() u: AuthUser, @Body(new ZodPipe(tokenSchema)) body: { token: string }) {
     return this.n.removeToken(u.id, body.token);
@@ -94,15 +96,15 @@ export class NotificationsController {
 @Global()
 @Module({
   controllers: [NotificationsController],
-  providers: [NotificationsService, NotificationEvents, PushService],
-  exports: [NotificationsService, NotificationEvents, PushService],
+  providers: [NotificationsService, NotificationEvents, PushService, Clock],
+  exports: [NotificationsService, NotificationEvents, PushService, Clock],
 })
 export class NotificationsModule {}
 
 /** 워커용: 컨트롤러 없이 서비스만 */
 @Global()
 @Module({
-  providers: [NotificationsService, NotificationEvents, PushService],
-  exports: [NotificationsService, NotificationEvents, PushService],
+  providers: [NotificationsService, NotificationEvents, PushService, Clock],
+  exports: [NotificationsService, NotificationEvents, PushService, Clock],
 })
 export class NotificationsCoreModule {}

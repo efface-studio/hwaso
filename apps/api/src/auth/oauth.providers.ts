@@ -10,6 +10,8 @@ export interface OAuthProfile {
   /** provider 가 이메일 소유를 확인했는지 — 확인된 경우에만 기존 계정과 이메일 충돌을 판단한다 */
   emailVerified: boolean;
   name: string | null;
+  /** Apple: 탈퇴·연결 해제 때 폐기할 refresh 토큰과 발급 client_id (로그에 남기지 않는다) */
+  revokeToken?: { token: string; clientId: string } | null;
 }
 
 export interface ProviderSpec {
@@ -46,14 +48,47 @@ const qs = (o: Record<string, string>) => new URLSearchParams(o).toString();
 const googleJwks = createRemoteJWKSet(new URL('https://www.googleapis.com/oauth2/v3/certs'));
 const appleJwks = createRemoteJWKSet(new URL('https://appleid.apple.com/auth/keys'));
 
-/** Apple client_secret: 팀 키로 서명한 ES256 JWT (최대 6개월, 여기선 5분) */
-async function appleClientSecret(): Promise<string> {
+interface AppleKey {
+  teamId: string;
+  keyId: string;
+  privateKey: string;
+}
+
+/**
+ * Apple 서명 키. 웹 서비스 ID 는 기존 APPLE_* 를 먼저, 앱 번들 ID 는 APPLE_SIGNIN_* → APNS_* → APPLE_* 순으로 찾는다
+ * (같은 팀의 Sign in with Apple 사용 키면 어느 것이든 된다)
+ */
+export function appleSigningKey(clientId: string): AppleKey | null {
   const e = env();
-  const key = await importPKCS8(e.APPLE_PRIVATE_KEY!.replace(/\\n/g, '\n'), 'ES256');
+  const web: Partial<AppleKey> = {
+    teamId: e.APPLE_TEAM_ID,
+    keyId: e.APPLE_KEY_ID,
+    privateKey: e.APPLE_PRIVATE_KEY,
+  };
+  const signin: Partial<AppleKey> = {
+    teamId: e.APPLE_SIGNIN_TEAM_ID,
+    keyId: e.APPLE_SIGNIN_KEY_ID,
+    privateKey: e.APPLE_SIGNIN_PRIVATE_KEY,
+  };
+  const apns: Partial<AppleKey> = {
+    teamId: e.APNS_TEAM_ID,
+    keyId: e.APNS_KEY_ID,
+    privateKey: e.APNS_PRIVATE_KEY,
+  };
+  const order = clientId === e.APPLE_CLIENT_ID ? [web, signin, apns] : [signin, apns, web];
+  const found = order.find((k) => k.teamId && k.keyId && k.privateKey);
+  return found ? (found as AppleKey) : null;
+}
+
+/** Apple client_secret: 팀 키로 서명한 ES256 JWT (최대 6개월, 여기선 5분). sub 는 토큰을 발급받은 client_id */
+export async function appleClientSecret(clientId: string): Promise<string> {
+  const k = appleSigningKey(clientId);
+  if (!k) throw new AppException('PROVIDER_NOT_CONFIGURED', undefined, undefined, 400);
+  const key = await importPKCS8(k.privateKey.replace(/\\n/g, '\n'), 'ES256');
   return new SignJWT({})
-    .setProtectedHeader({ alg: 'ES256', kid: e.APPLE_KEY_ID! })
-    .setIssuer(e.APPLE_TEAM_ID!)
-    .setSubject(e.APPLE_CLIENT_ID!)
+    .setProtectedHeader({ alg: 'ES256', kid: k.keyId })
+    .setIssuer(k.teamId)
+    .setSubject(clientId)
     .setAudience('https://appleid.apple.com')
     .setIssuedAt()
     .setExpirationTime('5m')
@@ -132,14 +167,17 @@ export const PROVIDERS: Record<AuthProvider, ProviderSpec> = {
         state,
       })}`,
     exchange: async ({ code, redirectUri }) => {
+      const clientId = env().APPLE_CLIENT_ID!;
       const token = await postForm('https://appleid.apple.com/auth/token', {
         grant_type: 'authorization_code',
         code,
         redirect_uri: redirectUri,
-        client_id: env().APPLE_CLIENT_ID!,
-        client_secret: await appleClientSecret(),
+        client_id: clientId,
+        client_secret: await appleClientSecret(clientId),
       });
-      return verifyAppleIdToken(String(token.id_token), [env().APPLE_CLIENT_ID!]);
+      const profile = await verifyAppleIdToken(String(token.id_token), [clientId]);
+      const refresh = typeof token.refresh_token === 'string' ? token.refresh_token : null;
+      return { ...profile, revokeToken: refresh ? { token: refresh, clientId } : null };
     },
   },
 

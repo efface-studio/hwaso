@@ -372,6 +372,9 @@ export interface NoticeDto {
   updatedAt: string;
 }
 
+export const BROADCAST_KINDS = ['NOTICE', 'MARKETING'] as const;
+export type BroadcastKind = (typeof BROADCAST_KINDS)[number];
+
 export const broadcastSchema = z.strictObject({
   title: z.string().trim().min(1).max(60),
   body: z.string().trim().min(1).max(200),
@@ -383,6 +386,11 @@ export const broadcastSchema = z.strictObject({
     .nullable()
     .default(null),
   audience: z.enum(['all', 'sellers', 'buyers']),
+  /**
+   * NOTICE(기본): 운영 공지 — 모두에게. MARKETING: 광고성 정보 — 수신 동의자에게만, 제목에 (광고),
+   * 푸시는 08:00–21:00(KST)에만 (정보통신망법 제50조). 그 밖의 시간에는 알림함에만 남긴다.
+   */
+  kind: z.enum(BROADCAST_KINDS).optional(),
 });
 export type BroadcastInput = z.infer<typeof broadcastSchema>;
 

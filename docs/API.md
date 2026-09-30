@@ -32,6 +32,9 @@ NestJS REST API. Base URL `/api/v1`. 모든 요청/응답은 JSON (업로드 제
 - `Authorization: Bearer <accessToken>` (JWT, 15분).
 - Refresh: Web 은 `httpOnly; Secure; SameSite=Lax; Path=/api/v1/auth` 쿠키 `rt`, Mobile 은 본문 `refreshToken`.
 - 쿠키 기반 요청(`/auth/refresh`, `/auth/logout`)은 `Origin` 허용 목록 검사 + `X-Requested-With: shop` 헤더 필수 (CSRF 방어).
+- **필수 동의 가드**: `MeDto.consentRequired` 가 true 인 회원(소셜 첫 가입, 약관 동의 기록이 없는 기존 회원)은 로그인이 필요한 쓰기 요청(POST·PUT·PATCH·DELETE)이 `403 CONSENT_REQUIRED`. 예외: `/auth/*`(로그아웃·기기·비밀번호·소셜 연결·탈퇴), `POST /me/consent`, `DELETE /me/push-tokens`. 읽기(GET)와 공개·선택 인증 엔드포인트는 그대로 쓴다 (docs/AUTH.md §11).
+- **금칙어**: 닉네임·소개·지역, 작품 제목·설명, 후기, 문의·답변, 채팅 텍스트에 금칙어가 있으면 `400 PROHIBITED_CONTENT` (`details.fields`). 판단 함수는 `@shop/shared` `containsProhibited` — 클라이언트가 입력 중 같은 함수로 미리 안내한다.
+- **차단 필터**: 로그인한 사용자가 차단한 회원의 작품은 목록(`/products`, `/home`, `/auctions`, `/products/:id/related`, `/users/:id/products`, `/me/following/feed`)에서 빠지고, 후기(`/users/:id/reviews`)·문의(`/products/:id/inquiries`)에서도 빠진다. 상세 `/products/:id` 는 열리되 `blockedByMe: true` 로 표시한다.
 
 ### 페이지네이션
 
@@ -60,25 +63,28 @@ NestJS REST API. Base URL `/api/v1`. 모든 요청/응답은 JSON (업로드 제
 
 ### Auth
 
-| Method | Path                           | 권한 | 설명                                                                                        |
-| ------ | ------------------------------ | ---- | ------------------------------------------------------------------------------------------- |
-| POST   | /auth/email/send-code          | -    | {email, purpose} OTP 발송 (SIGNUP/RESET_PASSWORD/DELETE_ACCOUNT)                            |
-| POST   | /auth/email/verify-code        | -    | {email, purpose, code} → {verificationToken} (10분 유효)                                    |
-| POST   | /auth/signup                   | -    | {verificationToken, password, nickname, device} → 토큰 쌍                                   |
-| POST   | /auth/login                    | -    | {email, password, device} → 토큰 쌍                                                         |
-| POST   | /auth/refresh                  | -    | 쿠키 또는 {refreshToken} → 회전된 토큰 쌍                                                   |
-| POST   | /auth/logout                   | -    | 현재 세션 폐기                                                                              |
-| POST   | /auth/password/reset           | -    | {verificationToken, newPassword} → 전체 세션 폐기                                           |
-| POST   | /auth/password/change          | U    | {currentPassword, newPassword}                                                              |
-| GET    | /auth/oauth/:provider/url      | -    | ?redirectUri → {url, state} (google/apple/kakao/naver)                                      |
-| POST   | /auth/oauth/:provider/callback | -    | {code, state, redirectUri, device} → 토큰 쌍                                                |
-| POST   | /auth/oauth/apple/native       | -    | {identityToken, name?, device} iOS 네이티브 Sign in with Apple → 토큰 쌍                    |
-| GET    | /auth/providers                | -    | {oauth: 웹 OAuth 가 설정된 provider[], appleNative: iOS 네이티브 Apple 가능 여부, identity} |
-| GET    | /auth/sessions                 | U    | 기기(세션) 목록                                                                             |
-| DELETE | /auth/sessions/:id             | U    | 특정 기기 로그아웃                                                                          |
-| DELETE | /auth/sessions                 | U    | 현재 기기 제외 전체 로그아웃                                                                |
-| DELETE | /auth/account                  | U    | {password 또는 verificationToken} 탈퇴 (개인정보 익명화)                                    |
-| GET    | /auth/me                       | U    | 내 계정 + 프로필 + 역할                                                                     |
+| Method | Path                           | 권한 | 설명                                                                                                                                                                                                                                        |
+| ------ | ------------------------------ | ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| POST   | /auth/email/send-code          | -    | {email, purpose} OTP 발송 (SIGNUP/RESET_PASSWORD/DELETE_ACCOUNT)                                                                                                                                                                            |
+| POST   | /auth/email/verify-code        | -    | {email, purpose, code} → {verificationToken} (10분 유효)                                                                                                                                                                                    |
+| POST   | /auth/signup                   | -    | {verificationToken, password, nickname, agreeTerms: true, agreePrivacy: true, ageOver14: true, agreeMarketing?, device} → 토큰 쌍                                                                                                           |
+| POST   | /auth/login                    | -    | {email, password, device} → 토큰 쌍                                                                                                                                                                                                         |
+| POST   | /auth/refresh                  | -    | 쿠키 또는 {refreshToken} → 회전된 토큰 쌍                                                                                                                                                                                                   |
+| POST   | /auth/logout                   | -    | 현재 세션 폐기                                                                                                                                                                                                                              |
+| POST   | /auth/password/reset           | -    | {verificationToken, newPassword} → 전체 세션 폐기                                                                                                                                                                                           |
+| POST   | /auth/password/change          | U    | {currentPassword, newPassword}                                                                                                                                                                                                              |
+| GET    | /auth/oauth/:provider/url      | -    | ?redirectUri → {url, state} (google/apple/kakao/naver)                                                                                                                                                                                      |
+| POST   | /auth/oauth/:provider/callback | -    | {code, state, redirectUri, device} → 토큰 쌍                                                                                                                                                                                                |
+| POST   | /auth/oauth/apple/native       | -    | {identityToken, authorizationCode?, name?, device} iOS 네이티브 Sign in with Apple → 토큰 쌍. code 는 서버가 refresh 토큰으로 교환해 암호화 저장(탈퇴 시 revoke)                                                                            |
+| POST   | /auth/social/:provider         | U    | 소셜 연결. {code, state, redirectUri} 또는 Apple 네이티브 {identityToken, authorizationCode?}                                                                                                                                               |
+| DELETE | /auth/social/:provider         | U    | 소셜 연결 해제 (마지막 로그인 수단이면 409 `LAST_LOGIN_METHOD`). Apple 은 저장된 토큰을 revoke                                                                                                                                              |
+| GET    | /auth/providers                | -    | {oauth: 웹 OAuth 가 설정된 provider[], appleNative: iOS 네이티브 Apple 가능 여부, identity}                                                                                                                                                 |
+| GET    | /auth/sessions                 | U    | 기기(세션) 목록                                                                                                                                                                                                                             |
+| DELETE | /auth/sessions/:id             | U    | 특정 기기 로그아웃                                                                                                                                                                                                                          |
+| DELETE | /auth/sessions                 | U    | 현재 기기 제외 전체 로그아웃                                                                                                                                                                                                                |
+| DELETE | /auth/account                  | U    | 본인 확인 셋 중 하나: {password} · {verificationToken} · 소셜 재인증 {provider: kakao·naver·google·apple, code, state, redirectUri} 또는 {provider: 'apple', identityToken, authorizationCode?} → 탈퇴 (개인정보 익명화, Apple 토큰 revoke) |
+| GET    | /auth/me                       | U    | 내 계정 + 프로필 + 역할 + `consentRequired` · `marketingOptIn`                                                                                                                                                                              |
+| POST   | /me/consent                    | U    | {terms: true, privacy: true, ageOver14: true, marketing?} → MeDto. 필수 동의 기록(처음 값 유지) + 마케팅 수신 동의·철회                                                                                                                     |
 
 ### Users / Profile
 
@@ -111,7 +117,7 @@ NestJS REST API. Base URL `/api/v1`. 모든 요청/응답은 JSON (업로드 제
 | GET         | /home                                    | -    | 홈 섹션 묶음 (배너, 인기, 오늘의 경매, 마감 임박, 신규, 인기 작가) |
 | GET         | /products                                | -    | 검색/필터/정렬                                                     |
 | GET         | /products/suggest?q=                     | -    | 자동완성 {products, artists, categories}                           |
-| GET         | /products/:id                            | -    | 상세 (이미지, 판매자 요약, 인증서, 출처, 경매 요약)                |
+| GET         | /products/:id                            | -    | 상세 (이미지, 판매자 요약, 인증서, 출처, 경매 요약, `blockedByMe`) |
 | POST        | /products                                | S    | 생성                                                               |
 | PATCH       | /products/:id                            | S    | 수정 (판매 완료·경매 진행 중엔 가격/판매방식 변경 불가)            |
 | POST        | /products/:id/publish · /pause · /resume | S    | 게시 / 판매 중지 / 재개                                            |
@@ -232,22 +238,22 @@ NestJS REST API. Base URL `/api/v1`. 모든 요청/응답은 JSON (업로드 제
 
 목록은 `?page=&size=&q=` 페이지 방식 → `{items, total, page, size}`. 조치에는 `{reason}` 이 필요하다.
 
-| 경로                              | 기능                                                                                                                                                               |
-| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| GET /admin/dashboard              | 회원·판매자·작품·경매·주문·거래액(오늘/30일)·처리 대기(환불 요청·신고·미결제)·정산 예정/보류 + 14일 추이                                                           |
-| /admin/users · /users/:id         | 검색(이메일·닉네임·ID, 역할·상태), 상세, suspend(모든 기기 로그아웃, 로그인 시 사유 안내)·restore, PATCH role(관리자 부여·관리자 대상 조치는 SA 만), reset-strikes |
-| /admin/sellers                    | 인증 대기/완료 필터, verify·unverify (VERIFIED_SELLER)                                                                                                             |
-| /admin/products                   | 검색·상태·검수 필터·미처리 신고 수, hide(SUSPENDED)·restore, DELETE(진행 중 주문 있으면 거부), certificate 검수                                                    |
-| /admin/categories                 | CRUD (2단계, slug 중복·작품/하위 있으면 삭제 거부)                                                                                                                 |
-| /admin/auctions · /auction-policy | 목록·강제 취소 / 연장·결제 기한·기간 정책                                                                                                                          |
-| /admin/orders · /orders/:id       | 검색, 상세, refund: 결제 전후 취소·환불 승인, 배송 이후·구매 확정 분쟁은 강제 환불 + 정산 보류                                                                     |
-| /admin/payments                   | 결제 내역 (상태·수단 필터)                                                                                                                                         |
-| /admin/settlements · /actions     | 목록, 일괄 pay·hold·release                                                                                                                                        |
-| /admin/coupons                    | CRUD (사용된 쿠폰은 코드·방식·금액 변경 불가, 삭제 대신 비활성화)                                                                                                  |
-| /admin/reports · /:id/resolve     | 대상 미리보기·누적 수, 처리 + 조치(작품 비공개·회원 정지·메시지/후기 삭제), 같은 대상 신고 일괄 종료                                                               |
-| /admin/banners · /notices         | CRUD (배너 링크는 사이트 내부 경로만, 공지는 예약 게시)                                                                                                            |
-| POST /admin/broadcast             | 전체/판매자/구매자 운영 알림 (알림함 + 푸시)                                                                                                                       |
-| GET /admin/audit-logs             | 감사 로그 (대상 유형·관리자 필터)                                                                                                                                  |
+| 경로                              | 기능                                                                                                                                                                                                                                                                |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GET /admin/dashboard              | 회원·판매자·작품·경매·주문·거래액(오늘/30일)·처리 대기(환불 요청·신고·미결제)·정산 예정/보류 + 14일 추이                                                                                                                                                            |
+| /admin/users · /users/:id         | 검색(이메일·닉네임·ID, 역할·상태), 상세, suspend(모든 기기 로그아웃, 로그인 시 사유 안내)·restore, PATCH role(관리자 부여·관리자 대상 조치는 SA 만), reset-strikes                                                                                                  |
+| /admin/sellers                    | 인증 대기/완료 필터, verify·unverify (VERIFIED_SELLER)                                                                                                                                                                                                              |
+| /admin/products                   | 검색·상태·검수 필터·미처리 신고 수, hide(SUSPENDED)·restore, DELETE(진행 중 주문 있으면 거부), certificate 검수                                                                                                                                                     |
+| /admin/categories                 | CRUD (2단계, slug 중복·작품/하위 있으면 삭제 거부)                                                                                                                                                                                                                  |
+| /admin/auctions · /auction-policy | 목록·강제 취소 / 연장·결제 기한·기간 정책                                                                                                                                                                                                                           |
+| /admin/orders · /orders/:id       | 검색, 상세, refund: 결제 전후 취소·환불 승인, 배송 이후·구매 확정 분쟁은 강제 환불 + 정산 보류                                                                                                                                                                      |
+| /admin/payments                   | 결제 내역 (상태·수단 필터)                                                                                                                                                                                                                                          |
+| /admin/settlements · /actions     | 목록, 일괄 pay·hold·release                                                                                                                                                                                                                                         |
+| /admin/coupons                    | CRUD (사용된 쿠폰은 코드·방식·금액 변경 불가, 삭제 대신 비활성화)                                                                                                                                                                                                   |
+| /admin/reports · /:id/resolve     | 대상 미리보기·누적 수, 처리 + 조치(작품 비공개·회원 정지·메시지/후기 삭제), 같은 대상 신고 일괄 종료                                                                                                                                                                |
+| /admin/banners · /notices         | CRUD (배너 링크는 사이트 내부 경로만, 공지는 예약 게시)                                                                                                                                                                                                             |
+| POST /admin/broadcast             | {title, body, link, audience: all·sellers·buyers, kind?: NOTICE(기본)·MARKETING} → {recipients, pushed}. NOTICE 는 운영 알림(알림함 + 푸시). MARKETING 은 `marketingOptIn` 회원에게만, 제목 앞 `(광고)`·본문 끝 수신거부 안내, 21~8시(KST)에는 푸시 없이 알림함에만 |
+| GET /admin/audit-logs             | 감사 로그 (대상 유형·관리자 필터)                                                                                                                                                                                                                                   |
 
 공개: `GET /notices` (고정 먼저, 게시일 지난 것만) · `GET /notices/:id`.
 

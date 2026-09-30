@@ -1,16 +1,19 @@
 import { Body, Controller, Get, HttpCode, Module, Patch, Post } from '@nestjs/common';
 import {
+  consentSchema,
   sellerRegisterSchema,
   sellerUpdateSchema,
   updateProfileSchema,
+  type ConsentInput,
   type SellerInfoDto,
   type SellerRegisterInput,
   type SellerUpdateInput,
   type UpdateProfileInput,
 } from '@shop/shared';
 import { AppException } from '../common/app-exception';
-import { CurrentUser, invalidateUserStatus, type AuthUser } from '../common/auth';
+import { ConsentExempt, CurrentUser, invalidateUserStatus, type AuthUser } from '../common/auth';
 import { encrypt, maskTail } from '../common/crypto';
+import { assertClean } from '../common/moderation';
 import { ZodPipe } from '../common/zod.pipe';
 import { IdentityModule } from '../identity/identity.controller';
 import { IdentityService } from '../identity/identity.service';
@@ -34,6 +37,7 @@ export class AccountController {
     @CurrentUser() user: AuthUser,
     @Body(new ZodPipe(updateProfileSchema)) body: UpdateProfileInput,
   ) {
+    assertClean({ nickname: body.nickname, bio: body.bio, region: body.region });
     if (body.nickname) {
       const taken = await this.prisma.profile.findFirst({
         where: { nickname: body.nickname, userId: { not: user.id } },
@@ -60,6 +64,42 @@ export class AccountController {
         region: body.region,
       },
     });
+    return this.sessions.me(user.id);
+  }
+
+  // ───── 약관 동의 (소셜 첫 로그인·약관 개정 후) · 마케팅 수신 동의 변경 ─────
+
+  /**
+   * 필수 동의 3개(약관·개인정보·만 14세)와 선택 마케팅 동의를 기록한다. 이미 동의한 회원은 마케팅 수신 여부만
+   * 바꾸는 용도로 다시 보낼 수 있다 (필수 동의 시각은 처음 값을 유지).
+   */
+  @ConsentExempt()
+  @Post('me/consent')
+  @HttpCode(200)
+  async consent(@CurrentUser() user: AuthUser, @Body(new ZodPipe(consentSchema)) body: ConsentInput) {
+    const now = new Date();
+    const u = await this.prisma.user.findUniqueOrThrow({
+      where: { id: user.id },
+      select: {
+        termsAgreedAt: true,
+        privacyAgreedAt: true,
+        ageConfirmedAt: true,
+        marketingOptIn: true,
+        marketingAgreedAt: true,
+      },
+    });
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        termsAgreedAt: u.termsAgreedAt ?? now,
+        privacyAgreedAt: u.privacyAgreedAt ?? now,
+        ageConfirmedAt: u.ageConfirmedAt ?? now,
+        marketingOptIn: body.marketing,
+        // 동의 일시는 새로 동의할 때만 바꾸고, 철회하면 지운다
+        marketingAgreedAt: body.marketing ? (u.marketingOptIn ? u.marketingAgreedAt : now) : null,
+      },
+    });
+    await invalidateUserStatus(this.redis, user.id);
     return this.sessions.me(user.id);
   }
 

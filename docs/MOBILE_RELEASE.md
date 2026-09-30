@@ -40,8 +40,10 @@ pnpm --filter @shop/mobile exec eas submit --profile production --platform all
 
 ## 4. 스토어 등록 정보
 
-- **개인정보처리방침 URL**: `https://hwaso.kr/privacy` / **지원 URL**: `https://hwaso.kr/notices` (앱 › 마이 › 고객센터에도 있음)
-- **계정 삭제**: 앱 › 설정 › 회원 탈퇴 (Apple 5.1.1(v) 요건)
+개인정보·데이터 보안 설문, 연령 등급, 심사 메모, 운영 환경 점검은 docs/STORE_SUBMISSION.md 를 따른다.
+
+- **개인정보처리방침 URL**: `https://hwaso.kr/privacy` / **지원 URL**: `https://hwaso.kr/support` (앱 › 마이 › 고객센터에도 있음)
+- **계정 삭제**: 앱 › 설정 › 회원 탈퇴 (Apple 5.1.1(v) 요건), 웹 안내 `https://hwaso.kr/account-deletion` (Google Play 삭제 URL)
 - **결제**: 실물 작품 거래라 인앱 결제 대상이 아니다 (Apple 3.1.3(e), Google Play 결제 정책 예외)
 - **연령 등급**: 경매·거래 기능 — 성인 인증은 PASS 로 서버가 판정
 - **심사 메모**: 심사용 테스트 계정(구매자·판매자)과 모의 결제가 켜진 스테이징 서버를 안내한다
@@ -54,4 +56,3 @@ pnpm --filter @shop/mobile exec eas submit --profile production --platform all
 - [ ] 유니버설 링크: 메모 앱에 작품 URL 을 붙여 눌렀을 때 앱이 열리는지
 - [ ] 다크 모드·큰 글씨(시니어) 모드·VoiceOver/TalkBack 주요 흐름
 - [ ] 오프라인에서 배너 표시, 연결되면 자동 재조회
-- [ ] iPad 가로·세로 레이아웃(격자 열 수 자동 조정)

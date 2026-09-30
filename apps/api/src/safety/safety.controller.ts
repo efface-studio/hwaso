@@ -37,6 +37,22 @@ export class SafetyService {
     );
   }
 
+  /** 내가 차단한 사용자 id — 목록·상세·후기·문의에서 그 사람의 콘텐츠를 뺀다 (로그인한 경우만) */
+  async blockedIds(viewerId: string | undefined): Promise<string[]> {
+    if (!viewerId) return [];
+    const rows = await this.prisma.userBlock.findMany({
+      where: { blockerId: viewerId },
+      select: { blockedId: true },
+    });
+    return rows.map((r) => r.blockedId);
+  }
+
+  /** 목록 where 에 붙일 조건 (차단한 사람이 없으면 빈 조건) */
+  async excludeBlocked<K extends string>(viewerId: string | undefined, field: K) {
+    const ids = await this.blockedIds(viewerId);
+    return (ids.length ? { [field]: { notIn: ids } } : {}) as Partial<Record<K, { notIn: string[] }>>;
+  }
+
   async block(userId: string, targetId: string) {
     if (userId === targetId) throw new AppException('VALIDATION_FAILED', '본인은 차단할 수 없습니다.');
     const target = await this.prisma.user.count({ where: { id: targetId, status: { not: 'DELETED' } } });

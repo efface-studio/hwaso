@@ -14,6 +14,7 @@ import { AppException } from '../common/app-exception';
 import type { AuthUser } from '../common/auth';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
+import { SafetyService } from '../safety/safety.controller';
 import {
   cardInclude,
   detailInclude,
@@ -41,6 +42,7 @@ export class ProductsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
+    private readonly safety: SafetyService,
   ) {}
 
   async favoriteSet(userId: string | undefined, productIds: string[]): Promise<Set<string>> {
@@ -118,7 +120,10 @@ export class ProductsService {
   }
 
   async list(q: ProductListQuery, viewer?: AuthUser): Promise<ProductListResponse> {
-    const where = await this.buildWhere(q);
+    // 내가 차단한 판매자의 작품은 목록에서 뺀다
+    const where: Prisma.ProductWhereInput = {
+      AND: [await this.buildWhere(q), await this.safety.excludeBlocked(viewer?.id, 'sellerId')],
+    };
     const offset = decodeCursor(q.cursor);
     let rows;
     let total: number;
@@ -267,8 +272,12 @@ export class ProductsService {
       include: detailInclude,
     });
     if (!p) throw new AppException('NOT_FOUND', '상품을 찾을 수 없습니다.');
-    const favs = await this.favoriteSet(viewer?.id, [p.id]);
-    return toDetail(p, viewer?.id, favs.has(p.id));
+    const [favs, blocked] = await Promise.all([
+      this.favoriteSet(viewer?.id, [p.id]),
+      this.safety.blockedIds(viewer?.id),
+    ]);
+    // 차단한 판매자의 작품도 링크로 들어오면 열리되, 클라이언트가 가림 처리하도록 표시한다
+    return toDetail(p, viewer?.id, favs.has(p.id), blocked.includes(p.sellerId));
   }
 
   async related(id: string, viewer?: AuthUser) {
@@ -281,6 +290,7 @@ export class ProductsService {
       where: {
         AND: [
           PUBLIC_PRODUCT,
+          await this.safety.excludeBlocked(viewer?.id, 'sellerId'),
           { id: { not: id } },
           { OR: [{ categoryId: base.categoryId }, ...(base.artistId ? [{ artistId: base.artistId }] : [])] },
         ],
@@ -334,7 +344,7 @@ export class ProductsService {
     const base = cached ? (JSON.parse(cached) as HomeDto) : await this.buildHome();
     if (!cached) await this.redis.set(cacheKey, JSON.stringify(base), 'EX', 60);
     if (!viewer) return base;
-    // 개인화: 관심 여부만 사용자별로 덮어쓴다
+    // 개인화: 관심 여부를 사용자별로 덮어쓰고, 차단한 판매자의 작품은 뺀다
     const all = [
       ...base.liveAuctions,
       ...base.endingSoon,
@@ -343,9 +353,18 @@ export class ProductsService {
       ...base.newArrivals,
       ...base.collections.flatMap((c) => c.items),
     ];
-    const favs = await this.favoriteSet(viewer.id, [...new Set(all.map((c) => c.id))]);
+    const ids = [...new Set(all.map((c) => c.id))];
+    const blockedSellers = await this.safety.blockedIds(viewer.id);
+    const [favs, hidden] = await Promise.all([
+      this.favoriteSet(viewer.id, ids),
+      blockedSellers.length
+        ? this.prisma.product
+            .findMany({ where: { id: { in: ids }, sellerId: { in: blockedSellers } }, select: { id: true } })
+            .then((rows) => new Set(rows.map((r) => r.id)))
+        : new Set<string>(),
+    ]);
     const mark = <T extends { id: string; isFavorite: boolean }>(list: T[]) =>
-      list.map((c) => ({ ...c, isFavorite: favs.has(c.id) }));
+      list.filter((c) => !hidden.has(c.id)).map((c) => ({ ...c, isFavorite: favs.has(c.id) }));
     return {
       ...base,
       liveAuctions: mark(base.liveAuctions),
@@ -482,7 +501,7 @@ export class ProductsService {
     });
     if (!product) throw new AppException('NOT_FOUND');
     const rows = await this.prisma.inquiry.findMany({
-      where: { productId },
+      where: { productId, ...(await this.safety.excludeBlocked(viewer?.id, 'userId')) },
       orderBy: { createdAt: 'desc' },
       take: 50,
       include: { user: { select: { profile: { select: { nickname: true } } } } },

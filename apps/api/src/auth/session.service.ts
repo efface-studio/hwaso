@@ -2,7 +2,12 @@ import { Injectable } from '@nestjs/common';
 import type { User } from '@prisma/client';
 import type { AuthTokens, DeviceInput, MeDto, SessionDto } from '@shop/shared';
 import { AppException } from '../common/app-exception';
-import { ACCESS_TOKEN_TTL_SEC, invalidateUserStatus, signAccessToken } from '../common/auth';
+import {
+  ACCESS_TOKEN_TTL_SEC,
+  hasRequiredConsent,
+  invalidateUserStatus,
+  signAccessToken,
+} from '../common/auth';
 import { maskIp, randomToken, sha256 } from '../common/crypto';
 import { PrismaService, type Tx } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
@@ -161,6 +166,8 @@ export class SessionService {
       identityVerified: !!u.identityVerifiedAt,
       isAdult: u.isAdult,
       socialProviders: u.socialAccounts.map((s) => s.provider),
+      consentRequired: !hasRequiredConsent(u),
+      marketingOptIn: u.marketingOptIn,
       profile: {
         nickname: u.profile?.nickname ?? '',
         bio: u.profile?.bio ?? '',
