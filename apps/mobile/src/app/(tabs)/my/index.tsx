@@ -7,8 +7,8 @@ import { AppRefreshControl } from '@/components/ui/app-refresh-control';
 import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { ThemePicker } from '@/components/theme-picker';
-import { RefreshSkeleton } from '@/components/ui/state';
 import { Text } from '@/components/ui/text';
+import { Skeleton, SkeletonFrame } from '@/components/ui/skeleton';
 import { api, logout } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
 import { usePrefs } from '@/stores/prefs';
@@ -40,6 +40,50 @@ function Row({
 }
 
 /** 상단 프로필: 사진·닉네임·이메일·소개, 팔로워·팔로잉·후기·거래 수, 프로필 수정·보기 */
+/** 새로고침 중: 마이 화면 모양 그대로 (프로필 · 숫자 네 칸 · 버튼 두 개 · 메뉴 묶음) */
+function MySkeleton() {
+  const t = useTheme();
+  const rows = (n: number) =>
+    Array.from({ length: n }, (_, i) => (
+      <View key={i} style={[styles.row, { borderColor: t.colors.borderSoft, minHeight: t.touch + 12 }]}>
+        <Skeleton width={`${40 + ((i * 17) % 25)}%`} height={16} />
+      </View>
+    ));
+  return (
+    <SkeletonFrame>
+      <View style={styles.profile}>
+        <View style={styles.identity}>
+          <Skeleton width={64} height={64} radius={32} />
+          <View style={{ flex: 1, gap: 8 }}>
+            <Skeleton width="45%" height={22} />
+            <Skeleton width="65%" height={14} />
+          </View>
+        </View>
+        <View style={[styles.stats, { borderColor: t.colors.borderSoft }]}>
+          {[0, 1, 2, 3].map((i) => (
+            <View key={i} style={[styles.stat, { gap: 6 }]}>
+              <Skeleton width={24} height={16} />
+              <Skeleton width={36} height={12} />
+            </View>
+          ))}
+        </View>
+        <View style={styles.actions}>
+          <Skeleton height={36} radius={t.radius.sm} style={{ flex: 1 }} />
+          <Skeleton height={36} radius={t.radius.sm} style={{ flex: 1 }} />
+        </View>
+      </View>
+      <View style={styles.group}>
+        <Skeleton width={40} height={14} />
+      </View>
+      {rows(5)}
+      <View style={styles.group}>
+        <Skeleton width={56} height={14} />
+      </View>
+      {rows(3)}
+    </SkeletonFrame>
+  );
+}
+
 function ProfileHeader({ user }: { user: MeDto }) {
   const t = useTheme();
   // 공개 프로필 화면과 같은 캐시 (수정 후 돌아와도 최신 숫자)
@@ -163,93 +207,100 @@ export default function MyScreen() {
         user ? <AppRefreshControl refreshing={refreshing} onRefresh={() => void refresh()} /> : undefined
       }
     >
-      <RefreshSkeleton refreshing={refreshing} variant="list">
-        {user ? (
-          <ProfileHeader user={user} />
-        ) : (
-          <View style={styles.profile}>
-            <Text variant="h3">로그인하고 입찰·구매·채팅을 시작하세요</Text>
-            <Button title="로그인" onPress={() => router.push('/login')} block style={{ marginTop: 12 }} />
-          </View>
-        )}
-        {user &&
-          (
-            [
-              [
-                '쇼핑',
-                [
-                  ['/orders', '구매 내역'],
-                  ['/my/bids', '입찰·낙찰 내역'],
-                  ['/cart', '장바구니'],
-                  ['/my/favorites', '관심 작품'],
-                  ['/my/recent', '최근 본 작품'],
-                ],
-              ],
-              [
-                '커뮤니티',
-                [
-                  ['/feed', '팔로잉 새 작품'],
-                  [{ pathname: '/users/[id]/follows', params: { id: user.id, type: 'following' } }, '팔로잉'],
-                  [{ pathname: '/users/[id]', params: { id: user.id } }, '내 프로필 · 받은 후기'],
-                ],
-              ],
-              [
-                '계정',
-                [
-                  ['/notifications', '알림'],
-                  ['/addresses', '배송지 관리'],
-                  ['/settings', '설정'],
-                ],
-              ],
-            ] as [string, [Href, string][]][]
-          ).map(([group, rows]) => (
-            <View key={group}>
-              <Text variant="label" color="muted" style={styles.group}>
-                {group}
-              </Text>
-              {rows.map(([href, label]) => (
-                <Pressable key={label} accessibilityRole="link" onPress={() => router.push(href)}>
-                  <Row label={label}>
-                    <Text color="faint">›</Text>
-                  </Row>
-                </Pressable>
-              ))}
+      {refreshing ? (
+        <MySkeleton />
+      ) : (
+        <>
+          {user ? (
+            <ProfileHeader user={user} />
+          ) : (
+            <View style={styles.profile}>
+              <Text variant="h3">로그인하고 입찰·구매·채팅을 시작하세요</Text>
+              <Button title="로그인" onPress={() => router.push('/login')} block style={{ marginTop: 12 }} />
             </View>
-          ))}
-        <Pressable accessibilityRole="link" onPress={() => router.push('/support')}>
-          <Row label="고객센터 · 약관">
-            <Text color="faint">›</Text>
+          )}
+          {user &&
+            (
+              [
+                [
+                  '쇼핑',
+                  [
+                    ['/orders', '구매 내역'],
+                    ['/my/bids', '입찰·낙찰 내역'],
+                    ['/cart', '장바구니'],
+                    ['/my/favorites', '관심 작품'],
+                    ['/my/recent', '최근 본 작품'],
+                  ],
+                ],
+                [
+                  '커뮤니티',
+                  [
+                    ['/feed', '팔로잉 새 작품'],
+                    [
+                      { pathname: '/users/[id]/follows', params: { id: user.id, type: 'following' } },
+                      '팔로잉',
+                    ],
+                    [{ pathname: '/users/[id]', params: { id: user.id } }, '내 프로필 · 받은 후기'],
+                  ],
+                ],
+                [
+                  '계정',
+                  [
+                    ['/notifications', '알림'],
+                    ['/addresses', '배송지 관리'],
+                    ['/settings', '설정'],
+                  ],
+                ],
+              ] as [string, [Href, string][]][]
+            ).map(([group, rows]) => (
+              <View key={group}>
+                <Text variant="label" color="muted" style={styles.group}>
+                  {group}
+                </Text>
+                {rows.map(([href, label]) => (
+                  <Pressable key={label} accessibilityRole="link" onPress={() => router.push(href)}>
+                    <Row label={label}>
+                      <Text color="faint">›</Text>
+                    </Row>
+                  </Pressable>
+                ))}
+              </View>
+            ))}
+          <Pressable accessibilityRole="link" onPress={() => router.push('/support')}>
+            <Row label="고객센터 · 약관">
+              <Text color="faint">›</Text>
+            </Row>
+          </Pressable>
+          <Text variant="label" color="muted" style={styles.group}>
+            화면
+          </Text>
+          <ThemePicker value={theme} onChange={setTheme} />
+          <Row
+            label="큰 글씨 모드 (시니어 모드)"
+            description="글자와 버튼을 크게, 글자색을 진하게 하고 움직임을 줄여요."
+          >
+            <Switch
+              value={senior}
+              onValueChange={setSenior}
+              trackColor={{ true: t.colors.primary }}
+              accessibilityLabel="큰 글씨 모드"
+            />
           </Row>
-        </Pressable>
-        <Text variant="label" color="muted" style={styles.group}>
-          화면
-        </Text>
-        <ThemePicker value={theme} onChange={setTheme} />
-        <Row
-          label="큰 글씨 모드 (시니어 모드)"
-          description="글자와 버튼을 크게, 글자색을 진하게 하고 움직임을 줄여요."
-        >
-          <Switch
-            value={senior}
-            onValueChange={setSenior}
-            trackColor={{ true: t.colors.primary }}
-            accessibilityLabel="큰 글씨 모드"
-          />
-        </Row>
-        {user && (
-          <Button
-            title="로그아웃"
-            variant="ghost"
-            style={{ marginTop: 24 }}
-            onPress={() =>
-              Alert.alert('로그아웃할까요?', undefined, [
-                { text: '취소', style: 'cancel' },
-                { text: '로그아웃', style: 'destructive', onPress: () => void logout() },
-              ])
-            }
-          />
-        )}
-      </RefreshSkeleton>
+          {user && (
+            <Button
+              title="로그아웃"
+              variant="ghost"
+              style={{ marginTop: 24 }}
+              onPress={() =>
+                Alert.alert('로그아웃할까요?', undefined, [
+                  { text: '취소', style: 'cancel' },
+                  { text: '로그아웃', style: 'destructive', onPress: () => void logout() },
+                ])
+              }
+            />
+          )}
+        </>
+      )}
     </ScrollView>
   );
 }

@@ -94,8 +94,11 @@ export function Skeleton({
   );
 }
 
-/** 스크린리더에는 "불러오는 중" 하나로 읽히게 감싸고, 안의 블록들이 하나의 빛 띠를 공유하게 한다 */
-function Frame({ children, style }: { children: ReactNode; style?: ViewStyle }) {
+/**
+ * 스크린리더에는 "불러오는 중" 하나로 읽히게 감싸고, 안의 블록들이 하나의 빛 띠를 공유하게 한다.
+ * 화면마다 실제 레이아웃을 본뜬 스켈레톤을 만들 때 이 틀 안에 Skeleton 블록을 놓는다.
+ */
+export function SkeletonFrame({ children, style }: { children: ReactNode; style?: ViewStyle }) {
   const clock = useSweep(true);
   return (
     <ShimmerClock.Provider value={clock}>
@@ -115,7 +118,7 @@ function Frame({ children, style }: { children: ReactNode; style?: ViewStyle }) 
 /** 목록형: 원형 사진 + 두 줄 (채팅·알림·주문·팔로워 등) */
 export function SkeletonList({ rows = 8, avatar = true }: { rows?: number; avatar?: boolean }) {
   return (
-    <Frame style={styles.list}>
+    <SkeletonFrame style={styles.list}>
       {Array.from({ length: rows }, (_, i) => (
         <View key={i} style={styles.listRow}>
           {avatar && <Skeleton width={44} height={44} radius={22} />}
@@ -125,7 +128,7 @@ export function SkeletonList({ rows = 8, avatar = true }: { rows?: number; avata
           </View>
         </View>
       ))}
-    </Frame>
+    </SkeletonFrame>
   );
 }
 
@@ -145,7 +148,7 @@ function CardSkeleton({ width }: { width: number }) {
 export function SkeletonGrid({ rows = 3 }: { rows?: number }) {
   const g = useGrid();
   return (
-    <Frame style={{ gap: 20, paddingTop: 12 }}>
+    <SkeletonFrame style={{ gap: 20, paddingTop: 12 }}>
       {Array.from({ length: rows }, (_, r) => (
         <View key={r} style={{ flexDirection: 'row', gap: g.gap, paddingHorizontal: g.padding }}>
           {Array.from({ length: g.columns }, (_, c) => (
@@ -153,7 +156,7 @@ export function SkeletonGrid({ rows = 3 }: { rows?: number }) {
           ))}
         </View>
       ))}
-    </Frame>
+    </SkeletonFrame>
   );
 }
 
@@ -174,7 +177,7 @@ export function SkeletonHome() {
     </View>
   );
   return (
-    <Frame>
+    <SkeletonFrame>
       <Skeleton width={bannerW} height={Math.round(bannerW * 0.56)} radius={0} />
       <View style={{ flexDirection: 'row', gap: 8, padding: 16 }}>
         {[64, 88, 80].map((w) => (
@@ -183,7 +186,7 @@ export function SkeletonHome() {
       </View>
       {rail('a')}
       {rail('b')}
-    </Frame>
+    </SkeletonFrame>
   );
 }
 
@@ -191,7 +194,7 @@ export function SkeletonHome() {
 export function SkeletonDetail({ image = true }: { image?: boolean }) {
   const { width } = useWindowDimensions();
   return (
-    <Frame>
+    <SkeletonFrame>
       {image && <Skeleton width={width} height={width} radius={0} />}
       <View style={{ padding: 16, gap: 12 }}>
         <Skeleton width="40%" height={13} />
@@ -202,7 +205,7 @@ export function SkeletonDetail({ image = true }: { image?: boolean }) {
           <Skeleton key={w} width={`${w}%`} height={13} />
         ))}
       </View>
-    </Frame>
+    </SkeletonFrame>
   );
 }
 
