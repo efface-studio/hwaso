@@ -22,6 +22,8 @@ const OUT = path.join(ROOT, 'dist-ota');
 const requireFrom = createRequire(import.meta.url);
 
 const { values: args } = parseArgs({
+  // pnpm ota:publish -- --message ... 처럼 앞에 붙는 -- 는 무시한다
+  args: process.argv.slice(2).filter((a) => a !== '--'),
   options: {
     platform: { type: 'string', default: 'all' },
     message: { type: 'string', default: '' },
@@ -33,6 +35,8 @@ const { values: args } = parseArgs({
 
 /** expo CLI 와 같은 규칙으로 .env 파일을 읽는다 — 빌드 때와 같은 설정·런타임 버전이 나오게 */
 async function loadEnv() {
+  // 스토어 빌드와 같은 .env 파일 조합을 읽도록 (expo export 도 production 으로 번들한다)
+  process.env.NODE_ENV ??= 'production';
   const expoEnv = (await import(
     requireFrom.resolve('@expo/env', { paths: [requireFrom.resolve('expo/package.json', { paths: [ROOT] })] })
   )) as { load: (root: string) => void };
