@@ -1040,16 +1040,17 @@ index c7fb149f45aa4549e366f09e656babc004c6db50..b759d6771dc1ffbf918abbd02e29a139
 +// plus, for certain iOS 27 features this new API is mandatory.
 +#define RNS_UITAB_API_ENABLED @available(iOS 26.1, *)
 diff --git a/src/components/tabs/screen/TabsScreen.ios.tsx b/src/components/tabs/screen/TabsScreen.ios.tsx
-index 75f5717e6b426fa53c0515cdce61d435b0208ad7..aade4d8a01849442c784eb5c49396d8acaf5cccc 100644
+index 75f5717e6b426fa53c0515cdce61d435b0208ad7..f379ad7fd29b154c62852dda4e7e8a2ed0da9840 100644
 --- a/src/components/tabs/screen/TabsScreen.ios.tsx
 +++ b/src/components/tabs/screen/TabsScreen.ios.tsx
-@@ -72,6 +72,9 @@ function TabsScreen(props: TabsScreenProps) {
+@@ -72,6 +72,10 @@ function TabsScreen(props: TabsScreenProps) {
        )}
        userInterfaceStyle={ios?.experimental_userInterfaceStyle}
        systemItem={ios?.systemItem}
 +      // hwaso 패치: systemItem 'search'(expo-router role="search")도 UISearchTab 으로 — iOS 27 SDK 에서 떨어진 검색 탭
 +      searchRole={ios?.searchRole ?? ios?.systemItem === 'search'}
-+      automaticallyActivatesSearch={ios?.automaticallyActivatesSearch}
++      // hwaso 패치: iOS 27 은 automaticallyActivatesSearch 가 켜진 UISearchTab 만 오른쪽에 떼어 그린다
++      automaticallyActivatesSearch={ios?.automaticallyActivatesSearch ?? ios?.systemItem === 'search'}
        overrideScrollViewContentInsetAdjustmentBehavior={
          ios?.overrideScrollViewContentInsetAdjustmentBehavior
        }>
