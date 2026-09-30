@@ -34,6 +34,10 @@ export function Gallery({
         keyExtractor={(i) => i.key}
         showsHorizontalScrollIndicator={false}
         onMomentumScrollEnd={(e) => setIndex(Math.round(e.nativeEvent.contentOffset.x / width))}
+        // 한 장씩 넘기므로 처음엔 첫 장만, 이후엔 앞뒤 한 장씩만 그린다 (큰 원본을 한꺼번에 받지 않게)
+        initialNumToRender={1}
+        windowSize={3}
+        getItemLayout={(_, i) => ({ length: width, offset: width * i, index: i })}
         renderItem={({ item, index: i }) => (
           <Pressable
             accessibilityRole="imagebutton"
@@ -45,6 +49,9 @@ export function Gallery({
           >
             <Image
               source={mediaUrl(item.key, 1600)}
+              // 목록 카드에서 이미 받아 둔 작은 이미지를 먼저 보여준다
+              placeholder={mediaUrl(item.key, 400)}
+              placeholderContentFit="contain"
               style={StyleSheet.absoluteFill}
               contentFit="contain"
               transition={t.senior ? 0 : 150}

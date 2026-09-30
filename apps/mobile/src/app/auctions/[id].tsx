@@ -13,8 +13,7 @@ import { Sheet } from '@/components/ui/sheet';
 import { Empty, Loading } from '@/components/ui/state';
 import { Text } from '@/components/ui/text';
 import { useAuctionLive } from '@/hooks/use-auction-live';
-import { currentLanguage, LOCALE } from '@/i18n';
-import { formatPrice } from '@/i18n/format';
+import { dateTimeFormat, formatPrice } from '@/i18n/format';
 import { label } from '@/i18n/labels';
 import { api } from '@/lib/api';
 import { useServerNow } from '@/lib/clock';
@@ -263,11 +262,9 @@ export default function AuctionScreen() {
                   {b.isBuyNow ? ` · ${tr('auction.buyNow')}` : ''}
                 </Text>
                 <Text variant="small" color="muted">
-                  {new Date(b.createdAt).toLocaleTimeString(LOCALE[currentLanguage()], {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    second: '2-digit',
-                  })}
+                  {dateTimeFormat({ hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(
+                    new Date(b.createdAt),
+                  )}
                 </Text>
                 <Text variant="bodyStrong" style={{ minWidth: 110, textAlign: 'right' }}>
                   {formatPrice(b.amount)}

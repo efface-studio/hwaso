@@ -5,7 +5,7 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { AppRefreshControl } from '@/components/ui/app-refresh-control';
 import { SellOnboardingIllustration } from '@/components/illustrations/sell-onboarding';
 import { Button } from '@/components/ui/button';
-import { Empty, RefreshSkeleton } from '@/components/ui/state';
+import { Empty } from '@/components/ui/state';
 import { usePullRefresh } from '@/hooks/use-pull-refresh';
 import { Text } from '@/components/ui/text';
 import { CenteredScroll } from '@/components/ui/centered-scroll';
@@ -84,48 +84,46 @@ export default function SellScreen() {
       contentContainerStyle={styles.body}
       refreshControl={<AppRefreshControl refreshing={pull.refreshing} onRefresh={pull.onRefresh} />}
     >
-      <RefreshSkeleton refreshing={pull.refreshing} variant="plain-list">
-        <Button title={tr('tab.newProduct')} size="lg" block onPress={() => router.push('/sell/new')} />
-        <View style={styles.grid}>
-          {tiles.map((x) => (
-            <Pressable
-              key={x.label}
-              accessibilityRole="link"
-              accessibilityLabel={`${x.label} ${x.value ?? 0}`}
-              onPress={() => router.push(x.href)}
-              style={[styles.tile, { borderColor: t.colors.border }]}
-            >
-              <Text variant="caption" color="muted">
-                {x.label}
-              </Text>
-              <Text variant="h2">{x.value ?? '–'}</Text>
-            </Pressable>
-          ))}
-        </View>
-        {s && (
-          <Text variant="small" color="muted">
-            {tr('tab.summary', {
-              views: formatNumber(s.views),
-              favorites: formatNumber(s.favorites),
-              scheduled: s.scheduledAuctions,
-              inquiries: s.unansweredInquiries,
-            })}
-          </Text>
-        )}
-        <View style={{ marginTop: 8 }}>
-          {menu.map(([href, label]) => (
-            <Pressable
-              key={label}
-              accessibilityRole="link"
-              onPress={() => router.push(href)}
-              style={[styles.row, { borderColor: t.colors.borderSoft, minHeight: t.touch + 12 }]}
-            >
-              <Text style={{ flex: 1 }}>{label}</Text>
-              <Text color="faint">›</Text>
-            </Pressable>
-          ))}
-        </View>
-      </RefreshSkeleton>
+      <Button title={tr('tab.newProduct')} size="lg" block onPress={() => router.push('/sell/new')} />
+      <View style={styles.grid}>
+        {tiles.map((x) => (
+          <Pressable
+            key={x.label}
+            accessibilityRole="link"
+            accessibilityLabel={`${x.label} ${x.value ?? 0}`}
+            onPress={() => router.push(x.href)}
+            style={[styles.tile, { borderColor: t.colors.border }]}
+          >
+            <Text variant="caption" color="muted">
+              {x.label}
+            </Text>
+            <Text variant="h2">{x.value ?? '–'}</Text>
+          </Pressable>
+        ))}
+      </View>
+      {s && (
+        <Text variant="small" color="muted">
+          {tr('tab.summary', {
+            views: formatNumber(s.views),
+            favorites: formatNumber(s.favorites),
+            scheduled: s.scheduledAuctions,
+            inquiries: s.unansweredInquiries,
+          })}
+        </Text>
+      )}
+      <View style={{ marginTop: 8 }}>
+        {menu.map(([href, label]) => (
+          <Pressable
+            key={label}
+            accessibilityRole="link"
+            onPress={() => router.push(href)}
+            style={[styles.row, { borderColor: t.colors.borderSoft, minHeight: t.touch + 12 }]}
+          >
+            <Text style={{ flex: 1 }}>{label}</Text>
+            <Text color="faint">›</Text>
+          </Pressable>
+        ))}
+      </View>
     </ScrollView>
   );
 }

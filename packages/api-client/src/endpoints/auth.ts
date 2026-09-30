@@ -30,10 +30,11 @@ export const authApi = (http: Http) => ({
     http.post<{ verificationToken: string }>('/auth/email/verify-code', body),
   signup: (body: SignupInput) => http.post<AuthTokens>('/auth/signup', body),
   login: (body: LoginInput) => http.post<AuthTokens>('/auth/login', body),
-  /** Web 은 쿠키, Mobile 은 refreshToken 본문 */
-  refresh: (refreshToken?: string) =>
+  /** Web 은 쿠키, Mobile 은 refreshToken 본문. signal 로 오래 걸리면 끊을 수 있다 */
+  refresh: (refreshToken?: string, signal?: AbortSignal) =>
     http.post<AuthTokens>('/auth/refresh', refreshToken ? { refreshToken } : {}, {
       retryOnUnauthorized: false,
+      signal,
     }),
   logout: (refreshToken?: string) =>
     http.post<void>('/auth/logout', refreshToken ? { refreshToken } : {}, { retryOnUnauthorized: false }),

@@ -325,9 +325,9 @@ export default function AdminMemberScreen() {
         contentContainerStyle={styles.body}
         refreshControl={<AppRefreshControl refreshing={pull.refreshing} onRefresh={pull.onRefresh} />}
       >
-        {u && !pull.refreshing ? (
+        {u ? (
           <Detail u={u} />
-        ) : q.isError && !pull.refreshing ? (
+        ) : q.isError ? (
           <Empty
             kind="error"
             title="불러오지 못했어요"
