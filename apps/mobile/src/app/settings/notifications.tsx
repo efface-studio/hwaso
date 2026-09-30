@@ -11,6 +11,7 @@ import { Stack } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { Alert, AppState, Linking, Platform, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { Button } from '@/components/ui/button';
+import { Icon } from '@/components/ui/icon';
 import { Loading } from '@/components/ui/state';
 import { Text } from '@/components/ui/text';
 import { api } from '@/lib/api';
@@ -57,6 +58,44 @@ function SwitchRow({
   );
 }
 
+/**
+ * 기기 알림 권한. 꺼져 있으면 눈에 띄게(옅은 강조 색 · 벨 · 전체 폭 버튼), 켜져 있으면 상자 없이 한 줄로.
+ */
+function PushPermission({ push, onEnable }: { push: PushState | null; onEnable: () => void }) {
+  const t = useTheme();
+  const off = push === 'undetermined' || push === 'denied';
+  if (!off)
+    return (
+      <View style={styles.status} accessible accessibilityLabel={push ? PUSH_TEXT[push] : '확인 중'}>
+        <Icon
+          ios={push === 'granted' ? 'checkmark.circle.fill' : 'bell.slash'}
+          android={push === 'granted' ? 'check_circle' : 'notifications_off'}
+          color={push === 'granted' ? 'primary' : 'muted'}
+          size={18}
+        />
+        <Text variant="small" color="muted" style={{ flex: 1 }}>
+          {push ? PUSH_TEXT[push] : '확인 중…'}
+        </Text>
+      </View>
+    );
+  return (
+    <View style={[styles.banner, { backgroundColor: t.colors.primarySoft, borderRadius: t.radius.lg }]}>
+      <View style={styles.bannerHead}>
+        <View style={[styles.bell, { backgroundColor: t.colors.primary }]}>
+          <Icon ios="bell.fill" android="notifications" color="primaryForeground" size={18} />
+        </View>
+        <View style={{ flex: 1, gap: 2 }}>
+          <Text variant="bodyStrong">기기 알림이 꺼져 있어요</Text>
+          <Text variant="small" color="muted">
+            {PUSH_TEXT[push]}
+          </Text>
+        </View>
+      </View>
+      <Button title={push === 'denied' ? '설정에서 알림 허용하기' : '알림 켜기'} block onPress={onEnable} />
+    </View>
+  );
+}
+
 /** 알림 설정: 기기 푸시 권한 + 받을 알림 종류 + 방해 금지 시간 (알림함에는 항상 쌓인다) */
 export default function NotificationSettingsScreen() {
   const t = useTheme();
@@ -97,17 +136,7 @@ export default function NotificationSettingsScreen() {
   return (
     <ScrollView style={{ backgroundColor: t.colors.background }} contentContainerStyle={styles.body}>
       <Stack.Screen options={{ title: '알림 설정' }} />
-      <View style={[styles.card, { borderColor: t.colors.border }]}>
-        <View style={{ flex: 1 }}>
-          <Text variant="bodyStrong">기기 알림</Text>
-          <Text variant="small" color="muted">
-            {push ? PUSH_TEXT[push] : '확인 중…'}
-          </Text>
-        </View>
-        {(push === 'undetermined' || push === 'denied') && (
-          <Button title={push === 'denied' ? '설정 열기' : '켜기'} size="sm" onPress={() => void enable()} />
-        )}
-      </View>
+      <PushPermission push={push} onEnable={() => void enable()} />
       <Text variant="h3" style={{ marginTop: 16 }}>
         푸시 알림 받기
       </Text>
@@ -135,14 +164,10 @@ export default function NotificationSettingsScreen() {
 
 const styles = StyleSheet.create({
   body: { padding: 16, gap: 6, paddingBottom: 48 },
-  card: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 8,
-    padding: 14,
-  },
+  banner: { padding: 16, gap: 14 },
+  bannerHead: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  bell: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  status: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 4 },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
