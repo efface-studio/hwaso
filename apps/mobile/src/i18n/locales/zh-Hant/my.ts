@@ -6,6 +6,7 @@ const zhHant: Translation<typeof ko> = {
     admin: '管理後台',
     verifiedSeller: '認證賣家',
     socialAccount: '社群帳號',
+    providerAccount: '{{provider}}帳號',
     editProfile: '編輯個人檔案',
     viewProfile: '查看我的個人頁面',
     loginPrompt: '登入後即可出價、購買和聊天',

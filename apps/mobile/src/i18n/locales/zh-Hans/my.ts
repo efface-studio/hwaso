@@ -6,6 +6,7 @@ const zhHans: Translation<typeof ko> = {
     admin: '管理后台',
     verifiedSeller: '认证卖家',
     socialAccount: '社交账号',
+    providerAccount: '{{provider}}账号',
     editProfile: '编辑资料',
     viewProfile: '查看我的主页',
     loginPrompt: '登录后即可出价、购买和聊天',
