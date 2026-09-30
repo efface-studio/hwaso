@@ -1,6 +1,7 @@
 import type { MeDto } from '@shop/shared';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, type Href } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { AppRefreshControl } from '@/components/ui/app-refresh-control';
@@ -13,6 +14,7 @@ import { api, logout } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
 import { usePrefs } from '@/stores/prefs';
 import { useTheme } from '@/theme';
+import { LANGUAGE_NAME } from '@/i18n';
 
 function Row({
   label,
@@ -178,6 +180,8 @@ export default function MyScreen() {
   const t = useTheme();
   const user = useAuthStore((s) => s.user);
   const { theme, senior, setTheme, setSenior } = usePrefs();
+  const language = usePrefs((s) => s.language);
+  const { t: tr } = useTranslation();
   const qc = useQueryClient();
   const [refreshing, setRefreshing] = useState(false);
   // 당겨서 새로고침: 내 계정(프로필 사진·닉네임 등)과 팔로워·후기 숫자
@@ -286,6 +290,14 @@ export default function MyScreen() {
               accessibilityLabel="큰 글씨 모드"
             />
           </Row>
+          <Pressable accessibilityRole="link" onPress={() => router.push('/settings/language')}>
+            <Row label={tr('language.title')}>
+              <Text color="muted">
+                {language === 'system' ? tr('language.system') : LANGUAGE_NAME[language]}
+              </Text>
+              <Text color="faint">›</Text>
+            </Row>
+          </Pressable>
           {user && (
             <Button
               title="로그아웃"
