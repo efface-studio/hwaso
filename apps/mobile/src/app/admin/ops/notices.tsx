@@ -102,6 +102,7 @@ function NoticeForm({ initial, onClose }: { initial: NoticeDto | null; onClose: 
         <View style={[styles.switchRow, { minHeight: t.touch }]}>
           <Text style={{ flex: 1 }}>상단 고정</Text>
           <Switch
+            style={{ alignSelf: 'center' }}
             value={n.isPinned}
             onValueChange={(isPinned) => set({ isPinned })}
             trackColor={{ true: t.colors.primary }}

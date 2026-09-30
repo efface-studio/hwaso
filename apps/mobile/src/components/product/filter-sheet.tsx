@@ -217,6 +217,7 @@ export function FilterButton({
             <View style={styles.row}>
               <Text style={{ flex: 1 }}>{tr('filter.verifiedOnly')}</Text>
               <Switch
+                style={{ alignSelf: 'center' }}
                 value={draft.verifiedOnly}
                 onValueChange={(verifiedOnly) => set({ verifiedOnly })}
                 trackColor={{ true: t.colors.primary }}

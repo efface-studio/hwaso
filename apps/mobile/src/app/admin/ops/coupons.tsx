@@ -219,6 +219,7 @@ function CouponForm({ initial, onClose }: { initial: AdminCouponRow | null; onCl
         <View style={[styles.switchRow, { minHeight: t.touch }]}>
           <Text style={{ flex: 1 }}>사용 가능</Text>
           <Switch
+            style={{ alignSelf: 'center' }}
             value={c.isActive}
             onValueChange={(isActive) => set({ isActive })}
             trackColor={{ true: t.colors.primary }}

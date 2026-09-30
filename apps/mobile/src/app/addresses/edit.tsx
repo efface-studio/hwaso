@@ -176,6 +176,7 @@ export default function AddressEditScreen() {
       <View style={styles.row}>
         <Text style={{ flex: 1 }}>{tr('address.setDefault')}</Text>
         <Switch
+          style={{ alignSelf: 'center' }}
           value={d.isDefault}
           onValueChange={(isDefault) => set({ isDefault })}
           trackColor={{ true: t.colors.primary }}

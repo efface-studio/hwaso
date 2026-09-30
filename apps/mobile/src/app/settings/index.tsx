@@ -3,6 +3,7 @@ import { router, Stack, type Href } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Alert, Platform, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { Text } from '@/components/ui/text';
+import { LANGUAGE_NAME } from '@/i18n';
 import type ko from '@/i18n/locales/ko/my';
 import { useAuthStore } from '@/stores/auth';
 import { usePrefs } from '@/stores/prefs';
@@ -45,6 +46,7 @@ export default function SettingsScreen() {
   const { t: tr } = useTranslation(['my', 'common']);
   const user = useAuthStore((s) => s.user);
   const { appLock, setAppLock } = usePrefs();
+  const language = usePrefs((st) => st.language);
   if (!user) return null;
 
   const toggleLock = async (on: boolean) => {
@@ -84,11 +86,22 @@ export default function SettingsScreen() {
           {g.rows.map(([href, key]) => row(tr(`settings.row.${key}`), () => router.push(href)))}
         </View>
       ))}
-      {Platform.OS !== 'web' && (
-        <View>
-          <Text variant="label" color="muted" style={styles.group}>
-            {tr('settings.group.app')}
+      <View>
+        <Text variant="label" color="muted" style={styles.group}>
+          {tr('settings.group.app')}
+        </Text>
+        <Pressable
+          accessibilityRole="link"
+          onPress={() => router.push('/settings/language')}
+          style={[styles.row, { borderColor: t.colors.borderSoft, minHeight: t.touch + 12 }]}
+        >
+          <Text style={{ flex: 1 }}>{tr('common:language.title')}</Text>
+          <Text color="muted">
+            {language === 'system' ? tr('common:language.system') : LANGUAGE_NAME[language]}
           </Text>
+          <Text color="faint">›</Text>
+        </Pressable>
+        {Platform.OS !== 'web' && (
           <View style={[styles.row, { borderColor: t.colors.borderSoft, minHeight: t.touch + 12 }]}>
             <View style={{ flex: 1 }}>
               <Text>{tr('settings.appLock.label')}</Text>
@@ -97,14 +110,15 @@ export default function SettingsScreen() {
               </Text>
             </View>
             <Switch
+              style={{ alignSelf: 'center' }}
               value={appLock}
               onValueChange={(v) => void toggleLock(v)}
               trackColor={{ true: t.colors.primary }}
               accessibilityLabel={tr('settings.appLock.label')}
             />
           </View>
-        </View>
-      )}
+        )}
+      </View>
       <View style={{ marginTop: 24 }}>
         {row(tr('settings.row.deleteAccount'), () => router.push('/settings/delete'), 'destructive')}
       </View>
