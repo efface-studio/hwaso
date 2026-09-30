@@ -1,7 +1,14 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ApiError } from '@shop/api-client';
 // expo-router 는 React Navigation 을 내장한다 — 테마도 expo-router 에서 가져와야 같은 컨텍스트를 쓴다
-import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
+import {
+  DarkTheme,
+  DefaultTheme,
+  router,
+  Stack,
+  ThemeProvider,
+  type NativeStackNavigationOptions,
+} from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
@@ -37,6 +44,20 @@ function makeClient() {
     },
   });
 }
+
+/** 아래에서 올라오는 모달: 왼쪽 위 닫기 버튼 (쓸어내리기만으로는 닫을 수 있는지 알기 어렵다) */
+const modal = (title: string): NativeStackNavigationOptions => ({
+  presentation: 'modal',
+  title,
+  unstable_headerLeftItems: () => [
+    {
+      type: 'button',
+      label: '닫기',
+      icon: { type: 'sfSymbol', name: 'xmark' },
+      onPress: () => router.back(),
+    },
+  ],
+});
 
 function Navigation() {
   const t = useTheme();
@@ -85,14 +106,14 @@ function Navigation() {
           <Stack.Screen name="auctions/[id]" options={{ title: '경매' }} />
           <Stack.Screen name="chat/[id]" options={{ title: '채팅' }} />
           <Stack.Screen name="notifications" options={{ title: '알림' }} />
-          <Stack.Screen name="report" options={{ presentation: 'modal', title: '신고' }} />
+          <Stack.Screen name="report" options={modal('신고')} />
           <Stack.Screen name="cart" options={{ title: '장바구니' }} />
           <Stack.Screen name="checkout" options={{ title: '주문서' }} />
           <Stack.Screen name="orders/index" options={{ title: '구매 내역' }} />
           <Stack.Screen name="orders/[id]/index" options={{ title: '주문 상세' }} />
-          <Stack.Screen name="orders/[id]/review" options={{ presentation: 'modal', title: '거래 후기' }} />
+          <Stack.Screen name="orders/[id]/review" options={modal('거래 후기')} />
           <Stack.Screen name="addresses/index" options={{ title: '배송지 관리' }} />
-          <Stack.Screen name="addresses/edit" options={{ presentation: 'modal', title: '배송지' }} />
+          <Stack.Screen name="addresses/edit" options={modal('배송지')} />
           <Stack.Screen name="sell/new" options={{ presentation: 'fullScreenModal', title: '작품 등록' }} />
           <Stack.Screen name="sell/[id]/edit" options={{ title: '작품 수정' }} />
           <Stack.Screen name="sell/[id]/auction" options={{ title: '경매 등록' }} />
