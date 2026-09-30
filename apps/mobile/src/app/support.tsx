@@ -1,9 +1,26 @@
 import { COMPANY, POLICIES, POLICY_SLUGS } from '@shop/shared';
+import * as Clipboard from 'expo-clipboard';
 import Constants from 'expo-constants';
 import { router, Stack } from 'expo-router';
-import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Text } from '@/components/ui/text';
+import { actionSheet } from '@/lib/action-sheet';
 import { useTheme } from '@/theme';
+
+/**
+ * 연락처 행: 전화·메일 앱으로 바로 열거나 번호·주소를 복사한다.
+ * (시뮬레이터·메일 계정이 없는 기기에서는 여는 요청이 아무 반응 없이 끝나므로 복사 선택지를 함께 준다)
+ */
+function contact(title: string, open: { label: string; url: string }, value: string, what: string) {
+  actionSheet(title, [
+    { label: open.label, onPress: () => void Linking.openURL(open.url).catch(() => undefined) },
+    {
+      label: `${what} 복사`,
+      onPress: () =>
+        void Clipboard.setStringAsync(value).then(() => Alert.alert(`${what}를 복사했어요`, value)),
+    },
+  ]);
+}
 
 /** 고객센터: 공지사항·문의 연락처·약관과 정책·사업자 정보·앱 버전 */
 export default function SupportScreen() {
@@ -43,8 +60,25 @@ export default function SupportScreen() {
         문의
       </Text>
       {row('공지사항', () => router.push('/notices'))}
-      {row(`전화 ${COMPANY.phone}`, () => void Linking.openURL(`tel:${COMPANY.phone}`), COMPANY.hours)}
-      {row(`이메일 ${COMPANY.email}`, () => void Linking.openURL(`mailto:${COMPANY.email}`))}
+      {row(
+        `전화 ${COMPANY.phone}`,
+        () =>
+          contact(
+            COMPANY.phone,
+            { label: '전화 걸기', url: `tel:${COMPANY.phone}` },
+            COMPANY.phone,
+            '전화번호',
+          ),
+        COMPANY.hours,
+      )}
+      {row(`이메일 ${COMPANY.email}`, () =>
+        contact(
+          COMPANY.email,
+          { label: '메일 보내기', url: `mailto:${COMPANY.email}` },
+          COMPANY.email,
+          '이메일 주소',
+        ),
+      )}
       <Text variant="label" color="muted" style={styles.group}>
         약관 · 정책
       </Text>
