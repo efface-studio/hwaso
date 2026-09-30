@@ -22,13 +22,13 @@ index 0000000000000000000000000000000000000000..50504492cb38cbe8f019c461ed642d9c
 +NS_ASSUME_NONNULL_END
 diff --git a/ios/tabs/RNSTabBarItemCoordinator.mm b/ios/tabs/RNSTabBarItemCoordinator.mm
 new file mode 100644
-index 0000000000000000000000000000000000000000..16a2edf728ff54af0adba393a612d8de865cdaba
+index 0000000000000000000000000000000000000000..36ec6b0b0938f8801490b23129b99ce03b24f209
 --- /dev/null
 +++ b/ios/tabs/RNSTabBarItemCoordinator.mm
 @@ -0,0 +1,137 @@
 +#import "RNSTabBarItemCoordinator.h"
 +#import <React/RCTLog.h>
-+#import "RNSConversions-Tabs.h"
++#import "RNSConversions.h"
 +#import "RNSDefines.h"
 +#import "RNSTabsScreenComponentView.h"
 +
