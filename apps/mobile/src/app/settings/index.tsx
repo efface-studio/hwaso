@@ -67,10 +67,14 @@ export default function SettingsScreen() {
     if (r.success) setAppLock(true);
   };
 
-  // 본인인증은 PASS 로고, 소셜 계정은 연결된 계정만 선명한 로고
+  // 본인인증은 PASS 로고(인증 전이면 흐리게), 소셜 계정은 연결된 계정만 선명한 로고
   const trailing = (key: RowKey) =>
     key === 'identity' ? (
-      <Image source={passLogo} style={styles.pass} accessibilityIgnoresInvertColors />
+      <Image
+        source={passLogo}
+        style={[styles.pass, { opacity: user.identityVerified ? 1 : 0.3 }]}
+        accessibilityIgnoresInvertColors
+      />
     ) : key === 'social' ? (
       <View style={styles.badges}>
         {SOCIAL_ORDER.map((p) => (
