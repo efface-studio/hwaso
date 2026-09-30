@@ -1,9 +1,10 @@
 import { Injectable, Logger, type OnApplicationBootstrap, type OnApplicationShutdown } from '@nestjs/common';
-import type { Auction } from '@prisma/client';
+import type { Auction, AuctionStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeService } from '../realtime/realtime';
 import { logNotifyError, NotificationEvents } from '../notifications/notification-events';
 import { RedisService } from '../redis/redis.service';
+import { readAuctionPolicy } from './auction-policy';
 import { finalizeAuction } from './finalize';
 import { HOME_CACHE_KEY } from '../products/products.service';
 
@@ -20,6 +21,8 @@ export class AuctionScheduler implements OnApplicationBootstrap, OnApplicationSh
   private readonly logger = new Logger(AuctionScheduler.name);
   private timer: ReturnType<typeof setInterval> | null = null;
   private running = false;
+  /** 이번 틱에 경매 상태가 바뀌었으면 틱 끝에 홈 캐시를 한 번만 지운다 */
+  private homeDirty = false;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -50,32 +53,39 @@ export class AuctionScheduler implements OnApplicationBootstrap, OnApplicationSh
     } catch (err) {
       this.logger.error({ err }, 'scheduler tick failed');
     } finally {
+      if (this.homeDirty) {
+        this.homeDirty = false;
+        await this.redis
+          .del(HOME_CACHE_KEY)
+          .catch((err: unknown) => this.logger.warn({ err }, 'home cache invalidation failed'));
+      }
       this.running = false;
     }
   }
 
   private async startDue() {
-    const started = await this.prisma.$transaction(async (tx) => {
-      const due = await tx.$queryRaw<{ id: string }[]>`
+    // 집어가기(SKIP LOCKED)와 LIVE 전환을 한 문장으로 — 대상이 없으면 트랜잭션 없이 끝난다
+    const started = await this.prisma.$queryRaw<{ id: string; version: number; status: AuctionStatus }[]>`
+      UPDATE "Auction" SET status = 'LIVE', version = version + 1, "updatedAt" = now()
+      WHERE id IN (
         SELECT id FROM "Auction"
         WHERE status = 'SCHEDULED' AND "startsAt" <= now()
         ORDER BY "startsAt" LIMIT ${BATCH}
-        FOR UPDATE SKIP LOCKED`;
-      if (!due.length) return [];
-      await tx.auction.updateMany({
-        where: { id: { in: due.map((d) => d.id) }, status: 'SCHEDULED' },
-        data: { status: 'LIVE', version: { increment: 1 } },
-      });
-      return tx.auction.findMany({ where: { id: { in: due.map((d) => d.id) } } });
-    });
+        FOR UPDATE SKIP LOCKED
+      ) AND status = 'SCHEDULED'
+      RETURNING id, version, status::text AS status`;
     for (const a of started) {
       this.realtime.toAuction(a.id, 'AUCTION_STARTED', { auctionId: a.id, seq: a.version, status: a.status });
       void this.events.auctionStarted(a.id).catch(logNotifyError);
     }
-    if (started.length) await this.redis.del(HOME_CACHE_KEY);
+    if (started.length) this.homeDirty = true;
   }
 
   private async endDue() {
+    // 종료할 경매가 없으면 트랜잭션을 열지 않는다 (유휴 틱 비용)
+    const [any] = await this.prisma.$queryRaw<{ id: string }[]>`
+      SELECT id FROM "Auction" WHERE status = 'LIVE' AND "endsAt" <= now() LIMIT 1`;
+    if (!any) return;
     // 경매마다 별도 트랜잭션 — 하나가 실패해도 나머지는 종료된다
     for (let i = 0; i < BATCH; i++) {
       const ended = await this.prisma.$transaction(async (tx) => {
@@ -92,7 +102,7 @@ export class AuctionScheduler implements OnApplicationBootstrap, OnApplicationSh
       if (!ended) break;
       this.announceEnd(ended.auction);
       void this.events.auctionEnded(ended.auction.id).catch(logNotifyError);
-      await this.redis.del(HOME_CACHE_KEY);
+      this.homeDirty = true;
     }
   }
 
@@ -109,12 +119,16 @@ export class AuctionScheduler implements OnApplicationBootstrap, OnApplicationSh
 
   /** 종료 임박 표시 + 입찰자·관심 사용자 알림 (경매당 한 번) */
   private async markEndingSoon() {
-    const policy = await this.prisma.auctionPolicy.findUnique({ where: { id: 'default' } });
-    const minutes = policy?.endingSoonMin ?? 10;
+    const minutes = (await readAuctionPolicy(this.prisma)).endingSoonMin;
+    // 입찰 트랜잭션이 잠근 경매는 기다리지 않고 다음 틱에 표시한다
     const marked = await this.prisma.$queryRaw<{ id: string }[]>`
       UPDATE "Auction" SET "endingSoonNotifiedAt" = now()
-      WHERE status = 'LIVE' AND "endingSoonNotifiedAt" IS NULL
-        AND "endsAt" <= now() + make_interval(mins => ${minutes}::int)
+      WHERE id IN (
+        SELECT id FROM "Auction"
+        WHERE status = 'LIVE' AND "endingSoonNotifiedAt" IS NULL
+          AND "endsAt" <= now() + make_interval(mins => ${minutes}::int)
+        FOR UPDATE SKIP LOCKED
+      ) AND status = 'LIVE' AND "endingSoonNotifiedAt" IS NULL
       RETURNING id`;
     for (const { id } of marked) void this.events.auctionEndingSoon(id, minutes).catch(logNotifyError);
   }

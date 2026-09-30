@@ -98,17 +98,21 @@ Client: 서버 이벤트로만 가격 갱신 (낙관적 업데이트 없음)
 2. 서버: 확장자/Content-Type 이 아니라 **sharp 로 실제 포맷 판별** (jpeg/png/webp/heif/avif 외 거부), 픽셀 수 상한 50MP
 3. EXIF 방향 적용 후 **메타데이터(GPS 등) 제거**, 원본은 `originals/` (비공개) 에 보관
 4. 파생본: 폭 `400/800/1600` WebP + AVIF → `public/` prefix, 키에 콘텐츠 해시 포함 → CDN `immutable` 캐시
+   - 원본은 한 번만 디코딩한다: 방향 적용 + 1600 폭으로 줄인 픽셀에서 작은 파생본을 만들고, 인코딩은 병렬. 대표색은 64px 썸네일로 계산
 5. `ProductImage` 에 key, width, height, dominantColor 저장 (로딩 placeholder 색)
 
 ## 7. 검색
 
-- PostgreSQL `pg_trgm` + ILIKE/유사도 — 상품명·작가·제작자·브랜드·시대·소재·판매자.
+- PostgreSQL `pg_trgm` + ILIKE/유사도 — 상품명·작가·제작자·브랜드·시대·소재·카테고리·판매자.
+- 조인한 OR ILIKE 는 trigram 인덱스를 못 타므로, 먼저 테이블별 ILIKE 를 `UNION` 해 공개 상품 id 후보를 모으고(`product_title_trgm`·`product_search_trgm`·`artist_name_trgm`·`profile_nickname_trgm`) 목록 쿼리는 `id IN (...)` + 나머지 필터·정렬로 조회한다. 후보가 5,000건을 넘는 흔한 검색어는 기존 OR 조건으로 찾는다.
 - 자동완성: `pg_trgm` 유사도 상위 N (상품명/작가/카테고리).
 - 확장 경로: 카탈로그가 커지거나 형태소 분석이 필요해지면 OpenSearch 인덱서로 전환. API 계약 유지.
 
 ## 8. 캐시
 
-- 카테고리 트리, 홈 섹션: Redis 60초.
+- 카테고리 트리, 홈 섹션: Redis 60초. 홈은 캐시가 비면 잠금(`SET NX`)을 잡은 한 요청만 다시 만들고, 나머지는 직전 값(`home:v2:stale`)을 쓰거나 잠시 기다린다. 경매 스케줄러는 틱마다 홈 캐시를 한 번만 지운다.
+- 인기 작가(`/artists/popular`, 홈 인기 작가): Redis 5분. 관리자 대시보드: Redis 30초.
+- 경매 정책(AuctionPolicy): 프로세스 메모리 60초. 관리자 변경은 변경을 처리한 프로세스에선 즉시, 다른 API 인스턴스·Worker 에선 60초 안에 반영.
 - 상품 상세 페이지: Next.js ISR(60s). 경매 가격/상태는 클라이언트가 항상 실시간 조회·구독.
 - 가격·입찰·재고·주문은 **캐시하지 않는다**.
 
