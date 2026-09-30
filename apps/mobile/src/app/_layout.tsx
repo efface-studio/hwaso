@@ -22,6 +22,7 @@ import { OfflineBanner } from '@/components/offline-banner';
 import { preloadTabIcons } from '@/components/tab-icons';
 import { refreshAccessToken } from '@/lib/api';
 import { isAdmin } from '@/lib/admin';
+import { guardRapidNavigation } from '@/lib/nav';
 import { connectQueryFocus } from '@/lib/query-focus';
 import { AppSync } from '@/lib/realtime-sync';
 import { useAuthStore } from '@/stores/auth';
@@ -32,6 +33,7 @@ import { useTheme } from '@/theme';
 void SplashScreen.preventAutoHideAsync();
 connectQueryFocus();
 preloadTabIcons();
+guardRapidNavigation();
 
 function makeClient() {
   return new QueryClient({
