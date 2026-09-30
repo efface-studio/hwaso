@@ -34,9 +34,12 @@ export interface UserSummary {
 
 export interface MeDto {
   id: string;
+  /** emailMissing 이면 내부용 임시 주소(…@social.invalid)다 — 화면에 보이지 않는다 */
   email: string;
   role: Role;
   emailVerified: boolean;
+  /** 이메일을 주지 않는 소셜 provider 로 가입해 아직 실제 이메일이 없다 — 가입 마무리(POST /me/consent)에서 받는다 */
+  emailMissing: boolean;
   hasPassword: boolean;
   isSeller: boolean;
   identityVerified: boolean;

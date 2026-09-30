@@ -1,6 +1,11 @@
 import { createHash } from 'node:crypto';
 import { Injectable, Logger } from '@nestjs/common';
-import { containsProhibited, type AuthProvider, type DeviceInput } from '@shop/shared';
+import {
+  containsProhibited,
+  SOCIAL_PLACEHOLDER_EMAIL_DOMAIN,
+  type AuthProvider,
+  type DeviceInput,
+} from '@shop/shared';
 import { AppException } from '../common/app-exception';
 import { decrypt, encrypt, randomToken } from '../common/crypto';
 import { env, isProd } from '../config/env';
@@ -165,8 +170,10 @@ export class OAuthService {
     const nickname = await this.uniqueNickname(name ?? profile.name);
     const user = await this.prisma.user.create({
       data: {
-        // 이메일을 주지 않는 provider(카카오 동의 미선택 등)는 내부용 주소를 쓴다
-        email: profile.email ?? `${provider.toLowerCase()}+${profile.providerUserId}@social.invalid`,
+        // 이메일을 주지 않는 provider(카카오 동의 미선택 등)는 내부용 주소를 쓴다 — 가입 마무리에서 실제 이메일을 받는다
+        email:
+          profile.email ??
+          `${provider.toLowerCase()}+${profile.providerUserId}@${SOCIAL_PLACEHOLDER_EMAIL_DOMAIN}`,
         emailVerifiedAt: profile.emailVerified ? new Date() : null,
         // 동의는 자동으로 기록하지 않는다 — consentRequired 로 동의 화면을 거친다 (docs/AUTH.md §11)
         profile: { create: { nickname } },

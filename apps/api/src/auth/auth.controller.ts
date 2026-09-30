@@ -351,6 +351,6 @@ export class AuthController {
   imports: [IdentityModule],
   controllers: [AuthController],
   providers: [AuthService, SessionService, OAuthService, AppleAuthClient, DemoAccountsService],
-  exports: [SessionService, OAuthService],
+  exports: [SessionService, OAuthService, AuthService],
 })
 export class AuthModule {}

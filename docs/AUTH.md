@@ -52,7 +52,7 @@
 3. `POST /auth/oauth/:provider/callback {code, state, redirectUri}` → 서버가 state 1회 소비 검증 → 토큰 교환 → 사용자 정보 조회
 4. `SocialAccount(provider, providerUserId)` 있으면 로그인. 없으면:
    - provider 가 **검증된 이메일**을 주고 같은 이메일의 계정이 있으면 → 연결하지 않고 `ACCOUNT_EXISTS` (이메일 로그인 후 설정에서 연결하도록 안내. 계정 탈취 방지)
-   - 없으면 신규 가입 (emailVerifiedAt = provider 검증 시각, 닉네임 자동 생성 후 온보딩에서 수정). 약관 동의는 기록하지 않는다 → `consentRequired: true` 로 동의 화면을 거친다 (§11)
+   - 없으면 신규 가입 (emailVerifiedAt = provider 검증 시각, 닉네임은 provider 이름으로 자동 생성). 이메일을 주지 않는 provider(카카오 동의 미선택 등)는 임시 주소 `<provider>+<id>@social.invalid`(`SOCIAL_PLACEHOLDER_EMAIL_DOMAIN`)를 넣고 `MeDto.emailMissing = true`. 약관 동의는 기록하지 않는다 → `consentRequired: true` 로 가입 마무리 화면을 거친다 (§11)
 
 환경 변수가 없는 provider 는 `/auth/providers` 응답에서 제외되어 버튼이 표시되지 않는다.
 
@@ -113,6 +113,12 @@ iOS 앱의 Apple 로그인은 웹 OAuth 가 아니라 시스템 Sign in with App
 
 - `User.termsAgreedAt`·`privacyAgreedAt`·`ageConfirmedAt` 중 하나라도 비어 있으면 `MeDto.consentRequired = true`.
 - 이메일 가입은 가입 요청에서 세 동의를 받아 즉시 기록한다. 소셜 첫 가입은 기록하지 않아 동의 화면(앱 `app/consent.tsx`, 웹 동의 페이지)을 거친다. `POST /me/consent {terms, privacy, ageOver14, marketing}` 가 기록하고 MeDto 를 돌려준다.
+- **가입 마무리** (소셜 첫 가입): 동의 화면(앱 `app/consent.tsx`, 웹 `/consent`)에서 이메일·닉네임도 함께 받는다.
+  - 이메일: provider 가 준 이메일을 채워 둔다. 그대로 쓰면 인증이 필요 없고, 없거나(`emailMissing`) 바꾸면 인증번호(`purpose=SIGNUP`)로 확인해 `emailVerificationToken` 을 함께 보낸다. 서버는 토큰을 1회 소비하고, 다른 계정이 쓰는 이메일이면 `409 ACCOUNT_EXISTS`(details.fields.email), 아니면 이메일을 바꾸고 `emailVerifiedAt` 을 기록한다.
+  - 필수 동의 전이고 이메일이 임시 주소인데 토큰이 없으면 `400 VALIDATION_FAILED`("이메일을 입력해주세요.", details.fields.email). 이미 동의한 회원(마케팅 수신 변경 등)은 강제하지 않는다.
+  - 닉네임: provider 이름으로 만든 닉네임을 채워 두고 고칠 수 있다. 바뀌었을 때만 `nickname` 을 보내며 금칙어(`PROHIBITED_CONTENT`)·중복(`409 NICKNAME_TAKEN`)을 검사한다. 닉네임 검사를 통과한 뒤에 이메일 토큰을 소비한다.
+  - 검사를 모두 통과하면 동의·이메일·닉네임을 한 트랜잭션으로 기록한다. 실패하면 동의도 기록되지 않는다.
+- 화면은 임시 주소를 보이지 않는다 (`emailMissing` 이면 이메일 대신 '소셜 계정' 표시 또는 생략).
 - 동의 전에는 읽기만 된다. 로그인이 필요한 쓰기 요청은 전역 `AuthGuard` 가 `403 CONSENT_REQUIRED` 로 막는다. 예외는 `@ConsentExempt()` — `AuthController` 전체(로그아웃·기기·비밀번호·소셜·탈퇴), `POST /me/consent`, `DELETE /me/push-tokens`. 동의 여부는 계정 상태 캐시(`user:status:{id}` = `상태:역할:동의(0/1)`, 30초)에 함께 두고 동의 시 무효화한다.
 - 마케팅(광고성 정보) 수신: `marketingOptIn` + 동의 시각 `marketingAgreedAt`. `POST /me/consent` 를 다시 보내 동의·철회한다 (필수 동의 시각은 처음 값을 유지). 광고성 전체 알림은 동의자에게만, 제목 `(광고)`, 21~8시(KST)에는 푸시하지 않는다 (docs/API.md Admin).
 - 마이그레이션 `20261002000000_store_review` 가 기존 가입자의 `privacyAgreedAt`·`ageConfirmedAt` 을 `termsAgreedAt` 으로 채운다 — 약관 동의 기록이 없는 계정(시드 등)만 다음 로그인 때 동의 화면을 본다.

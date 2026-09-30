@@ -90,7 +90,7 @@ const ja: Translation<typeof ko> = {
     notices: 'お知らせ',
     support: 'ヘルプ・規約',
     feed: 'フォロー中の新着',
-    consent: '規約への同意',
+    consent: '登録の仕上げ',
   },
   language: {
     title: '言語',

@@ -7,6 +7,14 @@ export const emailSchema = z
   .toLowerCase()
   .pipe(z.email({ message: '올바른 이메일 주소를 입력해주세요.' }).max(254));
 
+/**
+ * 이메일을 주지 않는 소셜 provider(카카오 동의 미선택 등)로 가입하면 서버가 `<provider>+<id>@social.invalid` 를
+ * 임시로 넣는다. 화면에는 보이지 않게 하고(MeDto.emailMissing), 가입 마무리(POST /me/consent)에서 실제 이메일을 받는다.
+ */
+export const SOCIAL_PLACEHOLDER_EMAIL_DOMAIN = 'social.invalid';
+export const isPlaceholderEmail = (email: string) =>
+  email.toLowerCase().endsWith(`@${SOCIAL_PLACEHOLDER_EMAIL_DOMAIN}`);
+
 export const passwordSchema = z
   .string()
   .min(8, '비밀번호는 8자 이상이어야 합니다.')
@@ -51,14 +59,18 @@ export const signupSchema = z.strictObject({
 export type SignupInput = z.infer<typeof signupSchema>;
 
 /**
- * 필수 동의(약관·개인정보·만 14세) + 선택 마케팅. 소셜 첫 로그인 뒤 또는 약관 개정 후 받는다 (POST /me/consent).
+ * 필수 동의(약관·개인정보·만 14세) + 선택 마케팅. 소셜 첫 로그인 뒤(가입 마무리) 또는 약관 개정 후 받는다 (POST /me/consent).
  * 이미 동의한 사용자가 다시 보내면 마케팅 수신 여부만 바꾸는 용도로도 쓴다.
+ * 가입 마무리에서는 이메일(인증 토큰, purpose=SIGNUP)과 닉네임도 함께 받는다 — provider 가 이메일을 주지 않은
+ * 회원(MeDto.emailMissing)은 필수 동의 전 이메일 인증 토큰이 있어야 한다.
  */
 export const consentSchema = z.strictObject({
   terms: z.literal(true, { message: '이용약관에 동의해주세요.' }),
   privacy: z.literal(true, { message: '개인정보 수집·이용에 동의해주세요.' }),
   ageOver14: z.literal(true, { message: '만 14세 이상만 이용할 수 있습니다.' }),
   marketing: z.boolean().default(false),
+  emailVerificationToken: z.string().min(1).max(2000).optional(),
+  nickname: nicknameSchema.optional(),
 });
 export type ConsentInput = z.infer<typeof consentSchema>;
 export type ConsentBody = z.input<typeof consentSchema>;

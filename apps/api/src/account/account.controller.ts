@@ -1,6 +1,8 @@
 import { Body, Controller, Get, HttpCode, Module, Patch, Post } from '@nestjs/common';
 import {
   consentSchema,
+  ERROR_MESSAGES,
+  isPlaceholderEmail,
   sellerRegisterSchema,
   sellerUpdateSchema,
   updateProfileSchema,
@@ -11,7 +13,13 @@ import {
   type UpdateProfileInput,
 } from '@shop/shared';
 import { AppException } from '../common/app-exception';
-import { ConsentExempt, CurrentUser, invalidateUserStatus, type AuthUser } from '../common/auth';
+import {
+  ConsentExempt,
+  CurrentUser,
+  hasRequiredConsent,
+  invalidateUserStatus,
+  type AuthUser,
+} from '../common/auth';
 import { encrypt, maskTail } from '../common/crypto';
 import { assertClean } from '../common/moderation';
 import { ZodPipe } from '../common/zod.pipe';
@@ -20,6 +28,7 @@ import { IdentityService } from '../identity/identity.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 import { AuthModule } from '../auth/auth.controller';
+import { AuthService } from '../auth/auth.service';
 import { DemoBlocked } from '../auth/demo';
 import { SessionService } from '../auth/session.service';
 
@@ -30,6 +39,7 @@ export class AccountController {
     private readonly redis: RedisService,
     private readonly identity: IdentityService,
     private readonly sessions: SessionService,
+    private readonly auth: AuthService,
   ) {}
 
   @Patch('users/me/profile')
@@ -67,11 +77,13 @@ export class AccountController {
     return this.sessions.me(user.id);
   }
 
-  // ───── 약관 동의 (소셜 첫 로그인·약관 개정 후) · 마케팅 수신 동의 변경 ─────
+  // ───── 가입 마무리 · 약관 동의 (소셜 첫 로그인·약관 개정 후) · 마케팅 수신 동의 변경 ─────
 
   /**
    * 필수 동의 3개(약관·개인정보·만 14세)와 선택 마케팅 동의를 기록한다. 이미 동의한 회원은 마케팅 수신 여부만
    * 바꾸는 용도로 다시 보낼 수 있다 (필수 동의 시각은 처음 값을 유지).
+   * 소셜 가입 마무리: emailVerificationToken(SIGNUP) 이 있으면 그 이메일로 바꾸고 인증 완료로 기록하며,
+   * nickname 이 있으면 닉네임을 바꾼다. provider 가 이메일을 주지 않은 회원(임시 주소)은 처음 동의할 때 이메일 인증이 필요하다.
    */
   @ConsentExempt()
   @Post('me/consent')
@@ -81,24 +93,63 @@ export class AccountController {
     const u = await this.prisma.user.findUniqueOrThrow({
       where: { id: user.id },
       select: {
+        email: true,
         termsAgreedAt: true,
         privacyAgreedAt: true,
         ageConfirmedAt: true,
         marketingOptIn: true,
         marketingAgreedAt: true,
+        profile: { select: { nickname: true } },
       },
     });
-    await this.prisma.user.update({
-      where: { id: user.id },
-      data: {
-        termsAgreedAt: u.termsAgreedAt ?? now,
-        privacyAgreedAt: u.privacyAgreedAt ?? now,
-        ageConfirmedAt: u.ageConfirmedAt ?? now,
-        marketingOptIn: body.marketing,
-        // 동의 일시는 새로 동의할 때만 바꾸고, 철회하면 지운다
-        marketingAgreedAt: body.marketing ? (u.marketingOptIn ? u.marketingAgreedAt : now) : null,
-      },
-    });
+    if (!body.emailVerificationToken && !hasRequiredConsent(u) && isPlaceholderEmail(u.email)) {
+      throw new AppException('VALIDATION_FAILED', '이메일을 입력해주세요.', {
+        fields: { email: '이메일을 입력해주세요.' },
+      });
+    }
+
+    const nickname = body.nickname && body.nickname !== u.profile?.nickname ? body.nickname : undefined;
+    if (nickname) {
+      assertClean({ nickname });
+      const taken = await this.prisma.profile.findFirst({
+        where: { nickname, userId: { not: user.id } },
+        select: { userId: true },
+      });
+      if (taken)
+        throw new AppException('NICKNAME_TAKEN', undefined, {
+          fields: { nickname: ERROR_MESSAGES.NICKNAME_TAKEN },
+        });
+    }
+
+    // 닉네임 검사를 통과한 뒤에 토큰을 쓴다 (닉네임만 고쳐 다시 보낼 때 이메일을 다시 인증하지 않게)
+    let email: string | undefined;
+    if (body.emailVerificationToken) {
+      const verified = await this.auth.consumeVerification(body.emailVerificationToken, 'SIGNUP');
+      if (verified !== u.email) {
+        const other = await this.prisma.user.findUnique({ where: { email: verified }, select: { id: true } });
+        if (other) {
+          const message = '이미 가입된 이메일입니다. 다른 이메일을 입력해주세요.';
+          throw new AppException('ACCOUNT_EXISTS', message, { fields: { email: message } });
+        }
+      }
+      email = verified;
+    }
+
+    await this.prisma.$transaction([
+      this.prisma.user.update({
+        where: { id: user.id },
+        data: {
+          termsAgreedAt: u.termsAgreedAt ?? now,
+          privacyAgreedAt: u.privacyAgreedAt ?? now,
+          ageConfirmedAt: u.ageConfirmedAt ?? now,
+          marketingOptIn: body.marketing,
+          // 동의 일시는 새로 동의할 때만 바꾸고, 철회하면 지운다
+          marketingAgreedAt: body.marketing ? (u.marketingOptIn ? u.marketingAgreedAt : now) : null,
+          ...(email ? { email, emailVerifiedAt: now } : {}),
+        },
+      }),
+      ...(nickname ? [this.prisma.profile.update({ where: { userId: user.id }, data: { nickname } })] : []),
+    ]);
     await invalidateUserStatus(this.redis, user.id);
     return this.sessions.me(user.id);
   }

@@ -44,7 +44,7 @@ export default function DeleteAccountScreen() {
   if (!user) return null;
 
   // 받을 수 없는 이메일(소셜 가입 시 서버가 만든 주소)로는 인증번호를 보내지 않는다
-  const realEmail = !user.email.endsWith('.invalid');
+  const realEmail = !user.emailMissing;
   const useCode = !user.hasPassword && realEmail;
   const nativeApple = Platform.OS === 'ios' && !!providers.data?.appleNative;
   const socials = user.socialProviders.filter(

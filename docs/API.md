@@ -83,8 +83,8 @@ NestJS REST API. Base URL `/api/v1`. 모든 요청/응답은 JSON (업로드 제
 | DELETE | /auth/sessions/:id             | U    | 특정 기기 로그아웃                                                                                                                                                                                                                          |
 | DELETE | /auth/sessions                 | U    | 현재 기기 제외 전체 로그아웃                                                                                                                                                                                                                |
 | DELETE | /auth/account                  | U    | 본인 확인 셋 중 하나: {password} · {verificationToken} · 소셜 재인증 {provider: kakao·naver·google·apple, code, state, redirectUri} 또는 {provider: 'apple', identityToken, authorizationCode?} → 탈퇴 (개인정보 익명화, Apple 토큰 revoke) |
-| GET    | /auth/me                       | U    | 내 계정 + 프로필 + 역할 + `consentRequired` · `marketingOptIn`                                                                                                                                                                              |
-| POST   | /me/consent                    | U    | {terms: true, privacy: true, ageOver14: true, marketing?} → MeDto. 필수 동의 기록(처음 값 유지) + 마케팅 수신 동의·철회                                                                                                                     |
+| GET    | /auth/me                       | U    | 내 계정 + 프로필 + 역할 + `consentRequired` · `marketingOptIn` · `emailMissing`(소셜 임시 이메일, 화면에 보이지 않는다)                                                                                                                     |
+| POST   | /me/consent                    | U    | {terms: true, privacy: true, ageOver14: true, marketing?, emailVerificationToken?, nickname?} → MeDto. 필수 동의(처음 값 유지)·마케팅 수신. 가입 마무리의 이메일 인증(SIGNUP)·닉네임 변경 (docs/AUTH.md §11)                                |
 
 ### Users / Profile
 

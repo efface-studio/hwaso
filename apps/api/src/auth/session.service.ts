@@ -1,6 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import type { User } from '@prisma/client';
-import type { AuthTokens, DeviceInput, MeDto, SessionDto } from '@shop/shared';
+import {
+  isPlaceholderEmail,
+  type AuthTokens,
+  type DeviceInput,
+  type MeDto,
+  type SessionDto,
+} from '@shop/shared';
 import { AppException } from '../common/app-exception';
 import {
   ACCESS_TOKEN_TTL_SEC,
@@ -161,6 +167,7 @@ export class SessionService {
       email: u.email,
       role: u.role,
       emailVerified: !!u.emailVerifiedAt,
+      emailMissing: isPlaceholderEmail(u.email),
       hasPassword: !!u.passwordHash,
       isSeller: !!u.seller,
       identityVerified: !!u.identityVerifiedAt,

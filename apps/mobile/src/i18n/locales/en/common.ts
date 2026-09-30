@@ -90,7 +90,7 @@ const en: Translation<typeof ko> = {
     notices: 'Notices',
     support: 'Help & policies',
     feed: 'Following',
-    consent: 'Agreements',
+    consent: 'Finish signing up',
   },
   language: {
     title: 'Language',

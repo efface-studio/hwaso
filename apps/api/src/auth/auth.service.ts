@@ -135,7 +135,8 @@ export class AuthService {
     return { verificationToken };
   }
 
-  private async consumeVerification(token: string, purpose: VerificationPurpose): Promise<string> {
+  /** 이메일 인증 토큰을 한 번 쓰고 인증된 이메일을 돌려준다 (가입 마무리 POST /me/consent 도 쓴다) */
+  async consumeVerification(token: string, purpose: VerificationPurpose): Promise<string> {
     const claims = await verifyPurposeToken<{ email: string; purpose: string; jti?: string }>(
       token,
       'verify',

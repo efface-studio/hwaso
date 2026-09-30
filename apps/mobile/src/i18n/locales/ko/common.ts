@@ -88,7 +88,7 @@ const ko = {
     notices: '공지사항',
     support: '고객센터',
     feed: '팔로잉 새 작품',
-    consent: '약관 동의',
+    consent: '가입 마무리',
   },
   language: {
     title: '언어',

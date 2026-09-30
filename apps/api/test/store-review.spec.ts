@@ -1,5 +1,6 @@
 import { AppleAuthClient } from '../src/auth/apple.client';
 import { PROVIDERS } from '../src/auth/oauth.providers';
+import { signPurposeToken } from '../src/common/auth';
 import { Clock } from '../src/common/clock';
 import { decrypt } from '../src/common/crypto';
 import { createTestApp, type TestContext } from './app';
@@ -80,9 +81,10 @@ const consent = (token: string, marketing = false) =>
 
 describe('필수 동의 (consent)', () => {
   it('소셜 첫 가입 → 동의 전 쓰기 403 → POST /me/consent → 허용', async () => {
-    const login = await kakaoLogin(`kc${uniq()}`);
+    // provider 가 이메일을 준 회원은 이메일 인증 없이 동의만 하면 된다
+    const login = await kakaoLogin(`kc${uniq()}`, `kc${uniq()}@kakao.test`);
     expect(login.body.isNewUser).toBe(true);
-    expect(login.body.user.consentRequired).toBe(true);
+    expect(login.body.user).toMatchObject({ consentRequired: true, emailMissing: false });
     const auth = bearer(login.body.accessToken);
     const other = await createUser(t);
 
@@ -140,6 +142,95 @@ describe('필수 동의 (consent)', () => {
       .send({ ...body, agreePrivacy: true, ageOver14: true, agreeMarketing: true })
       .expect(201);
     expect(ok.body.user).toMatchObject({ consentRequired: false, marketingOptIn: true });
+  });
+});
+
+describe('가입 마무리 (이메일 · 닉네임)', () => {
+  /** SIGNUP 인증번호 받기 → 확인 → 인증 토큰 */
+  async function signupToken(email: string) {
+    await t.http.post('/api/v1/auth/email/send-code').send({ email, purpose: 'SIGNUP' }).expect(200);
+    const res = await t.http
+      .post('/api/v1/auth/email/verify-code')
+      .send({ email, purpose: 'SIGNUP', code: t.mail.lastCode(email) })
+      .expect(200);
+    return res.body.verificationToken as string;
+  }
+  const finish = (token: string, extra: Record<string, unknown> = {}) =>
+    t.http
+      .post('/api/v1/me/consent')
+      .set(bearer(token))
+      .send({ terms: true, privacy: true, ageOver14: true, ...extra });
+
+  it('이메일을 주지 않은 카카오 가입자는 이메일 인증 뒤에야 동의를 마친다', async () => {
+    const login = await kakaoLogin(`km${uniq()}`, null);
+    expect(login.body.user).toMatchObject({
+      emailMissing: true,
+      emailVerified: false,
+      consentRequired: true,
+    });
+    const access = login.body.accessToken as string;
+
+    const missing = await finish(access).expect(400);
+    expect(missing.body.error.code).toBe('VALIDATION_FAILED');
+    expect(missing.body.error.details.fields).toHaveProperty('email');
+
+    const addr = `finish${uniq()}@test.local`;
+    const token = await signupToken(addr);
+    const done = await finish(access, { emailVerificationToken: token }).expect(200);
+    expect(done.body).toMatchObject({
+      email: addr,
+      emailMissing: false,
+      emailVerified: true,
+      consentRequired: false,
+    });
+    // 같은 토큰은 다시 쓸 수 없고, 다른 용도의 인증 토큰도 받지 않는다
+    const again = await finish(access, { emailVerificationToken: token }).expect(401);
+    expect(again.body.error.code).toBe('INVALID_TOKEN');
+    const purpose = await signPurposeToken({ typ: 'verify', email: addr, purpose: 'DELETE_ACCOUNT' }, 600);
+    await finish(access, { emailVerificationToken: purpose }).expect(401);
+  });
+
+  it('동의를 마친 회원은 이메일 없이도 마케팅 수신만 바꿀 수 있다', async () => {
+    const login = await kakaoLogin(`kk${uniq()}`, null);
+    await t.prisma.user.update({
+      where: { id: login.body.user.id },
+      data: { termsAgreedAt: new Date(), privacyAgreedAt: new Date(), ageConfirmedAt: new Date() },
+    });
+    const res = await finish(login.body.accessToken, { marketing: true }).expect(200);
+    expect(res.body).toMatchObject({ emailMissing: true, marketingOptIn: true });
+  });
+
+  it('다른 계정이 쓰는 이메일은 ACCOUNT_EXISTS', async () => {
+    const other = await createUser(t);
+    const login = await kakaoLogin(`kx${uniq()}`, null);
+    // 가입된 이메일로 SIGNUP 인증번호를 요청하면 안내 메일만 가므로 토큰을 직접 만든다
+    const token = await signPurposeToken({ typ: 'verify', email: other.email, purpose: 'SIGNUP' }, 600);
+    const res = await finish(login.body.accessToken, { emailVerificationToken: token }).expect(409);
+    expect(res.body.error.code).toBe('ACCOUNT_EXISTS');
+    expect(res.body.error.details.fields).toHaveProperty('email');
+    const row = await t.prisma.user.findUniqueOrThrow({ where: { id: login.body.user.id } });
+    expect(row.termsAgreedAt).toBeNull();
+  });
+
+  it('닉네임을 바꾸고, 사용 중이거나 부적절한 닉네임은 거부한다', async () => {
+    const other = await createUser(t);
+    const otherNick = (await t.prisma.profile.findUniqueOrThrow({ where: { userId: other.id } })).nickname;
+    const login = await kakaoLogin(`kn${uniq()}`, `kn${uniq()}@kakao.test`);
+    const access = login.body.accessToken as string;
+
+    const taken = await finish(access, { nickname: otherNick }).expect(409);
+    expect(taken.body.error.code).toBe('NICKNAME_TAKEN');
+    const bad = await finish(access, { nickname: '시발놈' }).expect(400);
+    expect(bad.body.error.code).toBe('PROHIBITED_CONTENT');
+    // 실패하면 동의도 기록되지 않는다
+    const before = await t.prisma.user.findUniqueOrThrow({ where: { id: login.body.user.id } });
+    expect(before.termsAgreedAt).toBeNull();
+
+    // 지금 닉네임 그대로 보내도 된다
+    await finish(access, { nickname: login.body.user.profile.nickname }).expect(200);
+    const nickname = `마무리${Date.now() % 1e6}`;
+    const res = await finish(access, { nickname }).expect(200);
+    expect(res.body.profile.nickname).toBe(nickname);
   });
 });
 

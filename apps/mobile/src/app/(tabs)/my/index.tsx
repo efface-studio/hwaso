@@ -130,7 +130,7 @@ function ProfileHeader({ user }: { user: MeDto }) {
             )}
           </View>
           <Text variant="small" color="muted" numberOfLines={1}>
-            {user.email.endsWith('.invalid') ? tr('myTab.socialAccount') : user.email}
+            {user.emailMissing ? tr('myTab.socialAccount') : user.email}
           </Text>
           {!!user.profile.bio && (
             <Text variant="small" numberOfLines={2}>

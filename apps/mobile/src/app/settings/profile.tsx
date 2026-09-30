@@ -142,9 +142,12 @@ export default function ProfileScreen() {
             <Icon ios="camera.fill" android="photo_camera" color="primaryForeground" size={15} />
           </View>
         </Pressable>
-        <Text variant="small" color="muted">
-          {user.email}
-        </Text>
+        {/* 소셜 가입 때 서버가 만든 임시 주소는 보이지 않는다 */}
+        {!user.emailMissing && (
+          <Text variant="small" color="muted">
+            {user.email}
+          </Text>
+        )}
       </View>
 
       <View style={styles.form}>

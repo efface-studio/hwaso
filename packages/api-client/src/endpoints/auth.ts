@@ -57,7 +57,10 @@ export const authApi = (http: Http) => ({
   revokeOtherSessions: () => http.delete<void>('/auth/sessions'),
   /** 비밀번호 · 이메일 인증 토큰 · 소셜 재인증({ provider, code, state, redirectUri } 또는 Apple { provider: 'apple', identityToken, authorizationCode }) 중 하나 */
   deleteAccount: (body: DeleteAccountInput) => http.delete<void>('/auth/account', body),
-  /** 필수 동의(약관·개인정보·만 14세) + 선택 마케팅. MeDto.consentRequired 가 true 인 동안 쓰기 요청은 403 CONSENT_REQUIRED */
+  /**
+   * 필수 동의(약관·개인정보·만 14세) + 선택 마케팅. MeDto.consentRequired 가 true 인 동안 쓰기 요청은 403 CONSENT_REQUIRED.
+   * 가입 마무리에서는 emailVerificationToken(SIGNUP)·nickname 도 함께 보낸다 (MeDto.emailMissing 이면 이메일 인증 필수)
+   */
   consent: (body: ConsentBody) => http.post<MeDto>('/me/consent', body),
 
   updateProfile: (body: UpdateProfileInput) => http.patch<MeDto>('/users/me/profile', body),

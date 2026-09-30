@@ -90,7 +90,7 @@ const zhHans: Translation<typeof ko> = {
     notices: '公告',
     support: '客服中心',
     feed: '关注的新作品',
-    consent: '同意条款',
+    consent: '完成注册',
   },
   language: {
     title: '语言',

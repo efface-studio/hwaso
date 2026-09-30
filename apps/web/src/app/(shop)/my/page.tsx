@@ -88,9 +88,7 @@ function MyHome() {
             <span className="truncate">{user.profile.nickname}</span>
             {user.role === 'VERIFIED_SELLER' && <Badge tone="primary">인증 판매자</Badge>}
           </p>
-          <p className="truncate text-small text-muted">
-            {user.email.endsWith('.invalid') ? '소셜 계정' : user.email}
-          </p>
+          <p className="truncate text-small text-muted">{user.emailMissing ? '소셜 계정' : user.email}</p>
         </div>
         <Link href={`/users/${user.id}`} className="shrink-0 text-small text-muted hover:text-foreground">
           내 프로필

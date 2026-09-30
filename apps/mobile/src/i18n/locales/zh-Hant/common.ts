@@ -90,7 +90,7 @@ const zhHant: Translation<typeof ko> = {
     notices: '公告',
     support: '客服中心',
     feed: '關注的新作品',
-    consent: '同意條款',
+    consent: '完成註冊',
   },
   language: {
     title: '語言',
