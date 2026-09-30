@@ -9,7 +9,8 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
-    "doctor": "expo-doctor"
+    "doctor": "expo-doctor",
+    "demo:record": "tsx scripts/record-demo.ts"
   },
   "dependencies": {
     "@expo/metro-runtime": "~57.0.16",
@@ -57,6 +58,7 @@
     "zustand": "^5.0.15"
   },
   "devDependencies": {
-    "@types/react": "~19.2.2"
+    "@types/react": "~19.2.2",
+    "tsx": "^4.23.15"
   }
 }

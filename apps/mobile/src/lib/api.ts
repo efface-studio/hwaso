@@ -1,4 +1,5 @@
 import { createApiClient } from '@shop/api-client';
+import { withDemo } from '@/demo/demo-fetch';
 import { REFRESH_KEY, useAuthStore } from '@/stores/auth';
 import { env } from './env';
 import { secure } from './secure';
@@ -34,6 +35,8 @@ export const api = createApiClient({
   credentials: 'omit',
   getAccessToken: () => useAuthStore.getState().accessToken,
   refresh: refreshAccessToken,
+  // 서버가 꺼져 있을 때 기록한 관리자 계정으로 시연 (개발·시연 빌드에서만)
+  fetch: withDemo(globalThis.fetch.bind(globalThis)),
 });
 
 export async function logout() {
