@@ -38,8 +38,8 @@ import l067 from '../../assets/banks/067.png';
 
 /**
  * 은행 로고 (금융결제원 은행 코드 → 이미지). 각 로고는 해당 은행의 상표이며, 은행 선택 화면에서 식별용으로만 쓴다.
- * 이미지 출처: Wikimedia Commons · English Wikipedia 의 로고 파일을 가로 330px PNG 로 받은 것, 위키에 없는 곳은
- * 각 기관 공식 홈페이지의 로고 이미지 (출처는 아래 주석).
+ * 이미지 출처: Wikimedia Commons · English Wikipedia 의 로고 파일, 위키에 없는 곳은 각 기관 공식 홈페이지의 로고 이미지 (출처는 아래 주석).
+ * 원본 락업에서 배경을 빼고 심볼만 잘라 256×256 투명 PNG 로 만들었다 (심볼이 따로 없는 곳 — 씨티·BNK·케이뱅크·미즈호 — 은 워드마크).
  * 목록에 없는 은행이 생기면 BankLogo 가 대표 색 배지로 대신한다.
  */
 export const BANK_LOGOS: Record<string, ImageSourcePropType> = {
