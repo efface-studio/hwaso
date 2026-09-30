@@ -10,8 +10,6 @@ import * as Notifications from 'expo-notifications';
 import { Stack } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { Alert, AppState, Linking, Platform, ScrollView, StyleSheet, Switch, View } from 'react-native';
-import { Button } from '@/components/ui/button';
-import { Icon } from '@/components/ui/icon';
 import { Loading } from '@/components/ui/state';
 import { Text } from '@/components/ui/text';
 import { api } from '@/lib/api';
@@ -21,7 +19,7 @@ import { useTheme } from '@/theme';
 type PushState = 'granted' | 'denied' | 'undetermined' | 'unsupported';
 const PUSH_TEXT: Record<PushState, string> = {
   granted: '이 기기로 알림을 받고 있어요.',
-  denied: '기기 설정에서 화소의 알림을 허용해주세요.',
+  denied: '기기 설정에서 꺼져 있어요. 켜면 설정 화면으로 이동해요.',
   undetermined: '앱을 닫아도 입찰·주문·채팅 소식을 알려드려요.',
   unsupported: '이 환경에서는 푸시 알림을 받을 수 없어요.',
 };
@@ -31,11 +29,13 @@ function SwitchRow({
   description,
   value,
   onChange,
+  disabled,
 }: {
   label: string;
   description?: string;
   value: boolean;
   onChange: (v: boolean) => void;
+  disabled?: boolean;
 }) {
   const t = useTheme();
   return (
@@ -51,47 +51,10 @@ function SwitchRow({
       <Switch
         value={value}
         onValueChange={onChange}
+        disabled={disabled}
         trackColor={{ true: t.colors.primary }}
         accessibilityLabel={label}
       />
-    </View>
-  );
-}
-
-/**
- * 기기 알림 권한. 꺼져 있으면 눈에 띄게(옅은 강조 색 · 벨 · 전체 폭 버튼), 켜져 있으면 상자 없이 한 줄로.
- */
-function PushPermission({ push, onEnable }: { push: PushState | null; onEnable: () => void }) {
-  const t = useTheme();
-  const off = push === 'undetermined' || push === 'denied';
-  if (!off)
-    return (
-      <View style={styles.status} accessible accessibilityLabel={push ? PUSH_TEXT[push] : '확인 중'}>
-        <Icon
-          ios={push === 'granted' ? 'checkmark.circle.fill' : 'bell.slash'}
-          android={push === 'granted' ? 'check_circle' : 'notifications_off'}
-          color={push === 'granted' ? 'primary' : 'muted'}
-          size={18}
-        />
-        <Text variant="small" color="muted" style={{ flex: 1 }}>
-          {push ? PUSH_TEXT[push] : '확인 중…'}
-        </Text>
-      </View>
-    );
-  return (
-    <View style={[styles.banner, { backgroundColor: t.colors.primarySoft, borderRadius: t.radius.lg }]}>
-      <View style={styles.bannerHead}>
-        <View style={[styles.bell, { backgroundColor: t.colors.primary }]}>
-          <Icon ios="bell.fill" android="notifications" color="primaryForeground" size={18} />
-        </View>
-        <View style={{ flex: 1, gap: 2 }}>
-          <Text variant="bodyStrong">기기 알림이 꺼져 있어요</Text>
-          <Text variant="small" color="muted">
-            {PUSH_TEXT[push]}
-          </Text>
-        </View>
-      </View>
-      <Button title={push === 'denied' ? '설정에서 알림 허용하기' : '알림 켜기'} block onPress={onEnable} />
     </View>
   );
 }
@@ -123,12 +86,27 @@ export default function NotificationSettingsScreen() {
     return () => sub.remove();
   }, [check]);
 
+  /**
+   * 기기 알림 켜기: 아직 묻지 않았으면 시스템 권한 창을, 기기 설정에서 꺼 둔 상태면 설정 화면을 연다.
+   * 권한이 있으면 이 기기를 푸시 대상으로 등록한다 (시뮬레이터는 토큰을 받지 못해도 권한 상태는 켜진다).
+   */
   const enable = async () => {
-    if (push === 'denied') return void Linking.openSettings();
-    const ok = await registerPush().catch(() => false);
-    if (!ok) Alert.alert('알림을 켜지 못했어요', '실제 기기에서 알림 권한을 허용해야 받을 수 있어요.');
+    if (Platform.OS === 'web') return;
+    const current = await Notifications.getPermissionsAsync();
+    if (!current.granted) {
+      if (!current.canAskAgain) return void Linking.openSettings();
+      const asked = await Notifications.requestPermissionsAsync();
+      if (!asked.granted) return void check();
+    }
+    await registerPush().catch(() => false);
     await check();
   };
+  // 켜진 알림은 앱에서 끌 수 없어 기기 설정으로 안내한다
+  const disable = () =>
+    Alert.alert('기기 알림 끄기', '알림은 기기 설정에서 끌 수 있어요.', [
+      { text: '취소', style: 'cancel' },
+      { text: '설정 열기', onPress: () => void Linking.openSettings() },
+    ]);
 
   if (q.isPending) return <Loading variant="plain-list" />;
   const data = q.data;
@@ -136,7 +114,13 @@ export default function NotificationSettingsScreen() {
   return (
     <ScrollView style={{ backgroundColor: t.colors.background }} contentContainerStyle={styles.body}>
       <Stack.Screen options={{ title: '알림 설정' }} />
-      <PushPermission push={push} onEnable={() => void enable()} />
+      <SwitchRow
+        label="기기 알림"
+        description={push ? PUSH_TEXT[push] : '확인 중…'}
+        value={push === 'granted'}
+        disabled={!push || push === 'unsupported'}
+        onChange={(on) => (on ? void enable() : disable())}
+      />
       <Text variant="h3" style={{ marginTop: 16 }}>
         푸시 알림 받기
       </Text>
@@ -164,10 +148,6 @@ export default function NotificationSettingsScreen() {
 
 const styles = StyleSheet.create({
   body: { padding: 16, gap: 6, paddingBottom: 48 },
-  banner: { padding: 16, gap: 14 },
-  bannerHead: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  bell: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
-  status: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 4 },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
