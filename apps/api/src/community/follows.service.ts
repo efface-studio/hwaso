@@ -26,13 +26,11 @@ export class FollowsService {
     });
     if (!existed) {
       await this.prisma.follow.create({ data: { followerId: user.id, followingId: targetId } });
-      const me = await this.prisma.profile.findUnique({
-        where: { userId: user.id },
-        select: { nickname: true },
-      });
+      const me = await this.notifications.senderOf(user.id);
       await this.notifications.notify(targetId, {
         type: 'FOLLOWED',
-        title: `${me?.nickname ?? '누군가'}님이 회원님을 팔로우해요`,
+        sender: me,
+        title: `${me?.name ?? '누군가'}님이 회원님을 팔로우해요`,
         body: '프로필을 둘러보세요.',
         link: `/users/${user.id}`,
       });

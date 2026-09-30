@@ -84,8 +84,8 @@ export const notificationReadSchema = z.union([
 ]);
 
 export const pushTokenSchema = z.strictObject({
-  /** Expo: ExponentPushToken[…] / 웹: PushSubscription JSON 문자열 */
+  /** apns: iOS 기기 토큰(hex) / fcm: Android 기기 토큰 / expo: ExponentPushToken[…] / web: PushSubscription JSON */
   token: z.string().min(10).max(2000),
-  platform: z.enum(['expo', 'web']),
+  platform: z.enum(['apns', 'fcm', 'expo', 'web']),
 });
 export type PushTokenInput = z.infer<typeof pushTokenSchema>;

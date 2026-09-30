@@ -12,7 +12,8 @@ import {
 import { AppException } from '../common/app-exception';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeService } from '../realtime/realtime';
-import { PushService } from './push.service';
+import { env } from '../config/env';
+import { PushService, type PushSender } from './push.service';
 
 export interface NotifyInput {
   type: NotificationType;
@@ -22,6 +23,10 @@ export interface NotifyInput {
   data?: Record<string, unknown>;
   /** false 면 알림함에 남기지 않고 푸시만 (채팅) */
   store?: boolean;
+  /** 보낸 사람 (푸시에 이름·프로필 사진) */
+  sender?: PushSender | null;
+  /** 같은 대화·대상 푸시를 묶는 키 */
+  threadId?: string | null;
 }
 
 const PAGE = 30;
@@ -81,12 +86,33 @@ export class NotificationsService {
         const allowed = category === 'system' || prefs.push[category];
         if (allowed && !(prefs.quietHours && inQuietHours()))
           void this.push
-            .send(u.id, { title: input.title, body: input.body, link: input.link })
+            .send(u.id, {
+              title: input.title,
+              body: input.body,
+              link: input.link,
+              sender: input.sender,
+              threadId: input.threadId,
+            })
             .catch((err: unknown) => this.logger.warn({ err }, 'push failed'));
       }
     } catch (err) {
       this.logger.error({ err, type: input.type }, 'notify failed');
     }
+  }
+
+  /** 푸시에 보여줄 보낸 사람 — 닉네임과 프로필 사진(있을 때) */
+  async senderOf(userId: string | null | undefined): Promise<PushSender | null> {
+    if (!userId) return null;
+    const p = await this.prisma.profile.findUnique({
+      where: { userId },
+      select: { nickname: true, avatarKey: true },
+    });
+    if (!p) return null;
+    return {
+      id: userId,
+      name: p.nickname,
+      avatarUrl: p.avatarKey ? `${env().MEDIA_PUBLIC_URL}/${p.avatarKey}/w400.webp` : null,
+    };
   }
 
   // ───── 알림함 ─────
@@ -143,10 +169,14 @@ export class NotificationsService {
 
   /** 같은 기기 토큰이 다른 계정에 있으면 현재 로그인 계정으로 옮긴다 (기기당 한 계정) */
   async registerToken(userId: string, input: PushTokenInput) {
+    const existing = await this.prisma.pushToken.findUnique({ where: { token: input.token } });
+    // 샌드박스로 확인된 iOS 토큰은 다시 등록돼도 그 사실을 유지한다 (매번 운영 서버부터 시도하지 않게)
+    const platform =
+      existing?.platform === 'apns-sandbox' && input.platform === 'apns' ? 'apns-sandbox' : input.platform;
     await this.prisma.pushToken.upsert({
       where: { token: input.token },
-      create: { userId, token: input.token, platform: input.platform },
-      update: { userId, platform: input.platform },
+      create: { userId, token: input.token, platform },
+      update: { userId, platform },
     });
     return { ok: true };
   }
