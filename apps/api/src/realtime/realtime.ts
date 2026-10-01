@@ -14,9 +14,10 @@ import { Emitter } from '@socket.io/redis-emitter';
 import { rooms, RT_NAMESPACE, type ClientToServerEvents, type ServerToClientEvents } from '@shop/shared';
 import Redis from 'ioredis';
 import type { Namespace, ServerOptions, Socket } from 'socket.io';
-import { verifyAccessToken } from '../common/auth';
+import { isFamilyRevoked, verifyAccessToken } from '../common/auth';
 import { env } from '../config/env';
 import { PrismaService } from '../prisma/prisma.service';
+import { RedisService } from '../redis/redis.service';
 import { PresenceService } from './presence';
 
 type EventName = keyof ServerToClientEvents;
@@ -102,13 +103,15 @@ export class RealtimeGateway implements OnGatewayConnection {
   constructor(
     private readonly prisma: PrismaService,
     private readonly presence: PresenceService,
+    private readonly redis: RedisService,
   ) {}
 
   /** 토큰이 없거나 틀려도 연결은 허용한다 (경매 관전). 로그인 사용자는 개인 룸에 들어간다 */
   async handleConnection(socket: RtSocket) {
     const token = (socket.handshake.auth as { token?: unknown } | undefined)?.token;
     const user = typeof token === 'string' ? await verifyAccessToken(token) : null;
-    if (user) {
+    // 로그아웃·원격 로그아웃된 기기의 토큰으로는 개인 룸에 들어가지 못한다 (docs/SECURITY.md)
+    if (user && !(await isFamilyRevoked(this.redis, user.familyId))) {
       socket.data.userId = user.id;
       await socket.join(rooms.user(user.id));
       await this.presence.connect(user.id, socket.id);

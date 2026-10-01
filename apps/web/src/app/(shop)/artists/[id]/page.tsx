@@ -8,6 +8,11 @@ import { safe, serverApi } from '@/lib/server-api';
 
 export const revalidate = 60;
 
+/** 빌드 때는 비워 두고 첫 요청에 렌더해 revalidate 주기로 캐시한다 (on-demand ISR) */
+export async function generateStaticParams() {
+  return [];
+}
+
 type Props = { params: Promise<{ id: string }> };
 
 const lifespan = (b: number | null, d: number | null) => (b ? `${b}–${d ?? ''}` : null);
@@ -25,6 +30,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function ArtistPage({ params }: Props) {
   const { id } = await params;
+  // 작품 목록은 작가 정보와 함께 요청한다 (404 판단은 작가 결과로)
+  const worksP = safe(serverApi.market.products({ artist: id, sort: 'popular', limit: 60 }));
   let artist;
   try {
     artist = await serverApi.market.artist(id);
@@ -32,7 +39,7 @@ export default async function ArtistPage({ params }: Props) {
     if (e instanceof ApiError && e.status === 404) notFound();
     return <EmptyState title="작가 정보를 불러오지 못했습니다" description="잠시 후 다시 시도해주세요." />;
   }
-  const works = await safe(serverApi.market.products({ artist: id, sort: 'popular', limit: 60 }));
+  const works = await worksP;
 
   return (
     <div className="page-x mx-auto max-w-page py-6 md:py-10">

@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
 import { Text } from '@/components/ui/text';
 import { api } from '@/lib/api';
+import { useScreenGuard } from '@/lib/screen-guard';
 import { goBack } from '@/lib/nav';
 import { useAuthStore } from '@/stores/auth';
 import { useTheme } from '@/theme';
@@ -15,6 +16,8 @@ import { passwordIssueMessage } from '@/components/auth/validation';
 
 /** 비밀번호 변경 (소셜 가입자는 비밀번호 설정). 바꾸면 다른 기기는 로그아웃된다 */
 export default function PasswordScreen() {
+  // 비밀번호 입력 화면 — 캡처·화면 녹화 차단
+  useScreenGuard();
   const t = useTheme();
   const { t: tr } = useTranslation(['my', 'common']);
   const user = useAuthStore((s) => s.user);

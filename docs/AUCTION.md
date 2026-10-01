@@ -90,7 +90,7 @@ COMMIT;
 
 - 조건: `autoExtend = true` 이고 `endsAt - now() ≤ extensionWindowSec`
 - 효과: `endsAt = min(endsAt + extensionSec, maxEndsAt)`
-- 기본 정책: 종료 30초 이내 입찰 → +30초, 최대 누적 30분. 관리자 `/admin/auction-policy` 에서 변경 (이미 생성된 경매엔 소급 적용하지 않음).
+- 기본 정책: 종료 30초 이내 입찰 → +30초, 최대 누적 30분. 관리자 `/admin/auction-policy` 에서 변경 (이미 생성된 경매엔 소급 적용하지 않음). 정책은 프로세스 메모리에 60초 캐시되므로 다른 API 인스턴스·Worker(종료 임박 기준)에는 최대 60초 늦게 반영된다.
 
 ## 6. 즉시 구매
 
@@ -117,10 +117,12 @@ FOR UPDATE SKIP LOCKED;
 
 `SKIP LOCKED` 덕분에 Worker 를 여러 개 띄워도 한 경매는 한 번만 종료된다. 입찰 트랜잭션이 잠금을 쥐고 있는 경매는 이번 틱에 건너뛰고 다음 틱(1초 후)에 처리 — 그 사이 연장됐다면 `endsAt <= now()` 가 거짓이 되어 자연스럽게 종료되지 않는다.
 
+종료할 경매가 없으면(`LIMIT 1` 존재 확인) 트랜잭션을 열지 않는다.
+
 같은 루프에서:
 
-- `SCHEDULED AND startsAt <= now()` → LIVE, `AUCTION_STARTED` 방송, 관심 등록자에게 알림
-- `LIVE AND endsAt - now() <= endingSoonMin AND endingSoonNotifiedAt IS NULL` → 참가자·관심 등록자에게 `AUCTION_ENDING`
+- `SCHEDULED AND startsAt <= now()` → LIVE, `AUCTION_STARTED` 방송, 관심 등록자에게 알림. 집어가기와 전환을 한 문장(`UPDATE ... WHERE id IN (SELECT ... FOR UPDATE SKIP LOCKED) RETURNING`)으로 처리
+- `LIVE AND endsAt - now() <= endingSoonMin AND endingSoonNotifiedAt IS NULL` → 참가자·관심 등록자에게 `AUCTION_ENDING`. 입찰이 잠근 경매는 `SKIP LOCKED` 로 건너뛰고 다음 틱에 표시
 - 낙찰 주문 `PAYMENT_PENDING AND paymentDueAt <= now()` → 주문 CANCELLED, 경매 `result=UNPAID`, 낙찰자 신뢰도 페널티, 상품 ACTIVE
 
 ## 8. 결제 → SETTLED

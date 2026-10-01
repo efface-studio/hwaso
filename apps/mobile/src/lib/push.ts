@@ -1,4 +1,3 @@
-import Constants from 'expo-constants';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import { router, type Href } from 'expo-router';
@@ -41,18 +40,17 @@ export async function pushPermission(): Promise<'granted' | 'undetermined' | 'de
 }
 
 /**
- * Expo 푸시 토큰을 서버에 등록한다. 권한은 여기서 묻지 않는다 —
- * 이미 허용된 경우에만 등록하고, 처음 묻는 건 쓰임새가 보이는 순간(채팅·입찰·관심·팔로우, 알림 설정)에
- * 안내 시트를 거쳐 requestPushPermission 으로 한다 (App Store 가이드: 맥락 없이 바로 묻지 않기).
+ * 이 기기의 푸시 토큰을 서버에 등록한다. iOS 는 APNs 기기 토큰, Android 는 FCM 기기 토큰 — 서버가 Apple·Google 로 직접 보낸다.
+ * 권한은 여기서 묻지 않는다 — 이미 허용된 경우에만 등록하고, 처음 묻는 건 쓰임새가 보이는 순간(채팅·입찰·관심·팔로우,
+ * 알림 설정)에 안내 시트를 거쳐 requestPushPermission 으로 한다 (App Store 가이드: 맥락 없이 바로 묻지 않기).
  * 에뮬레이터·웹·권한 없음이면 조용히 넘어간다 (앱 사용에는 지장 없음).
  */
 export async function registerPush(): Promise<boolean> {
   if ((await pushPermission()) !== 'granted') return false;
   await ensureChannel();
-  const projectId = (Constants.expoConfig?.extra?.eas as { projectId?: string } | undefined)?.projectId;
-  const { data: token } = await Notifications.getExpoPushTokenAsync(projectId ? { projectId } : undefined);
-  await api.notifications.registerPush({ token, platform: 'expo' });
-  await secure.set(TOKEN_KEY, token);
+  const { data } = await Notifications.getDevicePushTokenAsync();
+  await saveToken(String(data));
+  listenTokenChanges();
   return true;
 }
 
@@ -66,10 +64,26 @@ export async function requestPushPermission(): Promise<boolean> {
   return registerPush();
 }
 
+async function saveToken(token: string) {
+  await api.notifications.registerPush({ token, platform: Platform.OS === 'ios' ? 'apns' : 'fcm' });
+  await secure.set(TOKEN_KEY, token);
+}
+
+let tokenSub: { remove: () => void } | null = null;
+/** OS 가 토큰을 바꾸면(앱 재설치·복원 등) 새 토큰으로 다시 등록한다 */
+function listenTokenChanges() {
+  if (tokenSub) return;
+  tokenSub = Notifications.addPushTokenListener(({ data }) => {
+    void saveToken(String(data)).catch(() => undefined);
+  });
+}
+
 /** 로그아웃 시 이 기기로 더 보내지 않게 해제 */
 export async function unregisterPush() {
   const token = await secure.get(TOKEN_KEY);
   if (!token) return;
+  tokenSub?.remove();
+  tokenSub = null;
   await api.notifications.unregisterPush(token).catch(() => undefined);
   await secure.remove(TOKEN_KEY);
 }

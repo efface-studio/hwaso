@@ -68,20 +68,16 @@ export default function MyBidsScreen() {
       ) : (
         <List
           contentContainerStyle={{ flexGrow: 1 }}
-          data={pull.refreshing ? [] : (q.data ?? [])}
+          data={q.data ?? []}
           keyExtractor={(b) => b.auction.id}
           refreshControl={<AppRefreshControl refreshing={pull.refreshing} onRefresh={pull.onRefresh} />}
           ItemSeparatorComponent={Sep}
           ListEmptyComponent={
-            pull.refreshing ? (
-              <Loading variant="list" />
-            ) : (
-              <Empty
-                kind="gavel"
-                title={tab === 'wins' ? tr('bids.emptyWins') : tr('bids.emptyBids')}
-                action={{ title: tr('bids.browse'), onPress: () => router.push('/auctions') }}
-              />
-            )
+            <Empty
+              kind="gavel"
+              title={tab === 'wins' ? tr('bids.emptyWins') : tr('bids.emptyBids')}
+              action={{ title: tr('bids.browse'), onPress: () => router.push('/auctions') }}
+            />
           }
           renderItem={({ item: b }) => {
             const s = status(b);

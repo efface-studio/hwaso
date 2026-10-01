@@ -39,6 +39,8 @@ enum VerificationPurpose {
   SIGNUP
   RESET_PASSWORD
   DELETE_ACCOUNT
+  /// 로그인한 사용자의 민감 작업 재인증 (서버 내부용 — 공개 send-code 로는 요청할 수 없다)
+  REAUTH
 }
 
 enum SaleType {
@@ -169,6 +171,24 @@ enum NotificationType {
   REVIEW_RECEIVED
   ORDER_UPDATED
   FOLLOWING_NEW_ITEM
+  SECURITY_NEW_DEVICE
+}
+
+enum SecurityEventType {
+  LOGIN
+  LOGIN_FAILED
+  NEW_DEVICE
+  LOGOUT
+  SESSION_REVOKED
+  PASSWORD_CHANGED
+  SETTLEMENT_ACCOUNT_CHANGED
+  REAUTH
+  REAUTH_FAILED
+  BIOMETRIC_REGISTERED
+  BIOMETRIC_REMOVED
+  INTEGRITY_WARNING
+  ACCOUNT_LINKED
+  ACCOUNT_UNLINKED
 }
 
 enum ChatMessageKind {
@@ -275,6 +295,10 @@ model User {
   coupons        CouponRedemption[]
   blocking       UserBlock[]        @relation("Blocker")
   blockedBy      UserBlock[]        @relation("Blocked")
+
+  @@index([createdAt])
+  securityEvents SecurityEvent[]
+  biometricKeys  BiometricKey[]
 }
 
 model Profile {
@@ -325,6 +349,39 @@ model Session {
   @@index([familyId])
 }
 
+/// 계정 보안 이벤트 (docs/SECURITY.md §계정 보안). 사용자에게 보여주는 기록이며 append-only
+model SecurityEvent {
+  id        String            @id @default(cuid())
+  userId    String
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      SecurityEventType
+  ip        String?
+  /// 기기 이름 (Session.deviceName)
+  device    String?
+  /// 세션 family ID (= SessionDto.id). refresh 회전에도 같은 기기면 같은 값
+  sessionId String?
+  detail    Json?
+  createdAt DateTime          @default(now()) @db.Timestamptz
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([sessionId, type, createdAt])
+}
+
+/// 생체 재인증 키. 기기 세션(family)당 1개 — refresh 회전에도 유지되고 세션이 폐기되면 삭제된다
+model BiometricKey {
+  id         String    @id @default(uuid()) @db.Uuid
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  familyId   String    @unique
+  /// SHA-256(secret). 원문은 발급 시 한 번만 내려준다
+  secretHash String
+  deviceName String
+  createdAt  DateTime  @default(now()) @db.Timestamptz
+  lastUsedAt DateTime? @db.Timestamptz
+
+  @@index([userId])
+}
+
 model VerificationCode {
   id         String              @id @default(cuid())
   email      String
@@ -357,7 +414,8 @@ model Follow {
   createdAt   DateTime @default(now()) @db.Timestamptz
 
   @@id([followerId, followingId])
-  @@index([followingId])
+  @@index([followingId, createdAt(sort: Desc)])
+  @@index([followerId, createdAt(sort: Desc)])
 }
 
 model Seller {
@@ -470,6 +528,9 @@ model Product {
   chatRooms   ChatRoom[]
   chatShares  ChatMessage[]
 
+  // 공개 목록 최신순은 migrations SQL 의 부분 인덱스 product_published_idx ("publishedAt" DESC, id)
+  // WHERE "deletedAt" IS NULL AND "publishedAt" IS NOT NULL 를 쓴다 (Prisma 로 표현 불가).
+  // status 조건은 Prisma 가 파라미터로 보내 부분 인덱스 조건으로 증명되지 않으므로 넣지 않는다.
   @@index([status, publishedAt(sort: Desc)])
   @@index([categoryId, status])
   @@index([sellerId, status])
@@ -681,6 +742,7 @@ model Order {
   @@index([buyerId, createdAt(sort: Desc)])
   @@index([sellerId, status, createdAt(sort: Desc)])
   @@index([status, paymentDueAt])
+  @@index([paidAt])
 }
 
 model OrderItem {
@@ -864,6 +926,7 @@ model ChatReadState {
   pinnedAt   DateTime? @db.Timestamptz
 
   @@id([roomId, userId])
+  @@index([userId])
 }
 
 model UserBlock {
@@ -976,4 +1039,31 @@ model AuditLog {
   @@index([targetType, targetId])
   @@index([actorId, createdAt])
   @@index([createdAt(sort: Desc)])
+}
+
+/// 자체 호스팅 OTA 업데이트 (Expo Updates 프로토콜 v1 — docs/MOBILE_RELEASE.md "OTA 업데이트")
+/// id 는 클라이언트가 업데이트 식별자로 쓰는 UUID v4 (코드에서 생성)
+model OtaUpdate {
+  id             String   @id
+  /// ios | android
+  platform       String
+  runtimeVersion String
+  channel        String   @default("production")
+  /// UPDATE | ROLLBACK (내장 번들로 되돌리기 지시)
+  kind           String   @default("UPDATE")
+  message        String   @default("")
+  critical       Boolean  @default(false)
+  /// 1~100. eas-client-id 해시로 대상 기기를 고른다
+  rolloutPercent Int      @default(100)
+  /// ACTIVE | ROLLED_BACK
+  status         String   @default("ACTIVE")
+  /// ROLLBACK 은 null
+  launchAsset    Json?
+  assets         Json     @default("[]")
+  /// 매니페스트 extra.expoClient (앱 설정)
+  expoClient     Json?
+  createdById    String?
+  createdAt      DateTime @default(now()) @db.Timestamptz
+
+  @@index([platform, runtimeVersion, channel, createdAt(sort: Desc)])
 }

@@ -10,6 +10,7 @@ import type {
   Paged,
   PageQuery,
 } from '@shop/shared';
+import { invalidateAuctionPolicy } from '../auctions/auction-policy';
 import { CATEGORY_CACHE_KEY } from '../catalog/catalog.controller';
 import { AppException } from '../common/app-exception';
 import { logNotifyError } from '../notifications/notification-events';
@@ -296,6 +297,7 @@ export class AdminCatalogService {
   async setPolicy(ctx: AuditContext, input: AuctionPolicyInput) {
     const before = await this.policy();
     const after = await this.prisma.auctionPolicy.update({ where: { id: 'default' }, data: input });
+    invalidateAuctionPolicy();
     await this.audit.log(ctx, 'auction.policy', 'AUCTION_POLICY', 'default', before, input);
     return after;
   }

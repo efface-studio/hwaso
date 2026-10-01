@@ -29,7 +29,7 @@ import { logNotifyError, NotificationEvents } from '../notifications/notificatio
 import { assertClean } from '../common/moderation';
 import { ZodPipe } from '../common/zod.pipe';
 import { PrismaService } from '../prisma/prisma.service';
-import { cardInclude, PUBLIC_PRODUCT, toCard } from './product.mapper';
+import { cardSelect, PUBLIC_PRODUCT, toCard } from './product.mapper';
 import { ProductsService } from './products.service';
 import { SellerProductsService } from './seller-products.service';
 
@@ -181,7 +181,7 @@ export class ProductsController {
       where: { userId: user.id, product: { deletedAt: null } },
       orderBy: { createdAt: 'desc' },
       take: 200,
-      include: { product: { include: cardInclude } },
+      include: { product: { select: cardSelect } },
     });
     const all = new Set(rows.map((r) => r.productId));
     return rows.map((r) => toCard(r.product, all));
@@ -195,7 +195,7 @@ export class ProductsController {
       where: { userId: user.id, product: { deletedAt: null } },
       orderBy: { viewedAt: 'desc' },
       take: 50,
-      include: { product: { include: cardInclude } },
+      include: { product: { select: cardSelect } },
     });
     const favs = await this.products.favoriteSet(
       user.id,

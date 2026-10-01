@@ -161,6 +161,11 @@ const en: Translation<typeof ko> = {
     phone: 'Phone',
     web: 'Web',
   },
+  update: {
+    criticalTitle: 'Important update',
+    criticalMessage: 'A required fix is ready. The app will restart to apply it.',
+    restart: 'Restart',
+  },
   push: {
     channelName: 'General notifications',
   },

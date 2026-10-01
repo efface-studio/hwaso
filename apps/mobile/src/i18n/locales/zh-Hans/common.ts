@@ -161,6 +161,11 @@ const zhHans: Translation<typeof ko> = {
     phone: '手机',
     web: '网页',
   },
+  update: {
+    criticalTitle: '重要更新',
+    criticalMessage: '必要的修复已准备好，应用将重新启动以完成更新。',
+    restart: '重新启动',
+  },
   push: {
     channelName: '默认通知',
   },

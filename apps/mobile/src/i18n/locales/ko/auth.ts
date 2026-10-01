@@ -72,7 +72,6 @@ const ko = {
   },
   social: {
     continueWith: '{{provider}}로 계속하기',
-    redirecting: '이동 중…',
     notConfiguredTitle: '{{provider}} 로그인 준비 중',
     notConfiguredMessage: '지금은 이 방법으로 로그인할 수 없어요. 다른 방법으로 로그인해주세요.',
     appleBuildOnlyTitle: 'Apple로 로그인할 수 없어요',

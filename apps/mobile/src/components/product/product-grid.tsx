@@ -7,7 +7,7 @@ import { AppRefreshControl } from '@/components/ui/app-refresh-control';
 import { Empty, Loading } from '@/components/ui/state';
 import { List } from '@/components/ui/list';
 import { useGrid } from '@/hooks/use-grid';
-import { usePullRefresh } from '@/hooks/use-pull-refresh';
+import { useInfinitePullRefresh } from '@/hooks/use-pull-refresh';
 import { api } from '@/lib/api';
 import { useTheme } from '@/theme';
 import { ProductCard } from './product-card';
@@ -25,15 +25,16 @@ export function ProductGrid({
   const t = useTheme();
   const { t: tr } = useTranslation('home');
   const g = useGrid();
+  const queryKey = ['products', params];
   const q = useInfiniteQuery({
-    queryKey: ['products', params],
+    queryKey,
     queryFn: ({ pageParam, signal }) =>
       api.market.products({ ...params, cursor: pageParam, limit: 24 }, signal),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (last) => last.nextCursor ?? undefined,
   });
-  const pull = usePullRefresh(q.refetch);
-  const items: ProductCardDto[] = pull.refreshing ? [] : (q.data?.pages.flatMap((p) => p.items) ?? []);
+  const pull = useInfinitePullRefresh(queryKey, q.refetch);
+  const items: ProductCardDto[] = q.data?.pages.flatMap((p) => p.items) ?? [];
   return (
     <List
       key={g.columns}
@@ -43,7 +44,7 @@ export function ProductGrid({
       renderItem={({ item }) => <ProductCard p={item} width={g.cardWidth} />}
       ListHeaderComponent={header}
       ListEmptyComponent={
-        q.isPending || pull.refreshing ? (
+        q.isPending ? (
           <Loading variant="grid" />
         ) : (
           <Empty kind="search" title={emptyTitle ?? tr('list.empty')} />
