@@ -13,6 +13,31 @@ const zhHans: Translation<typeof ko> = {
     socialDivider: '快捷登录',
     close: '关闭并继续浏览',
     failed: '登录失败，请检查网络连接。',
+    browse: '先随便看看',
+    saveEmail: '记住账号',
+    autoLogin: '自动登录',
+  },
+  quick: {
+    button: {
+      face: '使用面容 ID 登录',
+      touch: '使用触控 ID 登录',
+      fingerprint: '使用指纹登录',
+      biometric: '使用生物识别登录',
+    },
+    method: {
+      face: '面容 ID',
+      touch: '触控 ID',
+      fingerprint: '指纹',
+      biometric: '生物识别',
+    },
+    prompt: '登录画所',
+    invalidTitle: '请重新设置',
+    invalidMessage:
+      '快速登录已过期，或此设备的面容·指纹信息已更改。请用其他方式登录后，在 设置 › 安全 中重新开启。',
+    offerTitle: '开启快速登录吗？',
+    offerMessage: '下次无需密码，仅用{{method}}即可登录。可随时在 设置 › 安全 中关闭。',
+    later: '以后再说',
+    enable: '开启',
   },
   signup: {
     title: '使用邮箱注册',

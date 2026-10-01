@@ -266,6 +266,8 @@ export class AuthService {
     });
     // 다른 기기는 로그아웃, 현재 기기는 유지
     await this.sessions.revokeAll(userId, await this.sessions.familyOf(sessionId));
+    // 빠른 로그인(Face ID)은 이 기기 것까지 모두 끈다 — 비밀번호를 바꾸는 이유가 계정 보호일 수 있다
+    await this.prisma.quickLoginCredential.deleteMany({ where: { userId } });
     await this.security.record(userId, 'PASSWORD_CHANGED', ctx, { via: 'change' });
   }
 

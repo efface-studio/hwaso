@@ -13,6 +13,14 @@ import { usePullRefresh } from '@/hooks/use-pull-refresh';
 import i18n, { currentLanguage, LOCALE } from '@/i18n';
 import { api } from '@/lib/api';
 import { useIntegrity } from '@/lib/integrity';
+import {
+  biometricKind,
+  disableQuickLogin,
+  enableQuickLogin,
+  methodName,
+  syncQuickLogin,
+  type BiometricKind,
+} from '@/lib/quick-login';
 import { biometricKey } from '@/lib/reauth';
 import { useScreenGuard } from '@/lib/screen-guard';
 import { useTheme } from '@/theme';
@@ -51,8 +59,9 @@ function Row({ children, right, onPress }: { children: ReactNode; right?: ReactN
 }
 
 /**
- * 보안: 생체 인증 사용 · 기기 상태 · 로그인 기기 · 최근 활동.
- * 켜면 결제·정산 계좌 변경 같은 작업을 비밀번호 대신 Face ID 로 확인한다 (docs/SECURITY.md).
+ * 보안: 생체 인증 사용 · 빠른 로그인 · 기기 상태 · 로그인 기기 · 최근 활동.
+ * 생체 인증을 켜면 결제·정산 계좌 변경 같은 작업을 비밀번호 대신 Face ID 로 확인한다 (docs/SECURITY.md).
+ * 빠른 로그인을 켜면 로그아웃한 뒤에도 Face ID·지문으로 로그인한다 (docs/AUTH.md §9).
  */
 export default function SecurityScreen() {
   const t = useTheme();
@@ -61,6 +70,8 @@ export default function SecurityScreen() {
   const risky = useIntegrity((s) => s.flags.length > 0);
   const [biometric, setBiometric] = useState<boolean | null>(null);
   const [busy, setBusy] = useState(false);
+  const [quick, setQuick] = useState<boolean | null>(null);
+  const [kind, setKind] = useState<BiometricKind | null>(null);
   useScreenGuard();
 
   useEffect(() => {
@@ -68,7 +79,38 @@ export default function SecurityScreen() {
       .id()
       .then((id) => setBiometric(!!id))
       .catch(() => setBiometric(false));
+    void biometricKind()
+      .then(setKind)
+      .catch(() => setKind(null));
+    void syncQuickLogin()
+      .then(setQuick)
+      .catch(() => setQuick(false));
   }, []);
+
+  const toggleQuick = async (on: boolean) => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      if (!on) {
+        await disableQuickLogin();
+        setQuick(false);
+        Alert.alert(tr('security.quickLoginOff'));
+      } else {
+        // 로그인한 지 10분이 지났으면 서버가 본인 확인을 요구하고, 확인 창(ReauthHost)이 뜬 뒤 다시 보낸다
+        const r = await enableQuickLogin();
+        if (r === 'unavailable') return Alert.alert(tr('security.biometricUnavailable'));
+        if (r === 'risky') return Alert.alert(tr('security.quickLoginRisky'));
+        setQuick(true);
+        Alert.alert(tr('security.quickLoginOn'));
+      }
+      void qc.invalidateQueries({ queryKey: ['security', 'events'] });
+    } catch (e) {
+      if (!(e instanceof ApiError && e.code === 'REAUTH_REQUIRED'))
+        Alert.alert(e instanceof ApiError ? e.message : i18n.t('common:state.actionFailed'));
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const events = useInfiniteQuery({
     queryKey: ['security', 'events'],
@@ -140,6 +182,25 @@ export default function SecurityScreen() {
           {tr('security.biometricHint')}
         </Text>
       </Row>
+      {Platform.OS !== 'web' && (
+        <Row
+          right={
+            <Switch
+              style={{ alignSelf: 'center' }}
+              accessibilityLabel={tr('security.quickLogin', { method: methodName(kind ?? 'biometric') })}
+              value={!!quick}
+              disabled={quick === null || busy}
+              onValueChange={(v) => void toggleQuick(v)}
+              trackColor={{ true: t.colors.primary }}
+            />
+          }
+        >
+          <Text>{tr('security.quickLogin', { method: methodName(kind ?? 'biometric') })}</Text>
+          <Text variant="caption" color="muted">
+            {tr('security.quickLoginHint', { method: methodName(kind ?? 'biometric') })}
+          </Text>
+        </Row>
+      )}
 
       <Text variant="label" color="muted" style={styles.group}>
         {tr('security.groupDevice')}

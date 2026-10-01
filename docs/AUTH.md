@@ -8,6 +8,9 @@
 | Refresh      | 불투명 랜덤 32바이트 (base64url)   | 30일 (슬라이딩) | Web: `httpOnly Secure SameSite=Lax` 쿠키 `rt` (Path `/api/v1/auth`) · Mobile: `expo-secure-store` |
 | Verification | JWT `{email, purpose}`             | 10분            | 클라이언트 메모리 (가입/재설정 단계 사이 전달)                                                    |
 | Reauth       | JWT `{sub, sid, fam}` aud `reauth` | 5분             | 클라이언트 메모리. 민감 작업 요청의 `x-reauth-token` 헤더 (docs/SECURITY.md §계정 보안)           |
+| Quick login  | 불투명 랜덤 32바이트 (base64url)   | 90일 (슬라이딩) | Mobile 전용: 생체 인증 보호 키체인 항목. 쓸 때마다 교체 (§9 빠른 로그인)                          |
+
+- 로그인 유지 선택(§12): 앱 "자동 로그인"을 끄면 refresh 토큰을 다음 실행 때 서버 로그아웃과 함께 폐기하고, 웹 "로그인 상태 유지"를 끄면 `rt` 를 만료 없는 세션 쿠키로 굽는다.
 
 - DB 에는 refresh 토큰의 **SHA-256 해시만** 저장 (`Session.refreshTokenHash`).
 - **Refresh Rotation**: `/auth/refresh` 마다 새 토큰 발급, 이전 토큰 무효. 이미 회전된(폐기된) 토큰이 다시 오면 **재사용 탐지** → 해당 `familyId` 전체 세션 폐기 (토큰 탈취 대응).
@@ -73,6 +76,7 @@ iOS 앱의 Apple 로그인은 웹 OAuth 가 아니라 시스템 Sign in with App
 - 로그인/가입/소셜 시 `device: {name, platform}` 전달 → `Session` 1행.
 - `GET /auth/sessions` : 기기명, 플랫폼, IP(마지막 옥텟 마스킹), 마지막 사용, 현재 기기 표시.
 - 개별/전체 로그아웃, 비밀번호 변경·재설정 시 전체 세션 폐기. 폐기된 기기는 access 토큰도 즉시 거부되고 그 기기의 생체 재인증 키도 삭제된다.
+- 빠른 로그인 자격(§9)은 family 폐기와 함께 지운다 — 원격 로그아웃(`DELETE /auth/sessions/:id`)·다른 기기 전체 로그아웃(현재 기기 것은 남김)·재사용 탐지·정지·탈퇴·비밀번호 재설정. **본인이 그 기기에서 로그아웃(`POST /auth/logout`)할 때만 남긴다** (로그아웃한 뒤 Face ID 로 다시 들어오는 기능). 비밀번호 변경은 현재 기기 것까지 모두 지운다.
 - 로그인·가입·소셜 로그인은 `SecurityEvent` 에 기록한다. 이전 로그인 기록이 있는 계정이 최근 90일 동안 쓰지 않은 기기(플랫폼 + 기기명)로 로그인하면 `NEW_DEVICE` 를 남기고 인앱·푸시 알림(`SECURITY_NEW_DEVICE`, 끌 수 없는 system 분류)과 메일을 보낸다.
 - 만료 세션은 Worker 가 매일 정리.
 
@@ -101,9 +105,24 @@ iOS 앱의 Apple 로그인은 웹 OAuth 가 아니라 시스템 Sign in with App
 
 ## 9. 생체 인증 (Mobile)
 
-- 앱 잠금(선택): 설정에서 켜면 앱 실행/포그라운드 복귀 시 `expo-local-authentication` 으로 잠금 해제 후 SecureStore 의 refresh 토큰 사용 (로컬 잠금, 서버 변화 없음).
+- 앱 잠금(선택): 설정에서 켜면 앱 실행/포그라운드 복귀 시 `expo-local-authentication` 으로 잠금 해제 후 SecureStore 의 refresh 토큰 사용 (로컬 잠금, 서버 변화 없음). 로그인하지 않은 채 시작해 이어서 로그인(빠른 로그인 포함)했으면 그 실행에서는 잠금을 다시 묻지 않는다.
 - 생체 재인증 키: 재인증 토큰으로 `POST /auth/reauth/biometric` 을 호출하면 서버가 32바이트 난수 secret 과 keyId 를 한 번만 내려준다. 앱은 secret 을 생체 인증으로 보호되는 SecureStore 항목에 저장하고, 민감 작업 때 생체 인증으로 꺼내 `POST /auth/reauth {method:'biometric', keyId, secret}` 로 보낸다. 서버는 SHA-256 해시만 저장하고 상수 시간으로 비교한다.
 - 키는 기기 세션(family)당 1개 — refresh 회전에는 유지되고, 다시 등록하면 교체되며, 그 기기가 로그아웃·원격 로그아웃되면 삭제된다. 다른 기기의 키로는 재인증할 수 없다.
+
+### 빠른 로그인 (Face ID · Touch ID · 지문)
+
+로그아웃했거나 세션이 만료된 뒤 비밀번호 없이 생체 인증만으로 로그인한다. **비밀번호를 기기에 저장하지 않고**, 서버가 만든 자격(`QuickLoginCredential`)을 쓴다. 비밀번호가 없는 소셜 전용 계정도 쓸 수 있다.
+
+- **켜기** `POST /auth/quick-login/register {deviceId, deviceName}` → `{credentialId, secret, expiresAt}`. 앱 세션(ios·android)만, 로그인한 지 10분 안의 기기 세션이 아니면 재인증 토큰 필요(`REAUTH_REQUIRED` → 앱 본인 확인 창). `deviceId` 는 앱 설치마다 만드는 UUID(일반 키체인, 비밀 아님)로 자격을 그 설치에 묶는다. 계정·설치당 1개, 다시 켜면 secret 교체.
+- **저장**: 서버는 secret·deviceId 의 SHA-256 만 저장한다. 앱은 `credentialId` 를 일반 키체인, `secret` 을 `requireAuthentication` 키체인 항목(`WHEN_PASSCODE_SET_THIS_DEVICE_ONLY`, iOS `biometryCurrentSet` — 얼굴·지문을 다시 등록하면 무효)에 둔다.
+- **로그인** `POST /auth/quick-login {credentialId, secret, deviceId, device}` (공개). 앱이 생체 인증으로 secret 을 꺼내 보낸다. 성공하면 일반 로그인과 같은 새 세션(새 family) + **새 secret**(1회용 교체, 만료 90일로 다시 늘림)을 준다 → `AuthTokens & {quickLogin}`. 세션 발급과 secret 교체는 한 트랜잭션(같은 secret 동시 사용은 하나만 성공).
+- **실패**는 모두 401 `QUICK_LOGIN_INVALID`(사유를 응답으로 구분하지 않는다): 없음·만료(행 삭제)·탈퇴 계정 · secret/deviceId 불일치(연속 5회면 삭제) · **이미 교체된 secret 재사용**(탈취로 보고 자격과 그 자격이 마지막으로 만든 family 를 폐기). 정지 계정은 403 `ACCOUNT_RESTRICTED`. 웹 기기는 403.
+- **제한**: IP 20/분, 자격당 10/10분, 켜기 사용자당 10/시간.
+- **기록**: 켜기 `QUICK_LOGIN_REGISTERED`, 끄기 `QUICK_LOGIN_REMOVED`, 실패 `QUICK_LOGIN_FAILED`(detail `reason: reuse·secret·device`, `locked`), 성공은 일반 로그인과 같이 `LOGIN`(detail `method: 'quick'`) + 새 기기 확인(`NEW_DEVICE` 알림·메일).
+- **상태·다시 묶기·끄기**: `GET /auth/quick-login?deviceId=` → `{enabled, expiresAt}`, `PATCH /auth/quick-login {deviceId}` 는 비밀번호·소셜로 다시 로그인한 기기의 자격을 현재 family 에 묶는다(원격 로그아웃이 올바른 자격을 찾도록 — 앱이 로그인 직후 부른다), `DELETE /auth/quick-login {deviceId}`.
+- **폐기**: §6. 앱은 설정 › 보안 토글로 끄면 서버·기기 모두 지우고, 비밀번호를 바꾸면 기기 자격을 지운다. 기기 무결성 위험(탈옥·루팅·후킹·변조)이 보이면 켜지 않는다. 만료 행은 쓰려 할 때 지운다 (정리 작업 없음).
+- **앱 흐름**: 비밀번호·소셜로 로그인한 직후 이 기기에서 쓸 수 있고 아직 켜지 않았으면 계정마다 한 번 네이티브 Alert 로 켤지 묻는다(새 가입·시연 모드 제외). 설정 › 보안에 토글. 로그인 화면은 자격이 있으면 "Face ID로 로그인" 버튼을 보인다(자동으로 띄우지 않는다). 빠른 로그인 직후에는 앱 잠금(§9 앱 잠금)을 다시 묻지 않는다.
+- Android 는 키체인 항목을 쓸 때도 생체 인증을 요구해 빠른 로그인 한 번에 지문 창이 두 번(꺼내기·새 secret 저장) 뜬다. 저장을 취소하면 자격을 끈다.
 
 ## 10. 공개 데모 모드
 
@@ -130,3 +149,25 @@ iOS 앱의 Apple 로그인은 웹 OAuth 가 아니라 시스템 Sign in with App
 - 마케팅(광고성 정보) 수신: `marketingOptIn` + 동의 시각 `marketingAgreedAt`. `POST /me/consent` 를 다시 보내 동의·철회한다 (필수 동의 시각은 처음 값을 유지). 광고성 전체 알림은 동의자에게만, 제목 `(광고)`, 21~8시(KST)에는 푸시하지 않는다 (docs/API.md Admin).
 - 마이그레이션 `20261002000000_store_review` 가 기존 가입자의 `privacyAgreedAt`·`ageConfirmedAt` 을 `termsAgreedAt` 으로 채운다 — 약관 동의 기록이 없는 계정(시드 등)만 다음 로그인 때 동의 화면을 본다.
 - 만 14세 미만은 가입할 수 없다 (개인정보 보호법 제22조의2 법정대리인 동의 절차를 두지 않는다).
+
+## 12. 로그인 화면 · 로그인 유지
+
+### 앱 첫 화면 (로그인 → 둘러보기)
+
+- 로그인하지 않은 채 앱을 열면 **로그인 화면이 첫 화면**이다 (`app/index.tsx` → `/login`). 로그인 방식 아래 **"둘러보기"** 로 로그인 없이 들어간다 (App Store 5.1.1 — 계정이 필요 없는 기능은 로그인 없이). 둘러보기 선택은 **이번 실행 동안만** 기억한다 — 다음 실행은 다시 로그인 화면부터 (첫 화면 목적이 로그인 안내이고, 둘러보기는 한 번 누르면 된다).
+- 둘러보기 중 로그인이 필요한 동작(관심·입찰·구매·채팅·판매 등)은 지금처럼 `requireLogin()` 이 로그인 화면을 띄운다(왼쪽 위 닫기). 로그인하면 보던 화면으로 돌아간다.
+- 로그인·가입·소셜 로그인 뒤: 첫 화면에서 로그인했으면 홈, 로그인해야 하는 딥링크로 열렸으면 그 화면(`components/entry-gate.tsx`).
+- 로그아웃하거나 세션이 만료되면 로그인 화면이 다시 첫 화면이 된다 (빠른 로그인 버튼이 여기 보인다).
+- 딥링크(docs/MOBILE_NAVIGATION.md §2): 공유받은 작품·경매·프로필 같은 **공개 화면은 로그인 화면 없이 바로** 연다(둘러보기로 들어온 것으로 본다). 로그인해야 하는 화면(채팅방·주문·알림·설정 등)은 로그인 화면을 띄우고 로그인 뒤 연다. 앱 시작의 세션 복구가 끝나기 전에 온 링크·알림도 복구 뒤에 연다.
+- 약관 동의 화면·앱 잠금·스플래시·OTA 동작은 그대로다. 시연 모드(서버에 닿지 않을 때 기록한 관리자 계정으로 로그인)도 같은 로그인 화면에서 들어간다.
+
+### 아이디 저장 · 자동 로그인 (앱)
+
+- **아이디 저장**(기본 끔): 켜고 이메일로 로그인하면 이메일을 키체인(`hwaso.savedEmail`)에 두고 다음 로그인 화면에 채운다. 끄고 로그인하면 지운다.
+- **자동 로그인**(기본 켬 = 기존 동작): 선택은 기기에 기억한다(`hwaso.autoLogin`). 끄고 로그인(이메일·소셜·빠른 로그인)하면 그 세션에 표시(`hwaso.session.ephemeral`)를 남긴다. 같은 실행 안에서는 백그라운드를 다녀와도 로그인 상태다. **다음 실행(앱 종료 후 다시 열기·긴급 OTA 재시작 포함)** 때는 세션을 이어 쓰지 않고, 저장한 refresh 토큰과 이 기기 푸시 토큰으로 `POST /auth/logout {refreshToken, pushToken}` 을 보내 서버 세션과 푸시를 끝낸 뒤 로그인 화면부터 시작한다. 오프라인이면 다음 실행 때 다시 보낸다. refresh 토큰은 이 정리를 위해 키체인에 남겨 둔다 (메모리에만 두면 서버 세션을 끝낼 수 없다).
+
+### 아이디 저장 · 로그인 상태 유지 (웹)
+
+- **아이디 저장**: `localStorage`(`hwaso.savedEmail`).
+- **로그인 상태 유지**(기본 켬): 선택은 `localStorage`(`hwaso.keepSignedIn`). 끄면 로그인(이메일·소셜·가입) 직후 `POST /auth/session/persistence {persistent:false}`(CSRF 헤더 필요)로 `rt` 를 만료 없는 세션 쿠키로 다시 굽고 표시 쿠키 `rts=1`(같은 경로·httpOnly 세션 쿠키)을 둔다. refresh 회전도 `rts` 가 있으면 세션 쿠키로 굽는다. 브라우저를 닫으면 쿠키가 사라진다 — 서버 세션은 30일 뒤 만료된다(서버가 브라우저 종료를 알 수 없다). 브라우저의 "이전 탭 복원"은 세션 쿠키도 살려 둘 수 있다.
+- 웹에는 생체 인증 로그인이 없다.

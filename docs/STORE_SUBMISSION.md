@@ -103,6 +103,7 @@ Demo account (Sign-in required)
 - The account is a regular buyer account with consent completed. A seller account is also provided in the notes field if needed.
 
 Guest browsing
+- The app opens on the sign-in screen. Tap "둘러보기" (Browse) below the sign-in options to use the app without an account.
 - Home, search, artwork detail, auctions, artist and seller profiles, notices, and policies are available without signing in.
 - Sign-in is requested only for chat, bidding, favorites, following, cart/checkout, orders, selling, and reporting.
 
@@ -162,7 +163,7 @@ Artwork content
 
 - [ ] iPad(또는 iPad 시뮬레이터) 세로 화면에서 둘러보기·로그인·결제 화면이 늘어지거나 겹치지 않는다 — 심사 기기가 iPad 일 수 있다 (2.1 앱 완성도·4.0 디자인)
 - [ ] App Store Connect 미디어: iPhone 6.9" 와 iPad 13" 세로 스크린숏 업로드
-- [ ] 로그인 없이 홈·검색·작품 상세·경매·프로필·정책 열람, 행동 버튼은 로그인 화면으로
+- [ ] 첫 실행 로그인 화면의 "둘러보기"로 로그인 없이 홈·검색·작품 상세·경매·프로필·정책 열람, 행동 버튼은 로그인 화면으로
 - [ ] 소셜 첫 가입 → 동의 화면 → 동의 전에는 글쓰기·채팅 불가
 - [ ] Apple 로그인 → 탈퇴 → 설정 › Apple ID › 암호 및 보안 › Apple로 로그인 목록에서 앱이 사라짐 (revoke 확인)
 - [ ] 소셜 전용 계정(비밀번호 없음) 탈퇴가 소셜 재확인으로 끝까지 된다

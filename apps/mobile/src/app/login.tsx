@@ -1,7 +1,7 @@
 import { ApiError } from '@shop/api-client';
 import { router } from 'expo-router';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Pressable, StyleSheet, useWindowDimensions, View, type TextInput } from 'react-native';
+import { Alert, Pressable, StyleSheet, useWindowDimensions, View, type TextInput } from 'react-native';
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -16,6 +16,7 @@ import { useTranslation } from 'react-i18next';
 import { SocialButtons } from '@/components/auth/social-buttons';
 import { HwasoMark } from '@/components/brand/hwaso-mark';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Field } from '@/components/ui/field';
 import { FormScroll } from '@/components/ui/form-scroll';
 import { Icon } from '@/components/ui/icon';
@@ -23,7 +24,10 @@ import { Text } from '@/components/ui/text';
 import { api } from '@/lib/api';
 import { appDevice } from '@/lib/device';
 import { goBack } from '@/lib/nav';
+import { biometricKind, hasQuickLogin, signInWithQuickLogin, type BiometricKind } from '@/lib/quick-login';
+import { secure } from '@/lib/secure';
 import { useAuthStore } from '@/stores/auth';
+import { enterAsGuest, useEntry } from '@/stores/entry';
 import { useLaunch } from '@/stores/launch';
 import { useTheme } from '@/theme';
 
@@ -53,15 +57,33 @@ function Rise({ v, children }: { v: SharedValue<number>; children: ReactNode }) 
 const COMPACT_HEIGHT = 720;
 /** 태블릿에서 폼이 너무 넓어지지 않게 */
 const MAX_WIDTH = 420;
+/** 아이디(이메일) 저장 — 비밀이 아니지만 다른 값과 같은 키체인에 둔다 */
+const SAVED_EMAIL_KEY = 'hwaso.savedEmail';
+/** 자동 로그인 선택을 기억한다 (끈 경우만 '0') */
+const AUTO_LOGIN_KEY = 'hwaso.autoLogin';
+
+const QUICK_ICON: Record<
+  BiometricKind,
+  { ios: 'faceid' | 'touchid' | 'lock.shield'; android: 'fingerprint' }
+> = {
+  face: { ios: 'faceid', android: 'fingerprint' },
+  touch: { ios: 'touchid', android: 'fingerprint' },
+  fingerprint: { ios: 'touchid', android: 'fingerprint' },
+  biometric: { ios: 'lock.shield', android: 'fingerprint' },
+};
 
 /**
- * 로그인 — 로그인이 필요한 동작(관심·입찰·구매·채팅 등)이나 마이 탭에서 띄운다. 닫으면 둘러보던 화면으로.
- * 로그인에 성공하면 루트 가드가 이 화면을 스택에서 빼서 보던 화면으로 돌아간다.
+ * 로그인. 두 가지로 열린다.
+ * - 첫 화면: 로그인하지 않은 채 앱을 열면 index 가 보낸다. 닫기 대신 아래 "둘러보기"로 로그인 없이 들어간다
+ * - 로그인이 필요한 동작(관심·입찰·구매·채팅 등)이나 마이 탭에서 띄울 때: 왼쪽 위 닫기로 둘러보던 화면으로
+ * 로그인에 성공하면 루트 가드가 이 화면을 스택에서 빼서 보던 화면(첫 화면이었으면 홈)으로 간다.
  * 한 화면에 들어가도록 높이에 맞춰 배치하고, 키보드가 올라오거나 큰 글씨 모드로 넘칠 때만 스크롤된다.
  */
 export default function LoginScreen() {
   const t = useTheme();
   const { t: tr } = useTranslation(['auth', 'common', 'my']);
+  // 돌아갈 화면이 없으면 앱의 첫 화면으로 열린 것
+  const [first] = useState(() => !router.canGoBack());
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
   const compact = height - insets.top - insets.bottom < COMPACT_HEIGHT;
@@ -70,7 +92,30 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [saveEmail, setSaveEmail] = useState(false);
+  const persistent = useAuthStore((s) => s.persistent);
+  const [quickKind, setQuickKind] = useState<BiometricKind | null>(null);
+  const [quickBusy, setQuickBusy] = useState(false);
   const passwordRef = useRef<TextInput>(null);
+
+  // 저장한 아이디 · 자동 로그인 선택 · 이 기기의 빠른 로그인을 불러온다
+  useEffect(() => {
+    void secure.get(SAVED_EMAIL_KEY).then((saved) => {
+      if (!saved) return;
+      setEmail((cur) => cur || saved);
+      setSaveEmail(true);
+    });
+    void secure.get(AUTO_LOGIN_KEY).then((v) => useAuthStore.getState().setPersistent(v !== '0'));
+    void hasQuickLogin()
+      .then(async (has) => (has ? biometricKind() : null))
+      .then(setQuickKind)
+      .catch(() => setQuickKind(null));
+  }, []);
+
+  const setAutoLogin = (on: boolean) => {
+    useAuthStore.getState().setPersistent(on);
+    void (on ? secure.remove(AUTO_LOGIN_KEY) : secure.set(AUTO_LOGIN_KEY, '0'));
+  };
 
   const hero = useRise(0, splashDone);
   const form = useRise(120, splashDone);
@@ -80,7 +125,10 @@ export default function LoginScreen() {
     setBusy(true);
     setError(null);
     try {
-      const tokens = await api.auth.login({ email: email.trim(), password, device: appDevice() });
+      const id = email.trim();
+      const tokens = await api.auth.login({ email: id, password, device: appDevice() });
+      await (saveEmail ? secure.set(SAVED_EMAIL_KEY, id) : secure.remove(SAVED_EMAIL_KEY));
+      useEntry.setState({ interactiveLogin: 'password' });
       await useAuthStore.getState().setSession(tokens);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : tr('login.failed'));
@@ -89,24 +137,53 @@ export default function LoginScreen() {
     }
   };
 
+  /** Face ID·지문으로 꺼낸 자격으로 로그인 (비밀번호를 기기에 두지 않는다) */
+  const quickLogin = async () => {
+    setQuickBusy(true);
+    setError(null);
+    useEntry.setState({ interactiveLogin: 'quick' });
+    try {
+      const r = await signInWithQuickLogin(tr('quick.prompt'));
+      if (r !== 'ok') useEntry.setState({ interactiveLogin: null });
+      if (r === 'invalid') {
+        setQuickKind(null);
+        Alert.alert(tr('quick.invalidTitle'), tr('quick.invalidMessage'));
+      }
+    } catch (e) {
+      useEntry.setState({ interactiveLogin: null });
+      setError(e instanceof ApiError ? e.message : tr('login.failed'));
+    } finally {
+      setQuickBusy(false);
+    }
+  };
+
+  /** 닫기(둘러보던 화면으로) · 둘러보기(첫 화면에서 홈으로). 로그인 뒤 열려던 링크는 버린다 */
+  const close = () => {
+    enterAsGuest();
+    if (first) router.replace('/home');
+    else goBack();
+  };
+
   const policy = (slug: 'terms' | 'privacy') =>
     router.push({ pathname: '/policies/[slug]', params: { slug } });
 
   return (
     <View style={{ flex: 1, backgroundColor: t.colors.background }}>
-      {/* 로그인하지 않고 둘러보기 */}
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={tr('login.close')}
-        hitSlop={8}
-        onPress={goBack}
-        style={({ pressed }) => [
-          styles.close,
-          { top: insets.top + 4, minWidth: t.touch, minHeight: t.touch, opacity: pressed ? 0.6 : 1 },
-        ]}
-      >
-        <Icon ios="xmark" android="close" color="muted" />
-      </Pressable>
+      {/* 로그인이 필요한 동작에서 띄웠으면 닫고 둘러보던 화면으로 (첫 화면이면 아래 "둘러보기") */}
+      {!first && (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={tr('login.close')}
+          hitSlop={8}
+          onPress={close}
+          style={({ pressed }) => [
+            styles.close,
+            { top: insets.top + 4, minWidth: t.touch, minHeight: t.touch, opacity: pressed ? 0.6 : 1 },
+          ]}
+        >
+          <Icon ios="xmark" android="close" color="muted" />
+        </Pressable>
+      )}
       <FormScroll
         contentContainerStyle={[
           styles.body,
@@ -144,6 +221,18 @@ export default function LoginScreen() {
 
         <Rise v={form}>
           <View style={styles.form}>
+            {quickKind && (
+              <Button
+                title={tr(`quick.button.${quickKind}`)}
+                variant="secondary"
+                size="lg"
+                block
+                loading={quickBusy}
+                disabled={busy}
+                icon={<Icon {...QUICK_ICON[quickKind]} color="secondaryForeground" />}
+                onPress={() => void quickLogin()}
+              />
+            )}
             <Field
               label={tr('login.email')}
               autoCapitalize="none"
@@ -167,12 +256,20 @@ export default function LoginScreen() {
               onSubmitEditing={() => void submit()}
               error={error}
             />
+            <View style={styles.options}>
+              <View style={styles.option}>
+                <Checkbox label={tr('login.saveEmail')} checked={saveEmail} onChange={setSaveEmail} />
+              </View>
+              <View style={styles.option}>
+                <Checkbox label={tr('login.autoLogin')} checked={persistent} onChange={setAutoLogin} />
+              </View>
+            </View>
             <Button
               title={tr('login.submit')}
               size="lg"
               block
               loading={busy}
-              disabled={!email || !password}
+              disabled={!email || !password || quickBusy}
               onPress={() => void submit()}
             />
             <View style={styles.links}>
@@ -200,10 +297,29 @@ export default function LoginScreen() {
               </Text>
               <View style={[styles.line, { backgroundColor: t.colors.border }]} />
             </View>
-            {/* 로그인되면 루트 가드가 이동을 맡는다 */}
-            <SocialButtons compact={compact} onDone={() => {}} />
+            {/* 로그인되면 루트 가드가 이동을 맡는다. 새로 가입했으면 동의·가입 축하가 먼저라 빠른 로그인은 다음 로그인 때 묻는다 */}
+            <SocialButtons
+              compact={compact}
+              onDone={(isNewUser) => {
+                if (!isNewUser) useEntry.setState({ interactiveLogin: 'social' });
+              }}
+            />
           </View>
-          <View style={[styles.links, { marginTop: compact ? 18 : 24 }]}>
+          {/* 로그인 없이 둘러보기 (App Store 5.1.1 — 계정이 필요 없는 기능은 로그인 없이 쓸 수 있어야 한다) */}
+          {first && (
+            <Pressable
+              accessibilityRole="button"
+              hitSlop={8}
+              onPress={close}
+              style={({ pressed }) => [styles.browse, { minHeight: t.touch, opacity: pressed ? 0.6 : 1 }]}
+            >
+              <Text variant="small" color="muted">
+                {tr('login.browse')}
+              </Text>
+              <Icon ios="chevron.right" android="chevron_right" color="muted" size={12 * t.scale} />
+            </Pressable>
+          )}
+          <View style={[styles.links, { marginTop: first ? 4 : compact ? 18 : 24 }]}>
             <Pressable accessibilityRole="link" hitSlop={8} onPress={() => policy('terms')}>
               <Text variant="caption" color="faint">
                 {tr('my:policy.title.terms')}
@@ -237,6 +353,17 @@ const styles = StyleSheet.create({
   title: { fontSize: 30, lineHeight: 38 },
   titleCompact: { fontSize: 26, lineHeight: 32 },
   form: { gap: 14 },
+  options: { flexDirection: 'row', gap: 12, marginTop: -6 },
+  option: { flex: 1 },
+  browse: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    marginTop: 12,
+    alignSelf: 'center',
+    paddingHorizontal: 12,
+  },
   links: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, paddingTop: 4 },
   dot: { width: 3, height: 3, borderRadius: 1.5 },
   social: { gap: 14 },

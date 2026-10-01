@@ -1,6 +1,9 @@
 import { router, type Href } from 'expo-router';
 import { routingQueue, type LinkAction } from 'expo-router/build/global-state/routingQueue';
 import * as WebBrowser from 'expo-web-browser';
+import { useAuthStore } from '@/stores/auth';
+import { useEntry } from '@/stores/entry';
+import { isProtectedPath } from './entry-link';
 
 /** 뒤로 갈 화면이 없으면(딥링크·푸시로 바로 열린 경우) 홈으로 */
 export const goBack = () => (router.canGoBack() ? router.back() : router.replace('/home'));
@@ -10,7 +13,10 @@ export const goBack = () => (router.canGoBack() ? router.back() : router.replace
  * 위에 쌓인 화면을 닫고 홈으로 돌아간다 (홈이 없으면 지금 화면을 홈으로 바꾼다)
  */
 export function openAppPath(path: string) {
-  if (path === '/' || path === '/home') router.dismissTo('/home');
+  if (path === '/' || path === '/home') return router.dismissTo('/home');
+  // 로그인해야 하는 화면인데 아직 로그인 전(앱 시작의 세션 복구 중 포함)이면 로그인 뒤에 연다 (components/entry-gate)
+  const { ready, user } = useAuthStore.getState();
+  if (isProtectedPath(path) && (!ready || !user)) useEntry.setState({ pending: path });
   else router.push(path as Href);
 }
 

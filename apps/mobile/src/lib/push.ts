@@ -83,6 +83,18 @@ function listenTokenChanges() {
   });
 }
 
+/**
+ * 서버에 알리지 않고 이 기기에 저장한 토큰만 꺼내 지운다 — 자동 로그인을 끈 세션을 다음 실행 때 정리하면서
+ * 로그아웃 요청에 함께 보낸다 (access 토큰이 없어 DELETE /me/push-tokens 를 부를 수 없다)
+ */
+export async function takeSavedPushToken(): Promise<string | null> {
+  const token = await secure.get(TOKEN_KEY);
+  tokenSub?.remove();
+  tokenSub = null;
+  if (token) await secure.remove(TOKEN_KEY);
+  return token;
+}
+
 /** 로그아웃 시 이 기기로 더 보내지 않게 해제 */
 export async function unregisterPush() {
   const token = await secure.get(TOKEN_KEY);
