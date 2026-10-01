@@ -70,6 +70,7 @@ docs/         설계 문서
 | `notifications` | 인앱 알림 + 푸시 (APNs / FCM / Web Push)                         |
 | `reports`       | 신고                                                             |
 | `admin`         | 회원·상품·경매·주문 관리, 검수, 정책, 배너/공지/쿠폰, 감사 로그  |
+| `ota`           | 앱 OTA 업데이트 서버 (Expo Updates v1 매니페스트·서명·점진 배포) |
 | `settlements`   | 판매자 정산                                                      |
 
 각 모듈은 `controller → service → prisma`. 별도 Repository 계층은 두지 않는다 (Prisma 가 그 역할).
@@ -100,6 +101,10 @@ Client: 서버 이벤트로만 가격 갱신 (낙관적 업데이트 없음)
 4. 파생본: 폭 `400/800/1600` WebP + AVIF → `public/` prefix, 키에 콘텐츠 해시 포함 → CDN `immutable` 캐시
    - 원본은 한 번만 디코딩한다: 방향 적용 + 1600 폭으로 줄인 픽셀에서 작은 파생본을 만들고, 인코딩은 병렬. 대표색은 64px 썸네일로 계산
 5. `ProductImage` 에 key, width, height, dominantColor 저장 (로딩 placeholder 색)
+
+### 앱 OTA 에셋
+
+배포 스크립트가 올린 JS 번들·에셋은 가공 없이 `public/ota/<sha256 hex><ext>` 에 저장한다 (내용 주소라 같은 파일은 같은 키, CDN `immutable`). 매니페스트는 DB(`OtaUpdate`) 에서 만들어 서명하고, 서명한 파트는 API 인스턴스 메모리에 행 단위로 캐시한다 (내용이 바뀌지 않는다). 흐름은 docs/MOBILE_RELEASE.md "OTA 업데이트".
 
 ## 7. 검색
 

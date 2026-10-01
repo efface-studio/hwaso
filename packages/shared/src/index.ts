@@ -15,6 +15,7 @@ export * from './policies';
 export * from './banks';
 export * from './dto';
 export * from './realtime';
+export * from './ota';
 export * from './schemas/common';
 export * from './schemas/auth';
 export * from './schemas/product';
