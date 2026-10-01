@@ -15,6 +15,7 @@ import { api } from '@/lib/api';
 import { OAuthCancelled, linkAppleNative, linkSocial } from '@/lib/oauth';
 import { useAuthStore } from '@/stores/auth';
 import { useTheme } from '@/theme';
+import { readable } from '@/hooks/use-layout';
 
 const ORDER: AuthProvider[] = ['KAKAO', 'NAVER', 'GOOGLE', 'APPLE'];
 
@@ -131,7 +132,7 @@ export default function SocialScreen() {
 }
 
 const styles = StyleSheet.create({
-  body: { padding: 16, gap: 8 },
+  body: { ...readable, padding: 16, gap: 8 },
   intro: { gap: 4, marginBottom: 8 },
   row: {
     flexDirection: 'row',

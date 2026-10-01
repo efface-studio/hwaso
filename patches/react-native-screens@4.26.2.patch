@@ -185,7 +185,7 @@ index bf46bcb2b3417f26e7306a8361ecb645b588c484..1e8be718766ed1fd54d7061b988367d4
   * If true, the controller will reject any navigation state updates if the provenance of the
   * update is stale.
 diff --git a/ios/tabs/host/RNSTabBarController.mm b/ios/tabs/host/RNSTabBarController.mm
-index 481a9e6d5367ff6cad083b001d8b1dd780918b47..e9626afc72abb3d97d1729f30c00484731100fbd 100644
+index 481a9e6d5367ff6cad083b001d8b1dd780918b47..87977b44c55dc4a332b89886db5e297c981bfb3e 100644
 --- a/ios/tabs/host/RNSTabBarController.mm
 +++ b/ios/tabs/host/RNSTabBarController.mm
 @@ -5,6 +5,7 @@
@@ -219,7 +219,7 @@ index 481a9e6d5367ff6cad083b001d8b1dd780918b47..e9626afc72abb3d97d1729f30c004847
    RNSTabsNavigationStateObserverRegistry *_observerRegistry;
  
    RNSParentContainerItemRegistry *_Nonnull _parentContainerRegistry;
-@@ -95,11 +105,14 @@ - (instancetype)init
+@@ -95,16 +105,30 @@ - (instancetype)init
  {
    if (self = [super init]) {
      _tabScreenControllers = nil;
@@ -234,7 +234,63 @@ index 481a9e6d5367ff6cad083b001d8b1dd780918b47..e9626afc72abb3d97d1729f30c004847
      _observerRegistry = [RNSTabsNavigationStateObserverRegistry new];
      _parentContainerRegistry = [RNSParentContainerItemRegistry new];
  
-@@ -191,7 +204,32 @@ - (void)didMoveToParentViewController:(UIViewController *)parent
+     // Delegate field retains weakly, no risk of cycle.
+     self.delegate = self;
++
++#if RNS_IPHONE_OS_VERSION_AVAILABLE(17_0)
++    // [hwaso] iPad: render the same bottom (floating) tab bar as iPhone instead of the iPadOS top tab bar / sidebar.
++    // Only the tab bar controller is treated as horizontally compact; tab screens get the real size class back
++    // (see `hwaso_syncScreenSizeClass`) so content, headers and sheets keep iPad behavior.
++    if (@available(iOS 17.0, *)) {
++      if (UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad) {
++        self.traitOverrides.horizontalSizeClass = UIUserInterfaceSizeClassCompact;
++      }
++    }
++#endif // RNS_IPHONE_OS_VERSION_AVAILABLE(17_0)
+   }
+   return self;
+ }
+@@ -177,9 +201,39 @@ - (void)detachFromParentContainerItem
+ 
+ #pragma mark - UIKit callbacks
+ 
++// [hwaso] Gives tab screens the horizontal size class of the window (not the forced compact of this controller).
++- (void)hwaso_syncScreenSizeClass
++{
++#if RNS_IPHONE_OS_VERSION_AVAILABLE(17_0)
++  if (@available(iOS 17.0, *)) {
++    if (UIDevice.currentDevice.userInterfaceIdiom != UIUserInterfaceIdiomPad) {
++      return;
++    }
++    UITraitCollection *source = self.parentViewController.traitCollection ?: self.view.window.windowScene.traitCollection;
++    UIUserInterfaceSizeClass sizeClass = source.horizontalSizeClass;
++    if (sizeClass == UIUserInterfaceSizeClassUnspecified) {
++      return;
++    }
++    for (UIViewController *screenController in [self installedScreenControllers]) {
++      if (![screenController.traitOverrides containsTrait:UITraitHorizontalSizeClass.class] ||
++          screenController.traitOverrides.horizontalSizeClass != sizeClass) {
++        screenController.traitOverrides.horizontalSizeClass = sizeClass;
++      }
++    }
++  }
++#endif // RNS_IPHONE_OS_VERSION_AVAILABLE(17_0)
++}
++
++- (void)viewWillLayoutSubviews
++{
++  [super viewWillLayoutSubviews];
++  [self hwaso_syncScreenSizeClass];
++}
++
+ - (void)didMoveToParentViewController:(UIViewController *)parent
+ {
+   [super didMoveToParentViewController:parent];
++  [self hwaso_syncScreenSizeClass];
+ 
+   if (parent != nil) {
+     [self updateLayoutDirectionBelowIOS17IfNeeded];
+@@ -191,7 +245,32 @@ - (void)didMoveToParentViewController:(UIViewController *)parent
  
  - (void)tabBar:(UITabBar *)tabBar didSelectItem:(UITabBarItem *)item
  {
@@ -268,7 +324,7 @@ index 481a9e6d5367ff6cad083b001d8b1dd780918b47..e9626afc72abb3d97d1729f30c004847
  }
  
  - (void)setSelectedIndex:(NSUInteger)selectedIndex
-@@ -275,12 +313,15 @@ - (void)reactMountingTransactionDidMount
+@@ -275,12 +354,15 @@ - (void)reactMountingTransactionDidMount
  - (void)performContainerUpdate
  {
    _isHandlingExplicitSelectionUpdate = YES;
@@ -284,7 +340,7 @@ index 481a9e6d5367ff6cad083b001d8b1dd780918b47..e9626afc72abb3d97d1729f30c004847
    [self updateOrientationIfNeeded];
  }
  
-@@ -302,18 +343,15 @@ - (BOOL)updateSelectedViewControllerTo:(nullable UIViewController *)nextSelected
+@@ -302,18 +384,15 @@ - (BOOL)updateSelectedViewControllerTo:(nullable UIViewController *)nextSelected
      return NO;
    }
  
@@ -305,7 +361,7 @@ index 481a9e6d5367ff6cad083b001d8b1dd780918b47..e9626afc72abb3d97d1729f30c004847
    return YES;
  }
  
-@@ -325,7 +363,13 @@ - (BOOL)updateSelectedViewControllerTo:(nullable UIViewController *)nextSelected
+@@ -325,7 +404,13 @@ - (BOOL)updateSelectedViewControllerTo:(nullable UIViewController *)nextSelected
   */
  - (void)updateNavigationStateOnModelUpdate
  {
@@ -320,7 +376,7 @@ index 481a9e6d5367ff6cad083b001d8b1dd780918b47..e9626afc72abb3d97d1729f30c004847
  }
  
  - (void)userDidRepeatViewControllerSelection:(nonnull UIViewController *)viewController
-@@ -342,22 +386,36 @@ - (void)userDidRepeatViewControllerSelection:(nonnull UIViewController *)viewCon
+@@ -342,22 +427,36 @@ - (void)userDidRepeatViewControllerSelection:(nonnull UIViewController *)viewCon
  
    // After state progression we trigger the special effect.
    BOOL repeatedSelectionHandledBySpecialEffect = [[self selectedScreenViewController] tabScreenSelectedRepeatedly];
@@ -364,7 +420,7 @@ index 481a9e6d5367ff6cad083b001d8b1dd780918b47..e9626afc72abb3d97d1729f30c004847
      [self disableNavigationBarInMoreNavigationController];
      [self prepareForMoreNavigationControllerHandlingIfNeeded];
  
-@@ -366,14 +424,21 @@ - (void)userDidSelectViewController:(nonnull UIViewController *)viewController
+@@ -366,14 +465,21 @@ - (void)userDidSelectViewController:(nonnull UIViewController *)viewController
      [_observerRegistry emitDidSelectMoreTabWithCurrentState:_navigationState sender:self];
    } else {
      [self updateNavigationStateOnModelUpdate];
@@ -391,7 +447,7 @@ index 481a9e6d5367ff6cad083b001d8b1dd780918b47..e9626afc72abb3d97d1729f30c004847
  - (void)onDidPreventUserFromSelectingViewControllerWithKey:(nonnull NSString *)screenKey
  {
    [_observerRegistry emitPreventedSelectionOf:screenKey currentState:_navigationState sender:self];
-@@ -390,10 +455,42 @@ - (BOOL)shouldPreventNativeTabSelection:(nonnull UIViewController *)nextViewCont
+@@ -390,10 +496,42 @@ - (BOOL)shouldPreventNativeTabSelection:(nonnull UIViewController *)nextViewCont
    return screenViewController.isPreventNativeSelectionEnabled;
  }
  
@@ -406,9 +462,7 @@ index 481a9e6d5367ff6cad083b001d8b1dd780918b47..e9626afc72abb3d97d1729f30c004847
 +    repeatedSelection = viewController.tab == self.selectedTab && ![self isMoreNavigationControllerTabBarItemSelected];
 +  }
 +#endif // RNS_UITAB_API_SDK_AVAILABLE
- 
--// These methods are not called on programatic selection!
--// They are called only when a user taps on tab bar.
++
 +  if (repeatedSelection) {
 +    // On repeated selection we block the native *pop to root* effect (works from iOS 26) that
 +    // interferes with our implementation (necessary for controlled tabs). The did-select callback
@@ -432,12 +486,14 @@ index 481a9e6d5367ff6cad083b001d8b1dd780918b47..e9626afc72abb3d97d1729f30c004847
 +
 +  return NO;
 +}
-+
+ 
+-// These methods are not called on programatic selection!
+-// They are called only when a user taps on tab bar.
 +#pragma mark - UITabBarControllerDelegate
  
  - (BOOL)tabBarController:(UITabBarController *)tabBarController
      shouldSelectViewController:(UIViewController *)viewController
-@@ -408,25 +505,8 @@ - (BOOL)tabBarController:(UITabBarController *)tabBarController
+@@ -408,25 +546,8 @@ - (BOOL)tabBarController:(UITabBarController *)tabBarController
  
    // TODO: handle enforcing orientation with natively-driven tabs
  
@@ -465,7 +521,7 @@ index 481a9e6d5367ff6cad083b001d8b1dd780918b47..e9626afc72abb3d97d1729f30c004847
      return NO;
    }
  
-@@ -435,7 +515,8 @@ - (BOOL)tabBarController:(UITabBarController *)tabBarController
+@@ -435,7 +556,8 @@ - (BOOL)tabBarController:(UITabBarController *)tabBarController
    // In such case, we want to pop to root.
    // We do it here, because in `tabBarController:didSelectViewController:` we won't receive
    // `moreNavigationController` in case there is already a tab pushed on the stack.
@@ -475,7 +531,7 @@ index 481a9e6d5367ff6cad083b001d8b1dd780918b47..e9626afc72abb3d97d1729f30c004847
      auto *poppedViewController = [self popToRootInMoreNavigationControllerRespectSelectionPrevention:YES animated:NO];
      if (poppedViewController != nil) {
        // We actually popped something -> let's notify JS realm of this fact.
-@@ -462,7 +543,159 @@ - (void)tabBarController:(UITabBarController *)tabBarController
+@@ -462,7 +584,166 @@ - (void)tabBarController:(UITabBarController *)tabBarController
    _isHandlingExplicitSelectionUpdate = NO;
  }
  
@@ -517,6 +573,13 @@ index 481a9e6d5367ff6cad083b001d8b1dd780918b47..e9626afc72abb3d97d1729f30c004847
 +                        animated:(BOOL)animated
 +{
 +  _installedScreenControllers = screenControllers;
++  [self hwaso_installScreenControllers:screenControllers animated:animated];
++  [self hwaso_syncScreenSizeClass];
++}
++
++- (void)hwaso_installScreenControllers:(nonnull NSArray<RNSTabsScreenViewController *> *)screenControllers
++                              animated:(BOOL)animated
++{
 +
 +#if RNS_UITAB_API_SDK_AVAILABLE
 +  if (RNS_UITAB_API_ENABLED) {
@@ -636,7 +699,7 @@ index 481a9e6d5367ff6cad083b001d8b1dd780918b47..e9626afc72abb3d97d1729f30c004847
  
  - (void)navigationController:(UINavigationController *)navigationController
        willShowViewController:(UIViewController *)viewController
-@@ -501,7 +734,7 @@ - (void)updateReactChildrenControllers
+@@ -501,7 +782,7 @@ - (void)updateReactChildrenControllers
      return;
    }
  
@@ -645,7 +708,7 @@ index 481a9e6d5367ff6cad083b001d8b1dd780918b47..e9626afc72abb3d97d1729f30c004847
  }
  
  - (void)updateSelectedViewControllerIfNeeded
-@@ -513,7 +746,7 @@ - (void)updateSelectedViewControllerIfNeeded
+@@ -513,7 +794,7 @@ - (void)updateSelectedViewControllerIfNeeded
  
  - (void)updateSelectedViewController
  {
@@ -654,7 +717,7 @@ index 481a9e6d5367ff6cad083b001d8b1dd780918b47..e9626afc72abb3d97d1729f30c004847
      return;
    }
  
-@@ -531,10 +764,9 @@ - (void)updateSelectedViewControllerInner
+@@ -531,10 +812,9 @@ - (void)updateSelectedViewControllerInner
  {
    RCTAssert(_pendingStateUpdate != nil, @"[RNScreens] Pending update MUST NOT be nil");
  
@@ -667,7 +730,7 @@ index 481a9e6d5367ff6cad083b001d8b1dd780918b47..e9626afc72abb3d97d1729f30c004847
  
    RCTAssert(nextSelectedViewController != nil,
              @"[RNScreens] Failed to determine next selected view controller for key: %@",
-@@ -553,9 +785,10 @@ - (void)updateSelectedViewControllerInner
+@@ -553,9 +833,10 @@ - (void)updateSelectedViewControllerInner
      return;
    }
  
@@ -681,7 +744,7 @@ index 481a9e6d5367ff6cad083b001d8b1dd780918b47..e9626afc72abb3d97d1729f30c004847
      [_observerRegistry emitRejectedStateUpdate:_pendingStateUpdate
                                    currentState:_navigationState
                                      withReason:RNSTabsNavigationStateRejectionReasonRepeated
-@@ -563,16 +796,14 @@ - (void)updateSelectedViewControllerInner
+@@ -563,16 +844,14 @@ - (void)updateSelectedViewControllerInner
      return;
    }
  
@@ -701,7 +764,7 @@ index 481a9e6d5367ff6cad083b001d8b1dd780918b47..e9626afc72abb3d97d1729f30c004847
    }
  
    RNSLog(@"Change selected view controller to: %@", nextSelectedViewControllerKey);
-@@ -585,15 +816,20 @@ - (void)updateSelectedViewControllerInner
+@@ -585,15 +864,20 @@ - (void)updateSelectedViewControllerInner
    }
  
    if (hasStateProgressed) {
@@ -728,7 +791,7 @@ index 481a9e6d5367ff6cad083b001d8b1dd780918b47..e9626afc72abb3d97d1729f30c004847
  - (void)updateTabBarAppearanceIfNeeded
  {
    if (_needsUpdateOfTabBarAppearance) {
-@@ -614,8 +850,8 @@ - (void)updateTabBarAppearance
+@@ -614,8 +898,8 @@ - (void)updateTabBarAppearance
  
  - (void)updateTabBarA11yIfNeeded
  {
@@ -739,7 +802,7 @@ index 481a9e6d5367ff6cad083b001d8b1dd780918b47..e9626afc72abb3d97d1729f30c004847
      if (!screenView.tabBarItemNeedsA11yUpdate) {
        continue;
      }
-@@ -626,6 +862,26 @@ - (void)updateTabBarA11yIfNeeded
+@@ -626,6 +910,26 @@ - (void)updateTabBarA11yIfNeeded
    }
  }
  
@@ -766,7 +829,7 @@ index 481a9e6d5367ff6cad083b001d8b1dd780918b47..e9626afc72abb3d97d1729f30c004847
  #pragma mark - Utility
  
  - (nullable RNSTabsScreenViewController *)findChildViewControllerForKey:(nullable NSString *)screenKey
-@@ -633,11 +889,7 @@ - (nullable RNSTabsScreenViewController *)findChildViewControllerForKey:(nullabl
+@@ -633,11 +937,7 @@ - (nullable RNSTabsScreenViewController *)findChildViewControllerForKey:(nullabl
    if (screenKey == nil) {
      return nil;
    }
@@ -779,7 +842,7 @@ index 481a9e6d5367ff6cad083b001d8b1dd780918b47..e9626afc72abb3d97d1729f30c004847
      if ([screenViewController.getScreenKeyOrNull isEqualToString:screenKey]) {
        return screenViewController;
      }
-@@ -662,6 +914,16 @@ - (void)progressNavigationState:(nonnull NSString *)newSelectedScreenKey withOri
+@@ -662,6 +962,16 @@ - (void)progressNavigationState:(nonnull NSString *)newSelectedScreenKey withOri
    }
  }
  
@@ -796,7 +859,7 @@ index 481a9e6d5367ff6cad083b001d8b1dd780918b47..e9626afc72abb3d97d1729f30c004847
  /**
   * Be sure to call this method IF AND ONLY IF you know that the `self.selectedViewController`
   * is not the `moreNavigationController`.
-@@ -738,11 +1000,7 @@ - (void)reconcileNavigationStateWithUIKitState
+@@ -738,11 +1048,7 @@ - (void)reconcileNavigationStateWithUIKitState
      [self disableNavigationBarInMoreNavigationController];
    }
  
@@ -809,7 +872,7 @@ index 481a9e6d5367ff6cad083b001d8b1dd780918b47..e9626afc72abb3d97d1729f30c004847
  }
  
  /**
-@@ -769,7 +1027,7 @@ - (BOOL)canHaveMoreNavigationController
+@@ -769,7 +1075,7 @@ - (BOOL)canHaveMoreNavigationController
    // https://developer.apple.com/documentation/uikit/uitabbarcontroller?language=objc#The-More-navigation-controller
    // The count is documented. Size class check is empirical, to tighten the condition and have less
    // false positives. If we ever find it not correct, we can safely remove it.
@@ -818,7 +881,7 @@ index 481a9e6d5367ff6cad083b001d8b1dd780918b47..e9626afc72abb3d97d1729f30c004847
        self.traitCollection.horizontalSizeClass == UIUserInterfaceSizeClassCompact;
  #else
    return NO;
-@@ -783,7 +1041,7 @@ - (BOOL)isViewControllerHostedByMoreNavigationController:(nonnull UIViewControll
+@@ -783,7 +1089,7 @@ - (BOOL)isViewControllerHostedByMoreNavigationController:(nonnull UIViewControll
    }
  
    // Guard: VC must be one we manage (excludes arbitrary external VCs).

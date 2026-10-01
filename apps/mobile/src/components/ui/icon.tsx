@@ -15,10 +15,6 @@ export function Icon({
 }) {
   const t = useTheme();
   return (
-    <SymbolView
-      name={{ ios, android, web: android }}
-      tintColor={t.colors[color]}
-      size={size ?? (t.senior ? 26 : 22)}
-    />
+    <SymbolView name={{ ios, android, web: android }} tintColor={t.colors[color]} size={size ?? t.iconSize} />
   );
 }

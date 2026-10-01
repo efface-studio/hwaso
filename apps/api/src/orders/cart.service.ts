@@ -3,7 +3,7 @@ import type { Address } from '@prisma/client';
 import type { AddressDto, AddressInput, CartItemDto, ShippingAddress } from '@shop/shared';
 import { AppException } from '../common/app-exception';
 import { PrismaService } from '../prisma/prisma.service';
-import { cardInclude, PUBLIC_PRODUCT, toCard } from '../products/product.mapper';
+import { cardSelect, PUBLIC_PRODUCT, toCard } from '../products/product.mapper';
 import { toUserSummary } from './order.mapper';
 
 const ADDRESS_LIMIT = 20;
@@ -83,8 +83,12 @@ export class CartService {
       orderBy: { createdAt: 'desc' },
       include: {
         product: {
-          include: {
-            ...cardInclude,
+          select: {
+            ...cardSelect,
+            stock: true,
+            shippingFee: true,
+            deletedAt: true,
+            sellerId: true,
             seller: { select: { id: true, profile: { select: { nickname: true, avatarKey: true } } } },
           },
         },

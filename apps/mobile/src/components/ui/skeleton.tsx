@@ -19,6 +19,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { useGrid } from '@/hooks/use-grid';
+import { READABLE_WIDTH, readable } from '@/hooks/use-layout';
 import { useTheme } from '@/theme';
 
 /** 빛 띠 폭과 한 번 지나가는 시간 */
@@ -167,7 +168,7 @@ export function SkeletonHome() {
   const { width } = useWindowDimensions();
   const t = useTheme();
   const bannerW = Math.min(width, 900);
-  const card = t.senior ? 168 : 140;
+  const card = Math.round((t.senior ? 168 : 140) * t.scale);
   const rail = (key: string) => (
     <View key={key} style={{ paddingTop: 24, gap: 12 }}>
       <Skeleton width={140} height={20} style={{ marginHorizontal: 16 }} />
@@ -180,7 +181,12 @@ export function SkeletonHome() {
   );
   return (
     <SkeletonFrame>
-      <Skeleton width={bannerW} height={Math.round(bannerW * 0.56)} radius={0} />
+      <Skeleton
+        width={bannerW}
+        height={Math.round(bannerW * 0.56)}
+        radius={0}
+        style={{ alignSelf: 'center' }}
+      />
       <View style={{ flexDirection: 'row', gap: 8, padding: 16 }}>
         {[64, 88, 80].map((w) => (
           <Skeleton key={w} width={w} height={36} radius={18} />
@@ -192,12 +198,13 @@ export function SkeletonHome() {
   );
 }
 
-/** 상세형: 큰 이미지 + 제목·가격 + 본문 여러 줄 */
+/** 상세형: 큰 이미지 + 제목·가격 + 본문 여러 줄 (넓은 화면에서는 사진 갤러리처럼 폭·높이를 제한해 가운데) */
 export function SkeletonDetail({ image = true }: { image?: boolean }) {
-  const { width } = useWindowDimensions();
+  const { width: screen } = useWindowDimensions();
+  const width = Math.min(screen, READABLE_WIDTH);
   return (
-    <SkeletonFrame>
-      {image && <Skeleton width={width} height={width} radius={0} />}
+    <SkeletonFrame style={readable}>
+      {image && <Skeleton width={width} height={Math.min(width, 640)} radius={0} />}
       <View style={{ padding: 16, gap: 12 }}>
         <Skeleton width="40%" height={13} />
         <Skeleton width="85%" height={22} />
@@ -228,6 +235,6 @@ export function SkeletonScreen({ children }: { children: ReactNode }) {
 const styles = StyleSheet.create({
   block: { overflow: 'hidden' },
   band: { position: 'absolute', top: 0, bottom: 0, left: 0, width: BAND },
-  list: { paddingHorizontal: 16, paddingTop: 8 },
+  list: { ...readable, paddingHorizontal: 16, paddingTop: 8 },
   listRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },
 });

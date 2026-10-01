@@ -1,9 +1,10 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useEffect, useState } from 'react';
 import type { ImageSourcePropType } from 'react-native';
+import { TAB_BAR_SCALE } from '@/theme';
 
-/** 탭 아이콘 크기 (pt). 시스템 SF Symbol(약 25pt)보다 작게 그린다 */
-const TAB_ICON_SIZE = 20;
+/** 탭 아이콘 크기 (pt). 시스템 SF Symbol(약 25pt)보다 작게 그린다 (태블릿은 탭 바 배율만큼 크게) */
+const TAB_ICON_SIZE = Math.round(20 * TAB_BAR_SCALE);
 
 type IoniconName = keyof typeof Ionicons.glyphMap;
 type IconSet = Record<string, readonly [IoniconName, IoniconName]>;

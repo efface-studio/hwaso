@@ -24,6 +24,53 @@ describe('processImage', () => {
     expect(variantMeta.orientation).toBeUndefined();
   });
 
+  it('WebP/AVIF 를 폭 400/800/1600 으로 만든다', async () => {
+    const input = await sharp({ create: { width: 2000, height: 1000, channels: 3, background: '#7a5c2f' } })
+      .jpeg()
+      .toBuffer();
+    const out = await processImage(input);
+    const got = await Promise.all(
+      out.variants.map(async (v) => {
+        const m = await sharp(v.body).metadata();
+        return `${v.path.slice(out.key.length)} ${v.contentType} ${m.format}/${m.compression ?? '-'} ${m.width}`;
+      }),
+    );
+    expect(got.sort()).toEqual([
+      '/w1600.avif image/avif heif/av1 1600',
+      '/w1600.webp image/webp webp/- 1600',
+      '/w400.avif image/avif heif/av1 400',
+      '/w400.webp image/webp webp/- 400',
+      '/w800.avif image/avif heif/av1 800',
+      '/w800.webp image/webp webp/- 800',
+    ]);
+  });
+
+  it('보관본은 긴 변 3200 AVIF 로 줄이고 메타데이터를 지운다 (세로로 긴 이미지도 파생본 폭은 유지)', async () => {
+    // 방향 6 → 8000x2000 원본은 2000x8000 으로 보인다
+    const input = await sharp({ create: { width: 8000, height: 2000, channels: 3, background: '#204060' } })
+      .jpeg()
+      .withMetadata({ orientation: 6 })
+      .toBuffer();
+    const out = await processImage(input, { avif: false });
+    expect(out.master.path).toBe(`${out.key}.avif`);
+    expect(out.master.contentType).toBe('image/avif');
+    const m = await sharp(out.master.body).metadata();
+    expect([m.format, m.compression, m.width, m.height]).toEqual(['heif', 'av1', 800, 3200]);
+    expect(m.exif).toBeUndefined();
+    const w1600 = out.variants.find((v) => v.path.endsWith('/w1600.webp'))!;
+    expect((await sharp(w1600.body).metadata()).width).toBe(1600);
+  });
+
+  it('보관본은 확대하지 않고 투명도를 유지한다', async () => {
+    const input = await sharp({
+      create: { width: 300, height: 200, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0.5 } },
+    })
+      .png()
+      .toBuffer();
+    const m = await sharp((await processImage(input, { avif: false })).master.body).metadata();
+    expect([m.width, m.height, m.hasAlpha]).toEqual([300, 200, true]);
+  });
+
   it('작은 이미지는 확대하지 않는다', async () => {
     const input = await sharp({ create: { width: 300, height: 300, channels: 3, background: '#000' } })
       .png()

@@ -12,6 +12,7 @@ import type ko from '@/i18n/locales/ko/my';
 import { useAuthStore } from '@/stores/auth';
 import { usePrefs } from '@/stores/prefs';
 import { useTheme } from '@/theme';
+import { readable } from '@/hooks/use-layout';
 
 const SOCIAL_ORDER: AuthProvider[] = ['KAKAO', 'NAVER', 'GOOGLE', 'APPLE'];
 
@@ -157,7 +158,7 @@ export default function SettingsScreen() {
 }
 
 const styles = StyleSheet.create({
-  body: { padding: 16, paddingBottom: 48 },
+  body: { ...readable, padding: 16, paddingBottom: 48 },
   group: { marginTop: 20, marginBottom: 4 },
   pass: { width: 24, height: 24, borderRadius: 6 },
   badges: { flexDirection: 'row', gap: 4 },

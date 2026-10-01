@@ -14,7 +14,7 @@ const GAP = 12;
 export function Rail({ title, items }: { title: string; items: ProductCardDto[] }) {
   const t = useTheme();
   if (!items.length) return null;
-  const width = t.senior ? 168 : 140;
+  const width = Math.round((t.senior ? 168 : 140) * t.scale);
   return (
     <View style={styles.section}>
       <Text variant="h3" style={styles.title} accessibilityRole="header">

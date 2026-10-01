@@ -33,6 +33,7 @@ import { useScreenGuard } from '@/lib/screen-guard';
 import { BridgeCancelled, payOrder } from '@/lib/bridge';
 import { getRealtime } from '@/lib/realtime';
 import { useTheme } from '@/theme';
+import { readable } from '@/hooks/use-layout';
 
 const dateTime = (iso: string) =>
   new Date(iso).toLocaleString(LOCALE[currentLanguage()], {
@@ -528,7 +529,7 @@ export default function OrderDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  body: { padding: 16, gap: 16, paddingBottom: 40 },
+  body: { ...readable, padding: 16, gap: 16, paddingBottom: 40 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   block: { paddingTop: 16, gap: 10, borderTopWidth: StyleSheet.hairlineWidth },
   box: { borderWidth: 1, borderRadius: 8, padding: 14, gap: 10 },

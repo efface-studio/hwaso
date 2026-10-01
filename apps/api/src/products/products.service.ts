@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import type {
-  ArtistDto,
+  ArtistCardDto,
   FacetsDto,
   HomeDto,
   InquiryDto,
@@ -31,7 +31,7 @@ const RELEVANCE_CANDIDATES = 500;
 const SEARCH_ID_LIMIT = 5000;
 const RECENT_VIEWS_KEEP = 50;
 /** 홈 섹션 캐시 키 — 상품·경매가 바뀌면 지운다 */
-export const HOME_CACHE_KEY = 'home:v2';
+export const HOME_CACHE_KEY = 'home:v3';
 /** 홈 재생성 중 다른 요청에 내줄 직전 값 (무효화해도 지우지 않는다) */
 const HOME_STALE_KEY = `${HOME_CACHE_KEY}:stale`;
 const HOME_LOCK_KEY = `${HOME_CACHE_KEY}:lock`;
@@ -475,6 +475,7 @@ export class ProductsService {
     ] = await Promise.all([
       this.prisma.banner.findMany({
         where: { isActive: true, placement: 'home', startsAt: { lte: now }, endsAt: { gt: now } },
+        select: { id: true, title: true, subtitle: true, tone: true, imageKey: true, link: true },
         orderBy: { sortOrder: 'asc' },
         take: 8,
       }),
@@ -532,20 +533,15 @@ export class ProductsService {
     };
   }
 
-  /** 인기 작가: 공개 작품의 (관심 수 + 5) 합계 순. 작품 수가 많아도 작가 단위로 집계해 상위 take 명만 읽는다 (Redis 5분) */
-  async popularArtists(take: number): Promise<ArtistDto[]> {
-    const key = `artists:popular:${take}`;
+  /** 인기 작가: 공개 작품의 (관심 수 + 5) 합계 순. 작품 수가 많아도 작가 단위로 집계해 상위 take 명만 읽는다 (Redis 5분). 레일에 그리는 필드만 */
+  async popularArtists(take: number): Promise<ArtistCardDto[]> {
+    const key = `artists:popular:v2:${take}`;
     const cached = await this.redis.get(key);
-    if (cached) return JSON.parse(cached) as ArtistDto[];
+    if (cached) return JSON.parse(cached) as ArtistCardDto[];
     const rows = await this.prisma.$queryRaw<
       {
         id: string;
         name: string;
-        nameEn: string | null;
-        birthYear: number | null;
-        deathYear: number | null;
-        nationality: string | null;
-        bio: string;
         productCount: bigint;
         key: string | null;
         width: number | null;
@@ -561,7 +557,7 @@ export class ProductsService {
         ORDER BY score DESC, p."artistId"
         LIMIT ${take}
       )
-      SELECT a.id, a.name, a."nameEn", a."birthYear", a."deathYear", a.nationality, a.bio, top."productCount",
+      SELECT a.id, a.name, top."productCount",
         img.key, img.width, img.height, img."dominantColor"
       FROM top
       JOIN "Artist" a ON a.id = top.id
@@ -579,14 +575,9 @@ export class ProductsService {
       ) img ON true
       ORDER BY top.score DESC, top.id`;
     // 대표 이미지는 관심 수가 가장 많은 작품의 첫 이미지
-    const result: ArtistDto[] = rows.map((r) => ({
+    const result: ArtistCardDto[] = rows.map((r) => ({
       id: r.id,
       name: r.name,
-      nameEn: r.nameEn,
-      birthYear: r.birthYear,
-      deathYear: r.deathYear,
-      nationality: r.nationality,
-      bio: r.bio,
       productCount: Number(r.productCount),
       image:
         r.key != null

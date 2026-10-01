@@ -15,6 +15,7 @@ API 통합 테스트는 **모킹하지 않은 DB** 로 돈다. 동시성·잠금
 ## 테스트 DB
 
 - 로컬: `docker compose up -d postgres redis` → `pnpm --filter @shop/api test` 가 `DATABASE_URL_TEST`(`shop_test` DB, 이름이 `_test` 로 끝나야 함)에 `prisma migrate deploy` 후 모든 테이블을 TRUNCATE 하고 실행.
+- Redis 는 `REDIS_URL_TEST`(기본 `redis://localhost:6380/15`)를 쓴다. 테스트 앱은 시작할 때 이 db 를 `FLUSHDB` 하므로, 서버가 쓰는 db 0 이면 비우지 않고 실패한다.
 - 각 spec 파일은 고유 데이터(랜덤 이메일 등)를 만들어 서로 간섭하지 않는다. 테이블 truncate 는 전역 setup 에서 1회.
 - `test/fixtures.ts` 의 `createUser` 는 앱(ios) 기기 세션을 함께 만든다. 재인증(`@RequireReauth`)이 필요한 엔드포인트는 `reauth(t, user)` 로 `x-reauth-token` 헤더를 받아 붙인다 (재인증 흐름 자체는 `security.spec.ts`).
 - CI: GitHub Actions 서비스 컨테이너 (postgres:16, redis:7).

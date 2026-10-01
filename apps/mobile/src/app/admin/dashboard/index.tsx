@@ -13,6 +13,7 @@ import { usePullRefresh } from '@/hooks/use-pull-refresh';
 import { api } from '@/lib/api';
 import { selectionHaptic } from '@/lib/haptics';
 import { useTheme } from '@/theme';
+import { readable } from '@/hooks/use-layout';
 
 const CHART_H = 56;
 
@@ -311,7 +312,7 @@ export default function AdminDashboardScreen() {
 }
 
 const styles = StyleSheet.create({
-  body: { paddingTop: 4, paddingBottom: 48 },
+  body: { ...readable, paddingTop: 4, paddingBottom: 48 },
   pad: { paddingHorizontal: 16 },
   tabular: { fontVariant: ['tabular-nums'] },
   dateLine: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 },

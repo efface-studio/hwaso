@@ -15,6 +15,7 @@ import { label } from '@/i18n/labels';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
 import { useTheme } from '@/theme';
+import { readable } from '@/hooks/use-layout';
 
 const products = (status: string): Href => ({ pathname: '/seller/products', params: { status } });
 const SALES_TO_SHIP: Href = { pathname: '/orders', params: { as: 'seller', filter: 'progress' } };
@@ -242,7 +243,7 @@ const styles = StyleSheet.create({
   center: { alignItems: 'center', gap: 8 },
   centerText: { textAlign: 'center' },
   actions: { alignSelf: 'stretch', gap: 4 },
-  body: { padding: 16, paddingBottom: 48 },
+  body: { ...readable, padding: 16, paddingBottom: 48 },
   group: { marginTop: 20, marginBottom: 4 },
   stats: {
     flexDirection: 'row',

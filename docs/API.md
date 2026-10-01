@@ -62,6 +62,24 @@ NestJS REST API. Base URL `/api/v1`. 모든 요청/응답은 JSON (업로드 제
 
 초과 시 429 `RATE_LIMITED`.
 
+### 캐시·압축
+
+- **압축**: 1KB 이상 JSON 응답은 `Accept-Encoding` 에 따라 brotli(품질 8) 또는 gzip 으로 보낸다 (`compression`, `Vary: Accept-Encoding`). 이미지 등 압축 불가 타입과 1KB 미만 응답은 그대로 보낸다. 운영(Cloudflare 터널)에서는 오리진→엣지 구간 전송량이 준다 (방문자 구간은 원래도 엣지가 압축했다).
+- **ETag**: 모든 GET 응답에 약한 ETag(본문 해시). `If-None-Match` 가 같으면 `304` (본문 없음).
+- **HTTP 캐시**: 로그인 여부·사용자와 무관한 공개 GET 만 `Cache-Control: public, max-age=N, stale-while-revalidate=5N` (`@PublicCache`).
+
+  | max-age | 경로                                                                                      |
+  | ------- | ----------------------------------------------------------------------------------------- |
+  | 30s     | `/products/suggest`                                                                       |
+  | 60s     | `/categories`, `/products/facets`, `/artists`, `/artists/:id`, `/notices`, `/notices/:id` |
+  | 300s    | `/sitemap`, `/auth/providers`, `/notifications/push-config`                               |
+
+  홈·목록·상세처럼 `isFavorite`·경매 가격이 들어가는 응답과 로그인 사용자 응답에는 걸지 않는다. 에러 응답은 항상 `Cache-Control: no-store`.
+
+### 응답 크기
+
+목록 카드(`ProductCardDto`)는 카드가 그리는 필드만 담는다. 관심 수(`favoriteCount`)와 경매 id(`auction.id`)는 상세(`ProductDetailDto`)에만 있다. 홈 인기 작가(`popularArtists`, `/artists/popular`)는 `id·name·productCount·image` 만 담는다 (`ArtistCardDto`, 소개·생몰년은 `/artists/:id`).
+
 ## 엔드포인트
 
 권한: `-` 공개, `U` 로그인, `S` 판매자(본인 소유), `A` ADMIN 이상, `SA` SUPER_ADMIN, `R` 재인증 헤더 필요(앱 세션).
@@ -121,7 +139,7 @@ NestJS REST API. Base URL `/api/v1`. 모든 요청/응답은 JSON (업로드 제
 | ------ | ---------------- | ---- | --------------------------------------------------------------------------------------- |
 | GET    | /categories      | -    | 트리 + 공개 작품 수(`productCount`, 대분류는 합계)·대표 이미지(`coverImage`) (캐시 60s) |
 | GET    | /artists?q=      | -    | 작가 검색                                                                               |
-| GET    | /artists/popular | -    | 인기 작가 (캐시 5분)                                                                    |
+| GET    | /artists/popular | -    | 인기 작가 요약 `ArtistCardDto` (캐시 5분)                                               |
 | GET    | /artists/:id     | -    | 작가 + 작품                                                                             |
 
 ### Products

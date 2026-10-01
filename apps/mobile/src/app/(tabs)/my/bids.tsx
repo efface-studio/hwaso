@@ -19,6 +19,7 @@ import { label } from '@/i18n/labels';
 import { api } from '@/lib/api';
 import { mediaUrl } from '@/lib/media';
 import { useTheme, type Colors } from '@/theme';
+import { readable } from '@/hooks/use-layout';
 
 function status(b: MyBidDto): { label: string; color: keyof Colors } {
   const a = b.auction;
@@ -52,7 +53,7 @@ export default function MyBidsScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: t.colors.background }}>
       <Stack.Screen options={{ title: tr('bids.title'), headerLargeTitle: false }} />
-      <View style={{ paddingVertical: 8 }}>
+      <View style={[readable, { paddingVertical: 8 }]}>
         <Chips
           label={tr('bids.view')}
           value={tab}

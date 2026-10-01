@@ -11,6 +11,7 @@ import { api } from '@/lib/api';
 import { BridgeCancelled, verifyIdentity } from '@/lib/bridge';
 import { useAuthStore } from '@/stores/auth';
 import { useTheme } from '@/theme';
+import { readable } from '@/hooks/use-layout';
 
 /** PASS 본인인증: 휴대폰 명의 확인 (판매 정산·성인 인증에 필요) */
 export default function IdentityScreen() {
@@ -75,6 +76,6 @@ export default function IdentityScreen() {
 }
 
 const styles = StyleSheet.create({
-  body: { padding: 20, gap: 14 },
+  body: { ...readable, padding: 20, gap: 14 },
   card: { borderWidth: 1, borderRadius: 8, padding: 16, gap: 4 },
 });

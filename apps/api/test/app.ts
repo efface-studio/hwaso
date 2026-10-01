@@ -140,6 +140,11 @@ export async function createTestApp(): Promise<TestContext> {
   const app = await createApp(moduleRef);
   await app.init();
   const redis = app.get(RedisService);
+  // 안전장치: db 0 은 운영·개발 서버가 쓰는 자리 — 비우지 않고 실패한다
+  if ((redis.options.db ?? 0) === 0) {
+    await app.close();
+    throw new Error(`테스트 Redis 는 db 0 이 아니어야 합니다 (REDIS_URL_TEST): ${process.env.REDIS_URL}`);
+  }
   await redis.flushdb();
   return {
     app,

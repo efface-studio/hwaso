@@ -7,6 +7,7 @@ import { Alert, Linking, Pressable, ScrollView, StyleSheet, View } from 'react-n
 import { Text } from '@/components/ui/text';
 import { actionSheet } from '@/lib/action-sheet';
 import { useTheme } from '@/theme';
+import { readable } from '@/hooks/use-layout';
 
 /**
  * 연락처 행: 전화·메일 앱으로 바로 열거나 번호·주소를 복사한다.
@@ -121,7 +122,7 @@ export default function SupportScreen() {
 }
 
 const styles = StyleSheet.create({
-  body: { padding: 16, paddingBottom: 48 },
+  body: { ...readable, padding: 16, paddingBottom: 48 },
   group: { marginTop: 20, marginBottom: 4 },
   row: {
     flexDirection: 'row',

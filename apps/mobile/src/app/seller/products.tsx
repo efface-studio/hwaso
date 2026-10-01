@@ -20,6 +20,7 @@ import { actionSheet, type SheetOption } from '@/lib/action-sheet';
 import { api } from '@/lib/api';
 import { mediaUrl } from '@/lib/media';
 import { useTheme } from '@/theme';
+import { readable } from '@/hooks/use-layout';
 
 type Filter = 'all' | 'selling' | 'draft' | 'hidden' | 'sold';
 const FILTERS: Filter[] = ['all', 'selling', 'draft', 'hidden', 'sold'];
@@ -113,7 +114,7 @@ export default function SellerProductsScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: t.colors.background }}>
       <Stack.Screen options={{ title: tr('common:screen.sellerProducts') }} />
-      <View style={{ paddingVertical: 8 }}>
+      <View style={[readable, { paddingVertical: 8 }]}>
         <Chips
           label={tr('products.filterLabel')}
           value={filter}

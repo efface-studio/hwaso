@@ -16,6 +16,7 @@ import { useIntegrity } from '@/lib/integrity';
 import { biometricKey } from '@/lib/reauth';
 import { useScreenGuard } from '@/lib/screen-guard';
 import { useTheme } from '@/theme';
+import { readable } from '@/hooks/use-layout';
 
 const when = (iso: string) =>
   new Date(iso).toLocaleString(LOCALE[currentLanguage()], {
@@ -187,7 +188,7 @@ export default function SecurityScreen() {
 }
 
 const styles = StyleSheet.create({
-  body: { padding: 16, paddingBottom: 48 },
+  body: { ...readable, padding: 16, paddingBottom: 48 },
   group: { marginTop: 20, marginBottom: 4 },
   row: {
     flexDirection: 'row',

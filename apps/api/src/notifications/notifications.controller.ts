@@ -21,6 +21,7 @@ import {
 import { z } from 'zod';
 import { ConsentExempt, CurrentUser, Public, type AuthUser } from '../common/auth';
 import { Clock } from '../common/clock';
+import { PublicCache } from '../common/http-cache';
 import { ZodPipe } from '../common/zod.pipe';
 import { NotificationEvents } from './notification-events';
 import { NotificationsService } from './notifications.service';
@@ -63,6 +64,7 @@ export class NotificationsController {
   }
 
   @Public()
+  @PublicCache(300)
   @Get('notifications/push-config')
   pushConfig() {
     return this.n.pushConfig();

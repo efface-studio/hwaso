@@ -20,6 +20,7 @@ import { api } from '@/lib/api';
 import { BridgeCancelled, payOrder } from '@/lib/bridge';
 import { goBack } from '@/lib/nav';
 import { useTheme } from '@/theme';
+import { useReadableGutter } from '@/hooks/use-layout';
 
 const errMsg = (e: unknown) =>
   e instanceof ApiError || e instanceof Error ? e.message : i18n.t('common:state.actionFailed');
@@ -55,6 +56,7 @@ export default function CheckoutScreen() {
   const t = useTheme();
   const { t: tr } = useTranslation(['order', 'common']);
   const insets = useSafeAreaInsets();
+  const gutter = useReadableGutter();
   const qc = useQueryClient();
   const [couponInput, setCouponInput] = useState('');
   const [coupon, setCoupon] = useState<string | undefined>();
@@ -216,6 +218,7 @@ export default function CheckoutScreen() {
         style={[
           styles.bar,
           {
+            paddingHorizontal: gutter,
             paddingBottom: Math.max(insets.bottom, 12),
             borderColor: t.colors.border,
             backgroundColor: t.colors.background,
@@ -252,5 +255,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  bar: { paddingHorizontal: 16, paddingTop: 10, gap: 6, borderTopWidth: StyleSheet.hairlineWidth },
+  bar: { paddingTop: 10, gap: 6, borderTopWidth: StyleSheet.hairlineWidth },
 });

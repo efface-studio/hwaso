@@ -7,6 +7,7 @@ import { deviceLanguage, LANGUAGE_NAME, LANGUAGES } from '@/i18n';
 import { selectionHaptic } from '@/lib/haptics';
 import { usePrefs, type LanguagePreference } from '@/stores/prefs';
 import { useTheme } from '@/theme';
+import { readable } from '@/hooks/use-layout';
 
 /** 언어 선택: 기기 언어 따르기 + 지원 언어 (이름은 각 언어로 적는다) */
 export default function LanguageScreen() {
@@ -65,7 +66,7 @@ export default function LanguageScreen() {
 }
 
 const styles = StyleSheet.create({
-  body: { paddingBottom: 48 },
+  body: { ...readable, paddingBottom: 48 },
   row: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -104,6 +104,10 @@ export interface AuctionSummary {
   endsAt: string;
 }
 
+/** 목록 카드용 경매 요약 — 경매 id 는 상세(ProductDetailDto)에만 담는다 */
+export type CardAuctionSummary = Omit<AuctionSummary, 'id'>;
+
+/** 목록 카드: 웹·앱 카드가 그리는 필드만 (docs/API.md "응답 크기") */
 export interface ProductCardDto {
   id: string;
   title: string;
@@ -112,12 +116,13 @@ export interface ProductCardDto {
   saleType: SaleType;
   status: ProductStatus;
   price: number | null;
-  auction: AuctionSummary | null;
-  favoriteCount: number;
+  auction: CardAuctionSummary | null;
   isFavorite: boolean;
 }
 
-export interface ProductDetailDto extends ProductCardDto {
+export interface ProductDetailDto extends Omit<ProductCardDto, 'auction'> {
+  auction: AuctionSummary | null;
+  favoriteCount: number;
   description: string;
   images: ImageDto[];
   category: { id: string; slug: string; name: string; path: { slug: string; name: string }[] };
@@ -206,6 +211,9 @@ export interface ArtistDto extends ArtistSummary {
   image: ImageDto | null;
 }
 
+/** 홈 인기 작가 레일: 이름·작품 수·대표 이미지만 */
+export type ArtistCardDto = Pick<ArtistDto, 'id' | 'name' | 'productCount' | 'image'>;
+
 export interface ProductListResponse {
   items: ProductCardDto[];
   nextCursor: string | null;
@@ -228,7 +236,7 @@ export interface HomeDto {
   upcomingAuctions: ProductCardDto[];
   popular: ProductCardDto[];
   newArrivals: ProductCardDto[];
-  popularArtists: ArtistDto[];
+  popularArtists: ArtistCardDto[];
   collections: { category: { slug: string; name: string }; items: ProductCardDto[] }[];
   notices: { id: string; title: string; publishedAt: string }[];
 }

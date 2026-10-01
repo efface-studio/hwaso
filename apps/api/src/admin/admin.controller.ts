@@ -58,6 +58,7 @@ import { AuctionsModule } from '../auctions/auctions.controller';
 import { AuctionsService } from '../auctions/auctions.service';
 import { AuthModule } from '../auth/auth.controller';
 import { CurrentUser, Public, Roles, type AuthedRequest, type AuthUser } from '../common/auth';
+import { PublicCache } from '../common/http-cache';
 import { clientIp } from '../common/rate-limit';
 import { ZodPipe } from '../common/zod.pipe';
 import { OrdersModule } from '../orders/orders.controller';
@@ -409,12 +410,14 @@ export class NoticesController {
   constructor(private readonly content: AdminContentService) {}
 
   @Public()
+  @PublicCache(60)
   @Get()
   list(@Query(new ZodPipe(pageQuery)) q: PageQuery) {
     return this.content.notices(q, true);
   }
 
   @Public()
+  @PublicCache(60)
   @Get(':id')
   get(@Param('id') id: string) {
     return this.content.notice(id, true);

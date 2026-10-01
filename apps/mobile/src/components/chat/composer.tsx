@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from '@/components/ui/text';
 import { getRealtime } from '@/lib/realtime';
 import { useTheme } from '@/theme';
+import { useReadableGutter } from '@/hooks/use-layout';
 
 export type ComposerHandle = {
   focus: () => void;
@@ -31,6 +32,8 @@ export function Composer({
   const t = useTheme();
   const { t: tr } = useTranslation(['chat', 'common']);
   const insets = useSafeAreaInsets();
+  // 넓은 화면에서는 말풍선 목록과 같은 폭에 맞춘다 (배경·구분선은 화면 폭 그대로)
+  const gutter = useReadableGutter(8);
   const [text, setText] = useState('');
   /** 보내기 전에 걸러진 표현 안내 (서버도 같은 기준으로 막는다) */
   const [prohibited, setProhibited] = useState(false);
@@ -62,13 +65,20 @@ export function Composer({
           variant="caption"
           color="destructive"
           accessibilityLiveRegion="polite"
-          style={styles.prohibited}
+          style={[styles.prohibited, { paddingHorizontal: gutter + 8 }]}
         >
           {tr('common:validation.prohibited')}
         </Text>
       )}
       <View
-        style={[styles.composer, { borderColor: t.colors.border, paddingBottom: Math.max(insets.bottom, 8) }]}
+        style={[
+          styles.composer,
+          {
+            borderColor: t.colors.border,
+            paddingHorizontal: gutter,
+            paddingBottom: Math.max(insets.bottom, 8),
+          },
+        ]}
       >
         <Pressable
           accessibilityRole="button"
@@ -131,12 +141,11 @@ export function Composer({
 }
 
 const styles = StyleSheet.create({
-  prohibited: { paddingHorizontal: 16, paddingVertical: 6 },
+  prohibited: { paddingVertical: 6 },
   composer: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     gap: 8,
-    paddingHorizontal: 8,
     paddingTop: 8,
     borderTopWidth: StyleSheet.hairlineWidth,
   },

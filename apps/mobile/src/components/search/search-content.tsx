@@ -13,6 +13,7 @@ import { label } from '@/i18n/labels';
 import { api } from '@/lib/api';
 import { secure } from '@/lib/secure';
 import { useTheme } from '@/theme';
+import { readable } from '@/hooks/use-layout';
 
 const RECENT_KEY = 'hwaso.recentSearches';
 /** 자동완성은 입력이 잠깐 멈췄을 때만 부른다 */
@@ -85,7 +86,11 @@ export function SearchContent({ s, onSubmit }: { s: SearchState; onSubmit: (valu
   const { t: tr } = useTranslation('home');
   if (s.typing)
     return (
-      <ScrollView keyboardShouldPersistTaps="handled" contentInsetAdjustmentBehavior="automatic">
+      <ScrollView
+        keyboardShouldPersistTaps="handled"
+        contentInsetAdjustmentBehavior="automatic"
+        contentContainerStyle={readable}
+      >
         <Pressable onPress={() => onSubmit(s.text)} style={[styles.item, { minHeight: t.touch }]}>
           <Text>{tr('search.searchFor', { query: s.text.trim() })}</Text>
         </Pressable>
@@ -154,7 +159,7 @@ export function SearchContent({ s, onSubmit }: { s: SearchState; onSubmit: (valu
     <ScrollView
       keyboardShouldPersistTaps="handled"
       contentInsetAdjustmentBehavior="automatic"
-      contentContainerStyle={{ padding: 16, gap: 8 }}
+      contentContainerStyle={[readable, { padding: 16, gap: 8 }]}
     >
       {s.recent.length > 0 && (
         <View style={styles.recentHead}>

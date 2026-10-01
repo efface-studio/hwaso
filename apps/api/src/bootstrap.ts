@@ -1,9 +1,11 @@
 import './common/serialize';
 import 'reflect-metadata';
+import zlib from 'node:zlib';
 import type { INestApplication } from '@nestjs/common';
 import type { TestingModule } from '@nestjs/testing';
 import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
+import compression from 'compression';
 import cookieParser from 'cookie-parser';
 import type { NextFunction, Request, Response } from 'express';
 import helmet from 'helmet';
@@ -26,6 +28,16 @@ export async function createApp(testing?: TestingModule): Promise<INestApplicati
   app.set('trust proxy', 1);
   app.useBodyParser('json', { limit: '1mb' });
   app.use(httpLogger);
+  // JSON 응답 압축: 1KB 이상, br 우선·gzip. 이미지 등 압축 불가 타입은 건너뛴다 (docs/API.md)
+  // br 품질 8: 홈 JSON 기준 gzip 보다 16% 작고 0.3ms 안팎. 창은 256KB 로 줄여 동시 응답 메모리를 아낀다
+  app.use(
+    compression({
+      threshold: 1024,
+      brotli: {
+        params: { [zlib.constants.BROTLI_PARAM_QUALITY]: 8, [zlib.constants.BROTLI_PARAM_LGWIN]: 18 },
+      },
+    }),
+  );
   app.use(helmet({ crossOriginResourcePolicy: { policy: 'same-site' } }));
   app.use(cookieParser());
   app.enableCors({

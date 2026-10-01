@@ -3,7 +3,7 @@ import { NativeTabs } from 'expo-router/unstable-native-tabs';
 import type { AndroidSymbol, SFSymbol } from 'expo-symbols';
 import { PromptHost } from '@/components/admin/prompt';
 import { ADMIN_TAB_ICONS, useTabIconSet } from '@/components/tab-icons';
-import { AccentProvider, useTheme } from '@/theme';
+import { AccentProvider, TAB_BAR_SCALE, useTheme } from '@/theme';
 
 /** 관리자 탭 이름·라벨·대체 SF Symbol (아이콘 이미지가 준비되기 전 첫 프레임) */
 const TABS: { name: keyof typeof ADMIN_TAB_ICONS; label: string; sf: SFSymbol; md: AndroidSymbol }[] = [
@@ -35,7 +35,10 @@ function AdminTabs() {
   return (
     // 네이티브 헤더 버튼·뒤로 가기 색도 같은 강조 색으로
     <ThemeProvider value={{ ...nav, colors: { ...nav.colors, primary: t.colors.primary } }}>
-      <NativeTabs tintColor={t.colors.primary} labelStyle={{ fontSize: t.senior ? 13 : 11 }}>
+      <NativeTabs
+        tintColor={t.colors.primary}
+        labelStyle={{ fontSize: (t.senior ? 13 : 11) * TAB_BAR_SCALE }}
+      >
         {TABS.map((tab) => {
           const icon = icons[tab.name];
           return (

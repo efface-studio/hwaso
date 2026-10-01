@@ -33,12 +33,8 @@ export class MediaService {
     }
     // ponytail: 요청 내 동기 처리 — 업로드가 몰리면 이미지 워커 + 큐로 분리 (docs/ARCHITECTURE.md §10)
     await Promise.all([
-      this.s3.put(
-        `${ORIGINAL_PREFIX}${img.key}.${img.originalFormat}`,
-        buffer,
-        'application/octet-stream',
-        'private',
-      ),
+      // 업로드 원본 대신 메타데이터를 지운 보관본(긴 변 3200 AVIF)을 비공개로 둔다
+      this.s3.put(`${ORIGINAL_PREFIX}${img.master.path}`, img.master.body, img.master.contentType, 'private'),
       ...img.variants.map((v) =>
         this.s3.put(`${PUBLIC_PREFIX}${v.path}`, v.body, v.contentType, 'immutable'),
       ),

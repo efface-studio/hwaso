@@ -47,6 +47,7 @@ pnpm --filter @shop/mobile exec eas submit --profile production --platform all
 - **결제**: 실물 작품 거래라 인앱 결제 대상이 아니다 (Apple 3.1.3(e), Google Play 결제 정책 예외)
 - **연령 등급**: 경매·거래 기능 — 성인 인증은 PASS 로 서버가 판정
 - **심사 메모**: 심사용 테스트 계정(구매자·판매자)과 모의 결제가 켜진 스테이징 서버를 안내한다
+- **스크린숏**: iPad 를 지원하므로(`ios.supportsTablet: true`) iPhone 6.9" 와 함께 **iPad 13"** 세로 스크린숏(2064 × 2752)이 필요하다. 심사도 iPad 에서 앱을 실행해 본다. 앱은 세로 전용이고 iPad 는 전체 화면만(`ios.requireFullScreen: true`, Split View·Slide Over 미지원)
 
 ## 5. OTA 업데이트
 
@@ -110,5 +111,6 @@ pnpm --filter @shop/mobile ota:publish -- --message "판매 탭 문구 수정"
 - [ ] 로그인(이메일·소셜·Apple), 결제(카드·가상계좌), 본인인증, 주소 검색 브리지
 - [ ] 유니버설 링크: 메모 앱에 작품 URL 을 붙여 눌렀을 때 앱이 열리는지
 - [ ] 다크 모드·큰 글씨(시니어) 모드·VoiceOver/TalkBack 주요 흐름
+- [ ] iPad(11"·13" 세로): 아래쪽 탭 바(아이폰과 같은 모양)·홈·검색·작품/경매 상세(13" 는 두 칸)·로그인·결제 흐름이 깨지지 않는지, 기기를 돌려도 세로로 남는지 (docs/MOBILE_NAVIGATION.md 「화면 폭과 배치」)
 - [ ] 오프라인에서 배너 표시, 연결되면 자동 재조회
 - [ ] OTA: 스테이징 채널에 업데이트를 내고 실기기에서 적용·되돌리기(previous·embedded) 확인, 서명 검증 실패 시 적용되지 않는지
