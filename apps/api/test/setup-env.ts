@@ -26,6 +26,11 @@ Object.assign(process.env, {
   NAVER_CLIENT_ID: '',
   NAVER_CLIENT_SECRET: '',
   APPLE_CLIENT_ID: '',
+  APPLE_BUNDLE_ID: '',
+  APNS_KEY_ID: '',
+  APNS_TEAM_ID: '',
+  APNS_PRIVATE_KEY: '',
+  FCM_SERVICE_ACCOUNT: '',
   SMTP_URL: '',
   OAUTH_REDIRECT_ALLOWLIST: 'http://localhost:3000/auth/callback',
 });

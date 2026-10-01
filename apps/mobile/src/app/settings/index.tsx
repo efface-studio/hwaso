@@ -1,13 +1,19 @@
 import * as LocalAuthentication from 'expo-local-authentication';
 import { router, Stack, type Href } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { Alert, Platform, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
+import type { AuthProvider } from '@shop/shared';
+import type { ReactNode } from 'react';
+import { Alert, Image, Platform, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
+import passLogo from '../../../assets/brand/pass.png';
+import { ProviderBadge } from '@/components/auth/provider-logo';
 import { Text } from '@/components/ui/text';
 import { LANGUAGE_NAME } from '@/i18n';
 import type ko from '@/i18n/locales/ko/my';
 import { useAuthStore } from '@/stores/auth';
 import { usePrefs } from '@/stores/prefs';
 import { useTheme } from '@/theme';
+
+const SOCIAL_ORDER: AuthProvider[] = ['KAKAO', 'NAVER', 'GOOGLE', 'APPLE'];
 
 type GroupKey = keyof typeof ko.settings.group;
 type RowKey = keyof typeof ko.settings.row;
@@ -61,7 +67,23 @@ export default function SettingsScreen() {
     if (r.success) setAppLock(true);
   };
 
-  const row = (label: string, onPress: () => void, color?: 'destructive') => (
+  // 본인인증은 PASS 로고(인증 전이면 흐리게), 소셜 계정은 연결된 계정만 선명한 로고
+  const trailing = (key: RowKey) =>
+    key === 'identity' ? (
+      <Image
+        source={passLogo}
+        style={[styles.pass, { opacity: user.identityVerified ? 1 : 0.3 }]}
+        accessibilityIgnoresInvertColors
+      />
+    ) : key === 'social' ? (
+      <View style={styles.badges}>
+        {SOCIAL_ORDER.map((p) => (
+          <ProviderBadge key={p} provider={p} size={22} dim={!user.socialProviders.includes(p)} />
+        ))}
+      </View>
+    ) : null;
+
+  const row = (label: string, onPress: () => void, color?: 'destructive', extra?: ReactNode) => (
     <Pressable
       key={label}
       accessibilityRole="link"
@@ -71,6 +93,11 @@ export default function SettingsScreen() {
       <Text style={{ flex: 1 }} color={color}>
         {label}
       </Text>
+      {extra && (
+        <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+          {extra}
+        </View>
+      )}
       <Text color="faint">›</Text>
     </Pressable>
   );
@@ -83,7 +110,9 @@ export default function SettingsScreen() {
           <Text variant="label" color="muted" style={styles.group}>
             {tr(`settings.group.${g.title}`)}
           </Text>
-          {g.rows.map(([href, key]) => row(tr(`settings.row.${key}`), () => router.push(href)))}
+          {g.rows.map(([href, key]) =>
+            row(tr(`settings.row.${key}`), () => router.push(href), undefined, trailing(key)),
+          )}
         </View>
       ))}
       <View>
@@ -129,6 +158,8 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   body: { padding: 16, paddingBottom: 48 },
   group: { marginTop: 20, marginBottom: 4 },
+  pass: { width: 24, height: 24, borderRadius: 6 },
+  badges: { flexDirection: 'row', gap: 4 },
   row: {
     flexDirection: 'row',
     alignItems: 'center',

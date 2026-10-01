@@ -19,6 +19,8 @@ import { useTheme } from '@/theme';
  */
 /** 두 번 누름으로 보는 간격 */
 const DOUBLE_TAP_MS = 350;
+/** 이보다 빨리 다시 오는 tabPress 는 같은 탭의 중복 이벤트다 (iOS 27 은 한 번 탭에 두 번 보낸다) — 사람의 더블 탭은 더 느리다 */
+const DUPLICATE_EVENT_MS = 80;
 
 export default function TabsLayout() {
   const t = useTheme();
@@ -41,7 +43,9 @@ export default function TabsLayout() {
   const onMyPress = () => {
     if (!admin) return;
     const now = Date.now();
-    if (now - lastMyPress.current < DOUBLE_TAP_MS) {
+    const gap = now - lastMyPress.current;
+    if (gap < DUPLICATE_EVENT_MS) return;
+    if (gap < DOUBLE_TAP_MS) {
       lastMyPress.current = 0;
       router.push('/admin/dashboard');
       return;

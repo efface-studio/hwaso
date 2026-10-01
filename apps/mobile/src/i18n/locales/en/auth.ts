@@ -47,7 +47,6 @@ const en: Translation<typeof ko> = {
   },
   social: {
     continueWith: 'Continue with {{provider}}',
-    redirecting: 'Redirecting…',
     notConfiguredTitle: '{{provider}} login isn’t set up yet',
     notConfiguredMessage: 'Available once the API keys are configured (apps/api/.env).',
     appleBuildOnlyTitle: 'Apple login only works in an app build',

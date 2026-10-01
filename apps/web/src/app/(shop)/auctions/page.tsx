@@ -1,6 +1,7 @@
 'use client';
 
-import { useInfiniteQuery } from '@tanstack/react-query';
+import type { ProductListResponse } from '@shop/shared';
+import { useInfiniteQuery, useQueryClient, type InfiniteData } from '@tanstack/react-query';
 import { Gavel } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
@@ -21,14 +22,46 @@ function AuctionList() {
   const params = useSearchParams();
   const raw = params.get('tab');
   const tab: Tab = raw === 'scheduled' || raw === 'ended' ? raw : 'live';
+  const qc = useQueryClient();
   const query = useInfiniteQuery({
     queryKey: ['auctions', tab],
     queryFn: ({ pageParam, signal }) =>
       api.auctions.list({ status: tab, cursor: pageParam, limit: 24 }, signal),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (last) => last.nextCursor ?? undefined,
-    refetchInterval: tab === 'live' ? 30_000 : false,
   });
+
+  /**
+   * 진행 중 탭은 30초마다 첫 페이지만 새로 받는다. refetchInterval 은 불러온 모든 페이지를
+   * 차례로 다시 요청하므로, 스크롤을 많이 내릴수록 요청이 늘어난다.
+   */
+  useEffect(() => {
+    if (tab !== 'live') return;
+    const key = ['auctions', tab];
+    const ctrl = new AbortController();
+    const timer = setInterval(() => {
+      // 탭이 가려져 있거나 다른 요청(다음 페이지 등)이 진행 중이면 이번 주기는 건너뛴다
+      if (document.visibilityState !== 'visible' || qc.isFetching({ queryKey: key })) return;
+      api.auctions
+        .list({ status: tab, limit: 24 }, ctrl.signal)
+        .then((first) =>
+          qc.setQueryData<InfiniteData<ProductListResponse, string | undefined>>(key, (d) => {
+            if (!d?.pages.length) return d;
+            // 첫 페이지로 올라온 작품은 뒤 페이지에서 빼 중복을 막는다
+            const ids = new Set(first.items.map((i) => i.id));
+            const rest = d.pages
+              .slice(1)
+              .map((p) => ({ ...p, items: p.items.filter((i) => !ids.has(i.id)) }));
+            return { ...d, pages: [first, ...rest] };
+          }),
+        )
+        .catch(() => undefined);
+    }, 30_000);
+    return () => {
+      clearInterval(timer);
+      ctrl.abort();
+    };
+  }, [tab, qc]);
   const sentinel = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const el = sentinel.current;

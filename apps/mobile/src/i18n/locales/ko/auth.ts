@@ -45,7 +45,6 @@ const ko = {
   },
   social: {
     continueWith: '{{provider}}로 계속하기',
-    redirecting: '이동 중…',
     notConfiguredTitle: '{{provider}} 로그인 준비 중',
     notConfiguredMessage: 'API 키 설정 후 사용할 수 있어요 (apps/api/.env).',
     appleBuildOnlyTitle: 'Apple 로그인은 앱 빌드에서만 돼요',

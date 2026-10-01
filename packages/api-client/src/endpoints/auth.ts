@@ -1,4 +1,5 @@
 import type {
+  AppleLinkInput,
   AppleNativeInput,
   AuthProvider,
   AuthProvidersDto,
@@ -50,6 +51,7 @@ export const authApi = (http: Http) => ({
     http.post<AuthTokens & { isNewUser: boolean }>('/auth/oauth/apple/native', body),
   linkSocial: (provider: AuthProvider, body: OAuthLinkInput) =>
     http.post<void>(`/auth/social/${p(provider)}`, body),
+  linkAppleNative: (body: AppleLinkInput) => http.post<void>('/auth/social/apple/native', body),
   unlinkSocial: (provider: AuthProvider) => http.delete<void>(`/auth/social/${p(provider)}`),
   me: () => http.get<MeDto>('/auth/me'),
   sessions: () => http.get<SessionDto[]>('/auth/sessions'),
