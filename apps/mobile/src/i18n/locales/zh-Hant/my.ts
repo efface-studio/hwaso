@@ -43,6 +43,7 @@ const zhHant: Translation<typeof ko> = {
     followers: '粉絲',
     following: '追蹤中',
     follow: '追蹤',
+    followBack: '回追蹤',
     reviews: '評價',
     trades: '交易',
   },

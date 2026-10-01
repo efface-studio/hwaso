@@ -43,6 +43,7 @@ const en: Translation<typeof ko> = {
     followers: 'Followers',
     following: 'Following',
     follow: 'Follow',
+    followBack: 'Follow back',
     reviews: 'Reviews',
     trades: 'Trades',
   },

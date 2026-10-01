@@ -43,6 +43,7 @@ const ja: Translation<typeof ko> = {
     followers: 'フォロワー',
     following: 'フォロー中',
     follow: 'フォロー',
+    followBack: 'フォローバック',
     reviews: '評価',
     trades: '取引',
   },

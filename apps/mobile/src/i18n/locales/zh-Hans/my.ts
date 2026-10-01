@@ -43,6 +43,7 @@ const zhHans: Translation<typeof ko> = {
     followers: '粉丝',
     following: '关注',
     follow: '关注',
+    followBack: '回关',
     reviews: '评价',
     trades: '交易',
   },
