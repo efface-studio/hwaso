@@ -40,3 +40,5 @@ minimumReleaseAgeExclude:
   - '@img/sharp-win32-ia32@0.35.5'
   - '@img/sharp-win32-x64@0.35.5'
   - sharp@0.35.5
+patchedDependencies:
+  react-native-screens@4.26.2: patches/react-native-screens@4.26.2.patch

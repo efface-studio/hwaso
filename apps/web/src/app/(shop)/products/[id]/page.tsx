@@ -16,6 +16,11 @@ import { safe, serverApi } from '@/lib/server-api';
 
 export const revalidate = 60;
 
+/** 빌드 때는 비워 두고 첫 요청에 렌더해 revalidate 주기로 캐시한다 (on-demand ISR) */
+export async function generateStaticParams() {
+  return [];
+}
+
 type Props = { params: Promise<{ id: string }> };
 
 /** 404 는 notFound, 그 외 오류는 null (에러 화면) */
@@ -86,6 +91,8 @@ function jsonLd(p: ProductDetailDto) {
 
 export default async function ProductPage({ params }: Props) {
   const { id } = await params;
+  // 관련 작품은 본 작품과 함께 요청한다 (404 판단은 본 작품 결과로)
+  const relatedP = safe(serverApi.market.related(id));
   const p = await load(id);
   if (!p) {
     return (
@@ -96,7 +103,7 @@ export default async function ProductPage({ params }: Props) {
       />
     );
   }
-  const related = (await safe(serverApi.market.related(id))) ?? [];
+  const related = (await relatedP) ?? [];
 
   return (
     <div className="pb-28 md:pb-0">

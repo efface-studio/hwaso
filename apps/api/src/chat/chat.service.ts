@@ -543,16 +543,15 @@ export class ChatService {
     if (state?.muted) return;
     // 그 방을 보고 있으면 화면에 바로 뜨므로 푸시는 보내지 않는다
     if (await this.presence.isViewing(roomId, to)) return;
-    const sender = await this.prisma.profile.findUnique({
-      where: { userId: senderId },
-      select: { nickname: true },
-    });
+    const sender = await this.notifications.senderOf(senderId);
     await this.notifications.notify(to, {
       type: 'CHAT_MESSAGE',
-      title: sender?.nickname ?? '새 메시지',
+      title: sender?.name ?? '새 메시지',
       body: chatPreview({ ...m, imageCount: m.images.length }),
       link: `/chat/${roomId}`,
       store: false,
+      sender,
+      threadId: `chat-${roomId}`,
     });
   }
 

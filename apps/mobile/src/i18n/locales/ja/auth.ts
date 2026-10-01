@@ -47,7 +47,6 @@ const ja: Translation<typeof ko> = {
   },
   social: {
     continueWith: '{{provider}}で続ける',
-    redirecting: '移動中…',
     notConfiguredTitle: '{{provider}}ログインは準備中です',
     notConfiguredMessage: 'APIキーを設定すると利用できます（apps/api/.env）。',
     appleBuildOnlyTitle: 'Appleログインはアプリのビルドでのみ利用できます',

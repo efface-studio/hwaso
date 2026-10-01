@@ -1,10 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { NativeTabs } from 'expo-router/unstable-native-tabs';
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMyTabIcon } from '@/components/tab-avatar-icon';
-import { useTabIcons } from '@/components/tab-icons';
+import { ADMIN_TAB_ICONS, preloadTabIcons, useTabIcons } from '@/components/tab-icons';
 import { isAdmin } from '@/lib/admin';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
@@ -19,6 +19,8 @@ import { useTheme } from '@/theme';
  */
 /** 두 번 누름으로 보는 간격 */
 const DOUBLE_TAP_MS = 350;
+/** 이보다 빨리 다시 오는 tabPress 는 같은 탭의 중복 이벤트다 (iOS 27 은 한 번 탭에 두 번 보낸다) — 사람의 더블 탭은 더 느리다 */
+const DUPLICATE_EVENT_MS = 80;
 
 export default function TabsLayout() {
   const t = useTheme();
@@ -33,22 +35,29 @@ export default function TabsLayout() {
   const icons = useTabIcons();
   // 관리자 계정은 마이 탭을 빠르게 두 번 누르면 관리자 앱으로 (이미 마이 탭이어도 누를 때마다 tabPress 가 온다)
   const admin = isAdmin(user);
+  // 관리자 계정이면 관리자 탭 아이콘도 미리 만들어 둔다 (일반 계정은 앱 시작 때 만들지 않는다)
+  useEffect(() => {
+    if (admin) preloadTabIcons(ADMIN_TAB_ICONS);
+  }, [admin]);
   const lastMyPress = useRef(0);
   const onMyPress = () => {
     if (!admin) return;
     const now = Date.now();
-    if (now - lastMyPress.current < DOUBLE_TAP_MS) {
+    const gap = now - lastMyPress.current;
+    if (gap < DUPLICATE_EVENT_MS) return;
+    if (gap < DOUBLE_TAP_MS) {
       lastMyPress.current = 0;
       router.push('/admin/dashboard');
       return;
     }
     lastMyPress.current = now;
   };
+  // 새 메시지는 실시간 이벤트(realtime-sync)가 갱신한다 — 주기 갱신은 놓친 이벤트를 채우는 보조라 5분마다
   const chat = useQuery({
     queryKey: ['chat', 'unread'],
     queryFn: api.chat.unreadCount,
     enabled: signedIn,
-    refetchInterval: 60_000,
+    refetchInterval: 5 * 60_000,
   });
   const unread = chat.data?.unreadCount ?? 0;
   return (

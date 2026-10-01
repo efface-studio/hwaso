@@ -42,10 +42,9 @@ export default function DevicesScreen() {
     <List
       style={{ backgroundColor: t.colors.background }}
       contentContainerStyle={{ flexGrow: 1, padding: 16 }}
-      data={pull.refreshing ? [] : (q.data ?? [])}
+      data={q.data ?? []}
       keyExtractor={(s) => s.id}
       refreshControl={<AppRefreshControl refreshing={pull.refreshing} onRefresh={pull.onRefresh} />}
-      ListEmptyComponent={pull.refreshing ? <Loading variant="plain-list" /> : null}
       ListHeaderComponent={
         <View style={{ gap: 8, marginBottom: 8 }}>
           <Stack.Screen options={{ title: tr('common:screen.devices') }} />

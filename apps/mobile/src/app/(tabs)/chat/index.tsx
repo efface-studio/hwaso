@@ -2,8 +2,8 @@ import { CHAT_ROOM_FILTERS, filterChatRooms, type ChatRoomDto, type ChatRoomFilt
 import { useQuery } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { router, Stack } from 'expo-router';
-import { useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { memo, useCallback, useState } from 'react';
+import { Pressable, StyleSheet, View, type ListRenderItem } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { localizePreview } from '@/components/chat/localize';
 import { AppRefreshControl } from '@/components/ui/app-refresh-control';
@@ -20,7 +20,14 @@ import { mediaUrl } from '@/lib/media';
 import { useAuthStore } from '@/stores/auth';
 import { useTheme } from '@/theme';
 
-function Row({ r }: { r: ChatRoomDto }) {
+/** 방 한 줄. 검색어·필터가 바뀌어도 그대로인 방은 다시 그리지 않는다 */
+const Row = memo(function Row({
+  r,
+}: {
+  r: ChatRoomDto;
+  /** 다시 불러올 때마다 바뀌어, 상대 시각(n분 전)을 새로 계산하게 한다 */
+  updatedAt: number;
+}) {
   const t = useTheme();
   const { t: tr } = useTranslation('chat');
   const preview = r.lastMessage && localizePreview(r.lastMessage);
@@ -83,7 +90,7 @@ function Row({ r }: { r: ChatRoomDto }) {
       )}
     </Pressable>
   );
-}
+});
 
 /** 채팅 목록: 고정한 방 먼저, 구매·판매·안 읽음 필터, 헤더 검색(닉네임·작품명) */
 /** 사진(44) 뒤 글자 시작점까지 들여 쓴 구분선 */
@@ -97,6 +104,11 @@ export default function ChatListScreen() {
   const [query, setQuery] = useState('');
   const q = useQuery({ queryKey: ['chat', 'rooms'], queryFn: api.chat.rooms, enabled: !!user });
   const pull = usePullRefresh(q.refetch);
+  const updatedAt = q.dataUpdatedAt;
+  const renderItem = useCallback<ListRenderItem<ChatRoomDto>>(
+    ({ item }) => <Row r={item} updatedAt={updatedAt} />,
+    [updatedAt],
+  );
   if (!user)
     return (
       <Empty
@@ -110,9 +122,9 @@ export default function ChatListScreen() {
   return (
     <List
       contentContainerStyle={{ flexGrow: 1 }}
-      data={pull.refreshing ? [] : filterChatRooms(all, filter, query)}
+      data={filterChatRooms(all, filter, query)}
       keyExtractor={(r) => r.id}
-      renderItem={({ item }) => <Row r={item} />}
+      renderItem={renderItem}
       contentInsetAdjustmentBehavior="automatic"
       style={{ backgroundColor: t.colors.background }}
       ItemSeparatorComponent={Sep}
@@ -141,9 +153,7 @@ export default function ChatListScreen() {
         </>
       }
       ListEmptyComponent={
-        pull.refreshing ? (
-          <Loading variant="list" />
-        ) : all.length ? (
+        all.length ? (
           <Empty kind="search" title={query.trim() ? tr('list.noResults') : tr('list.noMatches')} />
         ) : (
           <Empty kind="chat" title={tr('list.empty.title')} description={tr('list.empty.description')} />

@@ -1,4 +1,5 @@
-import { z } from 'zod';
+import '../zod-config';
+import * as z from 'zod';
 
 /** 원 단위 정수 금액. 문자열/소수 거부 */
 export const money = z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER);

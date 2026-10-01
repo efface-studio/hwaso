@@ -11,11 +11,14 @@ import { toast } from '@/stores/toast';
 export function FollowButton({
   userId,
   initial,
+  followsMe = false,
   onChange,
   size = 'md',
 }: {
   userId: string;
   initial: boolean;
+  /** 이 사람이 나를 팔로우하면 '맞팔로우' */
+  followsMe?: boolean;
   onChange?: (following: boolean, followerCount: number) => void;
   size?: 'sm' | 'md';
 }) {
@@ -46,7 +49,7 @@ export function FollowButton({
       aria-pressed={following}
       onClick={() => void toggle()}
     >
-      {following ? '팔로잉' : '팔로우'}
+      {following ? '팔로잉' : followsMe ? '맞팔로우' : '팔로우'}
     </Button>
   );
 }
