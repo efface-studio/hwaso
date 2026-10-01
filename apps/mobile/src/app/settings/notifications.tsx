@@ -1,5 +1,10 @@
 import { ApiError } from '@shop/api-client';
-import { NOTIFICATION_CATEGORIES, QUIET_HOURS, type NotificationPrefs } from '@shop/shared';
+import {
+  ADMIN_NOTIFICATION_KINDS,
+  NOTIFICATION_CATEGORIES,
+  QUIET_HOURS,
+  type NotificationPrefs,
+} from '@shop/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as Notifications from 'expo-notifications';
 import { Stack } from 'expo-router';
@@ -10,6 +15,7 @@ import { Loading } from '@/components/ui/state';
 import { Text } from '@/components/ui/text';
 import { formatDate } from '@/i18n/format';
 import { notificationCategoryLabel } from '@/i18n/labels';
+import { isAdmin } from '@/lib/admin';
 import { api } from '@/lib/api';
 import { registerPush } from '@/lib/push';
 import { useAuthStore } from '@/stores/auth';
@@ -65,6 +71,7 @@ function SwitchRow({
 /**
  * 알림 설정: 푸시 알림 스위치 하나 + 받을 알림 종류 + 방해 금지 시간 (알림함에는 항상 쌓인다).
  * 푸시는 기기 권한과 받을 알림 종류가 모두 켜져 있어야 온다. 스위치 하나로 둘을 함께 다룬다.
+ * 관리자에게만 관리자 알림(전체 + 종류별)을 따로 보여준다 — 일반 푸시 스위치와 별개로, 끄면 알림함에도 쌓이지 않는다.
  */
 export default function NotificationSettingsScreen() {
   const t = useTheme();
@@ -169,6 +176,8 @@ export default function NotificationSettingsScreen() {
   if (q.isPending) return <Loading variant="plain-list" />;
   if (!data) return null;
   const anyOn = NOTIFICATION_CATEGORIES.some((c) => data.push[c]);
+  // 서버는 관리자에게만 admin 을 준다 — 역할이 바뀐 직후를 대비해 화면에서도 한 번 더 본다
+  const admin = isAdmin(user) ? data.admin : undefined;
   const on = os === 'granted' && anyOn;
   const status = !os
     ? tr('notificationSettings.checking')
@@ -215,6 +224,31 @@ export default function NotificationSettingsScreen() {
       <Text variant="caption" color="muted" style={{ marginTop: 8 }}>
         {tr('notificationSettings.always')}
       </Text>
+      {admin && (
+        <>
+          <Text variant="label" color="muted" style={styles.group}>
+            {tr('notificationSettings.adminGroup')}
+          </Text>
+          <SwitchRow
+            label={tr('notificationSettings.adminEnabled')}
+            description={tr('notificationSettings.adminEnabledDescription')}
+            value={admin.enabled}
+            onChange={(v) => save.mutate({ ...data, admin: { ...admin, enabled: v } })}
+          />
+          {ADMIN_NOTIFICATION_KINDS.map((k) => (
+            <SwitchRow
+              key={k}
+              label={tr(`notificationSettings.adminTypes.${k}.label`)}
+              description={tr(`notificationSettings.adminTypes.${k}.description`)}
+              value={admin.enabled && admin.types[k]}
+              disabled={!admin.enabled}
+              onChange={(v) =>
+                save.mutate({ ...data, admin: { ...admin, types: { ...admin.types, [k]: v } } })
+              }
+            />
+          ))}
+        </>
+      )}
       {user && (
         <>
           <Text variant="label" color="muted" style={styles.group}>

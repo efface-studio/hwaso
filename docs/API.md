@@ -253,18 +253,34 @@ NestJS REST API. Base URL `/api/v1`. 모든 요청/응답은 JSON (업로드 제
 
 ### Reviews / Notifications / Reports
 
-| Method      | Path                                | 권한      | 설명                                                                                                                         |
-| ----------- | ----------------------------------- | --------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| POST        | /orders/:id/reviews                 | U         | COMPLETED 주문 당사자, 1회                                                                                                   |
-| DELETE      | /reviews/:id                        | U(작성자) |                                                                                                                              |
-| GET         | /notifications                      | U         | 커서 (30개)                                                                                                                  |
-| POST        | /notifications/read                 | U         | {ids} 또는 {all:true} → {unreadCount}                                                                                        |
-| GET         | /notifications/unread-count         | U         |                                                                                                                              |
-| DELETE      | /notifications/:id · /notifications | U         | 한 건 삭제 / 읽은 알림 모두 삭제                                                                                             |
-| GET/PUT     | /me/notification-settings           | U         | {push:{auction,trade,chat,activity}, quietHours} — 방해 금지 21~8시(KST) 푸시 보류. 운영 공지·가입 축하(system)는 끌 수 없다 |
-| POST/DELETE | /me/push-tokens                     | U         | {token, platform: expo·web} 등록(기기당 한 계정)·해제                                                                        |
-| GET         | /notifications/push-config          | -         | {vapidPublicKey} (웹 푸시 구독용, 미설정 시 null)                                                                            |
-| POST        | /reports                            | U         | {targetType, targetId, reason, detail}                                                                                       |
+| Method      | Path                                | 권한      | 설명                                                                                                                                                                |
+| ----------- | ----------------------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| POST        | /orders/:id/reviews                 | U         | COMPLETED 주문 당사자, 1회                                                                                                                                          |
+| DELETE      | /reviews/:id                        | U(작성자) |                                                                                                                                                                     |
+| GET         | /notifications                      | U         | 커서 (30개)                                                                                                                                                         |
+| POST        | /notifications/read                 | U         | {ids} 또는 {all:true} → {unreadCount}                                                                                                                               |
+| GET         | /notifications/unread-count         | U         |                                                                                                                                                                     |
+| DELETE      | /notifications/:id · /notifications | U         | 한 건 삭제 / 읽은 알림 모두 삭제                                                                                                                                    |
+| GET/PUT     | /me/notification-settings           | U         | {push:{auction,trade,chat,activity}, quietHours, admin?} — 방해 금지 21~8시(KST) 푸시 보류. 운영 공지·가입 축하(system)는 끌 수 없다. `admin` 은 아래 "관리자 알림" |
+| POST/DELETE | /me/push-tokens                     | U         | {token, platform: expo·web} 등록(기기당 한 계정)·해제                                                                                                               |
+| GET         | /notifications/push-config          | -         | {vapidPublicKey} (웹 푸시 구독용, 미설정 시 null)                                                                                                                   |
+| POST        | /reports                            | U         | {targetType, targetId, reason, detail}                                                                                                                              |
+
+#### 관리자 알림
+
+활성 관리자(ADMIN·SUPER_ADMIN, `status=ACTIVE`) 전원에게 알림함 + 푸시로 보낸다 (`AdminNotifier`, `src/notifications/admin-notifier.ts`). 일으킨 사람이 관리자면 그 사람은 받지 않는다. 링크는 웹 관리자 경로이고, 앱은 `toAppPath`(packages/shared)로 앱 관리자 화면에 연다.
+
+| 종류(설정 키)             | 타입                        | 계기                                                                                                                                                                 | 링크 (웹 → 앱)                                                                              |
+| ------------------------- | --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| 신고 접수 `report`        | `ADMIN_REPORT`              | `POST /reports` (같은 대상의 처리 전 신고가 여럿이면 본문에 누적 건수)                                                                                               | `/admin/reports` → `/admin/ops/reports`                                                     |
+| 판매자 인증 `seller`      | `ADMIN_SELLER_PENDING`      | `POST /me/seller` (판매자 등록 = 인증 대기)                                                                                                                          | `/admin/sellers` → `/admin/members?tab=sellers`                                             |
+| 감정서 검수 `certificate` | `ADMIN_CERTIFICATE_PENDING` | 작품 등록·수정에서 감정서를 넣거나 바꿔 검수 대기(PENDING)가 될 때                                                                                                   | `/admin/products?verification=PENDING` → `/admin/catalog?tab=products&verification=PENDING` |
+| 결제 이상 `payment`       | `ADMIN_PAYMENT_ISSUE`       | PG 승인 금액·주문 불일치(자동 취소), 웹훅 조회 불일치, 취소된 주문에 결제 완료(자동 환불), PG 환불 실패. 승인 전 요청 금액 불일치는 돈이 움직이지 않아 보내지 않는다 | `/admin/payments` → `/admin/commerce?tab=payments`                                          |
+| 앱 업데이트 `appUpdate`   | `ADMIN_APP_UPDATE`          | `POST /ota/updates`(배포 스크립트) · `POST /admin/ota/rollback`(되돌린 관리자 제외)                                                                                  | `/admin#updates`(웹은 OTA 화면이 없어 대시보드) → `/admin/ops/updates`                      |
+
+- **묶음 발송**: 같은 종류는 Redis 키 `notify:admin:{kind}:{key}` 로 60초 창을 둔다. 신고·판매자 인증·감정서는 창의 첫 건만 바로 보내고, 창 안에 더 생긴 건수는 창이 끝날 때 "신고 N건이 더 접수되었어요" 한 건으로 보낸다 (창을 연 인스턴스의 타이머 — 그 인스턴스가 재시작되면 요약은 빠질 수 있고 목록에는 그대로 남는다). 결제 이상은 결제·종류별, 앱 업데이트는 런타임·채널·메시지별로 창 안의 중복(iOS·Android 동시 배포 등)을 버린다.
+- **설정** (`notificationPrefs.admin`, 관리자에게만): `{enabled, types:{report, seller, certificate, payment, appUpdate}}`, 기본은 모두 켜짐. 끄면 알림함에도 남기지 않는다 (일반 분류는 푸시만 끈다). 일반 푸시 분류 스위치와 별개이고, 방해 금지 시간에는 다른 알림처럼 푸시만 보류한다. 푸시는 iOS 알림 그룹 `admin-{kind}`.
+- `GET /me/notification-settings` 는 관리자에게만 `admin` 을 넣는다 (역할은 요청 시점의 계정 상태 캐시 기준 — 다른 관리자 API 와 같다). `PUT` 에서 관리자가 아니면 `admin` 을 무시하고 저장하지 않는다. 관리자가 `admin` 을 빼고 보내면(이전 앱) 저장된 값을 유지한다.
 
 ### Admin (`/admin/*`, ADMIN·SUPER_ADMIN, 모든 변경은 AuditLog 기록)
 
@@ -327,7 +343,7 @@ NestJS REST API. Base URL `/api/v1`. 모든 요청/응답은 JSON (업로드 제
 | S→C  | `AUCTION_ENDED`                  | {auctionId, seq, result, winnerId, finalPrice}                                                                                                                                                                  |
 | S→C  | `CHAT_MESSAGE`                   | {roomId, message}                                                                                                                                                                                               |
 | S→C  | `CHAT_READ`                      | {roomId, userId, lastReadAt}                                                                                                                                                                                    |
-| S→C  | `NOTIFICATION`                   | {notification, unreadCount} (room `user:{id}`) — 상위 입찰·종료 임박·낙찰/유찰·경매 시작(관심)·주문 상태·문의·가격 인하                                                                                         |
+| S→C  | `NOTIFICATION`                   | {notification, unreadCount} (room `user:{id}`) — 상위 입찰·종료 임박·낙찰/유찰·경매 시작(관심)·주문 상태·문의·가격 인하·관리자 알림(관리자만)                                                                   |
 | S→C  | `ORDER_STATUS_UPDATED`           | {orderId, status} (room `user:{id}`)                                                                                                                                                                            |
 
 `seq` = `Auction.version`. 클라이언트는 `seq` 가 건너뛰면 `GET /auctions/:id` 로 재동기화한다. 재연결 시 룸 재가입 + 스냅샷 재조회는 항상 수행한다.
