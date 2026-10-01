@@ -2,6 +2,9 @@ import { toAppPath } from '@shop/shared';
 import { router, type Href } from 'expo-router';
 import { routingQueue, type LinkAction } from 'expo-router/build/global-state/routingQueue';
 import * as WebBrowser from 'expo-web-browser';
+import { useAuthStore } from '@/stores/auth';
+import { useEntry } from '@/stores/entry';
+import { isProtectedPath } from './entry-link';
 
 /** 뒤로 갈 화면이 없으면(딥링크·푸시로 바로 열린 경우) 홈으로 */
 export const goBack = () => (router.canGoBack() ? router.back() : router.replace('/home'));
@@ -12,8 +15,12 @@ export const goBack = () => (router.canGoBack() ? router.back() : router.replace
  * 관리자 알림 링크(웹 관리자 경로)는 앱 관리자 화면으로 바꿔 연다
  */
 export function openAppPath(path: string) {
-  if (path === '/' || path === '/home') router.dismissTo('/home');
-  else router.push(toAppPath(path) as Href);
+  if (path === '/' || path === '/home') return router.dismissTo('/home');
+  const target = toAppPath(path);
+  // 로그인해야 하는 화면인데 아직 로그인 전(앱 시작의 세션 복구 중 포함)이면 로그인 뒤에 연다 (components/entry-gate)
+  const { ready, user } = useAuthStore.getState();
+  if (isProtectedPath(target) && (!ready || !user)) useEntry.setState({ pending: target });
+  else router.push(target as Href);
 }
 
 /** 배너·공지 링크: 앱 경로('/products/…')는 앱 화면으로, 그 밖의 주소는 인앱 브라우저로 연다 */

@@ -108,9 +108,11 @@ export class SecurityService {
     familyId: string,
     device: DeviceInput,
     client: { ip: string; userAgent: string },
+    /** 로그인 방식 등 기록에 덧붙일 값 (빠른 로그인: { method: 'quick' }) */
+    detail?: Record<string, unknown>,
   ) {
     const ctx: EventContext = { ip: client.ip, device: device.name, sessionId: familyId };
-    await this.record(user.id, 'LOGIN', ctx, { platform: device.platform });
+    await this.record(user.id, 'LOGIN', ctx, { platform: device.platform, ...detail });
     try {
       const others = { userId: user.id, familyId: { not: familyId } };
       const [hasHistory, seen] = await Promise.all([

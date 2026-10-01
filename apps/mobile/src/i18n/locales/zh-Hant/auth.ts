@@ -13,6 +13,31 @@ const zhHant: Translation<typeof ko> = {
     socialDivider: '快速登入',
     close: '關閉並繼續瀏覽',
     failed: '無法登入，請檢查網路連線。',
+    browse: '先隨便看看',
+    saveEmail: '記住帳號',
+    autoLogin: '自動登入',
+  },
+  quick: {
+    button: {
+      face: '使用 Face ID 登入',
+      touch: '使用 Touch ID 登入',
+      fingerprint: '使用指紋登入',
+      biometric: '使用生物辨識登入',
+    },
+    method: {
+      face: 'Face ID',
+      touch: 'Touch ID',
+      fingerprint: '指紋',
+      biometric: '生物辨識',
+    },
+    prompt: '登入畫所',
+    invalidTitle: '請重新設定',
+    invalidMessage:
+      '快速登入已過期，或此裝置的臉部·指紋資料已變更。請用其他方式登入後，在 設定 › 安全性 中重新開啟。',
+    offerTitle: '要開啟快速登入嗎？',
+    offerMessage: '下次不需密碼，只用{{method}}就能登入。可隨時在 設定 › 安全性 中關閉。',
+    later: '稍後再說',
+    enable: '開啟',
   },
   signup: {
     title: '使用電子郵件註冊',

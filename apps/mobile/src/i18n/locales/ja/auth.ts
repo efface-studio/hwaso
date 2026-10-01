@@ -13,6 +13,32 @@ const ja: Translation<typeof ko> = {
     socialDivider: 'かんたんログイン',
     close: '閉じて見て回る',
     failed: 'ログインできませんでした。ネットワークを確認してください。',
+    browse: 'ログインせずに見る',
+    saveEmail: 'IDを保存',
+    autoLogin: '自動ログイン',
+  },
+  quick: {
+    button: {
+      face: 'Face IDでログイン',
+      touch: 'Touch IDでログイン',
+      fingerprint: '指紋でログイン',
+      biometric: '生体認証でログイン',
+    },
+    method: {
+      face: 'Face ID',
+      touch: 'Touch ID',
+      fingerprint: '指紋',
+      biometric: '生体認証',
+    },
+    prompt: '画所にログイン',
+    invalidTitle: 'もう一度設定してください',
+    invalidMessage:
+      'クイックログインの期限が切れたか、この端末の顔・指紋の登録が変わりました。別の方法でログインしてから、設定 › セキュリティで再度オンにしてください。',
+    offerTitle: 'クイックログインをオンにしますか？',
+    offerMessage:
+      '次回からパスワードなしで{{method}}だけでログインできます。設定 › セキュリティでいつでもオフにできます。',
+    later: 'あとで',
+    enable: 'オンにする',
   },
   signup: {
     title: 'メールアドレスで登録',

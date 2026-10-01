@@ -196,6 +196,9 @@ enum SecurityEventType {
   INTEGRITY_WARNING
   ACCOUNT_LINKED
   ACCOUNT_UNLINKED
+  QUICK_LOGIN_REGISTERED
+  QUICK_LOGIN_REMOVED
+  QUICK_LOGIN_FAILED
 }
 
 enum ChatMessageKind {
@@ -308,6 +311,7 @@ model User {
   @@index([createdAt])
   securityEvents SecurityEvent[]
   biometricKeys  BiometricKey[]
+  quickLogins    QuickLoginCredential[]
 }
 
 model Profile {
@@ -389,6 +393,32 @@ model BiometricKey {
   lastUsedAt DateTime? @db.Timestamptz
 
   @@index([userId])
+}
+
+/// Face ID·지문 빠른 로그인 자격 (docs/AUTH.md §9). 비밀번호가 아니라 서버가 만든 난수 secret 으로 로그인한다.
+/// 계정·앱 설치(기기)당 하나. 쓰면 secret 을 바꾸고(1회용) 만료를 다시 늘린다
+model QuickLoginCredential {
+  id             String    @id @default(uuid()) @db.Uuid
+  userId         String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// 앱 설치 ID 의 SHA-256 — 다른 설치에서 꺼낸 자격은 받지 않는다
+  deviceIdHash   String
+  /// SHA-256(secret). 원문은 발급 응답에서 한 번만 내려준다
+  secretHash     String
+  /// 바로 전 secret 의 해시 — 다시 오면 탈취로 보고 자격과 그 기기 세션을 폐기한다
+  prevSecretHash String?
+  /// 이 자격으로 마지막에 로그인(또는 등록)한 기기 세션 — 원격 로그아웃하면 함께 폐기
+  familyId       String
+  deviceName     String
+  /// 연속 실패 횟수 (5회면 폐기)
+  failures       Int       @default(0)
+  createdAt      DateTime  @default(now()) @db.Timestamptz
+  lastUsedAt     DateTime? @db.Timestamptz
+  expiresAt      DateTime  @db.Timestamptz
+
+  @@unique([userId, deviceIdHash])
+  @@index([familyId])
+  @@index([expiresAt])
 }
 
 model VerificationCode {

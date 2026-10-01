@@ -11,6 +11,32 @@ const ko = {
     socialDivider: '간편 로그인',
     close: '닫고 둘러보기',
     failed: '로그인하지 못했어요. 네트워크를 확인해주세요.',
+    browse: '둘러보기',
+    saveEmail: '아이디 저장',
+    autoLogin: '자동 로그인',
+  },
+  quick: {
+    button: {
+      face: 'Face ID로 로그인',
+      touch: 'Touch ID로 로그인',
+      fingerprint: '지문으로 로그인',
+      biometric: '생체 인증으로 로그인',
+    },
+    method: {
+      face: 'Face ID',
+      touch: 'Touch ID',
+      fingerprint: '지문',
+      biometric: '생체 인증',
+    },
+    prompt: '화소에 로그인',
+    invalidTitle: '다시 설정해 주세요',
+    invalidMessage:
+      '빠른 로그인 정보가 만료됐거나 기기의 얼굴·지문 등록이 바뀌었어요. 다른 방법으로 로그인한 뒤 설정 › 보안에서 다시 켜 주세요.',
+    offerTitle: '빠른 로그인을 켤까요?',
+    offerMessage:
+      '다음부터 비밀번호 없이 {{method}}만으로 로그인할 수 있어요. 설정 › 보안에서 언제든 끌 수 있어요.',
+    later: '나중에',
+    enable: '켜기',
   },
   signup: {
     title: '이메일로 가입하기',

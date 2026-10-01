@@ -17,8 +17,14 @@ export function AppLock() {
   const { t: tr } = useTranslation('common');
   const enabled = usePrefs((s) => s.appLock && s.hydrated) && Platform.OS !== 'web';
   const signedIn = !!useAuthStore((s) => s.user);
+  const ready = useAuthStore((s) => s.ready);
   const [locked, setLocked] = useState(true);
   const leftAt = useRef<number | null>(null);
+
+  // 로그인하지 않은 채 시작했으면 잠글 것이 없다 — 이어서 로그인(Face ID 빠른 로그인 포함)해도 다시 묻지 않는다
+  useEffect(() => {
+    if (ready && !signedIn) setLocked(false);
+  }, [ready, signedIn]);
 
   const unlock = useCallback(async () => {
     const r = await LocalAuthentication.authenticateAsync({

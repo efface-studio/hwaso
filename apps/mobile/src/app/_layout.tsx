@@ -21,12 +21,13 @@ import '@/i18n';
 import { ActionSheetHost } from '@/components/action-sheet-host';
 import { AnimatedSplash } from '@/components/animated-splash';
 import { AppLock } from '@/components/app-lock';
+import { EntryGate } from '@/components/entry-gate';
 import { OfflineBanner } from '@/components/offline-banner';
 import { PrivacyShield } from '@/components/privacy-shield';
 import { PushPromptHost } from '@/components/push-prompt-host';
 import { ReauthHost } from '@/components/reauth-host';
 import { preloadTabIcons } from '@/components/tab-icons';
-import { refreshAccessToken } from '@/lib/api';
+import { restoreSession } from '@/lib/api';
 import { isAdmin } from '@/lib/admin';
 import { OtaSync } from '@/lib/ota';
 import { guardRapidNavigation } from '@/lib/nav';
@@ -116,7 +117,8 @@ function Navigation() {
           <Stack.Screen name="notices/index" options={{ title: tr('screen.notices') }} />
           <Stack.Screen name="notices/[id]" options={{ title: tr('screen.notices') }} />
           <Stack.Screen name="support" options={{ title: tr('screen.support') }} />
-          {/* 로그인은 첫 화면이 아니라 필요할 때 띄우는 화면 — 로그인하면 가드가 빼 주어 보던 화면으로 돌아간다 */}
+          {/* 로그인: 로그인하지 않은 첫 실행의 첫 화면(index 가 보낸다, 아래 "둘러보기"로 들어간다)이자
+              로그인이 필요한 동작에서 띄우는 화면 — 로그인하면 가드가 빼 주어 보던 화면(첫 화면이었으면 홈)으로 */}
           <Stack.Protected guard={!signedIn}>
             <Stack.Screen name="login" options={{ headerShown: false, animation: 'slide_from_bottom' }} />
             <Stack.Screen name="signup" options={{ title: tr('screen.signup') }} />
@@ -189,7 +191,7 @@ export default function RootLayout() {
   // 저장된 설정·로그인 상태를 복구한다 (복구가 끝나야 스플래시가 사라진다)
   useEffect(() => {
     void usePrefs.getState().hydrate();
-    void refreshAccessToken().finally(() => useAuthStore.getState().markReady());
+    void restoreSession().finally(() => useAuthStore.getState().markReady());
   }, []);
   // 네이티브 스플래시는 애니메이션 스플래시가 첫 프레임을 그린 뒤 내린다 (테마를 알아야 하므로 설정 복구 후)
   const splashDone = useLaunch((s) => s.splashDone);
@@ -206,6 +208,7 @@ export default function RootLayout() {
         <SafeAreaProvider>
           <QueryClientProvider client={client}>
             <Navigation />
+            <EntryGate />
             <AppSync />
             <OtaSync />
             <OfflineBanner />

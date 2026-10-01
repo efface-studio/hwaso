@@ -13,6 +13,32 @@ const en: Translation<typeof ko> = {
     socialDivider: 'Or continue with',
     close: 'Close and keep browsing',
     failed: "Couldn't log in. Please check your connection.",
+    browse: 'Browse without logging in',
+    saveEmail: 'Remember email',
+    autoLogin: 'Stay logged in',
+  },
+  quick: {
+    button: {
+      face: 'Log in with Face ID',
+      touch: 'Log in with Touch ID',
+      fingerprint: 'Log in with fingerprint',
+      biometric: 'Log in with biometrics',
+    },
+    method: {
+      face: 'Face ID',
+      touch: 'Touch ID',
+      fingerprint: 'fingerprint',
+      biometric: 'biometrics',
+    },
+    prompt: 'Log in to Hwaso',
+    invalidTitle: 'Set it up again',
+    invalidMessage:
+      'Quick login has expired or the face or fingerprint on this device changed. Log in another way, then turn it on again in Settings › Security.',
+    offerTitle: 'Turn on quick login?',
+    offerMessage:
+      'Next time, log in with just {{method}} instead of your password. You can turn it off anytime in Settings › Security.',
+    later: 'Not now',
+    enable: 'Turn on',
   },
   signup: {
     title: 'Sign up with email',

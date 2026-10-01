@@ -31,6 +31,7 @@ export const ERROR_MESSAGES = {
   IDENTITY_FAILED: '본인인증에 실패했습니다. 다시 시도해주세요.',
   REAUTH_REQUIRED: '안전을 위해 본인 확인이 필요해요.',
   REAUTH_FAILED: '본인 확인에 실패했습니다. 다시 시도해주세요.',
+  QUICK_LOGIN_INVALID: '빠른 로그인 정보가 만료되었어요. 다른 방법으로 로그인한 뒤 다시 켜 주세요.',
   ACCOUNT_HAS_ACTIVE_TRADES:
     '진행 중인 거래나 경매가 있어 탈퇴할 수 없습니다. 거래를 마친 뒤 다시 시도해주세요.',
 

@@ -11,6 +11,7 @@ import { Text } from '@/components/ui/text';
 import { api } from '@/lib/api';
 import { useScreenGuard } from '@/lib/screen-guard';
 import { goBack } from '@/lib/nav';
+import { forgetQuickLogin } from '@/lib/quick-login';
 import { useAuthStore } from '@/stores/auth';
 import { useTheme } from '@/theme';
 import { passwordIssueMessage } from '@/components/auth/validation';
@@ -40,6 +41,8 @@ export default function PasswordScreen() {
         newPassword: next,
       });
       setUser({ ...user, hasPassword: true });
+      // 서버가 이 계정의 빠른 로그인(Face ID)을 모두 껐다 — 이 기기 자격도 지운다
+      await forgetQuickLogin();
       Alert.alert(tr('password.changedTitle'), tr('password.changedMessage'));
       goBack();
     } catch (e) {

@@ -7,7 +7,8 @@ Expo SDK 57 + **Expo Router** (React Navigation 7 기반 파일 라우팅). 코�
 ```
 src/app
 ├─ _layout.tsx            Root Stack (테마·쿼리·로그인 복구·스플래시)
-├─ index.tsx              → /home 으로 이동
+├─ index.tsx              첫 화면: 로그인 전이면 /login, 로그인했거나 둘러보기면 /home (docs/AUTH.md §12)
+├─ +native-intent.tsx     들어온 딥링크 기록 (공개 화면은 바로, 로그인 화면은 로그인 뒤에)
 ├─ (tabs)/_layout.tsx     NativeTabs — iOS 26 Liquid Glass / Android Material 3 탭 바
 │  ├─ home/               Stack: 홈
 │  ├─ auctions/           Stack: 진행 중 경매
@@ -15,7 +16,7 @@ src/app
 │  ├─ chat/               Stack: 채팅 목록 (탭 배지 = 안 읽은 수)
 │  └─ my/                 Stack: 마이 · 설정(테마·시니어 모드)
 ├─ products/[id].tsx      작품 상세
-├─ login.tsx              로그인 (아래에서 올라오는 화면, 닫고 둘러보기)
+├─ login.tsx              로그인 (첫 화면이면 아래 "둘러보기", 띄운 화면이면 왼쪽 위 닫기)
 ├─ consent.tsx            필수 동의 (약관·개인정보·만 14세 + 선택 마케팅)
 └─ +not-found.tsx
 ```
@@ -23,6 +24,7 @@ src/app
 - 탭 순서는 웹 하단 탭과 같다: 홈 · 경매 · 판매 · 채팅 · 마이 (검색은 홈 헤더).
 - iOS 26 에서 마이 탭은 search 역할로 두어 오른쪽에 분리된 원형 버튼(프로필 사진 + "마이")으로 보인다. 아이패드도 아이폰과 같은 아래쪽 탭 바를 쓴다 — iPadOS 18+ 기본은 위쪽 탭 바(넓으면 사이드바)라서, `patches/react-native-screens@4.26.2.patch` 가 아이패드에서 탭 바 컨트롤러만 가로 compact 로 보게 하고(`traitOverrides.horizontalSizeClass`) 각 탭 화면에는 창의 실제 size class 를 돌려준다 (화면 내용·헤더·시트는 아이패드 동작 그대로).
 - 각 탭 안에 native Stack 을 두어 큰 제목(iOS large title)·뒤로 가기를 OS 기본 동작으로 쓴다.
+- 로그인하지 않은 채 앱을 열면 로그인 화면이 첫 화면이다. 아래 "둘러보기"로 로그인 없이 들어가며, 이 선택은 이번 실행 동안만 기억한다 (docs/AUTH.md §12).
 - 로그인 없이 둘러볼 수 있다: 홈·경매·검색·작품/경매/작가/사용자 상세·공지·고객센터·약관 (App Store 5.1.1(v)).
 - 관심·팔로우·입찰·구매·채팅·문의·신고 같은 동작은 `requireLogin()` 이 `/login` 을 띄우고, 로그인하면 보던 화면으로 돌아온다. 채팅·판매 탭과 마이 탭은 비로그인 안내 화면을 보여준다.
 - 동의가 남은 계정(`MeDto.consentRequired`)은 `/consent` 만 열린다 (소셜 첫 가입 등).
@@ -43,6 +45,13 @@ scheme `hwaso://`, universal link `https://hwaso.kr` (`APP_LINK_HOST`). 파일 �
 | `/orders/:id`              | OrderDetail      |
 | `/notifications`           | Notifications    |
 | `/auth/callback/:provider` | 소셜 로그인 복귀 |
+
+로그인하지 않았을 때 (`app/+native-intent.tsx` → `lib/entry-link.ts`, `components/entry-gate.tsx`):
+
+- 공개 화면(작품·경매·작가·사용자·카테고리·공지 등): 로그인 화면 없이 바로 연다 — 공유받은 링크는 내용을 먼저 보여 주는 편이 낫고, 둘러보기로 들어온 것으로 본다.
+- 로그인해야 하는 화면(`/chat/:roomId`·`/orders`·`/notifications`·`/settings`·`/sell/…`·`/cart` 등): 로그인 화면을 띄우고, 로그인(동의가 남았으면 동의)이 끝나면 그 화면을 연다. 닫거나 둘러보기를 고르면 버린다.
+- 앱 시작 중(세션 복구 전)에 온 링크·알림은 로그인 화면이 막혀 있어 홈으로 떨어지므로, 같은 방식으로 기록했다가 복구가 끝나면 연다.
+- `/auth/callback`·`/bridge`(소셜 로그인·결제 복귀)는 손대지 않는다.
 
 푸시 알림의 `data.link` 는 위 경로를 그대로 담고, 탭 시 `router.push(link)` 로 이동한다 (웹 홈 `/` 은 쌓인 화면을 닫고 홈 탭으로 — `openAppPath`) (앱이 꺼져 있었으면 마지막 알림 응답으로 이동). 지금 보고 있는 화면과 같은 링크의 알림은 배너를 띄우지 않는다.
 
@@ -70,8 +79,8 @@ scheme `hwaso://`, universal link `https://hwaso.kr` (`APP_LINK_HOST`). 파일 �
 | Camera / Photo Library | `expo-image-picker` (카메라 + 앨범, 다중 선택 최대 20) | 상품 등록, 채팅 이미지                                                                                                                           |
 | 이미지 압축            | `expo-image-manipulator`                               | 업로드 전 긴 변 2400px, JPEG 0.85 (서버에서 재처리). 원본은 한 번만 디코딩, 동시에 3장씩 업로드                                                  |
 | Share                  | RN `Share`                                             | 상품/경매 공유 (웹 URL)                                                                                                                          |
-| Secure Storage         | `expo-secure-store`                                    | refresh 토큰                                                                                                                                     |
-| Biometric              | `expo-local-authentication`                            | 앱 잠금 해제 (설정)                                                                                                                              |
+| Secure Storage         | `expo-secure-store`                                    | refresh 토큰, 저장한 아이디, 빠른 로그인 자격(생체 인증 보호 항목)                                                                               |
+| Biometric              | `expo-local-authentication`                            | 앱 잠금 해제 (설정), 빠른 로그인 가능 여부·종류(Face ID·Touch ID·지문)                                                                           |
 | Browser Auth           | `expo-web-browser` + `expo-auth-session`               | 소셜 로그인, 결제·우편번호 웹 브리지                                                                                                             |
 | Haptics                | `expo-haptics`                                         | 입찰 성공/실패                                                                                                                                   |
 | Image                  | `expo-image`                                           | 서버 이미지는 `MediaImage`(표시 폭에 맞는 파생본 + 메모리·디스크 캐시), 대표색 배경 — 아래 「성능」                                              |

@@ -90,6 +90,19 @@ export const refreshSchema = z.strictObject({
   refreshToken: z.string().min(10).optional(),
 });
 
+/**
+ * 로그아웃. 앱은 이 기기의 푸시 토큰을 함께 보낼 수 있다 — access 토큰 없이도(자동 로그인을 끈 세션을
+ * 다음 실행 때 정리할 때) 그 세션 사용자의 토큰이면 지운다
+ */
+export const logoutSchema = refreshSchema.extend({
+  pushToken: z.string().min(10).max(2000).optional(),
+});
+export type LogoutInput = z.infer<typeof logoutSchema>;
+
+/** 웹 "로그인 상태 유지": false 면 refresh 쿠키를 브라우저를 닫으면 사라지는 세션 쿠키로 바꾼다 */
+export const sessionPersistenceSchema = z.strictObject({ persistent: z.boolean() });
+export type SessionPersistenceInput = z.infer<typeof sessionPersistenceSchema>;
+
 export const resetPasswordSchema = z.strictObject({
   verificationToken: z.string().min(10),
   newPassword: passwordSchema,

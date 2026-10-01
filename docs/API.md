@@ -53,21 +53,22 @@ NestJS REST API. Base URL `/api/v1`. 모든 요청/응답은 JSON (업로드 제
 
 ### Rate Limit (Redis 고정 창)
 
-| 대상      | 제한                                                                                                                 |
-| --------- | -------------------------------------------------------------------------------------------------------------------- |
-| 전역 IP   | 300 req / min (예외는 `/api/v1/health` 정확히 하나)                                                                  |
-| 로그인    | IP 20/min, 계정 실패 10회/15분 → 15분 잠금                                                                           |
-| 비밀번호  | 변경 사용자당 10/10min, 재설정 IP 당 10/10min, 탈퇴 확인 사용자당 10/10min                                           |
-| 소셜 시작 | `/auth/oauth/:provider/url` IP 당 30/min (호출마다 state 를 Redis 에 저장)                                           |
-| 주문 견적 | `/orders/quote` 사용자당 60/min (쿠폰 코드 대입 방지)                                                                |
-| OTP 발송  | 이메일당 5/시간, 60초 간격                                                                                           |
-| 입찰      | 사용자당 10/10s                                                                                                      |
-| 업로드    | 사용자당 60/min                                                                                                      |
-| 채팅 전송 | 사용자당 30/10s (요청) · 도배: 8개/10s `CHAT_TOO_FAST`, 같은 글 30s 에 2번 `CHAT_DUPLICATE` (clientId 재시도는 제외) |
-| 재인증    | 사용자당 10/10min (`/auth/reauth`), 재인증 OTP 발송 사용자당 5/10min + 이메일당 60초 간격·5/시간                     |
-| 생체 키   | 등록 사용자당 10/시간                                                                                                |
-| 무결성    | 신고 사용자당 30/시간                                                                                                |
-| 소켓      | 소켓당 이벤트 40개/10s (넘으면 처리·ack 없음), 소켓당 경매 룸 20개 (`RATE_LIMITED`)                                  |
+| 대상        | 제한                                                                                                                 |
+| ----------- | -------------------------------------------------------------------------------------------------------------------- |
+| 전역 IP     | 300 req / min (예외는 `/api/v1/health` 정확히 하나)                                                                  |
+| 로그인      | IP 20/min, 계정 실패 10회/15분 → 15분 잠금                                                                           |
+| 비밀번호    | 변경 사용자당 10/10min, 재설정 IP 당 10/10min, 탈퇴 확인 사용자당 10/10min                                           |
+| 소셜 시작   | `/auth/oauth/:provider/url` IP 당 30/min (호출마다 state 를 Redis 에 저장)                                           |
+| 주문 견적   | `/orders/quote` 사용자당 60/min (쿠폰 코드 대입 방지)                                                                |
+| OTP 발송    | 이메일당 5/시간, 60초 간격                                                                                           |
+| 입찰        | 사용자당 10/10s                                                                                                      |
+| 업로드      | 사용자당 60/min                                                                                                      |
+| 채팅 전송   | 사용자당 30/10s (요청) · 도배: 8개/10s `CHAT_TOO_FAST`, 같은 글 30s 에 2번 `CHAT_DUPLICATE` (clientId 재시도는 제외) |
+| 재인증      | 사용자당 10/10min (`/auth/reauth`), 재인증 OTP 발송 사용자당 5/10min + 이메일당 60초 간격·5/시간                     |
+| 생체 키     | 등록 사용자당 10/시간                                                                                                |
+| 빠른 로그인 | IP 20/min, 자격당 10/10min, 연속 실패 5회면 자격 삭제 · 켜기 사용자당 10/시간                                        |
+| 무결성      | 신고 사용자당 30/시간                                                                                                |
+| 소켓        | 소켓당 이벤트 40개/10s (넘으면 처리·ack 없음), 소켓당 경매 룸 20개 (`RATE_LIMITED`)                                  |
 
 초과 시 429 `RATE_LIMITED`.
 
@@ -104,7 +105,13 @@ NestJS REST API. Base URL `/api/v1`. 모든 요청/응답은 JSON (업로드 제
 | POST   | /auth/signup                   | -    | {verificationToken, password, nickname, agreeTerms: true, agreePrivacy: true, ageOver14: true, agreeMarketing?, device} → 토큰 쌍                                                                                                                                          |
 | POST   | /auth/login                    | -    | {email, password, device} → 토큰 쌍                                                                                                                                                                                                                                        |
 | POST   | /auth/refresh                  | -    | 쿠키 또는 {refreshToken} → 회전된 토큰 쌍                                                                                                                                                                                                                                  |
-| POST   | /auth/logout                   | -    | 현재 세션 폐기                                                                                                                                                                                                                                                             |
+| POST   | /auth/logout                   | -    | 현재 세션 폐기. {refreshToken?, pushToken?} — pushToken 은 그 세션 사용자의 것이면 함께 삭제(access 토큰 불필요). 이 기기 빠른 로그인 자격은 남긴다                                                                                                                        |
+| POST   | /auth/session/persistence      | -    | 웹 쿠키 + CSRF. {persistent} — false 면 `rt` 를 세션 쿠키로 다시 굽고 `rts=1` 표시(회전도 세션 쿠키), true 면 30일 쿠키로 (docs/AUTH.md §12)                                                                                                                               |
+| POST   | /auth/quick-login              | -    | {credentialId, secret, deviceId, device} 빠른 로그인(앱) → 토큰 쌍 + `quickLogin: {credentialId, secret, expiresAt}`(새 secret). 실패 401 `QUICK_LOGIN_INVALID` (docs/AUTH.md §9)                                                                                          |
+| POST   | /auth/quick-login/register     | U(R) | {deviceId, deviceName} → {credentialId, secret, expiresAt}. 앱 세션만. 로그인 10분 뒤에는 R 필요                                                                                                                                                                           |
+| GET    | /auth/quick-login              | U    | ?deviceId → {enabled, expiresAt}                                                                                                                                                                                                                                           |
+| PATCH  | /auth/quick-login              | U    | {deviceId} 이 기기 자격을 현재 기기 세션(family)에 다시 묶는다 → {enabled, expiresAt}                                                                                                                                                                                      |
+| DELETE | /auth/quick-login              | U    | {deviceId} 이 기기 자격 삭제                                                                                                                                                                                                                                               |
 | POST   | /auth/password/reset           | -    | {verificationToken, newPassword} → 전체 세션 폐기                                                                                                                                                                                                                          |
 | POST   | /auth/password/change          | U·R  | {currentPassword, newPassword} — 다른 기기 로그아웃                                                                                                                                                                                                                        |
 | POST   | /auth/reauth                   | U    | {method:'password',password} · {method:'otp',code} · {method:'biometric',keyId,secret} → {reauthToken, expiresAt(5분)}. 실패 400 `REAUTH_FAILED`(OTP 는 `INVALID_CODE` 등)                                                                                                 |

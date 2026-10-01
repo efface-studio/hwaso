@@ -127,6 +127,8 @@ state 는 서버가 1회용으로 보관하지만 어느 브라우저가 시작�
 
 - **재인증 창**: 서버가 403 `REAUTH_REQUIRED` 를 주면 api-client 의 `reauth` 훅이 본인 확인 창(`components/reauth-host.tsx`)을 띄운다. 생체 인증 키가 있으면 Face ID 부터, 없으면 비밀번호·이메일 인증번호. 받은 재인증 토큰으로 같은 요청을 다시 보낸다.
 - **생체 인증 키**: 설정 → 보안에서 켠다(등록도 재인증 필요). 비밀값은 `requireAuthentication` 키체인 항목(`WHEN_PASSCODE_SET_THIS_DEVICE_ONLY`, 얼굴·지문을 다시 등록하면 무효)에만 두고, 로그아웃하면 지운다.
+- **빠른 로그인 (Face ID·지문)**: 비밀번호가 아니라 서버가 만든 1회용 자격(docs/AUTH.md §9)을 같은 생체 인증 보호 키체인 항목에 둔다. 생체 키와 달리 본인 로그아웃 뒤에도 남는다(그게 목적). 원격 로그아웃·다른 기기 전체 로그아웃·비밀번호 변경·재사용 탐지로 폐기된다. 기기 무결성 위험이 보이면 켜지 않는다.
+- **자동 로그인 끔**: 다음 실행 때 저장된 refresh 토큰으로 서버 로그아웃(푸시 토큰 포함)을 보내고 지운다 (docs/AUTH.md §12).
 - **키체인**: 일반 항목은 `WHEN_UNLOCKED_THIS_DEVICE_ONLY` (백업·기기 이전으로 옮겨지지 않음). 예전 항목은 읽을 때 옮긴다. Android `allowBackup: false`.
 - **TLS 피닝** (`plugins/with-tls-pinning.ts`): API·미디어·웹 도메인에 Cloudflare 가 쓰는 루트·중간 CA 의 SPKI SHA-256 을 고정한다 — iOS ATS `NSPinnedDomains`, Android network security config(만료 2027-12-31, 지나면 고정 해제). 네이티브 설정이라 **OTA 로 바꿀 수 없다** — CA 를 바꾸면 스토어 빌드가 먼저 나가야 한다. 핀 목록은 `app.config.ts` 주석 참고.
 - **변조 탐지** (`modules/device-integrity`): 탈옥·루팅·디버거·후킹(Frida 등)·변조(번들 ID·서명 인증서)를 확인해 **경고만** 한다(사용은 막지 않음). 에뮬레이터는 알리지도 기록하지도 않는다. 위험 신호는 `POST /me/security/integrity` 로 보안 기록에 남는다. Android 서명 검사는 `ANDROID_SIGNING_CERT_SHA256`(Play 앱 서명 키 지문) 을 넣어야 켜진다.
