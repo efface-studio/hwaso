@@ -165,7 +165,8 @@ const ja: Translation<typeof ko> = {
     remove: '{{index}}枚目の写真を削除',
     moveLater: '{{index}}枚目の写真を後ろへ',
     uploadFailed: '{{count}}枚をアップロードできませんでした',
-    uploadFailedMessage: '写真の形式（JPG・PNG・HEIC）とサイズ（20MB以下）を確認してください。',
+    uploadFailedMessage:
+      '写真の形式（JPG・PNG・HEIC・WebP・GIFなど）とサイズ（30MB以下）を確認してください。',
   },
   basic: {
     title: '作品名',

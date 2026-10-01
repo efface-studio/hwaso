@@ -163,7 +163,7 @@ const ko = {
     remove: '{{index}}번째 사진 삭제',
     moveLater: '{{index}}번째 사진 뒤로',
     uploadFailed: '{{count}}장을 올리지 못했어요',
-    uploadFailedMessage: '사진 형식(JPG·PNG·HEIC)과 크기(20MB 이하)를 확인해주세요.',
+    uploadFailedMessage: '사진 형식(JPG·PNG·HEIC·WebP·GIF 등)과 크기(30MB 이하)를 확인해주세요.',
   },
   basic: {
     title: '작품명',

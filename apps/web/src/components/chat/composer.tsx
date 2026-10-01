@@ -1,7 +1,7 @@
 'use client';
 
 import { ApiError } from '@shop/api-client';
-import { CHAT_IMAGES_MAX, CHAT_MESSAGE_MAX, type SendMessageInput } from '@shop/shared';
+import { CHAT_IMAGES_MAX, CHAT_MESSAGE_MAX, IMAGE_UPLOAD, type SendMessageInput } from '@shop/shared';
 import {
   CalendarClock,
   CornerDownRight,
@@ -227,7 +227,7 @@ export function Composer({
         <input
           ref={file}
           type="file"
-          accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+          accept={IMAGE_UPLOAD.accept}
           multiple
           className="hidden"
           onChange={(e) => {

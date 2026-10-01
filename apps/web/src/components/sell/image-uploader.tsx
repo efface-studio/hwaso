@@ -1,7 +1,7 @@
 'use client';
 
 import { ApiError, type UploadedImage } from '@shop/api-client';
-import { MAX_PRODUCT_IMAGES } from '@shop/shared';
+import { IMAGE_UPLOAD, MAX_PRODUCT_IMAGES } from '@shop/shared';
 import { ArrowLeft, ArrowRight, ImagePlus, X } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { MediaImage } from '@/components/product/media-image';
@@ -11,9 +11,6 @@ import { cn } from '@/lib/cn';
 import { toast } from '@/stores/toast';
 
 export type DraftImage = UploadedImage;
-
-const ACCEPT = 'image/jpeg,image/png,image/webp,image/heic,image/heif,image/avif';
-const MAX_BYTES = 20 * 1024 * 1024;
 
 /**
  * 작품 사진 업로드: 여러 장 동시 선택, 진행률, 순서 변경(첫 장이 대표), 삭제.
@@ -35,8 +32,8 @@ export function ImageUploader({
     const picked = files.slice(0, left);
     if (files.length > left) toast.show(`사진은 최대 ${MAX_PRODUCT_IMAGES}장까지 올릴 수 있어요`);
     const valid = picked.filter((f) => {
-      if (f.size > MAX_BYTES) {
-        toast.error(`${f.name}: 20MB 이하 사진만 올릴 수 있어요`);
+      if (f.size > IMAGE_UPLOAD.maxBytes) {
+        toast.error(`${f.name}: ${IMAGE_UPLOAD.maxMb}MB 이하 사진만 올릴 수 있어요`);
         return false;
       }
       return true;
@@ -153,7 +150,7 @@ export function ImageUploader({
       <input
         ref={input}
         type="file"
-        accept={ACCEPT}
+        accept={IMAGE_UPLOAD.accept}
         multiple
         className="hidden"
         onChange={(e) => {

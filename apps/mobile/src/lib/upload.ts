@@ -36,6 +36,8 @@ export async function pickImages(
     quality: 0.85,
     exif: false,
     orderedSelection: true,
+    // iOS: HEIC 등은 기기에서 JPEG 로 바꿔 받는다 — 서버의 HEIC 디코딩(장당 1~2초)은 웹 업로드용으로 남긴다
+    preferredAssetRepresentationMode: ImagePicker.UIImagePickerPreferredAssetRepresentationMode.Compatible,
   });
   return r.canceled ? [] : r.assets;
 }

@@ -117,8 +117,8 @@ Client: 서버 이벤트로만 가격 갱신 (낙관적 업데이트 없음)
 
 ## 6. 이미지 파이프라인
 
-1. 클라이언트 → `POST /media/images` (multipart, 최대 20MB, 요청당 1장)
-2. 서버: 확장자/Content-Type 이 아니라 **sharp 로 실제 포맷 판별** (jpeg/png/webp/heif/avif 외 거부), 픽셀 수 상한 50MP
+1. 클라이언트 → `POST /media/images` (multipart, 최대 30MB, 요청당 1장). 웹 `accept` 는 `image/*,.heic,.heif` (`IMAGE_UPLOAD`, packages/shared)
+2. 서버: 확장자/Content-Type 이 아니라 **sharp 로 실제 포맷 판별** (jpeg/png/webp/heif/avif/gif/tiff 외 거부, gif·tiff 는 첫 장), 픽셀 수 상한 100MP. iPhone HEIC(HEVC)는 sharp 가 디코딩하지 못해 `heic-decode`(WASM)를 워커 스레드에서 실행
 3. EXIF 방향 적용 후 **메타데이터(GPS 등) 제거**, 원본은 `originals/` (비공개) 에 보관
 4. 파생본: 폭 `400/800/1600` WebP + AVIF → `public/` prefix, 키에 콘텐츠 해시 포함 → CDN `immutable` 캐시
    - 원본은 한 번만 디코딩한다: 방향 적용 + 1600 폭으로 줄인 픽셀에서 작은 파생본을 만들고, 인코딩은 병렬. 대표색은 64px 썸네일로 계산

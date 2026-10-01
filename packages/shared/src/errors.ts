@@ -38,8 +38,8 @@ export const ERROR_MESSAGES = {
   PRODUCT_NOT_EDITABLE: '현재 상태에서는 상품 정보를 수정할 수 없습니다.',
   PRODUCT_IN_USE: '진행 중인 주문이나 경매가 있어 처리할 수 없습니다.',
   OUT_OF_STOCK: '품절된 상품입니다.',
-  INVALID_IMAGE: '지원하지 않는 이미지입니다. JPG, PNG, WebP, HEIC 파일을 올려주세요.',
-  IMAGE_TOO_LARGE: '이미지 용량은 20MB 이하여야 합니다.',
+  INVALID_IMAGE: '지원하지 않는 이미지입니다. JPG, PNG, HEIC, WebP, AVIF, GIF, TIFF 파일을 올려주세요.',
+  IMAGE_TOO_LARGE: '이미지 용량은 30MB 이하여야 합니다.',
 
   AUCTION_NOT_LIVE: '진행 중인 경매가 아닙니다.',
   AUCTION_ENDED: '경매가 종료되었습니다.',

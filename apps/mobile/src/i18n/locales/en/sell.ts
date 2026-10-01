@@ -166,7 +166,7 @@ const en: Translation<typeof ko> = {
     remove: 'Delete photo {{index}}',
     moveLater: 'Move photo {{index}} later',
     uploadFailed: 'Photos not uploaded: {{count}}',
-    uploadFailedMessage: 'Check the format (JPG, PNG, HEIC) and size (up to 20MB).',
+    uploadFailedMessage: 'Check the format (JPG, PNG, HEIC, WebP, GIF, etc.) and size (up to 30MB).',
   },
   basic: {
     title: 'Title',
