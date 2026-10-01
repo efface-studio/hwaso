@@ -41,8 +41,8 @@ export async function pushPermission(): Promise<'granted' | 'undetermined' | 'de
 
 /**
  * 이 기기의 푸시 토큰을 서버에 등록한다. iOS 는 APNs 기기 토큰, Android 는 FCM 기기 토큰 — 서버가 Apple·Google 로 직접 보낸다.
- * 권한은 여기서 묻지 않는다 — 이미 허용된 경우에만 등록하고, 처음 묻는 건 쓰임새가 보이는 순간(채팅·입찰·관심·팔로우,
- * 알림 설정)에 안내 시트를 거쳐 requestPushPermission 으로 한다 (App Store 가이드: 맥락 없이 바로 묻지 않기).
+ * 권한은 여기서 묻지 않는다 — 이미 허용된 경우에만 등록한다. 처음 묻는 건 첫 실행 때(askPushOnLaunch),
+ * 그때 미뤘으면 쓰임새가 보이는 순간(채팅·입찰·관심·팔로우, 알림 설정)이다.
  * 에뮬레이터·웹·권한 없음이면 조용히 넘어간다 (앱 사용에는 지장 없음).
  */
 export async function registerPush(): Promise<boolean> {
@@ -54,13 +54,18 @@ export async function registerPush(): Promise<boolean> {
   return true;
 }
 
-/** 시스템 권한 창을 띄우고, 허용하면 이 기기를 푸시 대상으로 등록한다 */
-export async function requestPushPermission(): Promise<boolean> {
+/** 시스템 권한 창만 띄운다 (토큰 등록 없이 — 로그인 전에도 쓸 수 있다) */
+export async function askPushPermission(): Promise<boolean> {
   if (Platform.OS === 'web' || !Device.isDevice) return false;
   // Android 13+ 는 채널이 있어야 권한 창이 뜬다
   await ensureChannel();
   const { granted } = await Notifications.requestPermissionsAsync();
-  if (!granted) return false;
+  return granted;
+}
+
+/** 시스템 권한 창을 띄우고, 허용하면 이 기기를 푸시 대상으로 등록한다 (로그인한 뒤에만) */
+export async function requestPushPermission(): Promise<boolean> {
+  if (!(await askPushPermission())) return false;
   return registerPush();
 }
 

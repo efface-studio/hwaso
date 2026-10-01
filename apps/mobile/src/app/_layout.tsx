@@ -31,6 +31,7 @@ import { isAdmin } from '@/lib/admin';
 import { OtaSync } from '@/lib/ota';
 import { guardRapidNavigation } from '@/lib/nav';
 import { connectQueryFocus } from '@/lib/query-focus';
+import { askPushOnLaunch } from '@/lib/push-prompt';
 import { AppSync } from '@/lib/realtime-sync';
 import { useAuthStore } from '@/stores/auth';
 import { useLaunch } from '@/stores/launch';
@@ -190,6 +191,10 @@ export default function RootLayout() {
   // 네이티브 스플래시는 애니메이션 스플래시가 첫 프레임을 그린 뒤 내린다 (테마를 알아야 하므로 설정 복구 후)
   const splashDone = useLaunch((s) => s.splashDone);
   const finishSplash = useLaunch((s) => s.finishSplash);
+  // 처음 실행이면 스플래시가 끝난 뒤 알림 허용 창을 한 번 띄운다 (로그인 상태를 안 다음에 — 바로 토큰을 등록할 수 있게)
+  useEffect(() => {
+    if (splashDone && ready) void askPushOnLaunch();
+  }, [splashDone, ready]);
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
