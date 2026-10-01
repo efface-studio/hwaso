@@ -1,4 +1,5 @@
-import { z } from 'zod';
+import '../zod-config';
+import * as z from 'zod';
 import { PLATFORMS, VERIFICATION_PURPOSES } from '../enums';
 
 export const emailSchema = z

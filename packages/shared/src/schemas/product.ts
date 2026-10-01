@@ -1,4 +1,5 @@
-import { z } from 'zod';
+import '../zod-config';
+import * as z from 'zod';
 import { ITEM_CONDITIONS, PRODUCT_SORTS, PROVENANCE_KINDS, SALE_TYPES } from '../enums';
 import { csv, cursorQuery, id, money, positiveMoney, queryBool } from './common';
 

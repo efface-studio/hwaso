@@ -2,14 +2,18 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { LayoutGrid } from 'lucide-react';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { Suspense, useState } from 'react';
 import { MediaImage } from '@/components/product/media-image';
 import { Skeleton } from '@/components/ui/display';
-import { Sheet } from '@/components/ui/dialog';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/cn';
+
+/** 카테고리 시트(Radix Dialog)는 처음 열 때 불러온다 — 모든 화면의 공통 번들에서 뺀다 */
+const loadDialog = () => import('@/components/ui/dialog');
+const Sheet = dynamic(() => loadDialog().then((m) => m.Sheet), { ssr: false });
 
 /** 상단 탐색 탭 (KREAM·29CM 방식). 작품 분류는 오른쪽 "카테고리" 시트에서 고른다 */
 const TABS = [
@@ -124,6 +128,8 @@ function CategoryTiles({ onPick }: { onPick: () => void }) {
 
 export function CategoryNav() {
   const [open, setOpen] = useState(false);
+  // 한 번 연 뒤에는 계속 마운트해 둔다 (닫힘 애니메이션 유지)
+  const [mounted, setMounted] = useState(false);
   return (
     <nav aria-label="탐색" className="page-x mx-auto flex max-w-page items-center gap-4">
       <Suspense fallback={<Tabs activeSort={null} />}>
@@ -131,7 +137,13 @@ export function CategoryNav() {
       </Suspense>
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          setMounted(true);
+          setOpen(true);
+        }}
+        // 누르기 전에 미리 받아 둔다
+        onPointerEnter={() => void loadDialog()}
+        onFocus={() => void loadDialog()}
         aria-haspopup="dialog"
         aria-expanded={open}
         className="-mr-2 flex h-11 shrink-0 items-center gap-1.5 rounded-sm px-2 text-label font-semibold hover:bg-surface-2"
@@ -139,9 +151,11 @@ export function CategoryNav() {
         <LayoutGrid className="size-4" aria-hidden />
         카테고리
       </button>
-      <Sheet open={open} onOpenChange={setOpen} title="카테고리" side="bottom" desktopSide="right">
-        <CategoryTiles onPick={() => setOpen(false)} />
-      </Sheet>
+      {mounted && (
+        <Sheet open={open} onOpenChange={setOpen} title="카테고리" side="bottom" desktopSide="right">
+          <CategoryTiles onPick={() => setOpen(false)} />
+        </Sheet>
+      )}
     </nav>
   );
 }

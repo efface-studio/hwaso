@@ -1,4 +1,5 @@
-import { z } from 'zod';
+import './zod-config';
+import * as z from 'zod';
 import type { NotificationType } from './enums';
 
 /** 알림 설정 단위. system(운영 공지·계정 보안)은 끌 수 없다 */
