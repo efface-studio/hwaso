@@ -4,6 +4,7 @@ export * from './enums';
 export * from './labels';
 export * from './format';
 export * from './errors';
+export * from './media';
 export * from './auction';
 export * from './order';
 export * from './notifications';

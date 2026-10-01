@@ -152,7 +152,7 @@ const zhHans: Translation<typeof ko> = {
     remove: '删除第 {{index}} 张照片',
     moveLater: '将第 {{index}} 张照片后移',
     uploadFailed: '有 {{count}} 张照片上传失败',
-    uploadFailedMessage: '请检查照片格式（JPG、PNG、HEIC）和大小（20MB 以内）。',
+    uploadFailedMessage: '请检查照片格式（JPG、PNG、HEIC、WebP、GIF 等）和大小（30MB 以内）。',
   },
   basic: {
     title: '作品名称',

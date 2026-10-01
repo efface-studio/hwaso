@@ -152,7 +152,7 @@ const zhHant: Translation<typeof ko> = {
     remove: '刪除第 {{index}} 張照片',
     moveLater: '將第 {{index}} 張照片往後移',
     uploadFailed: '有 {{count}} 張照片上傳失敗',
-    uploadFailedMessage: '請確認照片格式（JPG、PNG、HEIC）與大小（20MB 以內）。',
+    uploadFailedMessage: '請確認照片格式（JPG、PNG、HEIC、WebP、GIF 等）與大小（30MB 以內）。',
   },
   basic: {
     title: '作品名稱',

@@ -1,7 +1,13 @@
 'use client';
 
 import { ApiError } from '@shop/api-client';
-import { AUTH_PROVIDERS, nicknameSchema, passwordSchema, type AuthProvider } from '@shop/shared';
+import {
+  AUTH_PROVIDERS,
+  IMAGE_UPLOAD,
+  nicknameSchema,
+  passwordSchema,
+  type AuthProvider,
+} from '@shop/shared';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Camera, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
@@ -100,7 +106,7 @@ function ProfileSection() {
           </span>
         </button>
         <div className="flex flex-col gap-1 text-small text-muted">
-          {uploading ? '올리는 중…' : 'JPG, PNG, WebP, HEIC · 20MB 이하'}
+          {uploading ? '올리는 중…' : IMAGE_UPLOAD.hint}
           {avatarKey && (
             <button type="button" onClick={() => setAvatarKey(null)} className="self-start text-destructive">
               사진 삭제
@@ -110,7 +116,7 @@ function ProfileSection() {
         <input
           ref={file}
           type="file"
-          accept="image/jpeg,image/png,image/webp,image/heic,image/heif,image/avif"
+          accept={IMAGE_UPLOAD.accept}
           className="hidden"
           onChange={(e) => {
             const f = e.target.files?.[0];

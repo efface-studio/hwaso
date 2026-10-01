@@ -1,7 +1,7 @@
 'use client';
 
 import { ApiError } from '@shop/api-client';
-import { bannerSchema, type AdminBannerRow, type BannerInput } from '@shop/shared';
+import { bannerSchema, IMAGE_UPLOAD, type AdminBannerRow, type BannerInput } from '@shop/shared';
 import { useQuery } from '@tanstack/react-query';
 import { Plus } from 'lucide-react';
 import { useRef, useState } from 'react';
@@ -93,7 +93,7 @@ function Form({ initial, onClose }: { initial: AdminBannerRow | null; onClose: (
           <input
             ref={file}
             type="file"
-            accept="image/*"
+            accept={IMAGE_UPLOAD.accept}
             className="hidden"
             onChange={(e) => {
               void upload(e.target.files?.[0]);

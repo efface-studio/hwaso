@@ -1,7 +1,7 @@
 'use client';
 
 import { ApiError } from '@shop/api-client';
-import type { ImageDto, ReviewDto } from '@shop/shared';
+import { IMAGE_UPLOAD, type ImageDto, type ReviewDto } from '@shop/shared';
 import { useMutation } from '@tanstack/react-query';
 import { ImagePlus, X } from 'lucide-react';
 import { useRef, useState } from 'react';
@@ -132,7 +132,7 @@ export function ReviewDialog({
             ref={file}
             type="file"
             multiple
-            accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+            accept={IMAGE_UPLOAD.accept}
             className="hidden"
             onChange={(e) => {
               void upload([...(e.target.files ?? [])]);

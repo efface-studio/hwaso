@@ -139,9 +139,9 @@ NestJS REST API. Base URL `/api/v1`. 모든 요청/응답은 JSON (업로드 제
 
 ### Media
 
-| Method | Path          | 권한 | 설명                                                         |
-| ------ | ------------- | ---- | ------------------------------------------------------------ |
-| POST   | /media/images | U    | multipart `file` → {key, width, height, dominantColor, urls} |
+| Method | Path          | 권한 | 설명                                                                                                                                                                                                        |
+| ------ | ------------- | ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| POST   | /media/images | U    | multipart `file`(30MB 이하, JPG·PNG·HEIC/HEIF·WebP·AVIF·GIF·TIFF — 포맷은 내용으로 판별, gif·tiff 는 첫 장) → {key, width, height, dominantColor, urls}. 지원 안 함 `INVALID_IMAGE`, 초과 `IMAGE_TOO_LARGE` |
 
 ### Auctions
 

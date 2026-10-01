@@ -1,5 +1,7 @@
+import { readFileSync } from 'node:fs';
 import sharp from 'sharp';
 import { signAccessToken } from '../src/common/auth';
+import { MAX_UPLOAD_BYTES } from '../src/media/image';
 import { createTestApp, type TestContext } from './app';
 
 let t: TestContext;
@@ -74,6 +76,27 @@ describe('POST /media/images', () => {
     const keys = [...t.s3.objects.keys()].filter((k) => k.includes(res.body.key));
     expect(keys.filter((k) => k.startsWith('public/'))).toHaveLength(6);
     expect(keys.filter((k) => k.startsWith('originals/'))).toHaveLength(1);
+  });
+
+  it('iPhone HEIC(HEVC) 도 받아 회전을 적용한 파생본을 만든다', async () => {
+    const heic = readFileSync(new URL('./fixtures/oriented.heic', import.meta.url));
+    const res = await t.http
+      .post('/api/v1/media/images')
+      .set('Authorization', `Bearer ${await tokenFor()}`)
+      .attach('file', heic, { filename: 'IMG_0001.HEIC', contentType: 'image/heic' })
+      .expect(201);
+    expect(res.body).toMatchObject({ width: 32, height: 64 });
+    const keys = [...t.s3.objects.keys()].filter((k) => k.includes(res.body.key));
+    expect(keys).toContain(`originals/${res.body.key}.heif`);
+  });
+
+  it('용량 상한을 넘으면 413 IMAGE_TOO_LARGE', async () => {
+    const res = await t.http
+      .post('/api/v1/media/images')
+      .set('Authorization', `Bearer ${await tokenFor()}`)
+      .attach('file', Buffer.alloc(MAX_UPLOAD_BYTES + 1), { filename: 'big.jpg', contentType: 'image/jpeg' })
+      .expect(413);
+    expect(res.body.error.code).toBe('IMAGE_TOO_LARGE');
   });
 
   it('이미지로 위장한 파일(확장자·Content-Type 위조)은 거부한다', async () => {
