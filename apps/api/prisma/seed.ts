@@ -168,9 +168,9 @@ async function uploadImage(buffer: Buffer) {
     s3.send(
       new PutObjectCommand({
         Bucket: BUCKET,
-        Key: `${ORIGINAL_PREFIX}${img.key}.${img.originalFormat}`,
-        Body: buffer,
-        ContentType: 'application/octet-stream',
+        Key: `${ORIGINAL_PREFIX}${img.master.path}`,
+        Body: img.master.body,
+        ContentType: img.master.contentType,
       }),
     ),
     ...img.variants.map((v) =>

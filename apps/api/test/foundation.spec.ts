@@ -83,7 +83,9 @@ describe('POST /media/images', () => {
     });
     const keys = [...t.s3.objects.keys()].filter((k) => k.includes(res.body.key));
     expect(keys.filter((k) => k.startsWith('public/'))).toHaveLength(6);
-    expect(keys.filter((k) => k.startsWith('originals/'))).toHaveLength(1);
+    // 비공개 보관본은 업로드 원본이 아니라 메타데이터를 지운 AVIF 재인코딩
+    expect(keys.filter((k) => k.startsWith('originals/'))).toEqual([`originals/${res.body.key}.avif`]);
+    expect(t.s3.objects.get(`originals/${res.body.key}.avif`)?.contentType).toBe('image/avif');
   });
 
   it('iPhone HEIC(HEVC) 도 받아 회전을 적용한 파생본을 만든다', async () => {
@@ -95,7 +97,7 @@ describe('POST /media/images', () => {
       .expect(201);
     expect(res.body).toMatchObject({ width: 32, height: 64 });
     const keys = [...t.s3.objects.keys()].filter((k) => k.includes(res.body.key));
-    expect(keys).toContain(`originals/${res.body.key}.heif`);
+    expect(keys).toContain(`originals/${res.body.key}.avif`);
   });
 
   it('용량 상한을 넘으면 413 IMAGE_TOO_LARGE', async () => {
