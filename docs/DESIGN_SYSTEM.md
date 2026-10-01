@@ -137,7 +137,7 @@ ds.efface.dev 의 컴포넌트 구성(buttons / inputs / form / chips / cards / 
 | Input / Textarea          | ✓ 라벨·도움말·오류 슬롯                                                                         | ✓                                                      | 오류는 `aria-describedby`  |
 | PriceInput                | ✓ 천 단위 콤마, 정수만                                                                          | ✓ `number-pad`                                         |                            |
 | Select / NativeSelect     | Radix Select                                                                                    | 네이티브 Picker 시트                                   |                            |
-| DateTimeInput             | 커스텀 캘린더 팝오버 + 오전/오후·시·분 선택 (브라우저 기본 date/datetime 입력 금지)             | OS 기본 DateTimePicker(iOS compact·Android 다이얼로그) | 값은 `YYYY-MM-DD[THH:mm]`  |
+| DateTimeInput             | 커스텀 캘린더 팝오버 + 오전/오후·시·분 선택 (브라우저 기본 date/datetime 입력 금지)             | OS DateTimePicker(iOS 알약+달력·휠·Android 다이얼로그) | 값은 `YYYY-MM-DD[THH:mm]`  |
 | Checkbox / Radio / Switch | Radix                                                                                           | ✓                                                      |                            |
 | Tabs                      | Radix                                                                                           | 상단 세그먼트                                          |                            |
 | Dialog / Modal            | Radix Dialog                                                                                    | RN Modal                                               |                            |
