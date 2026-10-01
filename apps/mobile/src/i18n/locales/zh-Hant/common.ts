@@ -161,6 +161,11 @@ const zhHant: Translation<typeof ko> = {
     phone: '手機',
     web: '網頁',
   },
+  update: {
+    criticalTitle: '重要更新',
+    criticalMessage: '必要的修正已準備好，App 將重新啟動以完成更新。',
+    restart: '重新啟動',
+  },
   push: {
     channelName: '預設通知',
   },
@@ -175,6 +180,11 @@ const zhHant: Translation<typeof ko> = {
     hint: '可隨時在設定中變更接收的通知類型與時間。',
     allow: '開啟通知',
     later: '稍後再說',
+  },
+  welcome: {
+    title: '恭喜註冊成功',
+    body: '{{nickname}}，歡迎來到 Hwaso。\n找到喜歡的作品，加入收藏吧。',
+    browse: '去逛逛',
   },
   auctionLive: {
     outbid: '有人出了更高的價',

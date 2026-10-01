@@ -5,9 +5,18 @@ import * as WebBrowser from 'expo-web-browser';
 /** 뒤로 갈 화면이 없으면(딥링크·푸시로 바로 열린 경우) 홈으로 */
 export const goBack = () => (router.canGoBack() ? router.back() : router.replace('/home'));
 
+/**
+ * 알림·배너의 앱 경로('/products/…')로 이동. 웹 홈('/')은 앱의 홈 탭이라
+ * 위에 쌓인 화면을 닫고 홈으로 돌아간다 (홈이 없으면 지금 화면을 홈으로 바꾼다)
+ */
+export function openAppPath(path: string) {
+  if (path === '/' || path === '/home') router.dismissTo('/home');
+  else router.push(path as Href);
+}
+
 /** 배너·공지 링크: 앱 경로('/products/…')는 앱 화면으로, 그 밖의 주소는 인앱 브라우저로 연다 */
 export function openLink(link: string) {
-  if (link.startsWith('/')) router.push(link as Href);
+  if (link.startsWith('/')) openAppPath(link);
   else if (/^https?:\/\//.test(link)) void WebBrowser.openBrowserAsync(link);
 }
 

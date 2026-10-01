@@ -74,7 +74,6 @@ const zhHans: Translation<typeof ko> = {
   },
   social: {
     continueWith: '通过{{provider}}继续',
-    redirecting: '正在跳转…',
     notConfiguredTitle: '{{provider}}登录暂未开放',
     notConfiguredMessage: '目前无法使用此方式登录，请使用其他方式。',
     appleBuildOnlyTitle: '无法通过 Apple 登录',

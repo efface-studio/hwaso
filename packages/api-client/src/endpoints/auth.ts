@@ -1,4 +1,5 @@
 import type {
+  AppleLinkInput,
   AppleNativeInput,
   AuthProvider,
   AuthProvidersDto,
@@ -9,12 +10,16 @@ import type {
   SellerUpdateInput,
   UpdateProfileInput,
   AuthTokens,
+  BiometricKeyResult,
+  BiometricRegisterInput,
   ChangePasswordInput,
   ConsentBody,
   DeleteAccountInput,
   LoginInput,
   MeDto,
   OAuthCallbackInput,
+  ReauthInput,
+  ReauthResult,
   ResetPasswordInput,
   SendCodeInput,
   SessionDto,
@@ -31,10 +36,11 @@ export const authApi = (http: Http) => ({
     http.post<{ verificationToken: string }>('/auth/email/verify-code', body),
   signup: (body: SignupInput) => http.post<AuthTokens>('/auth/signup', body),
   login: (body: LoginInput) => http.post<AuthTokens>('/auth/login', body),
-  /** Web 은 쿠키, Mobile 은 refreshToken 본문 */
-  refresh: (refreshToken?: string) =>
+  /** Web 은 쿠키, Mobile 은 refreshToken 본문. signal 로 오래 걸리면 끊을 수 있다 */
+  refresh: (refreshToken?: string, signal?: AbortSignal) =>
     http.post<AuthTokens>('/auth/refresh', refreshToken ? { refreshToken } : {}, {
       retryOnUnauthorized: false,
+      signal,
     }),
   logout: (refreshToken?: string) =>
     http.post<void>('/auth/logout', refreshToken ? { refreshToken } : {}, { retryOnUnauthorized: false }),
@@ -50,6 +56,7 @@ export const authApi = (http: Http) => ({
     http.post<AuthTokens & { isNewUser: boolean }>('/auth/oauth/apple/native', body),
   linkSocial: (provider: AuthProvider, body: OAuthLinkInput) =>
     http.post<void>(`/auth/social/${p(provider)}`, body),
+  linkAppleNative: (body: AppleLinkInput) => http.post<void>('/auth/social/apple/native', body),
   unlinkSocial: (provider: AuthProvider) => http.delete<void>(`/auth/social/${p(provider)}`),
   me: () => http.get<MeDto>('/auth/me'),
   sessions: () => http.get<SessionDto[]>('/auth/sessions'),
@@ -62,6 +69,15 @@ export const authApi = (http: Http) => ({
    * 가입 마무리에서는 emailVerificationToken(SIGNUP)·nickname 도 함께 보낸다 (MeDto.emailMissing 이면 이메일 인증 필수)
    */
   consent: (body: ConsentBody) => http.post<MeDto>('/me/consent', body),
+
+  // ───── 민감 작업 재인증 (결과 토큰은 http.setReauthToken 으로 저장하면 이후 요청에 자동으로 붙는다) ─────
+  reauth: (body: ReauthInput) => http.post<ReauthResult>('/auth/reauth', body),
+  /** 로그인한 계정 이메일로 재인증 인증번호 발송 */
+  sendReauthCode: () => http.post<{ retryAfterSec: number }>('/auth/reauth/code'),
+  /** 이 기기에 생체 재인증 키 발급 — secret 은 이 응답에서 한 번만 받는다. 재인증 토큰 필요 */
+  registerBiometric: (body: BiometricRegisterInput, reauthToken?: string) =>
+    http.post<BiometricKeyResult>('/auth/reauth/biometric', body, reauthToken ? { reauthToken } : undefined),
+  removeBiometric: () => http.delete<void>('/auth/reauth/biometric'),
 
   updateProfile: (body: UpdateProfileInput) => http.patch<MeDto>('/users/me/profile', body),
   seller: () => http.get<SellerInfoDto>('/me/seller'),

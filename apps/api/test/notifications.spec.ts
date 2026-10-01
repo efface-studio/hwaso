@@ -1,7 +1,9 @@
 import type { NotificationType } from '@prisma/client';
 import { AuctionScheduler } from '../src/auctions/auction-scheduler';
+import { NotificationsService } from '../src/notifications/notifications.service';
+import { RealtimeService } from '../src/realtime/realtime';
 import { createTestApp, type TestContext } from './app';
-import { createCategory, createProduct, createUser } from './fixtures';
+import { createCategory, createProduct, createUser, reauth } from './fixtures';
 
 let t: TestContext;
 
@@ -100,6 +102,51 @@ describe('notification inbox', () => {
   });
 });
 
+describe('notify', () => {
+  it('stores one per recipient in one batch, sends each their own unread count, skips deleted users', async () => {
+    const a = await createUser(t);
+    const b = await createUser(t);
+    const gone = await createUser(t);
+    const muted = await createUser(t);
+    await t.prisma.user.update({ where: { id: gone.id }, data: { status: 'DELETED' } });
+    await t.prisma.user.update({
+      where: { id: muted.id },
+      data: { notificationPrefs: { push: { activity: false } } },
+    });
+    await t.prisma.notification.createMany({
+      data: [1, 2].map((i) => ({ userId: b.id, type: 'SYSTEM' as const, title: `이전 ${i}`, body: '' })),
+    });
+    const sent: { userId: string; unreadCount: number }[] = [];
+    const spy = vi
+      .spyOn(t.app.get(RealtimeService), 'toUser')
+      .mockImplementation((userId, _event, payload) => {
+        sent.push({ userId, unreadCount: (payload as { unreadCount: number }).unreadCount });
+      });
+    try {
+      await t.app
+        .get(NotificationsService)
+        .notify([a.id, b.id, a.id, gone.id, muted.id, null], {
+          type: 'FOLLOWED',
+          title: '새 팔로워',
+          body: '',
+        });
+    } finally {
+      spy.mockRestore();
+    }
+    expect(await t.prisma.notification.count({ where: { userId: a.id, type: 'FOLLOWED' } })).toBe(1);
+    expect(await t.prisma.notification.count({ where: { userId: gone.id } })).toBe(0);
+    expect(sent.toSorted((x, y) => x.userId.localeCompare(y.userId))).toEqual(
+      [
+        { userId: a.id, unreadCount: 1 },
+        { userId: b.id, unreadCount: 3 },
+        { userId: muted.id, unreadCount: 1 },
+      ].toSorted((x, y) => x.userId.localeCompare(y.userId)),
+    );
+    // 활동 푸시를 끈 사용자에게는 알림함에만 쌓인다
+    expect(t.push.sent.map((p) => p.userId).toSorted()).toEqual([a.id, b.id].toSorted());
+  });
+});
+
 describe('auction events', () => {
   it('outbid bidder and seller are notified; push respects category settings', async () => {
     const { seller, auction } = await liveAuction();
@@ -181,6 +228,7 @@ describe('trade events', () => {
     const prep = await t.http
       .post(`/api/v1/orders/${order.body.id}/payments`)
       .set(buyer.auth)
+      .set(await reauth(t, buyer))
       .send({ method: 'CARD' })
       .expect(201);
     await t.http

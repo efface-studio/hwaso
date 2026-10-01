@@ -77,7 +77,6 @@ const ja: Translation<typeof ko> = {
   },
   social: {
     continueWith: '{{provider}}で続ける',
-    redirecting: '移動中…',
     notConfiguredTitle: '{{provider}}ログインは準備中です',
     notConfiguredMessage: '現在この方法ではログインできません。別の方法でログインしてください。',
     appleBuildOnlyTitle: 'Appleでログインできません',

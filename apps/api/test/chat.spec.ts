@@ -1,5 +1,5 @@
 import { createTestApp, type TestContext } from './app';
-import { createCategory, createProduct, createUser, fakeUpload } from './fixtures';
+import { createCategory, createProduct, createUser, fakeUpload, reauth } from './fixtures';
 import { PresenceService } from '../src/realtime/presence';
 
 let t: TestContext;
@@ -104,6 +104,41 @@ describe('rooms', () => {
     expect(rooms.body.some((r: { id: string }) => r.id === roomId)).toBe(true);
     const msgs = await t.http.get(`/api/v1/chat/rooms/${roomId}/messages`).set(buyer.auth).expect(200);
     expect(msgs.body.items.map((m: { body: string }) => m.body)).toEqual(['아직 판매 중입니다']);
+  });
+
+  it('each room shows only its own latest message; a deleted one reads as deleted', async () => {
+    const buyer = await createUser(t);
+    const { child } = await createCategory(t);
+    const roomIds: string[] = [];
+    for (let i = 0; i < 3; i++) {
+      const seller = await createUser(t, 'SELLER');
+      const p = await createProduct(t, { sellerId: seller.id, categoryId: child.id });
+      const r = await t.http.post('/api/v1/chat/rooms').set(buyer.auth).send({ productId: p.id }).expect(200);
+      roomIds.push(r.body.id);
+      await t.prisma.chatMessage.createMany({
+        data: [1, 2, 3].map((k) => ({
+          roomId: r.body.id as string,
+          senderId: k === 3 ? seller.id : buyer.id,
+          kind: 'TEXT' as const,
+          body: `방${i} 메시지${k}`,
+          createdAt: new Date(Date.now() - (10 - k) * 1000),
+        })),
+      });
+    }
+    const last = await text(buyer, roomIds[0]!, '지울 메시지').expect(201);
+    await t.http
+      .delete(`/api/v1/chat/rooms/${roomIds[0]}/messages/${last.body.id}`)
+      .set(buyer.auth)
+      .expect(200);
+
+    const list = await t.http.get('/api/v1/chat/rooms').set(buyer.auth).expect(200);
+    type Row = { id: string; lastMessage: { preview: string; senderId: string } | null };
+    const lastOf = (id: string) => (list.body as Row[]).find((r) => r.id === id)?.lastMessage;
+    expect(lastOf(roomIds[0]!)).toMatchObject({ preview: '삭제된 메시지입니다.', senderId: buyer.id });
+    expect(lastOf(roomIds[1]!)?.preview).toBe('방1 메시지3');
+    expect(lastOf(roomIds[2]!)?.preview).toBe('방2 메시지3');
+    const one = await t.http.get(`/api/v1/chat/rooms/${roomIds[2]}`).set(buyer.auth).expect(200);
+    expect(one.body.lastMessage.preview).toBe('방2 메시지3');
   });
 });
 
@@ -256,6 +291,7 @@ describe('trade status & system messages (거래 상태·주문 진행)', () => 
     const prep = await t.http
       .post(`/api/v1/orders/${created.body.id}/payments`)
       .set(buyer.auth)
+      .set(await reauth(t, buyer))
       .send({ method: 'CARD' })
       .expect(201);
     await t.http

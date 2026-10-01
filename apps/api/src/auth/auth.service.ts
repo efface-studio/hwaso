@@ -4,6 +4,8 @@ import type {
   ChangePasswordInput,
   DeleteAccountInput,
   LoginInput,
+  ReauthInput,
+  ReauthResult,
   ResetPasswordInput,
   SendCodeInput,
   SignupInput,
@@ -11,14 +13,22 @@ import type {
 } from '@shop/shared';
 import argon2 from 'argon2';
 import { AppException } from '../common/app-exception';
-import { invalidateUserStatus, signPurposeToken, verifyPurposeToken } from '../common/auth';
+import {
+  type AuthUser,
+  invalidateUserStatus,
+  signPurposeToken,
+  signReauthToken,
+  verifyPurposeToken,
+} from '../common/auth';
 import { hmac, otpCode, randomToken, safeEqual } from '../common/crypto';
 import { RateLimitService } from '../common/rate-limit';
 import { env, isDemo } from '../config/env';
 import { assertClean } from '../common/moderation';
 import { MailService } from '../mail/mail.service';
+import { logNotifyError, NotificationEvents } from '../notifications/notification-events';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
+import { type EventContext, SecurityService } from '../security/security.service';
 import { isDemoLogin } from './demo';
 import { OAuthService } from './oauth.service';
 import { type ClientInfo, SessionService } from './session.service';
@@ -35,6 +45,7 @@ const PURPOSE_SUBJECT: Record<VerificationPurpose, string> = {
   SIGNUP: '회원가입 인증번호',
   RESET_PASSWORD: '비밀번호 재설정 인증번호',
   DELETE_ACCOUNT: '회원 탈퇴 확인 인증번호',
+  REAUTH: '본인 확인 인증번호',
 };
 
 const ACTIVE_TRADE_STATUSES = [
@@ -54,7 +65,9 @@ export class AuthService {
     private readonly mail: MailService,
     private readonly limiter: RateLimitService,
     private readonly sessions: SessionService,
+    private readonly security: SecurityService,
     private readonly oauth: OAuthService,
+    private readonly events: NotificationEvents,
   ) {}
 
   static hashPassword(pw: string) {
@@ -88,6 +101,11 @@ export class AuthService {
     }
     if (purpose !== 'SIGNUP' && !exists) return { retryAfterSec: 60 };
 
+    await this.issueCode(email, purpose);
+    return { retryAfterSec: 60 };
+  }
+
+  private async issueCode(email: string, purpose: VerificationPurpose) {
     const code = otpCode();
     await this.prisma.verificationCode.create({
       data: {
@@ -102,10 +120,16 @@ export class AuthService {
       subject: `[화소] ${PURPOSE_SUBJECT[purpose]}`,
       text: `인증번호: ${code}\n\n${CODE_TTL_MIN}분 안에 입력해주세요. 요청하지 않았다면 이 메일을 무시하세요.`,
     });
-    return { retryAfterSec: 60 };
   }
 
   async verifyCode({ email, purpose, code }: VerifyCodeInput): Promise<{ verificationToken: string }> {
+    await this.consumeCode(email, purpose, code);
+    const verificationToken = await signPurposeToken({ typ: 'verify', email, purpose }, CODE_TTL_MIN * 60);
+    return { verificationToken };
+  }
+
+  /** 최신 인증번호를 확인하고 1회용으로 소비한다. 틀리면 시도 횟수를 늘리고 던진다 */
+  private async consumeCode(email: string, purpose: VerificationPurpose, code: string) {
     const row = await this.prisma.verificationCode.findFirst({
       where: { email, purpose, consumedAt: null },
       orderBy: { createdAt: 'desc' },
@@ -131,8 +155,6 @@ export class AuthService {
       data: { consumedAt: new Date() },
     });
     if (!consumed.count) throw new AppException('INVALID_CODE');
-    const verificationToken = await signPurposeToken({ typ: 'verify', email, purpose }, CODE_TTL_MIN * 60);
-    return { verificationToken };
   }
 
   /** 이메일 인증 토큰을 한 번 쓰고 인증된 이메일을 돌려준다 (가입 마무리 POST /me/consent 도 쓴다) */
@@ -177,6 +199,8 @@ export class AuthService {
       },
     });
     const issued = await this.sessions.issue(user, input.device, client);
+    // 이메일 가입은 가입 요청에서 동의까지 받으므로 여기서 가입이 끝난다
+    void this.events.welcome(user.id).catch(logNotifyError);
     return { user, issued, platform: input.device.platform };
   }
 
@@ -195,6 +219,9 @@ export class AuthService {
       .catch(() => false);
     if (!user || !user.passwordHash || !ok || user.status === 'DELETED') {
       if (!demo) await this.redis.multi().incr(lockKey).expire(lockKey, LOGIN_LOCK_SEC, 'NX').exec();
+      // 응답을 기다리게 하지 않는다 — 계정 유무에 따라 응답 시간이 달라지지 않게 (record 는 던지지 않는다)
+      if (user && user.status !== 'DELETED')
+        void this.security.record(user.id, 'LOGIN_FAILED', { ip: client.ip, device: input.device.name });
       throw new AppException('INVALID_CREDENTIALS');
     }
     if (user.status === 'SUSPENDED')
@@ -209,7 +236,7 @@ export class AuthService {
 
   // ───── 비밀번호 ─────
 
-  async resetPassword(input: ResetPasswordInput) {
+  async resetPassword(input: ResetPasswordInput, client: ClientInfo) {
     const email = await this.consumeVerification(input.verificationToken, 'RESET_PASSWORD');
     const user = await this.prisma.user.findUnique({ where: { email } });
     if (!user || user.status === 'DELETED') throw new AppException('INVALID_TOKEN');
@@ -219,9 +246,10 @@ export class AuthService {
     });
     await this.redis.del(`login:fail:${email}`);
     await this.sessions.revokeAll(user.id);
+    await this.security.record(user.id, 'PASSWORD_CHANGED', { ip: client.ip }, { via: 'reset' });
   }
 
-  async changePassword(userId: string, sessionId: string, input: ChangePasswordInput) {
+  async changePassword(userId: string, sessionId: string, input: ChangePasswordInput, ctx: EventContext) {
     const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
     // 소셜 전용 계정은 현재 비밀번호 없이 처음 비밀번호를 설정할 수 있다
     if (user.passwordHash) {
@@ -238,6 +266,66 @@ export class AuthService {
     });
     // 다른 기기는 로그아웃, 현재 기기는 유지
     await this.sessions.revokeAll(userId, await this.sessions.familyOf(sessionId));
+    await this.security.record(userId, 'PASSWORD_CHANGED', ctx, { via: 'change' });
+  }
+
+  // ───── 민감 작업 재인증 (docs/SECURITY.md §계정 보안) ─────
+
+  /** 로그인한 계정의 이메일로 재인증 인증번호를 보낸다 */
+  async sendReauthCode(userId: string): Promise<{ retryAfterSec: number }> {
+    const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { email: true } });
+    // 이메일을 주지 않은 소셜 계정의 내부 주소로는 보낼 수 없다
+    if (user.email.endsWith('.invalid'))
+      throw new AppException(
+        'VALIDATION_FAILED',
+        '이메일 인증을 쓸 수 없는 계정입니다. 다른 방법으로 확인해주세요.',
+      );
+    if (!(await this.redis.set(`otp:gap:REAUTH:${user.email}`, '1', 'EX', 60, 'NX'))) {
+      throw new AppException('RATE_LIMITED', '인증번호는 1분에 한 번만 요청할 수 있습니다.');
+    }
+    await this.limiter.assert(`otp:${user.email}`, 5, 3600);
+    await this.issueCode(user.email, 'REAUTH');
+    return { retryAfterSec: 60 };
+  }
+
+  /** 비밀번호 · 이메일 OTP · 생체 키 중 하나로 본인을 다시 확인하고 5분짜리 재인증 토큰을 준다 */
+  async reauth(user: AuthUser, input: ReauthInput, ip: string): Promise<ReauthResult> {
+    const session = await this.security.liveSession(user);
+    if (!session) throw new AppException('INVALID_TOKEN');
+    const ctx: EventContext = { ip, device: session.deviceName, sessionId: session.familyId };
+    const fail = async (err: AppException = new AppException('REAUTH_FAILED')) => {
+      await this.security.record(user.id, 'REAUTH_FAILED', ctx, { method: input.method });
+      return err;
+    };
+
+    if (input.method === 'password') {
+      const row = await this.prisma.user.findUniqueOrThrow({
+        where: { id: user.id },
+        select: { passwordHash: true },
+      });
+      // 비밀번호가 없는 계정도 같은 시간이 걸리게 더미 해시로 검증한다
+      dummyHash ??= argon2.hash(randomToken(16), ARGON);
+      const ok = await argon2
+        .verify(row.passwordHash ?? (await dummyHash), input.password)
+        .catch(() => false);
+      if (!row.passwordHash || !ok) throw await fail();
+    } else if (input.method === 'otp') {
+      const row = await this.prisma.user.findUniqueOrThrow({
+        where: { id: user.id },
+        select: { email: true },
+      });
+      try {
+        await this.consumeCode(row.email, 'REAUTH', input.code);
+      } catch (e) {
+        if (!(e instanceof AppException)) throw e;
+        throw await fail(e);
+      }
+    } else if (!(await this.security.verifyBiometric(user.id, session.familyId, input.keyId, input.secret))) {
+      throw await fail();
+    }
+
+    await this.security.record(user.id, 'REAUTH', ctx, { method: input.method });
+    return signReauthToken({ userId: user.id, sessionId: user.sessionId, familyId: session.familyId });
   }
 
   // ───── 탈퇴 (가입의 짝) ─────

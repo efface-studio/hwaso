@@ -12,6 +12,7 @@ import { FormScroll } from '@/components/ui/form-scroll';
 import { Text } from '@/components/ui/text';
 import { api, logout } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
+import { showWelcome } from '@/lib/welcome';
 import { useTheme } from '@/theme';
 
 type Errors = { email?: string; code?: string; nickname?: string; form?: string };
@@ -108,6 +109,8 @@ export default function ConsentScreen() {
         ...(needsVerify && verified ? { emailVerificationToken: verified.token } : {}),
       });
       useAuthStore.getState().setUser(me);
+      // 처음 가입을 마친 경우에만 (이 화면은 동의가 남은 계정만 연다)
+      if (user.consentRequired) showWelcome(me.profile.nickname);
     } catch (e) {
       if (!(e instanceof ApiError)) return setErrors({ form: tr('consent.failed') });
       if (e.code === 'NICKNAME_TAKEN') setErrors({ nickname: tr('consent.nicknameTaken') });

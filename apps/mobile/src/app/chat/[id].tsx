@@ -3,7 +3,6 @@ import {
   CHAT_IMAGES_MAX,
   CHAT_TRADE_STATUSES,
   chatPreview,
-  containsProhibited,
   type ChatMessageDto,
   type ChatRoomDto,
   type Page,
@@ -12,15 +11,16 @@ import {
 } from '@shop/shared';
 import { useInfiniteQuery, useQuery, useQueryClient, type InfiniteData } from '@tanstack/react-query';
 import { Image } from 'expo-image';
-import { Link, router, Stack, useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, AppState, FlatList, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Link, router, Stack, useLocalSearchParams, type NativeStackNavigationOptions } from 'expo-router';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Alert, AppState, FlatList, Pressable, StyleSheet, View, type ListRenderItem } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppointmentSheet } from '@/components/chat/appointment-sheet';
 import { Bubble, type PendingMessage } from '@/components/chat/bubble';
+import { Composer, type ComposerHandle } from '@/components/chat/composer';
 import { localizePreview, presenceText } from '@/components/chat/localize';
 import { PhrasesSheet } from '@/components/chat/phrases-sheet';
 import { Button } from '@/components/ui/button';
@@ -51,7 +51,7 @@ export default function ChatRoomScreen() {
   const insets = useSafeAreaInsets();
   const qc = useQueryClient();
   const me = useAuthStore((s) => s.user);
-  const roomKey = ['chat', 'room', id];
+  const roomKey = useMemo(() => ['chat', 'room', id], [id]);
   const msgKey = ['chat', 'messages', id];
   // 접속 상태를 보여주려고 1분마다 다시 불러온다
   const room = useQuery({
@@ -68,16 +68,12 @@ export default function ChatRoomScreen() {
     enabled: !!me,
   });
   const [pending, setPending] = useState<PendingMessage[]>([]);
-  const [text, setText] = useState('');
-  /** 보내기 전에 걸러진 표현 안내 (서버도 같은 기준으로 막는다) */
-  const [prohibited, setProhibited] = useState(false);
   const [typing, setTyping] = useState(false);
   const [appointment, setAppointment] = useState(false);
   const [phrases, setPhrases] = useState(false);
   const [replying, setReplying] = useState<PendingMessage | null>(null);
-  const inputRef = useRef<TextInput>(null);
+  const composer = useRef<ComposerHandle>(null);
   const typingTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const lastTyping = useRef(0);
 
   const upsert = useCallback(
     (m: ChatMessageDto) =>
@@ -174,6 +170,204 @@ export default function ChatRoomScreen() {
     };
   }, [id, me, qc, upsert, markDeleted, markRead]);
 
+  const deliver = useCallback(
+    (m: PendingMessage, input: SendMessageInput) =>
+      api.chat
+        .send(id, input)
+        .then((saved) => {
+          upsert(saved);
+          setPending((ps) => ps.filter((x) => x.clientId !== m.clientId));
+          void qc.invalidateQueries({ queryKey: ['chat', 'rooms'] });
+          // 첫 메시지를 보낸 뒤 맥락에 맞춰 알림 권한을 묻는다 (이미 정했으면 아무것도 하지 않는다)
+          void askPushInContext('chat');
+        })
+        .catch((e: unknown) => {
+          setPending((ps) =>
+            ps.map((x) => (x.clientId === m.clientId ? { ...x, pending: 'failed', retry: input } : x)),
+          );
+          Alert.alert(tr('errors.sendFailed'), errMsg(e));
+        }),
+    [id, upsert, qc, tr],
+  );
+
+  // 말풍선에 넘기는 콜백은 메시지를 인자로 받아 한 번만 만든다 (바뀌지 않은 말풍선은 다시 그리지 않게)
+  const onLongPress = useCallback(
+    (m: PendingMessage) => {
+      if (m.pending || m.deleted) return;
+      const reply = {
+        label: tr('message.reply'),
+        onPress: () => {
+          setReplying(m);
+          composer.current?.focus();
+        },
+      };
+      if (m.senderId === me?.id)
+        actionSheet(tr('message.menuTitle'), [
+          reply,
+          {
+            label: tr('common:action.delete'),
+            destructive: true,
+            onPress: () =>
+              void api.chat
+                .deleteMessage(id, m.id)
+                .then(() => markDeleted(m.id))
+                .catch((e: unknown) => Alert.alert(errMsg(e))),
+          },
+        ]);
+      else
+        actionSheet(tr('message.menuTitle'), [
+          reply,
+          {
+            label: tr('common:action.report'),
+            destructive: true,
+            onPress: () => router.push({ pathname: '/report', params: { type: 'MESSAGE', id: m.id } }),
+          },
+        ]);
+    },
+    [id, me, tr, markDeleted],
+  );
+
+  const onRetry = useCallback(
+    (m: PendingMessage) => {
+      if (!m.retry) return;
+      setPending((ps) => ps.map((x) => (x.clientId === m.clientId ? { ...x, pending: 'sending' } : x)));
+      void deliver(m, m.retry);
+    },
+    [deliver],
+  );
+
+  // 목록은 메시지·보내는 중인 메시지가 바뀔 때만 다시 만든다
+  const items = useMemo(() => {
+    const server = (msgs.data?.pages.flatMap((p) => p.items) ?? []) as PendingMessage[];
+    const known = new Set(server.map((m) => m.clientId));
+    return [...pending.filter((p) => !known.has(p.clientId)).reverse(), ...server];
+  }, [msgs.data, pending]);
+  const readAt = room.data?.counterpartLastReadAt;
+  const lastRead = useMemo(
+    () => items.find((m) => m.senderId === me?.id && !m.pending && readAt && m.createdAt <= readAt)?.id,
+    [items, me, readAt],
+  );
+  const counterpartName = room.data?.counterpart.nickname;
+  const authorOf = useCallback(
+    (senderId: string) => (senderId === me?.id ? tr('room.me') : (counterpartName ?? '')),
+    [me, tr, counterpartName],
+  );
+
+  const renderItem = useCallback<ListRenderItem<PendingMessage>>(
+    ({ item, index }) => {
+      const newer = items[index - 1];
+      const showTime =
+        !newer ||
+        newer.senderId !== item.senderId ||
+        newer.createdAt.slice(0, 16) !== item.createdAt.slice(0, 16);
+      return (
+        <Bubble
+          m={item}
+          mine={item.senderId === me?.id}
+          showTime={showTime}
+          read={item.id === lastRead}
+          replyAuthor={item.replyTo && authorOf(item.replyTo.senderId)}
+          onLongPress={onLongPress}
+          onRetry={onRetry}
+        />
+      );
+    },
+    [items, me, lastRead, authorOf, onLongPress, onRetry],
+  );
+
+  // 헤더(이름·접속 상태·메뉴)는 방 정보가 바뀔 때만 새로 만든다 — 렌더마다 setOptions 가 불리지 않게
+  const r = room.data;
+  const headerOptions = useMemo<NativeStackNavigationOptions | undefined>(() => {
+    if (!r) return undefined;
+    const presence = presenceText(r.counterpart);
+    const menu = () =>
+      actionSheet(r.counterpart.nickname, [
+        {
+          label: r.muted ? tr('menu.unmute') : tr('menu.mute'),
+          onPress: () =>
+            void api.chat.mute(id, !r.muted).then(() => qc.invalidateQueries({ queryKey: roomKey })),
+        },
+        {
+          label: r.pinned ? tr('menu.unpin') : tr('menu.pin'),
+          onPress: () =>
+            void api.chat.pin(id, !r.pinned).then(() => {
+              void qc.invalidateQueries({ queryKey: roomKey });
+              void qc.invalidateQueries({ queryKey: ['chat', 'rooms'] });
+            }),
+        },
+        {
+          label: tr('menu.report'),
+          onPress: () => router.push({ pathname: '/report', params: { type: 'USER', id: r.counterpart.id } }),
+        },
+        r.blocked
+          ? {
+              label: tr('menu.unblock'),
+              onPress: () =>
+                void api.safety
+                  .unblock(r.counterpart.id)
+                  .then(() => qc.invalidateQueries({ queryKey: roomKey })),
+            }
+          : {
+              label: tr('menu.block'),
+              destructive: true,
+              onPress: () =>
+                Alert.alert(tr('block.title', { name: r.counterpart.nickname }), tr('block.message'), [
+                  { text: tr('common:action.cancel'), style: 'cancel' },
+                  {
+                    text: tr('block.confirm'),
+                    style: 'destructive',
+                    onPress: () =>
+                      void api.safety
+                        .block(r.counterpart.id)
+                        .then(() => qc.invalidateQueries({ queryKey: roomKey })),
+                  },
+                ]),
+            },
+        {
+          label: tr('menu.leave'),
+          destructive: true,
+          onPress: () =>
+            Alert.alert(tr('leave.title'), tr('leave.message'), [
+              { text: tr('common:action.cancel'), style: 'cancel' },
+              {
+                text: tr('leave.confirm'),
+                style: 'destructive',
+                onPress: () =>
+                  void api.chat.leave(id).then(() => {
+                    void qc.invalidateQueries({ queryKey: ['chat', 'rooms'] });
+                    goBack();
+                  }),
+              },
+            ]),
+        },
+      ]);
+    return {
+      title: r.counterpart.nickname,
+      headerTitle: () => (
+        <View style={{ alignItems: 'center' }}>
+          <Text variant="bodyStrong" numberOfLines={1}>
+            {r.counterpart.nickname}
+          </Text>
+          {presence && (
+            <Text variant="caption" color={r.counterpart.online ? 'primary' : 'faint'}>
+              {presence}
+            </Text>
+          )}
+        </View>
+      ),
+      headerRight: () => (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={tr('room.menuLabel')}
+          onPress={menu}
+          hitSlop={10}
+        >
+          <Icon ios="ellipsis.circle" android="more_horiz" />
+        </Pressable>
+      ),
+    };
+  }, [r, id, qc, roomKey, tr]);
+
   if (!me)
     return (
       <Empty
@@ -183,28 +377,9 @@ export default function ChatRoomScreen() {
       />
     );
   if (room.isPending || msgs.isPending) return <Loading variant="plain-list" />;
-  const r = room.data;
   if (!r) return <Empty kind="notfound" title={tr('room.notFound')} />;
-  const presence = presenceText(r.counterpart);
-
-  const deliver = (m: PendingMessage, input: SendMessageInput) =>
-    api.chat
-      .send(id, input)
-      .then((saved) => {
-        upsert(saved);
-        setPending((ps) => ps.filter((x) => x.clientId !== m.clientId));
-        void qc.invalidateQueries({ queryKey: ['chat', 'rooms'] });
-        void askPushInContext('chat');
-      })
-      .catch((e: unknown) => {
-        setPending((ps) =>
-          ps.map((x) => (x.clientId === m.clientId ? { ...x, pending: 'failed', retry: input } : x)),
-        );
-        Alert.alert(tr('errors.sendFailed'), errMsg(e));
-      });
 
   const replyPreview = (m: PendingMessage) => chatPreview({ ...m, imageCount: m.images.length });
-  const authorOf = (senderId: string) => (senderId === me.id ? tr('room.me') : r.counterpart.nickname);
 
   const send = (input: Omit<SendMessageInput, 'clientId'>, preview?: Partial<ChatMessageDto>) => {
     const clientId = uuid();
@@ -239,14 +414,6 @@ export default function ChatRoomScreen() {
     void deliver(draft, { ...input, clientId, ...(replyTo ? { replyToId: replyTo.id } : {}) });
   };
 
-  const sendText = () => {
-    const body = text.trim();
-    if (!body) return;
-    if (containsProhibited(body)) return setProhibited(true);
-    setText('');
-    send({ kind: 'TEXT', body });
-  };
-
   const attach = () =>
     actionSheet(tr('attach.title'), [
       { label: tr('attach.camera'), onPress: () => void sendPhoto('camera') },
@@ -275,108 +442,6 @@ export default function ChatRoomScreen() {
     }
   };
 
-  const menu = () =>
-    actionSheet(r.counterpart.nickname, [
-      {
-        label: r.muted ? tr('menu.unmute') : tr('menu.mute'),
-        onPress: () =>
-          void api.chat.mute(id, !r.muted).then(() => qc.invalidateQueries({ queryKey: roomKey })),
-      },
-      {
-        label: r.pinned ? tr('menu.unpin') : tr('menu.pin'),
-        onPress: () =>
-          void api.chat.pin(id, !r.pinned).then(() => {
-            void qc.invalidateQueries({ queryKey: roomKey });
-            void qc.invalidateQueries({ queryKey: ['chat', 'rooms'] });
-          }),
-      },
-      {
-        label: tr('menu.report'),
-        onPress: () => router.push({ pathname: '/report', params: { type: 'USER', id: r.counterpart.id } }),
-      },
-      r.blocked
-        ? {
-            label: tr('menu.unblock'),
-            onPress: () =>
-              void api.safety
-                .unblock(r.counterpart.id)
-                .then(() => qc.invalidateQueries({ queryKey: roomKey })),
-          }
-        : {
-            label: tr('menu.block'),
-            destructive: true,
-            onPress: () =>
-              Alert.alert(tr('block.title', { name: r.counterpart.nickname }), tr('block.message'), [
-                { text: tr('common:action.cancel'), style: 'cancel' },
-                {
-                  text: tr('block.confirm'),
-                  style: 'destructive',
-                  onPress: () =>
-                    void api.safety
-                      .block(r.counterpart.id)
-                      .then(() => qc.invalidateQueries({ queryKey: roomKey })),
-                },
-              ]),
-          },
-      {
-        label: tr('menu.leave'),
-        destructive: true,
-        onPress: () =>
-          Alert.alert(tr('leave.title'), tr('leave.message'), [
-            { text: tr('common:action.cancel'), style: 'cancel' },
-            {
-              text: tr('leave.confirm'),
-              style: 'destructive',
-              onPress: () =>
-                void api.chat.leave(id).then(() => {
-                  void qc.invalidateQueries({ queryKey: ['chat', 'rooms'] });
-                  goBack();
-                }),
-            },
-          ]),
-      },
-    ]);
-
-  const onLongPress = (m: PendingMessage) => {
-    if (m.pending || m.deleted) return;
-    const reply = {
-      label: tr('message.reply'),
-      onPress: () => {
-        setReplying(m);
-        inputRef.current?.focus();
-      },
-    };
-    if (m.senderId === me.id)
-      actionSheet(tr('message.menuTitle'), [
-        reply,
-        {
-          label: tr('common:action.delete'),
-          destructive: true,
-          onPress: () =>
-            void api.chat
-              .deleteMessage(id, m.id)
-              .then(() => markDeleted(m.id))
-              .catch((e: unknown) => Alert.alert(errMsg(e))),
-        },
-      ]);
-    else
-      actionSheet(tr('message.menuTitle'), [
-        reply,
-        {
-          label: tr('common:action.report'),
-          destructive: true,
-          onPress: () => router.push({ pathname: '/report', params: { type: 'MESSAGE', id: m.id } }),
-        },
-      ]);
-  };
-
-  const server = (msgs.data?.pages.flatMap((p) => p.items) ?? []) as PendingMessage[];
-  const known = new Set(server.map((m) => m.clientId));
-  const items = [...pending.filter((p) => !known.has(p.clientId)).reverse(), ...server];
-  const readAt = r.counterpartLastReadAt;
-  const lastRead = items.find(
-    (m) => m.senderId === me.id && !m.pending && readAt && m.createdAt <= readAt,
-  )?.id;
   const canSend = !r.blocked && !r.blockedMe && !r.counterpart.left;
 
   const buyable = r.role === 'buyer' && r.product?.status === 'ACTIVE' && r.product.saleType !== 'AUCTION';
@@ -407,33 +472,7 @@ export default function ChatRoomScreen() {
       automaticOffset
       keyboardVerticalOffset={canSend ? 8 - Math.max(insets.bottom, 8) : 0}
     >
-      <Stack.Screen
-        options={{
-          title: r.counterpart.nickname,
-          headerTitle: () => (
-            <View style={{ alignItems: 'center' }}>
-              <Text variant="bodyStrong" numberOfLines={1}>
-                {r.counterpart.nickname}
-              </Text>
-              {presence && (
-                <Text variant="caption" color={r.counterpart.online ? 'primary' : 'faint'}>
-                  {presence}
-                </Text>
-              )}
-            </View>
-          ),
-          headerRight: () => (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={tr('room.menuLabel')}
-              onPress={menu}
-              hitSlop={10}
-            >
-              <Icon ios="ellipsis.circle" android="more_horiz" />
-            </Pressable>
-          ),
-        }}
-      />
+      <Stack.Screen options={headerOptions} />
       {r.product && (
         <Link href={{ pathname: '/products/[id]', params: { id: r.product.id } }} asChild>
           <Pressable
@@ -488,30 +527,7 @@ export default function ChatRoomScreen() {
         keyExtractor={(m) => m.id}
         contentContainerStyle={{ flexGrow: 1, padding: 16, gap: 8 }}
         onEndReached={() => msgs.hasNextPage && !msgs.isFetchingNextPage && void msgs.fetchNextPage()}
-        renderItem={({ item, index }) => {
-          const newer = items[index - 1];
-          const showTime =
-            !newer ||
-            newer.senderId !== item.senderId ||
-            newer.createdAt.slice(0, 16) !== item.createdAt.slice(0, 16);
-          return (
-            <Bubble
-              m={item}
-              mine={item.senderId === me.id}
-              showTime={showTime}
-              read={item.id === lastRead}
-              replyAuthor={item.replyTo && authorOf(item.replyTo.senderId)}
-              onLongPress={() => onLongPress(item)}
-              onRetry={() => {
-                if (!item.retry) return;
-                setPending((ps) =>
-                  ps.map((x) => (x.clientId === item.clientId ? { ...x, pending: 'sending' } : x)),
-                );
-                void deliver(item, item.retry);
-              }}
-            />
-          );
-        }}
+        renderItem={renderItem}
         ListHeaderComponent={
           typing ? (
             <Text variant="small" color="muted">
@@ -549,79 +565,13 @@ export default function ChatRoomScreen() {
           </Pressable>
         </Animated.View>
       )}
-      {canSend && prohibited && (
-        <Text
-          variant="caption"
-          color="destructive"
-          accessibilityLiveRegion="polite"
-          style={styles.prohibited}
-        >
-          {tr('common:validation.prohibited')}
-        </Text>
-      )}
       {canSend ? (
-        <View
-          style={[
-            styles.composer,
-            { borderColor: t.colors.border, paddingBottom: Math.max(insets.bottom, 8) },
-          ]}
-        >
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={tr('composer.attach')}
-            onPress={attach}
-            style={[styles.round, { width: t.touch, height: t.touch }]}
-          >
-            <Text variant="h2">＋</Text>
-          </Pressable>
-          <TextInput
-            ref={inputRef}
-            accessibilityLabel={tr('composer.inputLabel')}
-            placeholder={tr('composer.placeholder')}
-            placeholderTextColor={t.colors.faint}
-            multiline
-            maxLength={1000}
-            value={text}
-            onChangeText={(v) => {
-              setText(v);
-              setProhibited(false);
-              if (Date.now() - lastTyping.current > 1000) {
-                lastTyping.current = Date.now();
-                getRealtime().emit('chat:typing', { roomId: id });
-              }
-            }}
-            style={[
-              t.inputType(true),
-              styles.input,
-              {
-                color: t.colors.foreground,
-                backgroundColor: t.colors.surface2,
-                minHeight: t.touch,
-                // 한 줄일 때 글자가 입력칸 가운데 오도록 위아래 여백을 같게
-                paddingTop: (t.touch - t.inputLineHeight) / 2,
-                paddingBottom: (t.touch - t.inputLineHeight) / 2,
-              },
-            ]}
-          />
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={tr('composer.send')}
-            disabled={!text.trim()}
-            onPress={sendText}
-            style={[
-              styles.round,
-              {
-                width: t.touch,
-                height: t.touch,
-                backgroundColor: text.trim() ? t.colors.primary : t.colors.surface2,
-              },
-            ]}
-          >
-            <Text variant="bodyStrong" color={text.trim() ? 'primaryForeground' : 'faint'}>
-              ↑
-            </Text>
-          </Pressable>
-        </View>
+        <Composer
+          ref={composer}
+          roomId={id}
+          onSend={(body) => send({ kind: 'TEXT', body })}
+          onAttach={attach}
+        />
       ) : (
         <View
           style={[
@@ -642,9 +592,9 @@ export default function ChatRoomScreen() {
         <PhrasesSheet
           onClose={() => setPhrases(false)}
           onPick={(p) => {
-            setText((v) => (v.trim() ? `${v.trimEnd()} ${p}` : p));
+            composer.current?.append(p);
             setPhrases(false);
-            inputRef.current?.focus();
+            composer.current?.focus();
           }}
         />
       )}
@@ -662,7 +612,6 @@ export default function ChatRoomScreen() {
 }
 
 const styles = StyleSheet.create({
-  prohibited: { paddingHorizontal: 16, paddingVertical: 6 },
   product: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -671,14 +620,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   thumb: { width: 44, height: 44, overflow: 'hidden' },
-  composer: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: 8,
-    paddingHorizontal: 8,
-    paddingTop: 8,
-    borderTopWidth: StyleSheet.hairlineWidth,
-  },
   replyBar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -688,11 +629,5 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
   },
   round: { borderRadius: 999, alignItems: 'center', justifyContent: 'center' },
-  input: {
-    flex: 1,
-    maxHeight: 128,
-    borderRadius: 20,
-    paddingHorizontal: 14,
-  },
   blocked: { alignItems: 'center', padding: 16, borderTopWidth: StyleSheet.hairlineWidth },
 });

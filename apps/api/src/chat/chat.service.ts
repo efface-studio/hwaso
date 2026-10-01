@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { Prisma, type ChatMessageKind } from '@prisma/client';
 import {
   CHAT_TRADE_STATUSES,
   CHAT_DEFAULT_PHRASES,
@@ -119,10 +119,19 @@ const roomInclude = {
   buyer: { select: userSelect },
   seller: { select: userSelect },
   readStates: true,
-  messages: { orderBy: { createdAt: 'desc' }, take: 1 },
 } satisfies Prisma.ChatRoomInclude;
 
-type RoomRow = Prisma.ChatRoomGetPayload<{ include: typeof roomInclude }>;
+type LastMessageRow = {
+  roomId: string;
+  kind: ChatMessageKind;
+  body: string | null;
+  data: Prisma.JsonValue;
+  senderId: string;
+  createdAt: Date;
+  deletedAt: Date | null;
+};
+type RoomBase = Prisma.ChatRoomGetPayload<{ include: typeof roomInclude }>;
+type RoomRow = RoomBase & { last: LastMessageRow | null };
 
 /**
  * 작품 기반 1:1 채팅 (docs/API.md "Chat"). 메시지는 두 참여자의 개인 룸(user:{id})으로 실시간 전송하고,
@@ -207,6 +216,26 @@ export class ChatService {
     return new Map(rows.map((r) => [r.roomId, Number(r.count)]));
   }
 
+  /**
+   * 방마다 마지막 메시지 1건을 붙인다. include 의 messages take:1 은 방이 여러 개면
+   * LIMIT 없이 방들의 메시지를 전부 읽으므로, 방별 LATERAL ... LIMIT 1 한 번으로 가져온다.
+   */
+  private async withLastMessage(rooms: RoomBase[]): Promise<RoomRow[]> {
+    if (!rooms.length) return [];
+    const rows = await this.prisma.$queryRaw<LastMessageRow[]>`
+      SELECT m."roomId", m.kind, m.body, m.data, m."senderId", m."createdAt", m."deletedAt"
+      FROM unnest(ARRAY[${Prisma.join(rooms.map((r) => r.id))}]::text[]) AS r(id)
+      CROSS JOIN LATERAL (
+        SELECT "roomId", kind::text AS kind, body, data, "senderId", "createdAt", "deletedAt"
+        FROM "ChatMessage"
+        WHERE "roomId" = r.id
+        ORDER BY "createdAt" DESC, id DESC
+        LIMIT 1
+      ) m`;
+    const byRoom = new Map(rows.map((m) => [m.roomId, m]));
+    return rooms.map((r) => ({ ...r, last: byRoom.get(r.id) ?? null }));
+  }
+
   private toRoom(
     r: RoomRow,
     userId: string,
@@ -218,7 +247,7 @@ export class ChatService {
     const other = isBuyer ? r.seller : r.buyer;
     const mine = r.readStates.find((s) => s.userId === userId);
     const theirs = r.readStates.find((s) => s.userId === other.id);
-    const last = r.messages[0];
+    const last = r.last;
     const visibleLast = last && (!mine?.hiddenAt || last.createdAt > mine.hiddenAt) ? last : null;
     return {
       id: r.id,
@@ -244,7 +273,8 @@ export class ChatService {
       lastMessage: visibleLast && {
         kind: visibleLast.kind,
         preview: chatPreview({
-          ...visibleLast,
+          kind: visibleLast.kind,
+          body: visibleLast.body,
           deleted: !!visibleLast.deletedAt,
           imageCount: ((visibleLast.data ?? {}) as MessageData).images?.length,
         }),
@@ -262,15 +292,17 @@ export class ChatService {
   /** 내 채팅 목록: 최근 대화 순. 나간 방은 새 메시지가 오면 다시 보인다 */
   async rooms(user: AuthUser): Promise<ChatRoomDto[]> {
     // ponytail: 최근 100개 방만 — 그 이상은 페이지네이션 추가
-    const rows = await this.prisma.chatRoom.findMany({
-      where: { OR: [{ buyerId: user.id }, { sellerId: user.id }] },
-      include: roomInclude,
-      orderBy: { lastMessageAt: 'desc' },
-      take: ROOM_LIMIT,
-    });
+    const rows = await this.withLastMessage(
+      await this.prisma.chatRoom.findMany({
+        where: { OR: [{ buyerId: user.id }, { sellerId: user.id }] },
+        include: roomInclude,
+        orderBy: { lastMessageAt: 'desc' },
+        take: ROOM_LIMIT,
+      }),
+    );
     const visible = rows.filter((r) => {
       const mine = r.readStates.find((s) => s.userId === user.id);
-      const last = r.messages[0];
+      const last = r.last;
       if (!last) return r.buyerId === user.id && !mine?.hiddenAt; // 빈 방은 연 사람에게만
       return !mine?.hiddenAt || last.createdAt > mine.hiddenAt;
     });
@@ -292,7 +324,11 @@ export class ChatService {
 
   async room(user: AuthUser, roomId: string): Promise<ChatRoomDto> {
     await this.member(user, roomId);
-    const r = await this.prisma.chatRoom.findUniqueOrThrow({ where: { id: roomId }, include: roomInclude });
+    const base = await this.prisma.chatRoom.findUniqueOrThrow({
+      where: { id: roomId },
+      include: roomInclude,
+    });
+    const r = (await this.withLastMessage([base]))[0]!;
     const [unread, blocks, presence] = await Promise.all([
       this.unreadByRoom(user.id, [roomId]),
       this.blockSets(user.id),
@@ -509,16 +545,15 @@ export class ChatService {
     if (state?.muted) return;
     // 그 방을 보고 있으면 화면에 바로 뜨므로 푸시는 보내지 않는다
     if (await this.presence.isViewing(roomId, to)) return;
-    const sender = await this.prisma.profile.findUnique({
-      where: { userId: senderId },
-      select: { nickname: true },
-    });
+    const sender = await this.notifications.senderOf(senderId);
     await this.notifications.notify(to, {
       type: 'CHAT_MESSAGE',
-      title: sender?.nickname ?? '새 메시지',
+      title: sender?.name ?? '새 메시지',
       body: chatPreview({ ...m, imageCount: m.images.length }),
       link: `/chat/${roomId}`,
       store: false,
+      sender,
+      threadId: `chat-${roomId}`,
     });
   }
 

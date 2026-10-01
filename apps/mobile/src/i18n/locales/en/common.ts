@@ -161,6 +161,11 @@ const en: Translation<typeof ko> = {
     phone: 'Phone',
     web: 'Web',
   },
+  update: {
+    criticalTitle: 'Important update',
+    criticalMessage: 'A required fix is ready. The app will restart to apply it.',
+    restart: 'Restart',
+  },
   push: {
     channelName: 'General notifications',
   },
@@ -175,6 +180,11 @@ const en: Translation<typeof ko> = {
     hint: 'You can change which notifications you get, and when, in Settings anytime.',
     allow: 'Turn on notifications',
     later: 'Not now',
+  },
+  welcome: {
+    title: 'Welcome aboard',
+    body: '{{nickname}}, welcome to Hwaso.\nFind works you love and save them for later.',
+    browse: 'Start browsing',
   },
   auctionLive: {
     outbid: "You've been outbid",

@@ -161,6 +161,11 @@ const ja: Translation<typeof ko> = {
     phone: 'スマートフォン',
     web: 'Web',
   },
+  update: {
+    criticalTitle: '重要なアップデート',
+    criticalMessage: '必要な修正を適用します。アプリを再起動します。',
+    restart: '再起動',
+  },
   push: {
     channelName: '一般通知',
   },
@@ -175,6 +180,11 @@ const ja: Translation<typeof ko> = {
     hint: '受け取る通知の種類や時間は、設定でいつでも変更できます。',
     allow: '通知をオンにする',
     later: 'あとで',
+  },
+  welcome: {
+    title: 'ご登録ありがとうございます',
+    body: '{{nickname}}さん、Hwaso へようこそ。\n気になる作品を見つけて、お気に入りに追加してみましょう。',
+    browse: '見てみる',
   },
   auctionLive: {
     outbid: 'より高い入札がありました',

@@ -82,6 +82,8 @@ const ja: Translation<typeof ko> = {
     REVIEW_RECEIVED: '新しいレビュー',
     ORDER_UPDATED: '注文',
     FOLLOWING_NEW_ITEM: 'フォロー中の新作',
+    SECURITY_NEW_DEVICE: '新しい端末でのログイン',
+    WELCOME: 'ようこそ',
     SYSTEM: 'お知らせ',
   },
   productStatus: {

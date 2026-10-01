@@ -275,6 +275,8 @@ export interface PublicProfileDto {
   sellingCount: number;
   soldCount: number;
   isFollowing: boolean;
+  /** 이 사람이 나를 팔로우하는지 — 내가 팔로우하지 않았으면 버튼이 '맞팔로우' */
+  followsMe: boolean;
   joinedAt: string;
 }
 
@@ -521,5 +523,7 @@ export interface ReviewSummaryDto {
 export interface FollowUserDto extends UserSummary {
   bio: string;
   isFollowing: boolean;
+  /** 이 사람이 나를 팔로우하는지 */
+  followsMe: boolean;
   sellingCount: number;
 }

@@ -76,6 +76,15 @@ export async function appleNativeLogin(): Promise<AuthTokens & { isNewUser: bool
   return tokens;
 }
 
+/** iOS: 로그인한 계정에 시스템 Sign in with Apple 계정 연결 (authorizationCode 는 해제·탈퇴 때 폐기용) */
+export async function linkAppleNative(): Promise<void> {
+  const cred = await appleCredential([]);
+  await api.auth.linkAppleNative({
+    identityToken: cred.identityToken,
+    authorizationCode: cred.authorizationCode ?? undefined,
+  });
+}
+
 /**
  * 탈퇴 전 본인 확인: 연결된 소셜 계정으로 한 번 더 인증한다 (비밀번호·실제 이메일이 없는 소셜 가입자용).
  * 서버가 인증 결과 계정이 이 회원에게 연결돼 있는지 대조한다. iOS 의 Apple 은 시스템 창(nativeApple).

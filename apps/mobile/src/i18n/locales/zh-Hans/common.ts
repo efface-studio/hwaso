@@ -161,6 +161,11 @@ const zhHans: Translation<typeof ko> = {
     phone: '手机',
     web: '网页',
   },
+  update: {
+    criticalTitle: '重要更新',
+    criticalMessage: '必要的修复已准备好，应用将重新启动以完成更新。',
+    restart: '重新启动',
+  },
   push: {
     channelName: '默认通知',
   },
@@ -175,6 +180,11 @@ const zhHans: Translation<typeof ko> = {
     hint: '可随时在设置中更改接收的通知类型和时间。',
     allow: '开启通知',
     later: '以后再说',
+  },
+  welcome: {
+    title: '恭喜注册成功',
+    body: '{{nickname}}，欢迎来到 Hwaso。\n找到喜欢的作品，加入收藏吧。',
+    browse: '去逛逛',
   },
   auctionLive: {
     outbid: '有人出了更高的价',

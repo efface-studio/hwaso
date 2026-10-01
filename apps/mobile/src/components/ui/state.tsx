@@ -36,19 +36,6 @@ export function Loading({ variant = 'list' }: { variant?: LoadingVariant }) {
   );
 }
 
-/** 당겨서 새로고침하는 동안 본문 대신 스켈레톤 (ScrollView 화면용 — 목록은 data 를 비우고 ListEmptyComponent 로) */
-export function RefreshSkeleton({
-  refreshing,
-  variant,
-  children,
-}: {
-  refreshing: boolean;
-  variant: LoadingVariant;
-  children: ReactNode;
-}) {
-  return refreshing ? <Loading variant={variant} /> : <>{children}</>;
-}
-
 /**
  * 빈 상태 (그림 + 글 + 동작).
  * 목록은 헤더·탭 바 밑까지 스크롤 영역이라 flex 가운데 정렬만 하면 그만큼 아래로 처진다 —

@@ -3,6 +3,7 @@ import { usePathname } from 'expo-router';
 import { useEffect, useRef } from 'react';
 import type { ServerToClientEvents } from '@shop/shared';
 import { useAuthStore } from '@/stores/auth';
+import { checkIntegrity } from './integrity';
 import { listenNotificationTaps, registerPush, setCurrentPath } from './push';
 import { getRealtime } from './realtime';
 
@@ -22,6 +23,10 @@ export function AppSync() {
   useEffect(() => {
     if (userId && !consentPending) void registerPush().catch(() => undefined);
   }, [userId, consentPending]);
+  // 기기 무결성 확인은 로그인한 뒤 실행마다 한 번 (동의 전에도 — 서버 기록은 동의 예외)
+  useEffect(() => {
+    if (userId) void checkIntegrity();
+  }, [userId]);
 
   // 로그인·로그아웃하면 둘러보며 받아 둔 목록·상세(관심 여부·내 작품 여부 등)를 새 계정 기준으로 다시 받고,
   // 로그아웃이면 이전 계정의 개인 데이터(주문·채팅 등)를 캐시에서 지운다

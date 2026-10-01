@@ -1,5 +1,5 @@
 import type { ProductSort } from '@shop/shared';
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -8,12 +8,15 @@ import { EMPTY_FILTERS, FilterButton, filterParams, type Filters } from '@/compo
 import { ProductGrid } from '@/components/product/product-grid';
 import { Chips } from '@/components/ui/chips';
 import { Text } from '@/components/ui/text';
+import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { label } from '@/i18n/labels';
 import { api } from '@/lib/api';
 import { secure } from '@/lib/secure';
 import { useTheme } from '@/theme';
 
 const RECENT_KEY = 'hwaso.recentSearches';
+/** 자동완성은 입력이 잠깐 멈췄을 때만 부른다 */
+const SUGGEST_DEBOUNCE_MS = 250;
 const SORTS: ProductSort[] = ['relevance', 'latest', 'price_asc', 'price_desc', 'popular', 'ending_soon'];
 
 /** 검색 상태: 입력 중 텍스트(text), 제출한 검색어(q), 정렬·필터, 최근 검색어 */
@@ -24,10 +27,13 @@ export function useSearch(initial = '') {
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const [recent, setRecent] = useState<string[]>([]);
   const typing = !!text.trim() && text.trim() !== q;
+  const term = useDebouncedValue(text.trim(), SUGGEST_DEBOUNCE_MS);
   const suggest = useQuery({
-    queryKey: ['suggest', text.trim()],
-    queryFn: ({ signal }) => api.market.suggest(text.trim(), signal),
-    enabled: typing,
+    queryKey: ['suggest', term],
+    queryFn: ({ signal }) => api.market.suggest(term, signal),
+    enabled: typing && !!term,
+    // 새 검색어 결과가 오기 전까지 이전 자동완성을 그대로 보여준다 (목록이 비었다 찼다 하지 않게)
+    placeholderData: keepPreviousData,
   });
 
   useEffect(() => {

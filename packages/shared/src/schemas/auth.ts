@@ -1,4 +1,5 @@
-import { z } from 'zod';
+import '../zod-config';
+import * as z from 'zod';
 import { AUTH_PROVIDERS, PLATFORMS, VERIFICATION_PURPOSES } from '../enums';
 
 export const emailSchema = z
@@ -164,6 +165,13 @@ export const appleNativeSchema = z.strictObject({
   device: deviceSchema,
 });
 export type AppleNativeInput = z.infer<typeof appleNativeSchema>;
+
+/**
+ * 로그인한 계정에 iOS 네이티브 Apple 계정 연결 (POST /auth/social/apple/native).
+ * authorizationCode 를 함께 보내면 연결 해제·탈퇴 때 Apple 토큰을 폐기할 수 있다
+ */
+export const appleLinkSchema = appleNativeSchema.pick({ identityToken: true, authorizationCode: true });
+export type AppleLinkInput = z.infer<typeof appleLinkSchema>;
 
 export const identityCompleteSchema = z.strictObject({
   identityVerificationId: z.string().min(8).max(100),

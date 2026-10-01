@@ -32,6 +32,7 @@ import {
 import { CurrentUser, Public, type AuthUser } from '../common/auth';
 import { RateLimit } from '../common/rate-limit';
 import { ZodPipe } from '../common/zod.pipe';
+import { RequireReauth } from '../security/reauth.guard';
 import { CartService } from './cart.service';
 import { OrderScheduler } from './order-scheduler';
 import { OrdersService } from './orders.service';
@@ -201,6 +202,8 @@ export class OrdersController {
 
   // ───── 결제 ─────
 
+  /** 결제 시작 — 재인증 필요 (승인 confirm 은 PG 창에서 돌아온 뒤라 5분을 넘길 수 있어 요구하지 않는다) */
+  @RequireReauth()
   @Post('orders/:id/payments')
   @RateLimit({ name: 'payment', limit: 20, windowSec: 60, by: 'user' })
   preparePayment(

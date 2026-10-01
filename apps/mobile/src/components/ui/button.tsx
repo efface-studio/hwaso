@@ -1,15 +1,8 @@
 import type { ReactNode } from 'react';
-import {
-  ActivityIndicator,
-  Pressable,
-  StyleSheet,
-  View,
-  type PressableProps,
-  type ViewStyle,
-} from 'react-native';
+import { Pressable, StyleSheet, View, type PressableProps, type ViewStyle } from 'react-native';
 import { selectionHaptic } from '@/lib/haptics';
 import { useTheme } from '@/theme';
-import { Text } from './text';
+import { ShimmerText } from './shimmer-text';
 
 type Variant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'destructive';
 
@@ -70,7 +63,8 @@ export function Button({
           borderRadius: t.radius.sm,
           borderWidth: variant === 'outline' ? StyleSheet.hairlineWidth * 2 : 0,
           borderColor: c.borderStrong,
-          opacity: inactive ? 0.4 : pressed ? 0.8 : 1,
+          // 진행 중(loading)은 흐리게 하지 않는다 — 비활성(disabled)만 흐리게
+          opacity: disabled ? 0.4 : pressed && !loading ? 0.8 : 1,
           alignSelf: block ? 'stretch' : 'auto',
         },
         style,
@@ -78,10 +72,11 @@ export function Button({
       {...props}
     >
       <View style={styles.row}>
-        {loading ? <ActivityIndicator color={c[fg[variant]]} /> : icon}
-        <Text variant={size === 'sm' ? 'label' : 'bodyStrong'} color={fg[variant]}>
+        {icon}
+        {/* 진행 중이면 글자가 스켈레톤처럼 반짝인다 */}
+        <ShimmerText active={!!loading} variant={size === 'sm' ? 'label' : 'bodyStrong'} color={fg[variant]}>
           {title}
-        </Text>
+        </ShimmerText>
       </View>
     </Pressable>
   );

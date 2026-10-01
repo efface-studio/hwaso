@@ -9,6 +9,11 @@ import { safe, serverApi } from '@/lib/server-api';
 
 export const revalidate = 60;
 
+/** 빌드 때는 비워 두고 첫 요청에 렌더해 revalidate 주기로 캐시한다 (on-demand ISR) */
+export async function generateStaticParams() {
+  return [];
+}
+
 function find(tree: CategoryNode[], slug: string): { node: CategoryNode; parent?: CategoryNode } | null {
   for (const g of tree) {
     if (g.slug === slug) return { node: g };
