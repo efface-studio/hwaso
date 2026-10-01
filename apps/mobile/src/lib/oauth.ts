@@ -17,11 +17,11 @@ export class OAuthCancelled extends Error {}
 
 /**
  * 카카오·네이버·구글(·Android Apple): 인앱 브라우저로 로그인 → API 가 code 를 앱 딥링크로 중계 → 앱이 교환.
- * PKCE·state 는 서버가 보관·검증한다.
+ * PKCE·state 는 서버가 보관·검증하고, 앱도 돌아온 state 가 이 요청의 것인지 확인한다.
  */
 async function authorizeInBrowser(provider: AuthProvider) {
   const appRedirect = Linking.createURL('auth/callback');
-  const { url } = await api.auth.oauthUrl(provider, { appRedirect });
+  const { url, state: expected } = await api.auth.oauthUrl(provider, { appRedirect });
   const result = await WebBrowser.openAuthSessionAsync(url, appRedirect);
   if (result.type !== 'success') throw new OAuthCancelled();
   const params = new URL(result.url).searchParams;
@@ -29,6 +29,8 @@ async function authorizeInBrowser(provider: AuthProvider) {
   const code = params.get('code');
   const state = params.get('state');
   if (error || !code || !state) throw new Error(error || i18n.t('common:oauth.cancelled'));
+  // 이 요청이 받은 state 로 돌아온 딥링크만 받는다 (다른 앱·페이지가 보낸 code 로 로그인·연결되지 않게)
+  if (state !== expected) throw new Error(i18n.t('common:oauth.cancelled'));
   return { code, state, redirectUri: relayUri(provider) };
 }
 

@@ -14,7 +14,7 @@ import { env } from './config/env';
 import { httpLogger } from './common/logger';
 import { PinoNestLogger } from './common/nest-logger';
 import { RedisIoAdapter } from './realtime/realtime';
-import { clientIp, RateLimitService } from './common/rate-limit';
+import { clientIp, isGlobalLimitExempt, RateLimitService } from './common/rate-limit';
 import { S3Service } from './storage/s3.service';
 
 export const API_PREFIX = 'api/v1';
@@ -46,10 +46,10 @@ export async function createApp(testing?: TestingModule): Promise<INestApplicati
     exposedHeaders: ['x-request-id'],
   });
 
-  // 전역 IP rate limit (docs/API.md) — 헬스체크 제외
+  // 전역 IP rate limit (docs/API.md) — 헬스체크 제외 (정확한 경로만: `/아무거나/health` 로 우회하지 못하게)
   const limiter = app.get(RateLimitService);
   app.use(async (req: Request, res: Response, next: NextFunction) => {
-    if (req.path.endsWith('/health') || e.NODE_ENV === 'test') return next();
+    if (isGlobalLimitExempt(req.path) || e.NODE_ENV === 'test') return next();
     try {
       if (await limiter.exceeded(`global:ip:${clientIp(req)}`, 300, 60)) {
         res.status(429).json({

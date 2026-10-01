@@ -15,13 +15,18 @@ import { AppException } from '../common/app-exception';
 import { CurrentUser, type AuthUser } from '../common/auth';
 import { RateLimit } from '../common/rate-limit';
 import { ZodPipe } from '../common/zod.pipe';
+import { AdminNotifier } from '../notifications/admin-notifier';
+import { logNotifyError } from '../notifications/notification-events';
 import { isUniqueViolation } from '../orders/order-state';
 import { PrismaService } from '../prisma/prisma.service';
 
 /** 차단 · 신고. 차단은 채팅·문의 등 사용자 간 상호작용 전체에 적용된다 */
 @Injectable()
 export class SafetyService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly admins: AdminNotifier,
+  ) {}
 
   /** 둘 중 한쪽이라도 차단했으면 true */
   async blockedBetween(a: string, b: string) {
@@ -115,6 +120,7 @@ export class SafetyService {
     if (owner === userId) throw new AppException('VALIDATION_FAILED', '본인 콘텐츠는 신고할 수 없습니다.');
     try {
       const r = await this.prisma.report.create({ data: { ...input, reporterId: userId } });
+      void this.admins.reportFiled(r.id).catch(logNotifyError);
       return { id: r.id };
     } catch (e) {
       if (isUniqueViolation(e))

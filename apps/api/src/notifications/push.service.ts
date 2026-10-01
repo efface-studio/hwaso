@@ -1,5 +1,6 @@
 import { Injectable, Logger, type OnModuleDestroy } from '@nestjs/common';
 import type { PushToken } from '@prisma/client';
+import { isAllowedWebPushEndpoint } from '@shop/shared';
 import webpush from 'web-push';
 import { env } from '../config/env';
 import { PrismaService } from '../prisma/prisma.service';
@@ -219,9 +220,13 @@ export class PushService implements OnModuleDestroy {
     await Promise.all(
       tokens.map(async (t) => {
         try {
-          await webpush.sendNotification(JSON.parse(t.token) as webpush.PushSubscription, payload, {
-            TTL: 86_400,
-          });
+          const sub = JSON.parse(t.token) as webpush.PushSubscription;
+          // 등록 때 검사하지만, 검사 전에 저장된 구독도 허용된 푸시 서비스로만 보낸다 (SSRF 방지)
+          if (!isAllowedWebPushEndpoint(sub.endpoint)) {
+            await this.prisma.pushToken.delete({ where: { id: t.id } }).catch(() => undefined);
+            return;
+          }
+          await webpush.sendNotification(sub, payload, { TTL: 86_400, timeout: 10_000 });
         } catch (err) {
           const status = (err as { statusCode?: number }).statusCode;
           if (status === 404 || status === 410)

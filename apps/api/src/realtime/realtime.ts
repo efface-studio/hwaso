@@ -4,6 +4,7 @@ import {
   ConnectedSocket,
   MessageBody,
   type OnGatewayConnection,
+  type OnGatewayInit,
   SubscribeMessage,
   WebSocketGateway,
   WebSocketServer,
@@ -14,13 +15,20 @@ import { Emitter } from '@socket.io/redis-emitter';
 import { rooms, RT_NAMESPACE, type ClientToServerEvents, type ServerToClientEvents } from '@shop/shared';
 import Redis from 'ioredis';
 import type { Namespace, ServerOptions, Socket } from 'socket.io';
-import { isFamilyRevoked, verifyAccessToken } from '../common/auth';
+import { accountState, isFamilyRevoked, verifyAccessToken } from '../common/auth';
 import { env } from '../config/env';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 import { PresenceService } from './presence';
 
 type EventName = keyof ServerToClientEvents;
+
+/** 기기 세션(family) 룸 — 그 기기가 로그아웃·원격 로그아웃되면 소켓을 끊는다 */
+export const familyRoom = (familyId: string) => `fam:${familyId}`;
+
+/** 소켓당 이벤트 한도 (10초 창) · 동시에 볼 수 있는 경매 수 */
+export const SOCKET_EVENT_LIMIT = { limit: 40, windowMs: 10_000 } as const;
+export const MAX_AUCTION_ROOMS = 20;
 type Payload<E extends EventName> = Parameters<ServerToClientEvents[E]>[0];
 
 /**
@@ -56,17 +64,29 @@ export class RealtimeService implements OnModuleDestroy {
     this.emit(rooms.user(userId), event, payload);
   }
 
+  /**
+   * 폐기된 기기의 소켓을 모든 인스턴스에서 끊는다 (docs/SECURITY.md §Access 토큰 즉시 폐기).
+   * 연결할 때만 토큰을 확인하므로, 끊지 않으면 로그아웃·정지 뒤에도 채팅·알림을 계속 받는다
+   */
+  disconnectFamilies(familyIds: readonly string[]) {
+    if (!familyIds.length) return;
+    this.emitter.in([...new Set(familyIds)].map(familyRoom)).disconnectSockets(true);
+  }
+
   async onModuleDestroy() {
     await this.redis.quit();
   }
 }
 
-type RtSocket = Socket<
-  ClientToServerEvents,
-  ServerToClientEvents,
-  Record<string, never>,
-  { userId?: string; typingAt?: Record<string, number> }
->;
+interface SocketData {
+  userId?: string;
+  familyId?: string;
+  typingAt?: Record<string, number>;
+  events?: { start: number; count: number };
+}
+
+type RtSocket = Socket<ClientToServerEvents, ServerToClientEvents, Record<string, never>, SocketData>;
+type RtNamespace = Namespace<ClientToServerEvents, ServerToClientEvents, Record<string, never>, SocketData>;
 
 /** 인스턴스 간 브로드캐스트를 위한 Socket.IO Redis adapter */
 export class RedisIoAdapter extends IoAdapter {
@@ -95,9 +115,9 @@ export class RedisIoAdapter extends IoAdapter {
 }
 
 @WebSocketGateway({ namespace: RT_NAMESPACE })
-export class RealtimeGateway implements OnGatewayConnection {
+export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection {
   private readonly logger = new Logger(RealtimeGateway.name);
-  @WebSocketServer() private readonly nsp!: Namespace<ClientToServerEvents, ServerToClientEvents>;
+  @WebSocketServer() private readonly nsp!: RtNamespace;
   private readonly watcherTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
   constructor(
@@ -106,15 +126,48 @@ export class RealtimeGateway implements OnGatewayConnection {
     private readonly redis: RedisService,
   ) {}
 
-  /** 토큰이 없거나 틀려도 연결은 허용한다 (경매 관전). 로그인 사용자는 개인 룸에 들어간다 */
-  async handleConnection(socket: RtSocket) {
+  /**
+   * 연결 전 인증 (namespace 미들웨어): 클라이언트가 connect 를 받기 전에 사용자 판별이 끝나야
+   * 연결 직후 보낸 chat:join 이 비로그인으로 처리되지 않는다
+   */
+  afterInit(nsp: RtNamespace) {
+    nsp.use((socket, next) => {
+      this.authenticate(socket).then(
+        () => next(),
+        // Redis·DB 장애: 비로그인(관전)으로 연결한다 — HTTP 와 달리 개인 데이터는 주지 않으므로 안전한 쪽
+        (err: unknown) => {
+          this.logger.warn({ err }, 'socket auth failed');
+          next();
+        },
+      );
+    });
+  }
+
+  /** 로그아웃·원격 로그아웃된 기기, 정지·탈퇴한 계정의 토큰으로는 개인 룸에 들어가지 못한다 (docs/SECURITY.md) */
+  private async authenticate(socket: RtSocket) {
     const token = (socket.handshake.auth as { token?: unknown } | undefined)?.token;
     const user = typeof token === 'string' ? await verifyAccessToken(token) : null;
-    // 로그아웃·원격 로그아웃된 기기의 토큰으로는 개인 룸에 들어가지 못한다 (docs/SECURITY.md)
-    if (user && !(await isFamilyRevoked(this.redis, user.familyId))) {
-      socket.data.userId = user.id;
-      await socket.join(rooms.user(user.id));
-      await this.presence.connect(user.id, socket.id);
+    if (!user || (await isFamilyRevoked(this.redis, user.familyId))) return;
+    if (!(await accountState(this.prisma, this.redis, user.id)).active) return;
+    socket.data.userId = user.id;
+    socket.data.familyId = user.familyId;
+  }
+
+  /** 토큰이 없거나 틀려도 연결은 허용한다 (경매 관전). 로그인 사용자는 개인 룸에 들어간다 */
+  async handleConnection(socket: RtSocket) {
+    // 이벤트 폭주 제한: 소켓당 10초에 40개. 넘으면 그 이벤트는 처리하지 않는다 (ack 없음)
+    socket.use((_packet, next) => {
+      const now = Date.now();
+      const w = socket.data.events;
+      if (!w || now - w.start >= SOCKET_EVENT_LIMIT.windowMs) socket.data.events = { start: now, count: 1 };
+      else if (++w.count > SOCKET_EVENT_LIMIT.limit) return next(new Error('RATE_LIMITED'));
+      next();
+    });
+
+    const { userId, familyId } = socket.data;
+    if (userId) {
+      await socket.join(familyId ? [rooms.user(userId), familyRoom(familyId)] : rooms.user(userId));
+      await this.presence.connect(userId, socket.id);
     }
     socket.on('disconnecting', () => {
       for (const room of socket.rooms) if (room.startsWith('auction:')) this.scheduleWatchers(room);
@@ -135,6 +188,9 @@ export class RealtimeGateway implements OnGatewayConnection {
     // Nest 는 핸들러 반환값을 ack 로 보낸다
     if (!exists) return { ok: false, code: 'NOT_FOUND' };
     const room = rooms.auction(auctionId);
+    // 한 소켓이 수많은 경매 룸에 들어가 참여자 집계(fetchSockets)를 늘리지 못하게
+    const joined = [...socket.rooms].filter((r) => r.startsWith('auction:')).length;
+    if (!socket.rooms.has(room) && joined >= MAX_AUCTION_ROOMS) return { ok: false, code: 'RATE_LIMITED' };
     await socket.join(room);
     this.scheduleWatchers(room);
     return { ok: true, data: { serverTime: new Date().toISOString() } };
