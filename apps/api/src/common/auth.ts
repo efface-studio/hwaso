@@ -156,7 +156,7 @@ export const Roles = (...roles: Role[]) => SetMetadata(ROLES, roles);
  */
 export const ConsentExempt = () => SetMetadata(CONSENT_EXEMPT, true);
 
-interface UserState {
+export interface UserState {
   active: boolean;
   role: Role;
   consented: boolean;
@@ -220,20 +220,31 @@ export class AuthGuard implements CanActivate {
     return true;
   }
 
-  /** 상태·역할·동의 여부를 30초 캐시로 확인한다 (`{status}:{role}:{0|1}`) — 요청당 한 번만 읽는다 */
-  private async state(userId: string): Promise<UserState> {
-    const key = `user:status:${userId}`;
-    // 이전 형식(`{status}:{role}`) 값은 파싱 실패로 보고 DB 에서 다시 채운다
-    const cached = parseState(await this.redis.get(key));
-    if (cached) return cached;
-    const u = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: { status: true, role: true, termsAgreedAt: true, privacyAgreedAt: true, ageConfirmedAt: true },
-    });
-    const raw = u ? `${u.status}:${u.role}:${hasRequiredConsent(u) ? 1 : 0}` : 'DELETED:USER:0';
-    await this.redis.set(key, raw, 'EX', 30);
-    return parseState(raw)!;
+  private state(userId: string): Promise<UserState> {
+    return accountState(this.prisma, this.redis, userId);
   }
+}
+
+/**
+ * 상태·역할·동의 여부를 30초 캐시로 확인한다 (`{status}:{role}:{0|1}`) — 요청당 한 번만 읽는다.
+ * HTTP Guard 와 소켓 연결이 같은 캐시를 쓴다.
+ */
+export async function accountState(
+  prisma: PrismaService,
+  redis: RedisService,
+  userId: string,
+): Promise<UserState> {
+  const key = `user:status:${userId}`;
+  // 이전 형식(`{status}:{role}`) 값은 파싱 실패로 보고 DB 에서 다시 채운다
+  const cached = parseState(await redis.get(key));
+  if (cached) return cached;
+  const u = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { status: true, role: true, termsAgreedAt: true, privacyAgreedAt: true, ageConfirmedAt: true },
+  });
+  const raw = u ? `${u.status}:${u.role}:${hasRequiredConsent(u) ? 1 : 0}` : 'DELETED:USER:0';
+  await redis.set(key, raw, 'EX', 30);
+  return parseState(raw)!;
 }
 
 /** 필수 동의(약관·개인정보·만 14세)를 모두 받았는지 */

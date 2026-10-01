@@ -18,6 +18,11 @@ import type {
   LoginInput,
   MeDto,
   OAuthCallbackInput,
+  QuickLoginCredentialResult,
+  QuickLoginInput,
+  QuickLoginRegisterInput,
+  QuickLoginStatusDto,
+  QuickLoginTokens,
   ReauthInput,
   ReauthResult,
   ResetPasswordInput,
@@ -42,8 +47,16 @@ export const authApi = (http: Http) => ({
       retryOnUnauthorized: false,
       signal,
     }),
-  logout: (refreshToken?: string) =>
-    http.post<void>('/auth/logout', refreshToken ? { refreshToken } : {}, { retryOnUnauthorized: false }),
+  /** 앱은 이 기기 푸시 토큰을 함께 보내면 access 토큰 없이도 푸시가 끊긴다 */
+  logout: (refreshToken?: string, pushToken?: string) =>
+    http.post<void>(
+      '/auth/logout',
+      { ...(refreshToken ? { refreshToken } : {}), ...(pushToken ? { pushToken } : {}) },
+      { retryOnUnauthorized: false },
+    ),
+  /** 웹 "로그인 상태 유지" — false 면 refresh 쿠키를 브라우저를 닫으면 사라지는 세션 쿠키로 바꾼다 */
+  setSessionPersistence: (persistent: boolean) =>
+    http.post<void>('/auth/session/persistence', { persistent }, { retryOnUnauthorized: false }),
   resetPassword: (body: ResetPasswordInput) => http.post<void>('/auth/password/reset', body),
   changePassword: (body: ChangePasswordInput) => http.post<void>('/auth/password/change', body),
   providers: () => http.get<AuthProvidersDto>('/auth/providers'),
@@ -78,6 +91,17 @@ export const authApi = (http: Http) => ({
   registerBiometric: (body: BiometricRegisterInput, reauthToken?: string) =>
     http.post<BiometricKeyResult>('/auth/reauth/biometric', body, reauthToken ? { reauthToken } : undefined),
   removeBiometric: () => http.delete<void>('/auth/reauth/biometric'),
+
+  // ───── Face ID·지문 빠른 로그인 (앱 전용, secret 은 발급·교체 응답에서만 받는다) ─────
+  quickLogin: (body: QuickLoginInput) =>
+    http.post<QuickLoginTokens>('/auth/quick-login', body, { retryOnUnauthorized: false }),
+  /** 로그인 10분 뒤에는 재인증 토큰이 필요하다 (REAUTH_REQUIRED → 본인 확인 창) */
+  registerQuickLogin: (body: QuickLoginRegisterInput) =>
+    http.post<QuickLoginCredentialResult>('/auth/quick-login/register', body),
+  quickLoginStatus: (deviceId: string) => http.get<QuickLoginStatusDto>('/auth/quick-login', { deviceId }),
+  /** 다른 방법으로 다시 로그인한 뒤 이 기기 자격을 지금 세션에 묶는다 */
+  attachQuickLogin: (deviceId: string) => http.patch<QuickLoginStatusDto>('/auth/quick-login', { deviceId }),
+  removeQuickLogin: (deviceId: string) => http.delete<void>('/auth/quick-login', { deviceId }),
 
   updateProfile: (body: UpdateProfileInput) => http.patch<MeDto>('/users/me/profile', body),
   seller: () => http.get<SellerInfoDto>('/me/seller'),

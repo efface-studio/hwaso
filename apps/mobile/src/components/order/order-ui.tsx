@@ -6,15 +6,14 @@ import {
   type PaymentMethod,
   type ShippingAddress,
 } from '@shop/shared';
-import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, View } from 'react-native';
+import { MediaImage } from '@/components/ui/media-image';
 import { Text } from '@/components/ui/text';
 import i18n from '@/i18n';
 import { formatPrice } from '@/i18n/format';
 import { label } from '@/i18n/labels';
-import { mediaUrl } from '@/lib/media';
 import { useTheme, type Colors } from '@/theme';
 
 /** 결제 수단 선택지 — 부를 때의 언어로 만든다 */
@@ -114,8 +113,9 @@ export function OrderItemRow({ item, compact }: { item: OrderItemDto; compact?: 
     >
       <View style={{ width: size, height: size, backgroundColor: t.colors.backgroundSoft }}>
         {item.image && (
-          <Image
-            source={mediaUrl(item.image.key, 400)}
+          <MediaImage
+            mediaKey={item.image.key}
+            displayWidth={size}
             style={StyleSheet.absoluteFill}
             contentFit="contain"
           />

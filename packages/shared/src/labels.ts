@@ -108,6 +108,11 @@ export const NOTIFICATION_TYPE_LABEL: Record<NotificationType, string> = {
   WELCOME: '가입 축하',
   SYSTEM: '알림',
   SECURITY_NEW_DEVICE: '새 기기 로그인',
+  ADMIN_REPORT: '신고 접수',
+  ADMIN_SELLER_PENDING: '판매자 인증 신청',
+  ADMIN_CERTIFICATE_PENDING: '감정서 검수 요청',
+  ADMIN_PAYMENT_ISSUE: '결제 이상',
+  ADMIN_APP_UPDATE: '앱 업데이트',
 };
 
 export const PRODUCT_STATUS_LABEL: Record<ProductStatus, string> = {

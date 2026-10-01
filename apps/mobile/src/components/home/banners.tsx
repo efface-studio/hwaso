@@ -1,11 +1,10 @@
 import type { BannerDto } from '@shop/shared';
-import { Image } from 'expo-image';
 import { useIsFocused } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FlatList, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { MediaImage } from '@/components/ui/media-image';
 import { Text } from '@/components/ui/text';
-import { mediaUrl } from '@/lib/media';
 import { openLink } from '@/lib/nav';
 import { usePrefs } from '@/stores/prefs';
 import { useTheme } from '@/theme';
@@ -57,7 +56,12 @@ export function BannerCarousel({ banners }: { banners: BannerDto[] }) {
             onPress={() => openLink(b.link)}
             style={{ width, height }}
           >
-            <Image source={mediaUrl(b.imageKey, 1600)} style={StyleSheet.absoluteFill} contentFit="cover" />
+            <MediaImage
+              mediaKey={b.imageKey}
+              displayWidth={width}
+              style={StyleSheet.absoluteFill}
+              contentFit="cover"
+            />
             <View
               style={[
                 styles.caption,

@@ -1,6 +1,6 @@
 import { ApiError, createApiClient } from '@shop/api-client';
 import { withDemo } from '@/demo/demo-fetch';
-import { REFRESH_KEY, useAuthStore } from '@/stores/auth';
+import { EPHEMERAL_KEY, REFRESH_KEY, useAuthStore } from '@/stores/auth';
 import { env } from './env';
 import { biometricKey, requestReauth } from './reauth';
 import { secure } from './secure';
@@ -53,6 +53,43 @@ export const api = createApiClient({
   // 사진 업로드(FormData)는 XHR 로 — expo/fetch 가 RN 식 파일 첨부를 못 보낸다 (lib/upload-fetch.ts)
   fetch: withDemo(uploadAwareFetch),
 });
+
+/** 끝내지 못한(오프라인) 이전 세션 — 다음 실행 때 다시 서버 로그아웃을 보낸다 */
+const REVOKE_KEY = 'hwaso.session.revoke';
+
+async function revokeLeftover(refreshToken: string, pushToken?: string) {
+  try {
+    await api.auth.logout(refreshToken, pushToken);
+    await secure.remove(REVOKE_KEY);
+  } catch {
+    await secure.set(REVOKE_KEY, JSON.stringify({ refreshToken, pushToken })).catch(() => undefined);
+  }
+}
+
+/**
+ * 앱 시작 때 한 번: 저장된 세션을 이어 쓴다.
+ * 자동 로그인을 끄고 로그인한 세션이면 이어 쓰지 않는다 — 기기에서 지우고, 서버 세션과 이 기기 푸시도 끝낸다
+ * (로그아웃 요청은 기다리지 않는다. 오프라인이면 다음 실행 때 다시 보낸다)
+ */
+export async function restoreSession(): Promise<void> {
+  const leftover = await secure.get(REVOKE_KEY);
+  if (leftover) {
+    try {
+      const prev = JSON.parse(leftover) as { refreshToken: string; pushToken?: string };
+      void revokeLeftover(prev.refreshToken, prev.pushToken);
+    } catch {
+      await secure.remove(REVOKE_KEY);
+    }
+  }
+  if (await secure.get(EPHEMERAL_KEY)) {
+    const token = await secure.get(REFRESH_KEY);
+    const push = await import('./push').then((m) => m.takeSavedPushToken()).catch(() => null);
+    await useAuthStore.getState().clear();
+    if (token) void revokeLeftover(token, push ?? undefined);
+    return;
+  }
+  await refreshAccessToken();
+}
 
 export async function logout() {
   // 이 기기 푸시 해제 (순환 참조를 피해 동적 import)

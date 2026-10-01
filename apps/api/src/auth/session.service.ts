@@ -17,11 +17,17 @@ import {
 } from '../common/auth';
 import { maskIp, randomToken, sha256 } from '../common/crypto';
 import { PrismaService, type Tx } from '../prisma/prisma.service';
+import { RealtimeService } from '../realtime/realtime';
 import { RedisService } from '../redis/redis.service';
 
 export const REFRESH_TTL_DAYS = 30;
 /** 동시 갱신(여러 탭) 허용 시간. 이보다 늦게 재사용되면 탈취로 본다 */
 export const REUSE_GRACE_MS = 30_000;
+
+export interface RevokeOptions {
+  /** 이 기기의 빠른 로그인 자격은 남긴다 (본인 로그아웃) */
+  keepQuickLogin?: boolean;
+}
 
 export interface ClientInfo {
   ip: string;
@@ -38,6 +44,7 @@ export class SessionService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
+    private readonly realtime: RealtimeService,
   ) {}
 
   async issue(
@@ -113,36 +120,39 @@ export class SessionService {
   }
 
   /** 로그아웃. 폐기한 세션 정보를 돌려준다 (보안 이벤트 기록용) */
-  async revokeByRefresh(refreshToken: string) {
+  async revokeByRefresh(refreshToken: string, opts: RevokeOptions = {}) {
     const s = await this.prisma.session.findUnique({ where: { refreshTokenHash: sha256(refreshToken) } });
     if (!s) return null;
-    await this.revokeFamily(s.familyId);
+    await this.revokeFamily(s.familyId, opts);
     return s;
   }
 
-  async revokeFamily(familyId: string) {
+  async revokeFamily(familyId: string, opts: RevokeOptions = {}) {
     await this.prisma.session.updateMany({
       where: { familyId, revokedAt: null },
       data: { revokedAt: new Date() },
     });
-    await this.afterRevoke([familyId], { familyId });
+    await this.afterRevoke([familyId], { familyId }, opts);
   }
 
   /**
-   * 폐기 후처리: 이미 발급된 access 토큰을 즉시 거부하도록 Redis 에 표시하고, 그 기기의 생체 재인증 키를 지운다.
+   * 폐기 후처리: 이미 발급된 access 토큰을 즉시 거부하도록 Redis 에 표시하고, 그 기기의 실시간 연결을 끊고,
+   * 생체 재인증 키를 지운다. 빠른 로그인 자격도 함께 지운다 — 본인이 이 기기에서 로그아웃할 때(keepQuickLogin)만 남긴다.
    * refresh 회전(같은 family 안에서 행 교체)에는 호출하지 않는다 — 생체 키와 access 토큰은 기기 단위로 유지된다.
    */
   private async afterRevoke(
     familyIds: string[],
     keys: { familyId: string } | { userId: string; exceptFamily?: string | null },
+    opts: RevokeOptions = {},
   ) {
     await markFamiliesRevoked(this.redis, familyIds);
-    await this.prisma.biometricKey.deleteMany({
-      where:
-        'familyId' in keys
-          ? { familyId: keys.familyId }
-          : { userId: keys.userId, ...(keys.exceptFamily ? { familyId: { not: keys.exceptFamily } } : {}) },
-    });
+    this.realtime.disconnectFamilies(familyIds);
+    const where =
+      'familyId' in keys
+        ? { familyId: keys.familyId }
+        : { userId: keys.userId, ...(keys.exceptFamily ? { familyId: { not: keys.exceptFamily } } : {}) };
+    await this.prisma.biometricKey.deleteMany({ where });
+    if (!opts.keepQuickLogin) await this.prisma.quickLoginCredential.deleteMany({ where });
   }
 
   async familyOf(sessionId: string): Promise<string | null> {

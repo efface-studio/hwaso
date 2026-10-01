@@ -23,6 +23,7 @@ import { ConsentExempt, CurrentUser, Public, type AuthUser } from '../common/aut
 import { Clock } from '../common/clock';
 import { PublicCache } from '../common/http-cache';
 import { ZodPipe } from '../common/zod.pipe';
+import { AdminNotifier } from './admin-notifier';
 import { NotificationEvents } from './notification-events';
 import { NotificationsService } from './notifications.service';
 import { PushService } from './push.service';
@@ -72,12 +73,12 @@ export class NotificationsController {
 
   @Get('me/notification-settings')
   prefs(@CurrentUser() u: AuthUser) {
-    return this.n.prefs(u.id);
+    return this.n.prefs(u);
   }
 
   @Put('me/notification-settings')
   setPrefs(@CurrentUser() u: AuthUser, @Body(new ZodPipe(notificationPrefsSchema)) body: NotificationPrefs) {
-    return this.n.setPrefs(u.id, body);
+    return this.n.setPrefs(u, body);
   }
 
   @Post('me/push-tokens')
@@ -98,15 +99,15 @@ export class NotificationsController {
 @Global()
 @Module({
   controllers: [NotificationsController],
-  providers: [NotificationsService, NotificationEvents, PushService, Clock],
-  exports: [NotificationsService, NotificationEvents, PushService, Clock],
+  providers: [NotificationsService, NotificationEvents, AdminNotifier, PushService, Clock],
+  exports: [NotificationsService, NotificationEvents, AdminNotifier, PushService, Clock],
 })
 export class NotificationsModule {}
 
 /** 워커용: 컨트롤러 없이 서비스만 */
 @Global()
 @Module({
-  providers: [NotificationsService, NotificationEvents, PushService, Clock],
-  exports: [NotificationsService, NotificationEvents, PushService, Clock],
+  providers: [NotificationsService, NotificationEvents, AdminNotifier, PushService, Clock],
+  exports: [NotificationsService, NotificationEvents, AdminNotifier, PushService, Clock],
 })
 export class NotificationsCoreModule {}

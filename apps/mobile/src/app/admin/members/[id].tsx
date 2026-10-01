@@ -1,9 +1,18 @@
-import { AUTH_PROVIDER_LABEL, ROLES, type AdminUserDetail, type Role } from '@shop/shared';
+import {
+  ADMIN_ROLES,
+  AUTH_PROVIDER_LABEL,
+  ROLES,
+  type AdminUserDetail,
+  type MeDto,
+  type Role,
+} from '@shop/shared';
 import { useQuery } from '@tanstack/react-query';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
+import { useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, View } from 'react-native';
 import { useAdminAction } from '@/components/admin/admin-list';
-import { promptReason } from '@/components/admin/prompt';
+import { EditMemberSheet } from '@/components/admin/member-forms';
+import { promptReason, promptSuspension } from '@/components/admin/prompt';
 import { AdminRow, RowSection } from '@/components/admin/row';
 import { StatusText } from '@/components/admin/status';
 import { AppRefreshControl } from '@/components/ui/app-refresh-control';
@@ -11,7 +20,7 @@ import { Empty, Loading } from '@/components/ui/state';
 import { Text } from '@/components/ui/text';
 import { usePullRefresh } from '@/hooks/use-pull-refresh';
 import { actionSheet } from '@/lib/action-sheet';
-import { dt, ROLE_LABEL, USER_STATUS_LABEL } from '@/lib/admin';
+import { dt, ROLE_LABEL, suspensionText, USER_STATUS_LABEL } from '@/lib/admin';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
 import { useTheme, type Colors } from '@/theme';
@@ -19,6 +28,15 @@ import { readable } from '@/hooks/use-layout';
 
 /** 조치 후 다시 불러올 목록·상세 */
 const INVALIDATE = ['users', 'user', 'sellers'];
+
+/**
+ * 이 관리자가 회원을 다룰 수 있는지: 본인·탈퇴 회원은 안 되고, 관리자 계정은 최고 관리자만 (서버와 같은 규칙)
+ */
+const canManage = (me: MeDto | null, u: AdminUserDetail) =>
+  !!me &&
+  me.id !== u.id &&
+  u.status !== 'DELETED' &&
+  (!ADMIN_ROLES.includes(u.role) || me.role === 'SUPER_ADMIN');
 
 /** 소셜 로그인 표기 (모르는 값이면 그대로) */
 const providerLabel = (p: string) => Object.entries(AUTH_PROVIDER_LABEL).find(([k]) => k === p)?.[1] ?? p;
@@ -86,11 +104,16 @@ function ActionRow({
   );
 }
 
-/** 역할 변경 · 판매자 인증 · 미결제 초기화 · 정지/해제 (본인·탈퇴 회원은 숨긴다) */
+/** 역할 변경 · 판매자 인증 · 미결제 초기화 · 정지(기간)/해제 · 삭제 (다룰 수 없는 회원이면 숨긴다) */
 function Actions({ u }: { u: AdminUserDetail }) {
   const me = useAuthStore((s) => s.user);
   const id = u.id;
-  const suspend = useAdminAction((r: string) => api.admin.suspend(id, r), '이용을 정지했어요', INVALIDATE);
+  const suspend = useAdminAction(
+    (r: string, until: string | null) => api.admin.suspend(id, r, until),
+    '이용을 정지했어요',
+    INVALIDATE,
+  );
+  const remove = useAdminAction((r: string) => api.admin.deleteUser(id, r), null, INVALIDATE);
   const restore = useAdminAction((r: string) => api.admin.restore(id, r), '정지를 해제했어요', INVALIDATE);
   const strikes = useAdminAction(
     (r: string) => api.admin.resetStrikes(id, r),
@@ -103,8 +126,8 @@ function Actions({ u }: { u: AdminUserDetail }) {
     '판매자 인증을 바꿨어요',
     INVALIDATE,
   );
-  // 최고 관리자는 부여할 수 없고, 관리자 부여는 최고 관리자만
-  const roles = ROLES.filter((r) => r !== 'SUPER_ADMIN' && (me?.role === 'SUPER_ADMIN' || r !== 'ADMIN'));
+  // 관리자·최고 관리자 부여는 최고 관리자만 (관리자에게는 관리자 역할을 보이지 않는다)
+  const roles = ROLES.filter((r) => me?.role === 'SUPER_ADMIN' || !ADMIN_ROLES.includes(r));
 
   const pickRole = () =>
     actionSheet(
@@ -122,14 +145,41 @@ function Actions({ u }: { u: AdminUserDetail }) {
     );
 
   const onSuspend = async () => {
-    const reason = await promptReason({
-      title: '이용 정지',
-      description: '모든 기기에서 로그아웃되고, 로그인할 때 사유가 안내돼요.',
-      confirmLabel: '정지',
+    const changing = u.status === 'SUSPENDED';
+    const r = await promptSuspension({
+      title: changing ? '정지 기간 변경' : '이용 정지',
+      description: changing
+        ? `지금: ${suspensionText(u.suspendedUntil)}. 새 기간과 사유로 바꿔요.`
+        : '모든 기기에서 로그아웃되고, 로그인할 때 기간과 사유가 안내돼요.',
+      confirmLabel: changing ? '변경' : '정지',
       destructive: true,
     });
-    if (reason) suspend.mutate([reason]);
+    if (r) suspend.mutate([r.reason, r.until]);
   };
+  // 되돌릴 수 없으므로 시스템 확인 창을 먼저 띄우고, 사유를 받는다
+  const onDelete = () =>
+    Alert.alert(
+      '회원을 삭제할까요?',
+      '탈퇴와 같이 개인정보를 지우고 익명으로 바꿔요. 되돌릴 수 없어요. 진행 중인 거래가 있으면 삭제할 수 없어요.',
+      [
+        { text: '취소', style: 'cancel' },
+        {
+          text: '삭제',
+          style: 'destructive',
+          onPress: () =>
+            void promptReason({ title: '회원 삭제', confirmLabel: '삭제', destructive: true }).then(
+              (reason) =>
+                reason &&
+                remove.mutate([reason], {
+                  onSuccess: () => {
+                    Alert.alert('회원을 삭제했어요');
+                    router.back();
+                  },
+                }),
+            ),
+        },
+      ],
+    );
   const onRestore = async () => {
     const reason = await promptReason({ title: '정지 해제', confirmLabel: '해제' });
     if (reason) restore.mutate([reason]);
@@ -185,17 +235,34 @@ function Actions({ u }: { u: AdminUserDetail }) {
           label="이용 정지"
           color="destructive"
           pending={suspend.isPending}
-          hint="사유를 입력하고 정지해요"
+          hint="기간과 사유를 정하고 정지해요"
           onPress={() => void onSuspend()}
         />
       ) : (
-        <ActionRow
-          label="정지 해제"
-          pending={restore.isPending}
-          hint="사유를 입력하고 해제해요"
-          onPress={() => void onRestore()}
-        />
+        <>
+          <ActionRow
+            label="정지 해제"
+            pending={restore.isPending}
+            hint="사유를 입력하고 해제해요"
+            onPress={() => void onRestore()}
+          />
+          <ActionRow
+            label="정지 기간 변경"
+            color="foreground"
+            value={u.suspendedUntil ? '기간' : '영구'}
+            pending={suspend.isPending}
+            hint="새 기간과 사유를 정해요"
+            onPress={() => void onSuspend()}
+          />
+        </>
       )}
+      <ActionRow
+        label="회원 삭제"
+        color="destructive"
+        pending={remove.isPending}
+        hint="확인 후 사유를 입력하고 삭제해요"
+        onPress={onDelete}
+      />
     </RowSection>
   );
 }
@@ -254,8 +321,14 @@ function Detail({ u }: { u: AdminUserDetail }) {
             accessibilityLabel={`정지 사유 ${u.statusReason}`}
           />
         )}
+        {u.status === 'SUSPENDED' && (
+          <InfoRow label="정지 기간" value={suspensionText(u.suspendedUntil)} danger />
+        )}
         <InfoRow label="가입" value={dt(u.createdAt)} />
         <InfoRow label="최근 로그인" value={dt(u.lastLoginAt)} />
+        <InfoRow label="이메일 인증" value={u.emailVerifiedAt ? dt(u.emailVerifiedAt) : '안 함'} />
+        {u.consentRequired && <InfoRow label="약관 동의" value="첫 로그인 때 받아요" />}
+        <InfoRow label="비밀번호 로그인" value={u.hasPassword ? '가능' : '간편 로그인만'} />
         <InfoRow label="본인인증" value={u.identityVerified ? '완료' : '안 함'} />
         <InfoRow
           label="간편 로그인"
@@ -305,21 +378,39 @@ function Detail({ u }: { u: AdminUserDetail }) {
         />
       </RowSection>
 
-      {me?.id !== u.id && u.status !== 'DELETED' && <Actions u={u} />}
+      {canManage(me, u) && <Actions u={u} />}
     </>
   );
 }
 
 export default function AdminMemberScreen() {
   const t = useTheme();
+  const me = useAuthStore((s) => s.user);
   const { id } = useLocalSearchParams<{ id: string }>();
   const q = useQuery({ queryKey: ['admin', 'user', id], queryFn: () => api.admin.user(id) });
   const pull = usePullRefresh(q.refetch);
+  const [editing, setEditing] = useState(false);
   const u = q.data;
+  const editable = !!u && canManage(me, u);
 
   return (
     <>
-      <Stack.Screen options={{ title: u?.nickname ?? '회원 상세' }} />
+      <Stack.Screen
+        options={{
+          title: u?.nickname ?? '회원 상세',
+          unstable_headerRightItems: () =>
+            editable
+              ? [
+                  {
+                    type: 'button',
+                    label: '수정',
+                    icon: { type: 'sfSymbol', name: 'square.and.pencil' },
+                    onPress: () => setEditing(true),
+                  },
+                ]
+              : [],
+        }}
+      />
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
         style={{ backgroundColor: t.colors.background }}
@@ -340,6 +431,7 @@ export default function AdminMemberScreen() {
           </View>
         )}
       </ScrollView>
+      {editing && u && <EditMemberSheet key={u.id} u={u} onClose={() => setEditing(false)} />}
     </>
   );
 }

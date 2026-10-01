@@ -85,6 +85,11 @@ const ja: Translation<typeof ko> = {
     SECURITY_NEW_DEVICE: '新しい端末でのログイン',
     WELCOME: 'ようこそ',
     SYSTEM: 'お知らせ',
+    ADMIN_REPORT: '通報の受付',
+    ADMIN_SELLER_PENDING: '出品者認証の申請',
+    ADMIN_CERTIFICATE_PENDING: '鑑定書の審査依頼',
+    ADMIN_PAYMENT_ISSUE: '決済の異常',
+    ADMIN_APP_UPDATE: 'アプリのアップデート',
   },
   productStatus: {
     DRAFT: '下書き',

@@ -173,6 +173,12 @@ enum NotificationType {
   FOLLOWING_NEW_ITEM
   SECURITY_NEW_DEVICE
   WELCOME
+  /// 관리자 알림 (관리자만 받는다 — docs/API.md "Notifications")
+  ADMIN_REPORT
+  ADMIN_SELLER_PENDING
+  ADMIN_CERTIFICATE_PENDING
+  ADMIN_PAYMENT_ISSUE
+  ADMIN_APP_UPDATE
 }
 
 enum SecurityEventType {
@@ -190,6 +196,9 @@ enum SecurityEventType {
   INTEGRITY_WARNING
   ACCOUNT_LINKED
   ACCOUNT_UNLINKED
+  QUICK_LOGIN_REGISTERED
+  QUICK_LOGIN_REMOVED
+  QUICK_LOGIN_FAILED
 }
 
 enum ChatMessageKind {
@@ -242,9 +251,11 @@ model User {
   emailVerifiedAt    DateTime?  @db.Timestamptz
   role               Role       @default(USER)
   status             UserStatus @default(ACTIVE)
-  /// 알림 설정: { push: { auction, trade, chat, activity }, quietHours } (docs/API.md)
+  /// 알림 설정: { push: { auction, trade, chat, activity }, quietHours, admin? } (docs/API.md)
   /// 정지 사유 등 운영 조치 사유 (회원에게 로그인 시 안내)
   statusReason       String?
+  /// 기간 정지 종료 시각. SUSPENDED 인데 null 이면 영구 정지 (지나면 로그인·워커가 해제)
+  suspendedUntil     DateTime?  @db.Timestamptz
   notificationPrefs  Json       @default("{}")
   /// 채팅 자주 쓰는 문구 — null 이면 저장한 적 없음(기본 문구)
   chatPhrases        Json?
@@ -300,6 +311,7 @@ model User {
   @@index([createdAt])
   securityEvents SecurityEvent[]
   biometricKeys  BiometricKey[]
+  quickLogins    QuickLoginCredential[]
 }
 
 model Profile {
@@ -381,6 +393,32 @@ model BiometricKey {
   lastUsedAt DateTime? @db.Timestamptz
 
   @@index([userId])
+}
+
+/// Face ID·지문 빠른 로그인 자격 (docs/AUTH.md §9). 비밀번호가 아니라 서버가 만든 난수 secret 으로 로그인한다.
+/// 계정·앱 설치(기기)당 하나. 쓰면 secret 을 바꾸고(1회용) 만료를 다시 늘린다
+model QuickLoginCredential {
+  id             String    @id @default(uuid()) @db.Uuid
+  userId         String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// 앱 설치 ID 의 SHA-256 — 다른 설치에서 꺼낸 자격은 받지 않는다
+  deviceIdHash   String
+  /// SHA-256(secret). 원문은 발급 응답에서 한 번만 내려준다
+  secretHash     String
+  /// 바로 전 secret 의 해시 — 다시 오면 탈취로 보고 자격과 그 기기 세션을 폐기한다
+  prevSecretHash String?
+  /// 이 자격으로 마지막에 로그인(또는 등록)한 기기 세션 — 원격 로그아웃하면 함께 폐기
+  familyId       String
+  deviceName     String
+  /// 연속 실패 횟수 (5회면 폐기)
+  failures       Int       @default(0)
+  createdAt      DateTime  @default(now()) @db.Timestamptz
+  lastUsedAt     DateTime? @db.Timestamptz
+  expiresAt      DateTime  @db.Timestamptz
+
+  @@unique([userId, deviceIdHash])
+  @@index([familyId])
+  @@index([expiresAt])
 }
 
 model VerificationCode {
@@ -532,6 +570,7 @@ model Product {
   // 공개 목록 최신순은 migrations SQL 의 부분 인덱스 product_published_idx ("publishedAt" DESC, id)
   // WHERE "deletedAt" IS NULL AND "publishedAt" IS NOT NULL 를 쓴다 (Prisma 로 표현 불가).
   // status 조건은 Prisma 가 파라미터로 보내 부분 인덱스 조건으로 증명되지 않으므로 넣지 않는다.
+  // 공개 상품 개수(전체·카테고리)는 같은 조건의 부분 인덱스 product_public_status_category_idx (status, categoryId) 로 센다.
   @@index([status, publishedAt(sort: Desc)])
   @@index([categoryId, status])
   @@index([sellerId, status])
@@ -656,6 +695,7 @@ model Auction {
   bids  AuctionBid[]
   order Order?
 
+  // 종료된 경매 목록(최근 종료순)은 migrations SQL 의 부분 인덱스 auction_ended_idx ("endedAt" DESC) WHERE "endedAt" IS NOT NULL
   @@index([status, endsAt])
   @@index([status, startsAt])
   @@index([sellerId, status])

@@ -4,11 +4,11 @@
  * 예시 게시물 원천: The Cleveland Museum of Art Open Access (CC0) — seed/samples.json
  * 가격·판매 방식·경매 상태·인증서 검수 상태 등 거래 정보는 기능 시연을 위한 가상 데이터다.
  *
- * 개발 계정 (운영에서는 실행 불가):
- *   최고 관리자: SEED_ADMIN_EMAIL / SEED_ADMIN_PASSWORD (apps/api/.env, 없으면 SEED_PASSWORD)
+ * 개발 계정 (운영에서는 실행 불가 — seed-guard.ts):
+ *   최고 관리자: SEED_ADMIN_EMAIL / SEED_ADMIN_PASSWORD (apps/api/.env). 비밀번호를 지정하지 않으면 임의 비밀번호(로그인 불가)
  *   seller1~5@shop.local (판매자)   buyer1~4@shop.local (구매자) — 비밀번호 SEED_PASSWORD (기본값 아래)
  */
-import { createHash } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { PutObjectCommand } from '@aws-sdk/client-s3';
@@ -25,13 +25,15 @@ import argon2 from 'argon2';
 import { processImage } from '../src/media/image';
 import { createS3Client, ORIGINAL_PREFIX, PUBLIC_PREFIX } from '../src/storage/s3.service';
 import { CATEGORY_TREE } from './seed/categories';
+import { seedAdminPassword, seedBlockedReason } from './seed-guard';
 
 const prisma = new PrismaClient();
 const s3 = createS3Client();
 const BUCKET = process.env.S3_BUCKET ?? 'shop-media';
 const PASSWORD = process.env.SEED_PASSWORD ?? 'shop1234!';
 const ADMIN_EMAIL = (process.env.SEED_ADMIN_EMAIL || 'admin@shop.local').toLowerCase();
-const ADMIN_PASSWORD = process.env.SEED_ADMIN_PASSWORD || PASSWORD;
+// 기본 비밀번호(저장소에 공개)로 SUPER_ADMIN 을 만들지 않는다
+const ADMIN_PASSWORD = seedAdminPassword(process.env) ?? randomBytes(24).toString('base64url');
 const SEED_DIR = resolve(import.meta.dirname, 'seed');
 const CACHE_DIR = resolve(SEED_DIR, '.cache');
 
@@ -607,7 +609,12 @@ function certificateFor(s: Sample, i: number): Prisma.CertificateCreateWithoutPr
 }
 
 async function main() {
-  if (process.env.NODE_ENV === 'production') throw new Error('운영 환경에서는 시드를 실행할 수 없습니다.');
+  const blocked = seedBlockedReason(process.env);
+  if (blocked) throw new Error(blocked);
+  if (!seedAdminPassword(process.env))
+    console.log(
+      `· SEED_ADMIN_PASSWORD 가 없어 ${ADMIN_EMAIL} 은 임의 비밀번호로 만든다 (로그인하려면 지정 후 다시 시드)`,
+    );
 
   console.log('· 기존 데이터 삭제');
   await wipe();

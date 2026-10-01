@@ -172,6 +172,25 @@ const en: Translation<typeof ko> = {
     marketingDescription: 'Get news about events and offers by push and email.',
     marketingAgreed: 'You agreed to receive marketing messages on {{date}}.',
     marketingDeclined: 'You opted out of marketing messages on {{date}}.',
+    adminGroup: 'Admin notifications',
+    adminEnabled: 'Receive admin notifications',
+    adminEnabledDescription: 'Only admins see this. When off, nothing is added to your inbox either.',
+    adminTypes: {
+      report: { label: 'New reports', description: 'Reports on items, members, reviews and messages' },
+      seller: {
+        label: 'Seller verification requests',
+        description: 'New seller sign-ups awaiting verification',
+      },
+      certificate: {
+        label: 'Certificate review requests',
+        description: 'Certificates added or changed on items',
+      },
+      payment: {
+        label: 'Payment issues',
+        description: 'Amount mismatches, auto refunds for closed orders, failed refunds',
+      },
+      appUpdate: { label: 'App updates', description: 'OTA updates published or rolled back' },
+    },
   },
   blocks: {
     notice: "You can't chat with users you've blocked.",
@@ -320,6 +339,11 @@ const en: Translation<typeof ko> = {
     biometricUnavailable: "Biometrics aren't available on this device. Set them up in device settings first.",
     biometricOn: 'Biometrics turned on.',
     biometricOff: 'Biometrics turned off.',
+    quickLogin: '{{method}} quick login',
+    quickLoginHint: 'Log in with {{method}} instead of your password, even after logging out.',
+    quickLoginOn: 'Quick login turned on.',
+    quickLoginOff: 'Quick login turned off.',
+    quickLoginRisky: "Quick login can't be turned on because this device's security can't be verified.",
     deviceStatus: 'Device status',
     deviceCheck: 'Needs attention',
     devices: 'Signed-in devices',
@@ -345,6 +369,9 @@ const en: Translation<typeof ko> = {
       INTEGRITY_WARNING: 'Device needs attention',
       ACCOUNT_LINKED: 'Social account linked',
       ACCOUNT_UNLINKED: 'Social account unlinked',
+      QUICK_LOGIN_REGISTERED: 'Quick login turned on',
+      QUICK_LOGIN_REMOVED: 'Quick login turned off',
+      QUICK_LOGIN_FAILED: 'Quick login failed',
     },
   },
 };

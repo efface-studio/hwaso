@@ -64,7 +64,14 @@ export function ZoomableImage({ uri, label }: { uri: string; label: string }) {
   return (
     <GestureDetector gesture={Gesture.Simultaneous(pinch, pan, doubleTap)}>
       <Animated.View style={[StyleSheet.absoluteFill, style]}>
-        <Image source={uri} style={StyleSheet.absoluteFill} contentFit="contain" accessibilityLabel={label} />
+        {/* 상세 사진과 같은 w1600 이면(휴대폰 3배 화면) 메모리 캐시에서 바로 나온다 */}
+        <Image
+          source={uri}
+          cachePolicy="memory-disk"
+          style={StyleSheet.absoluteFill}
+          contentFit="contain"
+          accessibilityLabel={label}
+        />
       </Animated.View>
     </GestureDetector>
   );

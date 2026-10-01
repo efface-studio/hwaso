@@ -19,12 +19,14 @@ import {
   changePasswordSchema,
   deleteAccountSchema,
   loginSchema,
+  logoutSchema,
   oauthCallbackSchema,
   oauthLinkSchema,
   reauthSchema,
   refreshSchema,
   resetPasswordSchema,
   sendCodeSchema,
+  sessionPersistenceSchema,
   signupSchema,
   verifyCodeSchema,
   type AppleLinkInput,
@@ -34,11 +36,13 @@ import {
   type DeviceInput,
   type DeleteAccountInput,
   type LoginInput,
+  type LogoutInput,
   type OAuthCallbackInput,
   type OAuthLinkInput,
   type ReauthInput,
   type ResetPasswordInput,
   type SendCodeInput,
+  type SessionPersistenceInput,
   type SignupInput,
   type VerifyCodeInput,
 } from '@shop/shared';
@@ -52,6 +56,7 @@ import { ZodPipe } from '../common/zod.pipe';
 import { env, isProd } from '../config/env';
 import { IdentityModule } from '../identity/identity.controller';
 import { IdentityService } from '../identity/identity.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { RequireReauth } from '../security/reauth.guard';
 import { SecurityService } from '../security/security.service';
 import { AppleAuthClient } from './apple.client';
@@ -59,10 +64,14 @@ import { AuthService } from './auth.service';
 import { DemoAccountsService, DemoBlocked } from './demo';
 import type { OAuthProfile } from './oauth.providers';
 import { OAuthService, providerFromParam } from './oauth.service';
+import { QuickLoginController } from './quick-login.controller';
+import { QuickLoginService } from './quick-login.service';
 import { type ClientInfo, REFRESH_TTL_DAYS, SessionService } from './session.service';
 
 const COOKIE = 'rt';
 const COOKIE_PATH = '/api/v1/auth';
+/** 웹 "로그인 상태 유지"를 끈 세션 표시 — 있으면 refresh 회전 때도 rt 를 세션 쿠키로 다시 굽는다 */
+const SESSION_ONLY_COOKIE = 'rts';
 const urlQuery = z.object({
   redirectUri: z.string().url().optional(),
   appRedirect: z.string().max(300).optional(),
@@ -95,6 +104,7 @@ export class AuthController {
     private readonly oauth: OAuthService,
     private readonly identity: IdentityService,
     private readonly security: SecurityService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   /** 로그인·가입·소셜 로그인 공통: 보안 기록 + 새 기기 알림 */
@@ -107,6 +117,21 @@ export class AuthController {
     return this.security.afterLogin(user, issued.familyId, device, client(req));
   }
 
+  /**
+   * refresh 쿠키를 굽는다. sessionOnly 면 만료 없는 세션 쿠키(브라우저를 닫으면 사라짐)와 표시 쿠키를 함께 굽고,
+   * 아니면 30일 쿠키로 굽고 표시를 지운다
+   */
+  private setRefreshCookie(res: Response, token: string, sessionOnly: boolean) {
+    const base = { httpOnly: true, secure: isProd(), sameSite: 'lax' as const, path: COOKIE_PATH };
+    if (sessionOnly) {
+      res.cookie(COOKIE, token, base);
+      res.cookie(SESSION_ONLY_COOKIE, '1', base);
+    } else {
+      res.cookie(COOKIE, token, { ...base, maxAge: REFRESH_TTL_DAYS * 86_400_000 });
+      res.clearCookie(SESSION_ONLY_COOKIE, { path: COOKIE_PATH });
+    }
+  }
+
   /** Web 은 httpOnly 쿠키, 앱은 본문으로 refresh 토큰을 준다 */
   private async respond(
     res: Response,
@@ -114,17 +139,10 @@ export class AuthController {
     issued: { accessToken: string; refreshToken: string },
     platform: string,
     extra: Record<string, unknown> = {},
+    sessionOnly = false,
   ) {
     const web = platform === 'web';
-    if (web) {
-      res.cookie(COOKIE, issued.refreshToken, {
-        httpOnly: true,
-        secure: isProd(),
-        sameSite: 'lax',
-        path: COOKIE_PATH,
-        maxAge: REFRESH_TTL_DAYS * 86_400_000,
-      });
-    }
+    if (web) this.setRefreshCookie(res, issued.refreshToken, sessionOnly);
     return { ...(await this.sessions.tokens(user, issued, !web)), ...extra };
   }
 
@@ -200,39 +218,70 @@ export class AuthController {
     if (!body.refreshToken) assertCsrf(req);
     try {
       const r = await this.sessions.rotate(token, client(req));
-      return await this.respond(res, r.user, r, r.platform);
+      // "로그인 상태 유지"를 끈 웹 세션은 회전한 쿠키도 세션 쿠키로 둔다
+      const sessionOnly =
+        !body.refreshToken && !!(req.cookies as Record<string, string> | undefined)?.[SESSION_ONLY_COOKIE];
+      return await this.respond(res, r.user, r, r.platform, {}, sessionOnly);
     } catch (e) {
       if (cookieToken) res.clearCookie(COOKIE, { path: COOKIE_PATH });
       throw e;
     }
   }
 
-  /** 로그아웃 — 토큰이 만료돼도 항상 성공 (쿠키·세션 정리) */
+  /**
+   * 웹 "로그인 상태 유지": 로그인 직후 끄면 refresh 쿠키를 세션 쿠키로 바꾼다 (모든 로그인 방식 공통).
+   * 쿠키 값은 그대로 다시 굽기만 하므로 토큰을 읽거나 바꾸지 않는다
+   */
+  @Public()
+  @Post('session/persistence')
+  @HttpCode(204)
+  @RateLimit({ name: 'session-persistence', limit: 30, windowSec: 60, by: 'ip' })
+  persistence(
+    @Body(new ZodPipe(sessionPersistenceSchema)) body: SessionPersistenceInput,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const token = (req.cookies as Record<string, string> | undefined)?.[COOKIE];
+    if (!token) throw new AppException('UNAUTHORIZED');
+    assertCsrf(req);
+    this.setRefreshCookie(res, token, !body.persistent);
+  }
+
+  /**
+   * 로그아웃 — 토큰이 만료돼도 항상 성공 (쿠키·세션 정리).
+   * 이 기기의 빠른 로그인 자격은 남긴다 (로그아웃한 뒤 Face ID 로 다시 들어오는 기능). 끄려면 DELETE /auth/quick-login.
+   * 앱은 푸시 토큰을 함께 보내 access 토큰 없이도 이 기기 푸시를 끊을 수 있다 (자동 로그인을 끈 세션의 다음 실행)
+   */
   @Public()
   @Post('logout')
   @HttpCode(204)
   async logout(
-    @Body(new ZodPipe(refreshSchema)) body: { refreshToken?: string },
+    @Body(new ZodPipe(logoutSchema)) body: LogoutInput,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
     const cookieToken = (req.cookies as Record<string, string> | undefined)?.[COOKIE];
     if (!body.refreshToken && cookieToken) assertCsrf(req);
     const token = body.refreshToken ?? cookieToken;
-    const s = token ? await this.sessions.revokeByRefresh(token) : null;
-    if (s)
+    const s = token ? await this.sessions.revokeByRefresh(token, { keepQuickLogin: true }) : null;
+    if (s) {
+      // 그 세션 사용자의 토큰만 지운다 (다른 계정의 토큰은 건드리지 못한다)
+      if (body.pushToken) await this.notifications.removeToken(s.userId, body.pushToken);
       await this.security.record(s.userId, 'LOGOUT', {
         ip: clientIp(req),
         device: s.deviceName,
         sessionId: s.familyId,
       });
+    }
     res.clearCookie(COOKIE, { path: COOKIE_PATH });
+    res.clearCookie(SESSION_ONLY_COOKIE, { path: COOKIE_PATH });
   }
 
   @Public()
   @DemoBlocked()
   @Post('password/reset')
   @HttpCode(204)
+  @RateLimit({ name: 'password-reset', limit: 10, windowSec: 600, by: 'ip' })
   resetPassword(@Body(new ZodPipe(resetPasswordSchema)) body: ResetPasswordInput, @Req() req: Request) {
     return this.auth.resetPassword(body, client(req));
   }
@@ -241,6 +290,8 @@ export class AuthController {
   @DemoBlocked()
   @Post('password/change')
   @HttpCode(204)
+  // 탈취한 access 토큰으로 현재 비밀번호를 대입하지 못하게 (웹은 재인증 예외라 이 한도가 유일한 방어)
+  @RateLimit({ name: 'password-change', limit: 10, windowSec: 600, by: 'user' })
   async changePassword(
     @CurrentUser() user: AuthUser,
     @Body(new ZodPipe(changePasswordSchema)) body: ChangePasswordInput,
@@ -340,6 +391,7 @@ export class AuthController {
   @DemoBlocked()
   @Delete('account')
   @HttpCode(204)
+  @RateLimit({ name: 'account-delete', limit: 10, windowSec: 600, by: 'user' })
   async deleteAccount(
     @CurrentUser() user: AuthUser,
     @Body(new ZodPipe(deleteAccountSchema)) body: DeleteAccountInput,
@@ -354,6 +406,8 @@ export class AuthController {
   @Public()
   @DemoBlocked()
   @Get('oauth/:provider/url')
+  // 호출마다 Redis 에 state 를 10분 저장한다 — 대량 호출로 메모리를 채우지 못하게
+  @RateLimit({ name: 'oauth-url', limit: 30, windowSec: 60, by: 'ip' })
   oauthUrl(@Param('provider') p: string, @Query(new ZodPipe(urlQuery)) q: z.infer<typeof urlQuery>) {
     if (!q.redirectUri && !q.appRedirect) throw new AppException('VALIDATION_FAILED');
     return this.oauth.authorizeUrl(providerFromParam(p), q.redirectUri ?? '', q.appRedirect);
@@ -486,8 +540,15 @@ export class AuthController {
 
 @Module({
   imports: [IdentityModule],
-  controllers: [AuthController],
-  providers: [AuthService, SessionService, OAuthService, AppleAuthClient, DemoAccountsService],
+  controllers: [AuthController, QuickLoginController],
+  providers: [
+    AuthService,
+    SessionService,
+    OAuthService,
+    AppleAuthClient,
+    DemoAccountsService,
+    QuickLoginService,
+  ],
   exports: [SessionService, OAuthService, AuthService],
 })
 export class AuthModule {}

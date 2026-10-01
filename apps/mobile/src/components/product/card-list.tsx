@@ -5,7 +5,7 @@ import { Loading } from '@/components/ui/state';
 import { List } from '@/components/ui/list';
 import { useGrid } from '@/hooks/use-grid';
 import { useTheme } from '@/theme';
-import { ProductCard } from './product-card';
+import { useCardRenderer } from './product-card';
 
 /** 페이지 없는 작품 목록 그리드 (관심·최근 본 작품) */
 export function CardList({
@@ -25,6 +25,7 @@ export function CardList({
 }) {
   const t = useTheme();
   const g = useGrid();
+  const renderCard = useCardRenderer(g.cardWidth);
   if (loading) return <Loading variant="grid" />;
   return (
     <List
@@ -32,7 +33,8 @@ export function CardList({
       data={items ?? []}
       numColumns={g.columns}
       keyExtractor={(p) => p.id}
-      renderItem={({ item }) => <ProductCard p={item} width={g.cardWidth} />}
+      renderItem={renderCard}
+      {...g.listProps}
       ListHeaderComponent={header}
       ListEmptyComponent={empty}
       columnWrapperStyle={g.columns > 1 ? { gap: g.gap, paddingHorizontal: g.padding } : undefined}

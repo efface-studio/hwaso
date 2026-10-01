@@ -22,6 +22,7 @@ import {
 } from '../common/auth';
 import { hmac, otpCode, randomToken, safeEqual } from '../common/crypto';
 import { RateLimitService } from '../common/rate-limit';
+import { liftExpiredSuspension, suspensionMessage } from '../common/suspension';
 import { env, isDemo } from '../config/env';
 import { assertClean } from '../common/moderation';
 import { MailService } from '../mail/mail.service';
@@ -224,11 +225,11 @@ export class AuthService {
         void this.security.record(user.id, 'LOGIN_FAILED', { ip: client.ip, device: input.device.name });
       throw new AppException('INVALID_CREDENTIALS');
     }
-    if (user.status === 'SUSPENDED')
-      throw new AppException(
-        'ACCOUNT_RESTRICTED',
-        user.statusReason ? `이용이 제한된 계정입니다. 사유: ${user.statusReason}` : undefined,
-      );
+    // 기간 정지는 끝났으면 여기서 풀고 로그인시킨다 (docs/AUTH.md §8)
+    if (user.status === 'SUSPENDED' && !(await liftExpiredSuspension(this.prisma, this.redis, user)))
+      throw new AppException('ACCOUNT_RESTRICTED', suspensionMessage(user), {
+        suspendedUntil: user.suspendedUntil?.toISOString() ?? null,
+      });
     await this.redis.del(lockKey);
     const issued = await this.sessions.issue(user, input.device, client);
     return { user, issued, platform: input.device.platform };
@@ -266,6 +267,8 @@ export class AuthService {
     });
     // 다른 기기는 로그아웃, 현재 기기는 유지
     await this.sessions.revokeAll(userId, await this.sessions.familyOf(sessionId));
+    // 빠른 로그인(Face ID)은 이 기기 것까지 모두 끈다 — 비밀번호를 바꾸는 이유가 계정 보호일 수 있다
+    await this.prisma.quickLoginCredential.deleteMany({ where: { userId } });
     await this.security.record(userId, 'PASSWORD_CHANGED', ctx, { via: 'change' });
   }
 
@@ -345,7 +348,11 @@ export class AuthService {
     } else {
       throw new AppException('VALIDATION_FAILED');
     }
+    await this.anonymizeAccount(userId);
+  }
 
+  /** 탈퇴를 막는 진행 중 거래 수 (회원 탈퇴·관리자 삭제 공용) */
+  async activeTrades(userId: string) {
     const [orders, auctions, highest] = await Promise.all([
       this.prisma.order.count({
         where: {
@@ -356,6 +363,12 @@ export class AuthService {
       this.prisma.auction.count({ where: { sellerId: userId, status: { in: ['SCHEDULED', 'LIVE'] } } }),
       this.prisma.auction.count({ where: { highestBidderId: userId, status: 'LIVE' } }),
     ]);
+    return { orders, auctions, highest };
+  }
+
+  /** 본인 확인을 마친 계정을 익명화한다 — 회원 탈퇴와 관리자 삭제가 같은 처리를 쓴다 (docs/AUTH.md §7) */
+  async anonymizeAccount(userId: string) {
+    const { orders, auctions, highest } = await this.activeTrades(userId);
     if (orders || auctions || highest)
       throw new AppException('ACCOUNT_HAS_ACTIVE_TRADES', undefined, undefined, 409);
 

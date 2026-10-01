@@ -1,7 +1,6 @@
-import { Image } from 'expo-image';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
-import { mediaUrl } from '@/lib/media';
+import { MediaImage } from './media-image';
 import { useTheme } from '@/theme';
 import { Text } from './text';
 
@@ -30,7 +29,7 @@ export function Avatar({
       }}
     >
       {avatarKey ? (
-        <Image source={mediaUrl(avatarKey, 400)} style={{ width: size, height: size }} />
+        <MediaImage mediaKey={avatarKey} displayWidth={size} style={{ width: size, height: size }} />
       ) : (
         <Text variant={size >= 56 ? 'h2' : 'label'} color="muted">
           {name.slice(0, 1)}
