@@ -15,6 +15,7 @@ export function PromptDialog({
   confirmLabel,
   destructive,
   pending,
+  confirmDisabled,
   children,
   onSubmit,
 }: {
@@ -26,6 +27,8 @@ export function PromptDialog({
   confirmLabel: string;
   destructive?: boolean;
   pending?: boolean;
+  /** 사유 외에 children 입력이 아직 올바르지 않을 때 */
+  confirmDisabled?: boolean;
   children?: ReactNode;
   onSubmit: (text: string) => void;
 }) {
@@ -43,7 +46,7 @@ export function PromptDialog({
           </Button>
           <Button
             variant={destructive ? 'destructive' : 'primary'}
-            disabled={text.trim().length < 2}
+            disabled={confirmDisabled || text.trim().length < 2}
             loading={pending}
             onClick={() => onSubmit(text.trim())}
           >

@@ -17,7 +17,7 @@ import { logNotifyError } from '../notifications/notification-events';
 import { NotificationsService } from '../notifications/notifications.service';
 import { toUserSummary } from '../orders/order.mapper';
 import { PrismaService } from '../prisma/prisma.service';
-import { HOME_CACHE_KEY } from '../products/products.service';
+import { invalidateCatalog } from '../products/catalog-cache';
 import { RedisService } from '../redis/redis.service';
 import { AuditService, type AuditContext } from './audit.service';
 
@@ -104,7 +104,7 @@ export class AdminCatalogService {
     if (action === 'restore' && p.status !== 'SUSPENDED') throw new AppException('INVALID_TRANSITION');
     const status = action === 'hide' ? 'SUSPENDED' : 'HIDDEN';
     await this.prisma.product.update({ where: { id }, data: { status } });
-    await this.redis.del(HOME_CACHE_KEY);
+    await invalidateCatalog(this.redis);
     await this.audit.log(ctx, `product.${action}`, 'PRODUCT', id, { status: p.status }, { status, reason });
     void this.notifications
       .notify(p.sellerId, {
@@ -171,7 +171,7 @@ export class AdminCatalogService {
     });
     if (active) throw new AppException('PRODUCT_IN_USE');
     await this.prisma.product.update({ where: { id }, data: { deletedAt: new Date(), status: 'HIDDEN' } });
-    await this.redis.del(HOME_CACHE_KEY);
+    await invalidateCatalog(this.redis);
     await this.audit.log(
       ctx,
       'product.delete',

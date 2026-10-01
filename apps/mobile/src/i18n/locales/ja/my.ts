@@ -174,6 +174,16 @@ const ja: Translation<typeof ko> = {
     marketingDescription: 'イベントや特典のお知らせをプッシュ通知とメールで受け取ります。',
     marketingAgreed: '{{date}}、マーケティング情報の受信に同意しました。',
     marketingDeclined: '{{date}}、マーケティング情報の受信を拒否しました。',
+    adminGroup: '管理者通知',
+    adminEnabled: '管理者通知を受け取る',
+    adminEnabledDescription: '管理者にだけ表示される設定です。オフにすると通知一覧にも残りません。',
+    adminTypes: {
+      report: { label: '通報の受付', description: '作品・会員・レビュー・メッセージへの通報' },
+      seller: { label: '出品者認証の申請', description: '新しい出品者登録(認証待ち)' },
+      certificate: { label: '鑑定書の審査依頼', description: '作品の鑑定書の登録・変更' },
+      payment: { label: '決済の異常', description: '金額の不一致、取消済み注文の自動返金、返金の失敗' },
+      appUpdate: { label: 'アプリのアップデート', description: 'OTA アップデートの配信・ロールバック' },
+    },
   },
   blocks: {
     notice: 'ブロックしたユーザーとはチャットできません。',

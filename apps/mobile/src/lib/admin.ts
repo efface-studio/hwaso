@@ -70,6 +70,7 @@ export const AUDIT_TARGETS = [
   'AUCTION_POLICY',
   'MESSAGE',
   'REVIEW',
+  'SERVER_LOG',
 ] as const;
 
 export const isAdmin = (user: Pick<MeDto, 'role'> | null | undefined) =>
@@ -85,4 +86,14 @@ export function dt(iso: string | null | undefined): string {
     hour: 'numeric',
     minute: '2-digit',
   });
+}
+
+/** 정지 기간 표시: "26. 10. 8. 오후 3:00까지 · 3일 남음" 또는 "영구" (지났으면 다음 로그인 때 풀린다) */
+export function suspensionText(until: string | null): string {
+  if (!until) return '영구';
+  const ms = Date.parse(until) - Date.now();
+  if (ms <= 0) return `${dt(until)} 종료 · 다음 로그인 때 해제`;
+  const left =
+    ms < 86_400_000 ? `${Math.max(1, Math.ceil(ms / 3_600_000))}시간` : `${Math.ceil(ms / 86_400_000)}일`;
+  return `${dt(until)}까지 · ${left} 남음`;
 }

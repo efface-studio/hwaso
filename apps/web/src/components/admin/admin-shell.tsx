@@ -14,6 +14,7 @@ import {
   Receipt,
   ScrollText,
   Store,
+  Terminal,
   Ticket,
   Users,
   Wallet,
@@ -62,6 +63,7 @@ const NAV = [
       { href: '/admin/notices', label: '공지사항', Icon: FileText },
       { href: '/admin/broadcast', label: '전체 알림', Icon: Bell },
       { href: '/admin/audit-logs', label: '감사 로그', Icon: ScrollText },
+      { href: '/admin/server-logs', label: '서버 로그', Icon: Terminal, superOnly: true },
     ],
   },
 ] as const;
@@ -76,28 +78,32 @@ function Guard({ children }: { children: ReactNode }) {
 }
 
 function NavList({ active, onPick }: { active: (href: string) => boolean; onPick?: () => void }) {
+  const isSuper = useAuthStore((s) => s.user?.role === 'SUPER_ADMIN');
   return (
     <>
       {NAV.map((g) => (
         <div key={g.group} className="flex flex-col gap-1">
           <p className="px-2 text-caption text-faint">{g.group}</p>
-          {g.items.map(({ href, label, Icon }) => (
-            <Link
-              key={href}
-              href={href}
-              onClick={onPick}
-              aria-current={active(href) ? 'page' : undefined}
-              className={cn(
-                'flex h-10 items-center gap-2 rounded-sm px-2 text-label whitespace-nowrap md:h-9',
-                active(href)
-                  ? 'bg-surface-2 text-foreground'
-                  : 'text-muted hover:bg-surface-2 hover:text-foreground',
-              )}
-            >
-              <Icon className="size-4" aria-hidden />
-              {label}
-            </Link>
-          ))}
+          {g.items
+            // 최고 관리자 전용 메뉴는 다른 관리자에게 숨긴다
+            .filter((i) => isSuper || !('superOnly' in i && i.superOnly))
+            .map(({ href, label, Icon }) => (
+              <Link
+                key={href}
+                href={href}
+                onClick={onPick}
+                aria-current={active(href) ? 'page' : undefined}
+                className={cn(
+                  'flex h-10 items-center gap-2 rounded-sm px-2 text-label whitespace-nowrap md:h-9',
+                  active(href)
+                    ? 'bg-surface-2 text-foreground'
+                    : 'text-muted hover:bg-surface-2 hover:text-foreground',
+                )}
+              >
+                <Icon className="size-4" aria-hidden />
+                {label}
+              </Link>
+            ))}
         </div>
       ))}
       <Link

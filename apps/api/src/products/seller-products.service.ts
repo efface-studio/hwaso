@@ -5,10 +5,11 @@ import { SELLER_ROLES } from '@shop/shared';
 import { AppException } from '../common/app-exception';
 import { assertClean } from '../common/moderation';
 import type { AuthUser } from '../common/auth';
+import { AdminNotifier } from '../notifications/admin-notifier';
 import { logNotifyError, NotificationEvents } from '../notifications/notification-events';
 import { PrismaService, type Tx } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
-import { HOME_CACHE_KEY } from './products.service';
+import { invalidateCatalog } from './catalog-cache';
 
 /** 업로드한 사용자만 자기 이미지 키를 상품에 붙일 수 있다 (media 업로드 시 기록) */
 export const mediaOwnerKey = (key: string) => `media:owner:${key}`;
@@ -29,6 +30,7 @@ export class SellerProductsService {
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
     private readonly events: NotificationEvents,
+    private readonly admins: AdminNotifier,
   ) {}
 
   private assertSeller(user: AuthUser) {
@@ -126,6 +128,7 @@ export class SellerProductsService {
       });
     });
     if (product.status === 'ACTIVE') void this.events.newProduct(product.id).catch(logNotifyError);
+    if (input.certificate) void this.admins.certificateSubmitted(product.id).catch(logNotifyError);
     return product;
   }
 
@@ -190,6 +193,13 @@ export class SellerProductsService {
         new Set(p.images.map((i) => i.key)),
       );
     }
+    // 인증서 사진도 등록 때와 같이 본인이 올린 것만 (남의 인증서 이미지를 붙이지 못하게)
+    if (input.certificate?.imageKey)
+      await this.assertImagesOwned(
+        user.id,
+        [input.certificate.imageKey],
+        new Set(p.certificate?.imageKey ? [p.certificate.imageKey] : []),
+      );
     const saleType = input.saleType ?? p.saleType;
     const nextPrice = input.price !== undefined ? input.price : p.price == null ? null : Number(p.price);
     if (saleType !== 'AUCTION' && !nextPrice) {
@@ -273,9 +283,10 @@ export class SellerProductsService {
         });
       }
     });
-    await this.redis.del(HOME_CACHE_KEY);
+    await invalidateCatalog(this.redis);
     const priceChanged = oldPrice != null && nextPrice != null && Number(oldPrice) !== nextPrice;
     if (priceChanged) void this.events.priceDropped(id, Number(oldPrice), nextPrice).catch(logNotifyError);
+    if (input.certificate) void this.admins.certificateSubmitted(id).catch(logNotifyError);
     return { id, priceChanged };
   }
 
@@ -292,7 +303,7 @@ export class SellerProductsService {
       where: { id },
       data: { status: 'ACTIVE', publishedAt: p.publishedAt ?? new Date() },
     });
-    await this.redis.del(HOME_CACHE_KEY);
+    await invalidateCatalog(this.redis);
     if (!p.publishedAt) void this.events.newProduct(id).catch(logNotifyError);
   }
 
@@ -310,7 +321,7 @@ export class SellerProductsService {
       data: { status: 'HIDDEN' },
     });
     if (!updated.count) throw new AppException('INVALID_TRANSITION');
-    await this.redis.del(HOME_CACHE_KEY);
+    await invalidateCatalog(this.redis);
   }
 
   async resume(user: AuthUser, id: string) {
@@ -320,7 +331,7 @@ export class SellerProductsService {
       data: { status: 'ACTIVE' },
     });
     if (!updated.count) throw new AppException('INVALID_TRANSITION');
-    await this.redis.del(HOME_CACHE_KEY);
+    await invalidateCatalog(this.redis);
   }
 
   async remove(user: AuthUser, id: string) {
@@ -336,7 +347,7 @@ export class SellerProductsService {
       this.prisma.product.update({ where: { id }, data: { deletedAt: new Date(), status: 'HIDDEN' } }),
       this.prisma.cartItem.deleteMany({ where: { productId: id } }),
     ]);
-    await this.redis.del(HOME_CACHE_KEY);
+    await invalidateCatalog(this.redis);
   }
 
   /** 판매자 본인의 상품 목록 (모든 상태) */

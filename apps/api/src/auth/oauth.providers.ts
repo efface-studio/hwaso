@@ -1,5 +1,5 @@
 import type { AuthProvider } from '@shop/shared';
-import { createRemoteJWKSet, importPKCS8, jwtVerify, SignJWT } from 'jose';
+import { createRemoteJWKSet, importPKCS8, jwtVerify, type JWTVerifyGetKey, SignJWT } from 'jose';
 import { AppException } from '../common/app-exception';
 import { env } from '../config/env';
 
@@ -95,22 +95,38 @@ export async function appleClientSecret(clientId: string): Promise<string> {
     .sign(key);
 }
 
-/** Apple id_token 검증 (웹: 서비스 ID, iOS 네이티브: 번들 ID) */
-export async function verifyAppleIdToken(idToken: string, audience: string[]): Promise<OAuthProfile> {
+/**
+ * Apple id_token 검증 (웹: 서비스 ID, iOS 네이티브: 번들 ID). 서명(RS256 고정)·iss·aud·exp 를 확인하고
+ * 만료 시각을 함께 돌려준다 (네이티브 토큰 1회 사용 표시용)
+ */
+export async function verifyAppleIdTokenClaims(
+  idToken: string,
+  audience: string[],
+  keys: JWTVerifyGetKey = appleJwks,
+): Promise<{ profile: OAuthProfile; exp: number }> {
   try {
-    const { payload } = await jwtVerify(idToken, appleJwks, {
+    const { payload } = await jwtVerify(idToken, keys, {
       issuer: 'https://appleid.apple.com',
       audience,
+      algorithms: ['RS256'],
+      requiredClaims: ['sub', 'exp', 'iat'],
     });
     return {
-      providerUserId: String(payload.sub),
-      email: typeof payload.email === 'string' ? payload.email.toLowerCase() : null,
-      emailVerified: payload.email_verified === true || payload.email_verified === 'true',
-      name: null,
+      profile: {
+        providerUserId: String(payload.sub),
+        email: typeof payload.email === 'string' ? payload.email.toLowerCase() : null,
+        emailVerified: payload.email_verified === true || payload.email_verified === 'true',
+        name: null,
+      },
+      exp: payload.exp!,
     };
   } catch {
     throw new AppException('INVALID_TOKEN', 'Apple 로그인 인증에 실패했습니다.');
   }
+}
+
+export async function verifyAppleIdToken(idToken: string, audience: string[]): Promise<OAuthProfile> {
+  return (await verifyAppleIdTokenClaims(idToken, audience)).profile;
 }
 
 export const PROVIDERS: Record<AuthProvider, ProviderSpec> = {
@@ -140,6 +156,7 @@ export const PROVIDERS: Record<AuthProvider, ProviderSpec> = {
         const { payload } = await jwtVerify(String(token.id_token), googleJwks, {
           issuer: ['https://accounts.google.com', 'accounts.google.com'],
           audience: env().GOOGLE_CLIENT_ID!,
+          algorithms: ['RS256'],
         });
         return {
           providerUserId: String(payload.sub),

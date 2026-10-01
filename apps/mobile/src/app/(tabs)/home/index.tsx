@@ -29,7 +29,10 @@ export default function HomeScreen() {
   const { t: tr } = useTranslation(['home', 'common']);
   const signedIn = !!useAuthStore((s) => s.user);
   const focused = useIsFocused();
-  const q = useQuery({ queryKey: ['home'], queryFn: api.market.home });
+  // 홈은 로그인 계정별로 다르다(관심 표시·차단한 판매자 제외) — 시작할 때 손님으로 한 번, 로그인 복구 뒤 또 한 번
+  // 받지 않게 복구(스플래시가 가리는 동안 끝난다)를 기다린다. 서버가 공통 부분을 60초 캐시하므로 그동안은 다시 받지 않는다
+  const authReady = useAuthStore((s) => s.ready);
+  const q = useQuery({ queryKey: ['home'], queryFn: api.market.home, enabled: authReady, staleTime: 60_000 });
   const cats = useQuery({ queryKey: ['categories'], queryFn: api.market.categories, staleTime: 3_600_000 });
   const unreadQ = useQuery({
     queryKey: ['notifications', 'unread'],

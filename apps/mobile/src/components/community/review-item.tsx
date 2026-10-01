@@ -1,14 +1,13 @@
 import type { ReviewDto, ReviewSummaryDto } from '@shop/shared';
-import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Avatar } from '@/components/ui/avatar';
 import { Icon } from '@/components/ui/icon';
+import { MediaImage } from '@/components/ui/media-image';
 import { Text } from '@/components/ui/text';
 import { formatDate } from '@/i18n/format';
 import { actionSheet } from '@/lib/action-sheet';
-import { mediaUrl } from '@/lib/media';
 import { requireLogin } from '@/lib/require-login';
 import { useAuthStore } from '@/stores/auth';
 import { useTheme } from '@/theme';
@@ -108,9 +107,10 @@ export function ReviewItem({ r }: { r: ReviewDto }) {
       {r.images.length > 0 && (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
           {r.images.map((img) => (
-            <Image
+            <MediaImage
               key={img.key}
-              source={mediaUrl(img.key, 400)}
+              mediaKey={img.key}
+              displayWidth={72}
               style={{ width: 72, height: 72, borderRadius: 4, backgroundColor: img.dominantColor }}
               contentFit="cover"
               accessibilityLabel={tr('review.photo')}

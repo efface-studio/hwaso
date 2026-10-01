@@ -171,6 +171,16 @@ const zhHans: Translation<typeof ko> = {
     marketingDescription: '通过推送和邮件接收活动与优惠消息。',
     marketingAgreed: '已于 {{date}} 同意接收营销信息。',
     marketingDeclined: '已于 {{date}} 拒绝接收营销信息。',
+    adminGroup: '管理员通知',
+    adminEnabled: '接收管理员通知',
+    adminEnabledDescription: '仅管理员可见。关闭后通知也不会进入通知列表。',
+    adminTypes: {
+      report: { label: '收到举报', description: '对作品、会员、评价、消息的举报' },
+      seller: { label: '卖家认证申请', description: '新卖家注册(待认证)' },
+      certificate: { label: '鉴定证书审核请求', description: '作品鉴定证书的登记与变更' },
+      payment: { label: '支付异常', description: '金额不一致、已取消订单的自动退款、退款失败' },
+      appUpdate: { label: '应用更新', description: 'OTA 更新的发布与回滚' },
+    },
   },
   blocks: {
     notice: '无法与已屏蔽的用户互发消息。',

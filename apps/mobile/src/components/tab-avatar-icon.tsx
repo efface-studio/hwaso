@@ -1,8 +1,7 @@
-import { Image } from 'expo-image';
 import { useEffect, useRef, useState, type RefObject } from 'react';
 import { PixelRatio, StyleSheet, Text, View, type ImageSourcePropType } from 'react-native';
 import { captureRef } from 'react-native-view-shot';
-import { mediaUrl } from '@/lib/media';
+import { MediaImage } from '@/components/ui/media-image';
 import { TAB_BAR_SCALE, useTheme } from '@/theme';
 
 /** 원형 프로필 크기 (pt) — 태블릿은 탭 바 배율만큼 크게 */
@@ -100,8 +99,9 @@ function MyTabCapture({
           선택 테두리는 위에 겹친다 */}
       <View style={styles.avatar}>
         {avatarKey ? (
-          <Image
-            source={mediaUrl(avatarKey, 400)}
+          <MediaImage
+            mediaKey={avatarKey}
+            displayWidth={AVATAR}
             style={styles.round}
             contentFit="cover"
             onDisplay={() => setShown((n) => n + 1)}

@@ -170,6 +170,16 @@ const ko = {
     marketingDescription: '이벤트·혜택 소식을 푸시와 이메일로 받아요.',
     marketingAgreed: '{{date}} 마케팅 정보 수신에 동의했어요.',
     marketingDeclined: '{{date}} 마케팅 정보 수신을 거부했어요.',
+    adminGroup: '관리자 알림',
+    adminEnabled: '관리자 알림 받기',
+    adminEnabledDescription: '관리자에게만 보이는 설정이에요. 끄면 알림함에도 쌓이지 않아요.',
+    adminTypes: {
+      report: { label: '신고 접수', description: '작품·회원·후기·메시지 신고' },
+      seller: { label: '판매자 인증 신청', description: '새 판매자 등록 (인증 대기)' },
+      certificate: { label: '감정서 검수 요청', description: '작품 감정서 등록·변경' },
+      payment: { label: '결제 이상', description: '금액 불일치, 취소된 주문의 자동 환불, 환불 실패' },
+      appUpdate: { label: '앱 업데이트', description: 'OTA 업데이트 배포·되돌리기' },
+    },
   },
   blocks: {
     notice: '차단한 사용자와는 채팅을 주고받을 수 없어요.',

@@ -1,12 +1,12 @@
 import { ApiError } from '@shop/api-client';
 import type { SellerProductRow } from '@shop/shared';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Image } from 'expo-image';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { AppRefreshControl } from '@/components/ui/app-refresh-control';
+import { MediaImage } from '@/components/ui/media-image';
 import { usePullRefresh } from '@/hooks/use-pull-refresh';
 import { Chips } from '@/components/ui/chips';
 import { Empty, Loading } from '@/components/ui/state';
@@ -18,7 +18,6 @@ import { formatPrice } from '@/i18n/format';
 import { label } from '@/i18n/labels';
 import { actionSheet, type SheetOption } from '@/lib/action-sheet';
 import { api } from '@/lib/api';
-import { mediaUrl } from '@/lib/media';
 import { useTheme } from '@/theme';
 import { readable } from '@/hooks/use-layout';
 
@@ -146,8 +145,9 @@ export default function SellerProductsScreen() {
             >
               <View style={[styles.thumb, { backgroundColor: t.colors.backgroundSoft }]}>
                 {p.images[0] && (
-                  <Image
-                    source={mediaUrl(p.images[0].key, 400)}
+                  <MediaImage
+                    mediaKey={p.images[0].key}
+                    displayWidth={72}
                     style={StyleSheet.absoluteFill}
                     contentFit="contain"
                   />

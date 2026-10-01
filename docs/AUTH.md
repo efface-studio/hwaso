@@ -24,6 +24,7 @@
 - 정책: 8~72자, 영문+숫자 포함. 이메일과 동일 불가. (zod 스키마 `passwordSchema` 공유)
 - 로그인 실패: 동일 메시지 "이메일 또는 비밀번호가 올바르지 않습니다." (계정 존재 여부 비노출). 존재하지 않는 계정에도 더미 해시 검증으로 응답 시간 평준화.
 - 계정당 실패 10회/15분 → 15분 잠금, IP 당 20회/분.
+- 현재 비밀번호를 확인하는 비밀번호 변경·탈퇴는 사용자당 10회/10분, 재설정은 IP 당 10회/10분 (docs/API.md Rate Limit).
 
 ## 3. 이메일 인증 (OTP)
 
@@ -55,14 +56,14 @@
 
 1. `GET /auth/oauth/:provider/url?redirectUri=` → 서버가 `state`(Redis 10분, redirectUri 바인딩) 생성 후 인가 URL 반환. `redirectUri` 는 허용 목록만.
 2. 사용자 인증 → provider 가 `redirectUri?code&state` 로 복귀 (Web: `/auth/callback/:provider`, Mobile: API 중계 `/auth/oauth/:provider/redirect` → `hwaso://auth/callback` via `expo-web-browser`, iOS Apple 은 네이티브 Sign in with Apple)
-3. `POST /auth/oauth/:provider/callback {code, state, redirectUri}` → 서버가 state 1회 소비 검증 → 토큰 교환 → 사용자 정보 조회
+3. `POST /auth/oauth/:provider/callback {code, state, redirectUri}` → 서버가 state 1회 소비 검증 → 토큰 교환 → 사용자 정보 조회. 그 전에 클라이언트는 돌아온 state 가 **자기가 시작한 요청의 state** 인지 확인한다 — 웹은 sessionStorage(탭), 앱은 `oauthUrl` 응답과 비교 (로그인 CSRF 방지, docs/SECURITY.md §OAuth 로그인 CSRF)
 4. `SocialAccount(provider, providerUserId)` 있으면 로그인. 없으면:
    - provider 가 **검증된 이메일**을 주고 같은 이메일의 계정이 있으면 → 연결하지 않고 `ACCOUNT_EXISTS` (이메일 로그인 후 설정에서 연결하도록 안내. 계정 탈취 방지)
    - 없으면 신규 가입 (emailVerifiedAt = provider 검증 시각, 닉네임은 provider 이름으로 자동 생성). 이메일을 주지 않는 provider(카카오 동의 미선택 등)는 임시 주소 `<provider>+<id>@social.invalid`(`SOCIAL_PLACEHOLDER_EMAIL_DOMAIN`)를 넣고 `MeDto.emailMissing = true`. 약관 동의는 기록하지 않는다 → `consentRequired: true` 로 가입 마무리 화면을 거친다 (§11)
 
 환경 변수가 없는 provider 는 `/auth/providers` 응답에서 제외되어 버튼이 표시되지 않는다.
 
-iOS 앱의 Apple 로그인은 웹 OAuth 가 아니라 시스템 Sign in with Apple 이다. 앱이 받은 `identityToken` 을 `POST /auth/oauth/apple/native` 로 보내면 서버가 Apple 공개키로 검증하며, 토큰 대상(aud)이 `APPLE_BUNDLE_ID`(앱 번들 ID, `app.config.ts` 의 `ios.bundleIdentifier`)여야 한다. 그래서 웹 키가 없어도 `APPLE_BUNDLE_ID` 만 있으면 `/auth/providers` 의 `appleNative` 가 `true` 가 되어 iOS 앱에 버튼이 보인다. 개발 모드에서는 Expo Go 로 실행한 토큰(aud `host.exp.Exponent`)도 허용한다. Apple Developer 에서 해당 App ID 에 Sign in with Apple 기능을 켜야 한다.
+iOS 앱의 Apple 로그인은 웹 OAuth 가 아니라 시스템 Sign in with Apple 이다. 앱이 받은 `identityToken` 을 `POST /auth/oauth/apple/native` 로 보내면 서버가 Apple 공개키로 검증하며(RS256 고정, iss·aud·exp 확인, **1회용** — 로그인·연결·탈퇴 확인마다 앱이 새로 Sign in with Apple 을 하므로 같은 토큰이 다시 오면 401), 토큰 대상(aud)이 `APPLE_BUNDLE_ID`(앱 번들 ID, `app.config.ts` 의 `ios.bundleIdentifier`)여야 한다. 그래서 웹 키가 없어도 `APPLE_BUNDLE_ID` 만 있으면 `/auth/providers` 의 `appleNative` 가 `true` 가 되어 iOS 앱에 버튼이 보인다. 개발 모드에서는 Expo Go 로 실행한 토큰(aud `host.exp.Exponent`)도 허용한다. Apple Developer 에서 해당 App ID 에 Sign in with Apple 기능을 켜야 한다.
 
 ### Apple 토큰 폐기 (App Store 5.1.1(v))
 
@@ -75,7 +76,7 @@ iOS 앱의 Apple 로그인은 웹 OAuth 가 아니라 시스템 Sign in with App
 
 - 로그인/가입/소셜 시 `device: {name, platform}` 전달 → `Session` 1행.
 - `GET /auth/sessions` : 기기명, 플랫폼, IP(마지막 옥텟 마스킹), 마지막 사용, 현재 기기 표시.
-- 개별/전체 로그아웃, 비밀번호 변경·재설정 시 전체 세션 폐기. 폐기된 기기는 access 토큰도 즉시 거부되고 그 기기의 생체 재인증 키도 삭제된다.
+- 개별/전체 로그아웃, 비밀번호 변경·재설정 시 전체 세션 폐기. 폐기된 기기는 access 토큰도 즉시 거부되고, 실시간 소켓도 끊기며(`fam:{familyId}` 룸), 그 기기의 생체 재인증 키도 삭제된다.
 - 빠른 로그인 자격(§9)은 family 폐기와 함께 지운다 — 원격 로그아웃(`DELETE /auth/sessions/:id`)·다른 기기 전체 로그아웃(현재 기기 것은 남김)·재사용 탐지·정지·탈퇴·비밀번호 재설정. **본인이 그 기기에서 로그아웃(`POST /auth/logout`)할 때만 남긴다** (로그아웃한 뒤 Face ID 로 다시 들어오는 기능). 비밀번호 변경은 현재 기기 것까지 모두 지운다.
 - 로그인·가입·소셜 로그인은 `SecurityEvent` 에 기록한다. 이전 로그인 기록이 있는 계정이 최근 90일 동안 쓰지 않은 기기(플랫폼 + 기기명)로 로그인하면 `NEW_DEVICE` 를 남기고 인앱·푸시 알림(`SECURITY_NEW_DEVICE`, 끌 수 없는 system 분류)과 메일을 보낸다.
 - 만료 세션은 Worker 가 매일 정리.
@@ -86,21 +87,25 @@ iOS 앱의 Apple 로그인은 웹 OAuth 가 아니라 시스템 Sign in with App
 - 앱 세션은 위 확인에 더해 재인증 토큰(`x-reauth-token`)이 필요하다. 소셜 재인증만으로 확인하는 탈퇴는 그 자체를 재인증으로 본다 (docs/SECURITY.md §계정 보안).
 - 경로: 앱 마이 › 설정 › 회원 탈퇴, 웹 마이 › 설정. 로그인 없이 볼 수 있는 안내는 웹 `/account-deletion` (Google Play 데이터 삭제 URL).
 - 탈퇴는 필수 동의(§11) 전에도 할 수 있다.
+- 관리자 삭제(`DELETE /admin/users/:id`)도 같은 차단 조건·익명화(`AuthService.anonymizeAccount`)를 쓴다 (본인 확인 대신 관리자 권한·사유·감사 로그).
 - 차단 조건: 진행 중 주문(결제~배송), LIVE 경매 판매/최고 입찰 중 → 409 + 안내.
 - 처리: `User.status=DELETED`, email → `deleted+{id}@invalid`, passwordHash null, 프로필 익명화("탈퇴한 사용자"), 마케팅 동의 철회, 소셜 연결·세션·푸시 토큰 삭제, Apple 토큰 revoke. 주문/리뷰/입찰 기록은 거래 무결성과 법적 보관 의무로 익명 상태로 유지.
 
 ## 8. 권한 (RBAC)
 
-| Role            | 가능                                   |
-| --------------- | -------------------------------------- |
-| USER            | 탐색, 구매, 입찰, 채팅, 리뷰, 신고     |
-| SELLER          | + 상품/경매 등록, 판매 관리, 정산 조회 |
-| VERIFIED_SELLER | + 인증 배지, 고가 경매(1억 이상) 등록  |
-| ADMIN           | + 관리자 기능 (역할 부여 제외)         |
-| SUPER_ADMIN     | + ADMIN 부여/회수, 정책 변경           |
+| Role            | 가능                                                                       |
+| --------------- | -------------------------------------------------------------------------- |
+| USER            | 탐색, 구매, 입찰, 채팅, 리뷰, 신고                                         |
+| SELLER          | + 상품/경매 등록, 판매 관리, 정산 조회                                     |
+| VERIFIED_SELLER | + 인증 배지, 고가 경매(1억 이상) 등록                                      |
+| ADMIN           | + 관리자 기능 (일반 회원 대상만, 관리자 역할 부여 불가)                    |
+| SUPER_ADMIN     | + ADMIN·SUPER_ADMIN 부여/회수, 관리자 계정 관리, 서버 로그 열람, 정책 변경 |
 
 - 서버: `@Roles()` 데코레이터 + `RolesGuard`, 리소스 소유권은 서비스 계층에서 `WHERE sellerId = currentUser` 로 강제.
 - 클라이언트의 버튼 숨김은 UX 일 뿐 보안이 아니다.
+- 관리자끼리: 본인 계정에는 조치할 수 없고, 관리자 계정은 SUPER_ADMIN 만 다룬다. 마지막 활성 SUPER_ADMIN 은 강등·정지·삭제할 수 없다 (잠금 트랜잭션, docs/SECURITY.md "관리자 권한"). 관리자 역할에서 내려가면 모든 세션을 끊는다.
+- 이용 정지: `SUSPENDED` + 사유 + `suspendedUntil`(null 이면 영구). 정지하면 모든 기기에서 로그아웃되고, 로그인(비밀번호·소셜)하면 403 `ACCOUNT_RESTRICTED` 로 기간(`…까지 (n일 남음)` 또는 영구)과 사유를 안내한다(`details.suspendedUntil`). 기간이 지나면 그 로그인에서 바로 풀리고, 워커도 1분마다 푼다 (`user.suspension_expired` 감사 기록).
+- 관리자 계정 생성(`POST /admin/users`)은 이메일 인증 완료로 만들고 필수 동의는 비워 두어 첫 로그인 때 동의 화면(§11)을 거친다. "다음 로그인 때 비밀번호 변경 강제"는 아직 없다 — 임시 비밀번호는 회원이 설정에서 바꾼다.
 - 모든 USER 는 판매자 등록(`POST /me/seller`) 으로 SELLER 가 될 수 있다.
 
 ## 9. 생체 인증 (Mobile)

@@ -1,10 +1,9 @@
 import type { ArtistCardDto } from '@shop/shared';
-import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { MediaImage } from '@/components/ui/media-image';
 import { Text } from '@/components/ui/text';
-import { mediaUrl } from '@/lib/media';
 import { useTheme } from '@/theme';
 
 /** 홈 인기 작가 가로 목록 */
@@ -38,8 +37,9 @@ export function ArtistRail({ artists }: { artists: ArtistCardDto[] }) {
               ]}
             >
               {a.image && (
-                <Image
-                  source={mediaUrl(a.image.key, 400)}
+                <MediaImage
+                  mediaKey={a.image.key}
+                  displayWidth={size}
                   style={StyleSheet.absoluteFill}
                   contentFit="cover"
                 />

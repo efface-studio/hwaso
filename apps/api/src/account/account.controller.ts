@@ -27,6 +27,7 @@ import { assertClean } from '../common/moderation';
 import { ZodPipe } from '../common/zod.pipe';
 import { IdentityModule } from '../identity/identity.controller';
 import { IdentityService } from '../identity/identity.service';
+import { AdminNotifier } from '../notifications/admin-notifier';
 import { logNotifyError, NotificationEvents } from '../notifications/notification-events';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
@@ -47,6 +48,7 @@ export class AccountController {
     private readonly security: SecurityService,
     private readonly auth: AuthService,
     private readonly events: NotificationEvents,
+    private readonly admins: AdminNotifier,
   ) {}
 
   @Patch('users/me/profile')
@@ -211,6 +213,8 @@ export class AccountController {
       await this.security.contextOf(user, clientIp(req)),
       { registered: true, bankName: body.bankName, bankAccountMasked: maskTail(body.bankAccount) },
     );
+    // 판매자 등록 = 인증 신청 (관리자가 확인 후 인증)
+    void this.admins.sellerRegistered(user.id).catch(logNotifyError);
     return this.sessions.me(user.id);
   }
 

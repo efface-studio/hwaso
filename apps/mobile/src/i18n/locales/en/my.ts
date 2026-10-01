@@ -172,6 +172,25 @@ const en: Translation<typeof ko> = {
     marketingDescription: 'Get news about events and offers by push and email.',
     marketingAgreed: 'You agreed to receive marketing messages on {{date}}.',
     marketingDeclined: 'You opted out of marketing messages on {{date}}.',
+    adminGroup: 'Admin notifications',
+    adminEnabled: 'Receive admin notifications',
+    adminEnabledDescription: 'Only admins see this. When off, nothing is added to your inbox either.',
+    adminTypes: {
+      report: { label: 'New reports', description: 'Reports on items, members, reviews and messages' },
+      seller: {
+        label: 'Seller verification requests',
+        description: 'New seller sign-ups awaiting verification',
+      },
+      certificate: {
+        label: 'Certificate review requests',
+        description: 'Certificates added or changed on items',
+      },
+      payment: {
+        label: 'Payment issues',
+        description: 'Amount mismatches, auto refunds for closed orders, failed refunds',
+      },
+      appUpdate: { label: 'App updates', description: 'OTA updates published or rolled back' },
+    },
   },
   blocks: {
     notice: "You can't chat with users you've blocked.",

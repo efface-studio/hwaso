@@ -171,6 +171,16 @@ const zhHant: Translation<typeof ko> = {
     marketingDescription: '透過推播與電子郵件接收活動與優惠消息。',
     marketingAgreed: '已於 {{date}} 同意接收行銷資訊。',
     marketingDeclined: '已於 {{date}} 拒絕接收行銷資訊。',
+    adminGroup: '管理員通知',
+    adminEnabled: '接收管理員通知',
+    adminEnabledDescription: '僅管理員可見。關閉後通知也不會進入通知列表。',
+    adminTypes: {
+      report: { label: '收到檢舉', description: '對作品、會員、評價、訊息的檢舉' },
+      seller: { label: '賣家認證申請', description: '新賣家註冊(待認證)' },
+      certificate: { label: '鑑定證書審核請求', description: '作品鑑定證書的登錄與變更' },
+      payment: { label: '付款異常', description: '金額不一致、已取消訂單的自動退款、退款失敗' },
+      appUpdate: { label: 'App 更新', description: 'OTA 更新的發佈與回滾' },
+    },
   },
   blocks: {
     notice: '無法與已封鎖的使用者互傳訊息。',
