@@ -176,6 +176,11 @@ const zhHant: Translation<typeof ko> = {
     allow: '開啟通知',
     later: '稍後再說',
   },
+  welcome: {
+    title: '恭喜註冊成功',
+    body: '{{nickname}}，歡迎來到 Hwaso。\n找到喜歡的作品，加入收藏吧。',
+    browse: '去逛逛',
+  },
   auctionLive: {
     outbid: '有人出了更高的價',
     extended: '因截止前有人出價，已延長 {{seconds}} 秒',

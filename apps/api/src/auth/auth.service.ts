@@ -17,6 +17,7 @@ import { RateLimitService } from '../common/rate-limit';
 import { env, isDemo } from '../config/env';
 import { assertClean } from '../common/moderation';
 import { MailService } from '../mail/mail.service';
+import { logNotifyError, NotificationEvents } from '../notifications/notification-events';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 import { isDemoLogin } from './demo';
@@ -55,6 +56,7 @@ export class AuthService {
     private readonly limiter: RateLimitService,
     private readonly sessions: SessionService,
     private readonly oauth: OAuthService,
+    private readonly events: NotificationEvents,
   ) {}
 
   static hashPassword(pw: string) {
@@ -177,6 +179,8 @@ export class AuthService {
       },
     });
     const issued = await this.sessions.issue(user, input.device, client);
+    // 이메일 가입은 가입 요청에서 동의까지 받으므로 여기서 가입이 끝난다
+    void this.events.welcome(user.id).catch(logNotifyError);
     return { user, issued, platform: input.device.platform };
   }
 

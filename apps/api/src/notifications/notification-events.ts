@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import type { OrderStatus, NotificationType } from '@prisma/client';
 import { formatPrice } from '@shop/shared';
 import { PrismaService } from '../prisma/prisma.service';
+import { RedisService } from '../redis/redis.service';
 import { NotificationsService } from './notifications.service';
 
 type OrderLike = {
@@ -62,6 +63,7 @@ export class NotificationEvents {
   constructor(
     private readonly prisma: PrismaService,
     private readonly n: NotificationsService,
+    private readonly redis: RedisService,
   ) {}
 
   private auction(id: string) {
@@ -251,5 +253,27 @@ export class NotificationEvents {
         link: `/products/${productId}`,
       },
     );
+  }
+
+  /**
+   * 가입 축하 (이메일 가입 직후 · 소셜 가입 마무리 직후). 회원마다 한 번만 —
+   * 이미 받은 회원은 건너뛰고, 동시에 두 번 불려도(동의 연타) 잠금으로 한 번만 보낸다
+   */
+  async welcome(userId: string) {
+    const locked = await this.redis.set(`notify:welcome:${userId}`, '1', 'EX', 60, 'NX');
+    if (!locked) return;
+    const sent = await this.prisma.notification.count({ where: { userId, type: 'WELCOME' } });
+    if (sent) return;
+    const u = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { profile: { select: { nickname: true } } },
+    });
+    if (!u) return;
+    await this.n.notify(userId, {
+      type: 'WELCOME',
+      title: '화소에 오신 걸 환영해요',
+      body: `${u.profile?.nickname ?? '회원'}님, 가입을 축하해요. 마음에 드는 작품을 찾아보고 관심 작품에 담아 보세요.`,
+      link: '/',
+    });
   }
 }

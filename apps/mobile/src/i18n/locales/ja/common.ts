@@ -176,6 +176,11 @@ const ja: Translation<typeof ko> = {
     allow: '通知をオンにする',
     later: 'あとで',
   },
+  welcome: {
+    title: 'ご登録ありがとうございます',
+    body: '{{nickname}}さん、Hwaso へようこそ。\n気になる作品を見つけて、お気に入りに追加してみましょう。',
+    browse: '見てみる',
+  },
   auctionLive: {
     outbid: 'より高い入札がありました',
     extended: '終了間際の入札により{{seconds}}秒延長されました',

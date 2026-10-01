@@ -176,6 +176,11 @@ const zhHans: Translation<typeof ko> = {
     allow: '开启通知',
     later: '以后再说',
   },
+  welcome: {
+    title: '恭喜注册成功',
+    body: '{{nickname}}，欢迎来到 Hwaso。\n找到喜欢的作品，加入收藏吧。',
+    browse: '去逛逛',
+  },
   auctionLive: {
     outbid: '有人出了更高的价',
     extended: '因截止前有人出价，已延长 {{seconds}} 秒',

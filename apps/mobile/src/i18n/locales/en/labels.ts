@@ -82,6 +82,7 @@ const en: Translation<typeof ko> = {
     REVIEW_RECEIVED: 'New review',
     ORDER_UPDATED: 'Order',
     FOLLOWING_NEW_ITEM: 'New from following',
+    WELCOME: 'Welcome',
     SYSTEM: 'Notice',
   },
   productStatus: {

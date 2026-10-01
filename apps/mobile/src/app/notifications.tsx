@@ -1,6 +1,6 @@
 import type { NotificationDto } from '@shop/shared';
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
-import { router, Stack, type Href } from 'expo-router';
+import { router, Stack } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { AppRefreshControl } from '@/components/ui/app-refresh-control';
@@ -13,6 +13,7 @@ import { List } from '@/components/ui/list';
 import i18n, { currentLanguage, LOCALE } from '@/i18n';
 import { label } from '@/i18n/labels';
 import { api } from '@/lib/api';
+import { openAppPath } from '@/lib/nav';
 import { useAuthStore } from '@/stores/auth';
 import { useTheme } from '@/theme';
 
@@ -52,7 +53,7 @@ export default function NotificationsScreen() {
   };
   const open = async (n: NotificationDto) => {
     if (!n.readAt) await api.notifications.read({ ids: [n.id] }).then(refresh, () => undefined);
-    if (n.link) router.push(n.link as Href);
+    if (n.link) openAppPath(n.link);
   };
   const remove = (n: NotificationDto) =>
     Alert.alert(tr('notifications.deleteConfirm'), undefined, [

@@ -169,6 +169,7 @@ enum NotificationType {
   REVIEW_RECEIVED
   ORDER_UPDATED
   FOLLOWING_NEW_ITEM
+  WELCOME
 }
 
 enum ChatMessageKind {
