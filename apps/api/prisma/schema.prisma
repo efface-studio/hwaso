@@ -245,6 +245,8 @@ model User {
   /// 알림 설정: { push: { auction, trade, chat, activity }, quietHours } (docs/API.md)
   /// 정지 사유 등 운영 조치 사유 (회원에게 로그인 시 안내)
   statusReason       String?
+  /// 기간 정지 종료 시각. SUSPENDED 인데 null 이면 영구 정지 (지나면 로그인·워커가 해제)
+  suspendedUntil     DateTime?  @db.Timestamptz
   notificationPrefs  Json       @default("{}")
   /// 채팅 자주 쓰는 문구 — null 이면 저장한 적 없음(기본 문구)
   chatPhrases        Json?

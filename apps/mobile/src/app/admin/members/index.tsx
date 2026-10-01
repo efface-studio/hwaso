@@ -1,6 +1,8 @@
 import { ROLES, USER_STATUSES, type AdminUserRow } from '@shop/shared';
 import { router, useLocalSearchParams } from 'expo-router';
+import { useState } from 'react';
 import { AdminList } from '@/components/admin/admin-list';
+import { CreateMemberSheet } from '@/components/admin/member-forms';
 import { AdminRow } from '@/components/admin/row';
 import { StatusText } from '@/components/admin/status';
 import { Segmented } from '@/components/ui/segmented';
@@ -45,9 +47,10 @@ function UserRow({ u }: { u: AdminUserRow }) {
 
 const renderUser = (u: AdminUserRow) => <UserRow u={u} />;
 
-/** 회원 / 판매자 인증 목록. 다른 탭에서 { tab, status } 로 바로 열 수 있다 */
+/** 회원 / 판매자 인증 목록. 다른 탭에서 { tab, status } 로 바로 열 수 있다. 회원 보기 헤더에서 계정을 만든다 */
 export default function AdminMembersScreen() {
   const params = useLocalSearchParams<{ tab?: string; status?: string }>();
+  const [creating, setCreating] = useState(false);
   const tab: Tab = params.tab === 'sellers' ? 'sellers' : 'users';
   const status = USER_STATUSES.find((s) => s === params.status);
 
@@ -85,23 +88,42 @@ export default function AdminMembersScreen() {
     );
 
   return (
-    <AdminList
-      key={`users:${status ?? 'all'}`}
-      queryKey="users"
-      fetcher={api.admin.users}
-      header={segment}
-      searchPlaceholder="이메일 · 닉네임 · ID"
-      filters={[
-        ROLE_FILTER,
-        {
-          key: 'status',
-          label: '상태',
-          options: USER_STATUSES.map((s) => ({ value: s, label: USER_STATUS_LABEL[s] })),
-          initial: status,
-        },
-      ]}
-      renderItem={renderUser}
-      emptyTitle="해당하는 회원이 없어요."
-    />
+    <>
+      <AdminList
+        key={`users:${status ?? 'all'}`}
+        queryKey="users"
+        fetcher={api.admin.users}
+        header={segment}
+        searchPlaceholder="이메일 · 닉네임 · ID"
+        filters={[
+          ROLE_FILTER,
+          {
+            key: 'status',
+            label: '상태',
+            options: USER_STATUSES.map((s) => ({ value: s, label: USER_STATUS_LABEL[s] })),
+            initial: status,
+          },
+        ]}
+        renderItem={renderUser}
+        emptyTitle="해당하는 회원이 없어요."
+        headerItems={[
+          {
+            type: 'button',
+            label: '계정 생성',
+            icon: { type: 'sfSymbol', name: 'person.badge.plus' },
+            onPress: () => setCreating(true),
+          },
+        ]}
+      />
+      {creating && (
+        <CreateMemberSheet
+          onClose={() => setCreating(false)}
+          onCreated={(id) => {
+            setCreating(false);
+            router.push({ pathname: '/admin/members/[id]', params: { id } });
+          }}
+        />
+      )}
+    </>
   );
 }

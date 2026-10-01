@@ -8,6 +8,7 @@ import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { usePullRefresh } from '@/hooks/use-pull-refresh';
 import { api } from '@/lib/api';
+import { useAuthStore } from '@/stores/auth';
 import { useTheme } from '@/theme';
 import { readable } from '@/hooks/use-layout';
 
@@ -54,9 +55,10 @@ function MenuRow({ item }: { item: MenuItem }) {
   );
 }
 
-/** 운영 메뉴: 신고·카테고리·경매 정책·콘텐츠·쿠폰·앱 업데이트·감사 로그 */
+/** 운영 메뉴: 신고·카테고리·경매 정책·콘텐츠·쿠폰·앱 업데이트·감사 로그·서버 로그(최고 관리자) */
 export default function OpsScreen() {
   const t = useTheme();
+  const superAdmin = useAuthStore((s) => s.user?.role === 'SUPER_ADMIN');
   // 신고 옆에 열린 신고 수 (대시보드와 같은 캐시)
   const dash = useQuery({ queryKey: ['admin', 'dashboard'], queryFn: api.admin.dashboard });
   const pull = usePullRefresh(dash.refetch);
@@ -155,6 +157,18 @@ export default function OpsScreen() {
           sf: 'list.bullet.rectangle',
           md: 'history',
         },
+        // 서버 로그는 최고 관리자만 (서버도 같은 규칙으로 막는다)
+        ...(superAdmin
+          ? [
+              {
+                href: '/admin/ops/logs' as const,
+                label: '서버 로그',
+                description: '실시간 API 로그 (민감 정보는 가려서)',
+                sf: 'terminal' as const,
+                md: 'terminal' as const,
+              },
+            ]
+          : []),
       ],
     ],
   ];

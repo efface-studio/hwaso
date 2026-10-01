@@ -32,7 +32,7 @@
 
 ### 민감 작업 재인증 (step-up)
 
-- 대상(`@RequireReauth()`): 결제 시작 `POST /orders/:id/payments`, 정산 정보 수정 `PATCH /me/seller`, 비밀번호 변경 `POST /auth/password/change`, 탈퇴 `DELETE /auth/account`, 소셜 연결 `POST /auth/social/:provider`·`POST /auth/social/apple/native`·해제 `DELETE /auth/social/:provider`, 생체 키 등록 `POST /auth/reauth/biometric`. 기존 확인(현재 비밀번호·탈퇴 확인 등)은 그대로 두고 추가로 요구한다.
+- 대상(`@RequireReauth()`): 관리자 계정 생성·회원 삭제 `POST /admin/users`·`DELETE /admin/users/:id`, 결제 시작 `POST /orders/:id/payments`, 정산 정보 수정 `PATCH /me/seller`, 비밀번호 변경 `POST /auth/password/change`, 탈퇴 `DELETE /auth/account`, 소셜 연결 `POST /auth/social/:provider`·`POST /auth/social/apple/native`·해제 `DELETE /auth/social/:provider`, 생체 키 등록 `POST /auth/reauth/biometric`. 기존 확인(현재 비밀번호·탈퇴 확인 등)은 그대로 두고 추가로 요구한다.
 - 예외: 탈퇴를 **소셜 재인증만으로** 확인하면(본문에 `provider` 와 OAuth 결과·Apple identityToken, 비밀번호·이메일 인증 없음) 그 자체를 재인증으로 본다 — provider 에서 방금 다시 로그인한 결과이고 서버가 이 회원에게 연결된 계정인지 확인한다. 비밀번호도 실제 이메일도 없는 소셜 가입자는 재인증 토큰을 받을 방법이 없기 때문이다 (App Store 5.1.1(v) 앱 안 탈퇴).
 - `POST /auth/reauth` 에 비밀번호 · 이메일 OTP(`REAUTH`) · 생체 키 중 하나를 보내면 5분짜리 재인증 토큰(JWT, 기존 서명 키, `typ`·`aud` = `reauth`)을 준다. 토큰은 `sub`(사용자)와 `fam`(기기 세션 family)에 묶이며, Guard 는 헤더 `x-reauth-token` 의 토큰이 **현재 access 토큰의 사용자·family** 와 일치하는지 확인한다. family 로 묶는 이유: access 토큰의 `sid` 는 15분마다 refresh 회전으로 바뀌지만 같은 기기는 같은 family 를 유지한다. 다른 사용자·다른 기기·만료·access 토큰을 넣으면 거부한다. 재인증 토큰은 access 토큰으로 쓸 수 없다(`typ` 불일치).
 - 거부 응답은 **403 `REAUTH_REQUIRED`** — 401 은 클라이언트가 토큰 갱신으로 처리하므로 쓰지 않는다. `@shop/api-client` 는 `reauth` 훅으로 본인 확인을 받아 같은 요청을 한 번 다시 보낸다.
@@ -76,7 +76,27 @@ CORS: 허용 origin 목록(`WEB_ORIGIN`), `credentials: true`.
 
 ## 감사 로그
 
-관리자 모든 변경, 역할 변경, 경매 강제 취소, 주문 강제 상태 변경, 환불, 정산 지급, 계정 정지/탈퇴 → `AuditLog` (append-only, 삭제 API 없음).
+관리자 모든 변경, 역할 변경, 경매 강제 취소, 주문 강제 상태 변경, 환불, 정산 지급, 계정 정지(기간 포함)/해제·생성·정보 수정·삭제, 서버 로그 열람(`logs.view`, 관리자당 10분에 한 번) → `AuditLog` (append-only, 삭제 API 없음). 기간 정지가 끝나 풀리면 처리자 없이 `user.suspension_expired` 로 남는다.
+
+- 값은 before/after 로 바뀐 것만 남기고 비밀값은 넣지 않는다 — 계정 생성은 임시 비밀번호 대신 `passwordGenerated` 여부만, 삭제는 이메일을 가려서(`ab***@domain`) 남긴다.
+
+## 관리자 권한
+
+- `ADMIN`: 일반 회원(USER·SELLER·VERIFIED_SELLER) 조회·수정·정지·삭제·계정 생성(USER). 관리자 계정은 다룰 수 없고 관리자 역할을 줄 수 없다.
+- `SUPER_ADMIN`: 위 + 관리자·최고 관리자 부여/회수, 관리자 계정 수정·정지·삭제, 관리자 계정 생성, 서버 로그 열람.
+- 공통: 본인 계정에는 어떤 조치도 할 수 없다. 마지막 활성 SUPER_ADMIN 은 강등·정지·삭제할 수 없다 — 최고 관리자 행을 `FOR UPDATE` 로 잠근 트랜잭션에서 검사해 동시에 서로를 강등해도 한 명은 남고, 처리자의 역할도 DB 에서 다시 확인한다(역할 캐시는 30초까지 늦을 수 있다). 관리자 역할에서 내려가면 모든 기기 세션·생체 키를 폐기하고 상태 캐시를 지워 바로 반영한다.
+- 클라이언트(앱·웹)는 할 수 없는 조치·역할을 숨기지만, 판단은 모두 서버가 한다.
+
+## 서버 로그 열람 (관리자 실시간 로그)
+
+- 원천: API 프로세스 안의 링 버퍼(`common/log-buffer.ts`, 기본 1000줄·`LOG_BUFFER_SIZE` 100~5000). pino `hooks.streamWrite` 로 쓰는 줄을 받아 **가린 결과만** 보관한다 — 로그 파일(launchd)을 읽지 않는다. 워커 등 다른 프로세스 로그는 없다.
+- 열람: SUPER_ADMIN 만. `GET /admin/logs`(tail) + Socket.IO `/admin-logs`(실시간). 소켓은 연결 때와 30초마다 토큰 만료·family 폐기·DB 역할/상태를 확인해 끊는다. 연결 횟수 사용자당 20회/분, 동시 연결 사용자당 3개·전체 20개, 0.5초 묶음·한 번에 200줄(넘치면 건너뛴 수만), tail 60회/분.
+- 가리기(`common/log-redact.ts`):
+  - 담는 필드만 고른다: 시각·단계·메시지·context·요청 ID·method·URL·상태·응답 시간·에러 종류/메시지·나머지 단일 값(한 단계 펼침, 최대 20개). **스택(`stack`·`trace`)·요청 헤더는 보내지 않는다.**
+  - 키 이름으로 통째로 가림: password·token·secret·authorization·cookie·otp·code·phone·address·bank·account·session·signature·private·credential·apiKey 등 → `[redacted]`. `email` 키는 앞 두 글자만, `ip` 키는 일부만.
+  - 모든 문자열: 환경 변수 비밀값(SECRET·KEY·TOKEN·PASSWORD·PRIVATE·DATABASE_URL·REDIS_URL·SMTP_URL 등) → `[env]`, 접속 문자열 계정 정보(`scheme://user:pass@`), `Bearer`/`Basic` 값, JWT(`eyJ…`), URL 쿼리의 token·code·state·password·secret·key·signature·otp·auth·email 값, `password: …`·`token=…` 같은 쌍, `인증번호 123456` → 가림. 이메일 `ab***@domain`, 휴대전화 `010-****-1234`, IPv4 마지막 자리 `1.2.3.*`, IPv6 앞 세 묶음만.
+  - 메시지 2000자·필드 300자에서 자르고, 32KB 넘는 줄은 내용 없이 "생략"으로만 남긴다.
+- 검색도 가린 뒤의 글자를 대상으로 한다 (가린 값으로는 찾을 수 없다).
 
 사용자 계정 보안 기록(로그인·재인증·계좌 변경 등)은 `SecurityEvent` 에 따로 남긴다 (§계정 보안).
 
