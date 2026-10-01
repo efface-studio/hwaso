@@ -6,6 +6,7 @@ const en: Translation<typeof ko> = {
     admin: 'Admin',
     verifiedSeller: 'Verified seller',
     socialAccount: 'Social account',
+    providerAccount: '{{provider}} account',
     editProfile: 'Edit profile',
     viewProfile: 'View my profile',
     loginPrompt: 'Log in to bid, buy, and chat',

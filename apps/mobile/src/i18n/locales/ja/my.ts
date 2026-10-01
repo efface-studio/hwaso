@@ -6,6 +6,7 @@ const ja: Translation<typeof ko> = {
     admin: '管理者',
     verifiedSeller: '認証済み出品者',
     socialAccount: 'ソーシャルアカウント',
+    providerAccount: '{{provider}}アカウント',
     editProfile: 'プロフィール編集',
     viewProfile: 'マイプロフィールを見る',
     loginPrompt: 'ログインして入札・購入・チャットを始めましょう',

@@ -4,6 +4,7 @@ const ko = {
     admin: '관리자',
     verifiedSeller: '인증 판매자',
     socialAccount: '소셜 계정',
+    providerAccount: '{{provider}} 계정',
     editProfile: '프로필 수정',
     viewProfile: '내 프로필 보기',
     loginPrompt: '로그인하고 입찰·구매·채팅을 시작하세요',

@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { AppRefreshControl } from '@/components/ui/app-refresh-control';
+import { ProviderBadge } from '@/components/auth/provider-logo';
 import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { ThemePicker } from '@/components/theme-picker';
@@ -14,6 +15,7 @@ import { api, logout } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
 import { usePrefs } from '@/stores/prefs';
 import { useTheme } from '@/theme';
+import { label } from '@/i18n/labels';
 
 function Row({
   label,
@@ -85,6 +87,39 @@ function MySkeleton() {
   );
 }
 
+/**
+ * 닉네임 아래 계정 한 줄. 소셜로만 가입한 계정은 가입한 소셜 로고와 함께 보이고,
+ * 소셜에서 이메일을 받았으면 이메일, 못 받았으면(내부용 …@social.invalid) '카카오 계정' 처럼 소셜 이름을 쓴다.
+ */
+function AccountLine({ user }: { user: MeDto }) {
+  const { t: tr } = useTranslation('my');
+  const realEmail = !user.email.endsWith('.invalid');
+  const socialOnly = !user.hasPassword && user.socialProviders.length > 0;
+  const text = realEmail
+    ? user.email
+    : user.socialProviders[0]
+      ? tr('myTab.providerAccount', { provider: label('authProvider', user.socialProviders[0]) })
+      : tr('myTab.socialAccount');
+  return (
+    <View style={styles.account}>
+      {socialOnly && (
+        <View
+          style={styles.accountBadges}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+        >
+          {user.socialProviders.map((p) => (
+            <ProviderBadge key={p} provider={p} size={18} />
+          ))}
+        </View>
+      )}
+      <Text variant="small" color="muted" numberOfLines={1} style={{ flexShrink: 1 }}>
+        {text}
+      </Text>
+    </View>
+  );
+}
+
 function ProfileHeader({ user }: { user: MeDto }) {
   const t = useTheme();
   const { t: tr } = useTranslation(['my', 'common']);
@@ -128,9 +163,7 @@ function ProfileHeader({ user }: { user: MeDto }) {
               </View>
             )}
           </View>
-          <Text variant="small" color="muted" numberOfLines={1}>
-            {user.email.endsWith('.invalid') ? tr('myTab.socialAccount') : user.email}
-          </Text>
+          <AccountLine user={user} />
           {!!user.profile.bio && (
             <Text variant="small" numberOfLines={2}>
               {user.profile.bio}
@@ -320,6 +353,8 @@ const styles = StyleSheet.create({
   profile: { paddingTop: 8, gap: 16 },
   identity: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  account: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  accountBadges: { flexDirection: 'row', gap: 3 },
   badge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999 },
   stats: {
     flexDirection: 'row',
