@@ -38,32 +38,35 @@ import l067 from '../../assets/banks/067.png';
 
 /**
  * 은행 로고 (금융결제원 은행 코드 → 이미지). 각 로고는 해당 은행의 상표이며, 은행 선택 화면에서 식별용으로만 쓴다.
- * 이미지 출처: Wikimedia Commons · English Wikipedia 의 로고 파일, 위키에 없는 곳은 각 기관 공식 홈페이지의 로고 이미지 (출처는 아래 주석).
- * 원본 락업에서 배경을 빼고 심볼만 잘라 256×256 투명 PNG 로 만들었다 (심볼이 따로 없는 곳 — 씨티·BNK·케이뱅크·미즈호 — 은 워드마크).
+ * 이미지 출처: 국내 은행·상호금융은 Figma 파일 「대한민국 은행·카드사 로고 모음」의 컴포넌트(original, 없으면 mono)에서
+ * 흰 둥근 타일·테두리를 빼고 심볼만 내보냈다. 해외 은행·저축은행·산림조합은 Wikimedia Commons · English Wikipedia ·
+ * 각 기관 공식 홈페이지의 로고 이미지 (출처는 아래 주석).
+ * 모두 256×256 투명 PNG 에 심볼을 228px 안으로 가운데 맞췄다 (심볼이 따로 없는 곳 — 씨티·BNK·케이뱅크·미즈호 — 은 워드마크,
+ * 카카오뱅크는 노란 둥근 사각형까지가 심볼). 같은 그룹은 심볼을 함께 쓴다 (신한·제주, 부산·경남, 광주·전북, 수협, 농협).
  * 목록에 없는 은행이 생기면 BankLogo 가 대표 색 배지로 대신한다.
  */
 export const BANK_LOGOS: Record<string, ImageSourcePropType> = {
-  '004': l004, // commons: KB logo.svg
-  '088': l088, // commons: Shinhan Bank Logo (ENG).svg
-  '020': l020, // commons: Logo of Woori Bank.svg
-  '081': l081, // commons: Hana Bank Logo (eng).svg
-  '011': l011, // commons: NACF (NongHyup) Logo.svg
-  '012': l012, // commons: NACF (NongHyup) Logo.svg
-  '003': l003, // commons: Industrial Bank of Korea Logo.svg
-  '090': l090, // commons: KakaoBank logo.svg
-  '092': l092, // commons: TossBank Logo Primary.png
-  '089': l089, // commons: Kbank logo.svg
-  '023': l023, // commons: Standard Chartered Logo (2021, Logo only).svg
-  '027': l027, // commons: Citi.svg
-  '002': l002, // commons: KDB logo.png
-  '007': l007, // commons: NFFC (SuHyup) Logo.svg
-  '030': l030, // commons: NFFC (SuHyup) Logo.svg
-  '032': l032, // commons: BNK Financial Group logo 01.png
-  '039': l039, // commons: BNK Financial Group logo 01.png
-  '034': l034, // commons: Jbfglogo.png
-  '037': l037, // commons: Jbfglogo.png
-  '071': l071, // commons: Emblem of Korea Post.svg
-  '048': l048, // commons: 신협 로고.svg
+  '004': l004, // Figma: 대한민국 은행·카드사 로고 모음 (KB국민은행/original)
+  '088': l088, // Figma: 대한민국 은행·카드사 로고 모음 (신한, 제주은행/original)
+  '020': l020, // Figma: 대한민국 은행·카드사 로고 모음 (우리은행/original)
+  '081': l081, // Figma: 대한민국 은행·카드사 로고 모음 (KEB하나은행/original)
+  '011': l011, // Figma: 대한민국 은행·카드사 로고 모음 (NH농협은행)
+  '012': l012, // Figma: 대한민국 은행·카드사 로고 모음 (NH농협은행)
+  '003': l003, // Figma: 대한민국 은행·카드사 로고 모음 (IBK기업은행/original)
+  '090': l090, // Figma: 대한민국 은행·카드사 로고 모음 (카카오뱅크/original)
+  '092': l092, // Figma: 대한민국 은행·카드사 로고 모음 (토스뱅크/original)
+  '089': l089, // Figma: 대한민국 은행·카드사 로고 모음 (케이뱅크/original)
+  '023': l023, // Figma: 대한민국 은행·카드사 로고 모음 (SC제일은행/original)
+  '027': l027, // Figma: 대한민국 은행·카드사 로고 모음 (시티은행/original)
+  '002': l002, // Figma: 대한민국 은행·카드사 로고 모음 (KDB산업은행/original)
+  '007': l007, // Figma: 대한민국 은행·카드사 로고 모음 (수협은행)
+  '030': l030, // Figma: 대한민국 은행·카드사 로고 모음 (수협은행)
+  '032': l032, // Figma: 대한민국 은행·카드사 로고 모음 (경남, 부산은행/original)
+  '039': l039, // Figma: 대한민국 은행·카드사 로고 모음 (경남, 부산은행/original)
+  '034': l034, // Figma: 대한민국 은행·카드사 로고 모음 (광주, 전북은행/original)
+  '037': l037, // Figma: 대한민국 은행·카드사 로고 모음 (광주, 전북은행/original)
+  '071': l071, // Figma: 대한민국 은행·카드사 로고 모음 (우체국/mono)
+  '048': l048, // Figma: 대한민국 은행·카드사 로고 모음 (신협/mono)
   '054': l054, // commons: HSBC logo (2018).svg
   '055': l055, // commons: Deutsche Bank logo without wordmark.svg
   '057': l057, // commons: Chase logo 2007.svg
@@ -74,9 +77,12 @@ export const BANK_LOGOS: Record<string, ImageSourcePropType> = {
   '062': l062, // en.wikipedia: Industrial and Commercial Bank of China logo.svg
   '063': l063, // commons: Bank of China symbol.svg
   '067': l067, // en.wikipedia: China Construction Bank.svg
-  '031': l031, // 공식 사이트: www.imbank.co.kr 헤더 로고 (ebz_top_dgb_logo_up.gif)
-  '035': l035, // 공식 사이트: www.jejubank.co.kr 헤더 로고 (head/logo.png 윗부분)
-  '045': l045, // 공식 사이트: www.kfcc.co.kr BI (bi_logo2.png)
+  '031': l031, // Figma: 대한민국 은행·카드사 로고 모음 (iM뱅크/original)
+  '035': l035, // Figma: 대한민국 은행·카드사 로고 모음 (신한, 제주은행/original)
+  '045': l045, // Figma: 대한민국 은행·카드사 로고 모음 (MG새마을금고/mono)
   '050': l050, // 공식 사이트: www.fsb.or.kr 저축은행중앙회 로고
   '064': l064, // 공식 사이트: www.nfcf.or.kr 산림조합중앙회 로고
 };
+
+/** 짙은 남색 글자 로고 — 다크 모드에서는 흰 바탕을 깔아야 보인다 */
+export const DARK_INK_LOGOS = new Set(['027', '089']);
