@@ -7,6 +7,12 @@ import { Text } from './text';
 
 const PAD = 2;
 
+/**
+ * 같은 옵션 묶음의 직전 선택 위치. 탭마다 다른 목록을 그려 세그먼트가 새로 마운트돼도
+ * (관리자 목록 머리 등) 직전 자리에서 미끄러져 오게 한다
+ */
+const lastIndex = new Map<string, number>();
+
 /** iOS 세그먼트 컨트롤 모양의 보기 전환 (2~4개). 선택 표시가 옆으로 미끄러진다 */
 export function Segmented<T extends string>({
   options,
@@ -26,17 +32,28 @@ export function Segmented<T extends string>({
     0,
     options.findIndex((o) => o.value === value),
   );
+  const memoryKey = options.map((o) => o.value).join('|');
   const x = useSharedValue(0);
   const [placed, setPlaced] = useState(false);
 
   useEffect(() => {
     if (!seg) return;
-    // 처음 자리 잡을 때는 움직이지 않는다
-    x.value = placed
-      ? withTiming(index * seg, { duration: 220, easing: Easing.out(Easing.cubic) })
-      : index * seg;
-    if (!placed) setPlaced(true);
-  }, [index, seg, placed, x]);
+    const slide = (to: number) => withTiming(to * seg, { duration: 220, easing: Easing.out(Easing.cubic) });
+    if (placed) {
+      x.value = slide(index);
+    } else {
+      // 처음 자리 잡을 때: 직전 선택이 다르면 그 자리에서 미끄러지고, 아니면 바로 놓는다
+      const from = lastIndex.get(memoryKey);
+      if (from != null && from !== index) {
+        x.value = from * seg;
+        x.value = slide(index);
+      } else {
+        x.value = index * seg;
+      }
+      setPlaced(true);
+    }
+    lastIndex.set(memoryKey, index);
+  }, [index, seg, placed, x, memoryKey]);
 
   const thumb = useAnimatedStyle(() => ({ transform: [{ translateX: x.value }] }));
   const height = t.senior ? 40 : 32;
