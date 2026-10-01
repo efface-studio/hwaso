@@ -18,7 +18,8 @@ import type { AuthUser } from '../common/auth';
 import { logNotifyError, NotificationEvents } from '../notifications/notification-events';
 import { PrismaService } from '../prisma/prisma.service';
 import { cardSelect, toCard } from '../products/product.mapper';
-import { decodeCursor, encodeCursor, HOME_CACHE_KEY, ProductsService } from '../products/products.service';
+import { invalidateCatalog } from '../products/catalog-cache';
+import { decodeCursor, paginate, ProductsService } from '../products/products.service';
 import { RealtimeGateway, RealtimeService } from '../realtime/realtime';
 import { RedisService } from '../redis/redis.service';
 import { SafetyService } from '../safety/safety.controller';
@@ -204,7 +205,7 @@ export class AuctionsService {
       where: { id: a.productId },
       data: { status: 'ACTIVE', publishedAt: product.publishedAt ?? new Date(), listPrice: a.startPrice },
     });
-    await this.redis.del(HOME_CACHE_KEY);
+    await invalidateCatalog(this.redis);
     // 최초 게시일 때만 팔로워에게 알린다 (예약 취소 후 재예약은 제외)
     if (!product.publishedAt) void this.events.newProduct(a.productId).catch(logNotifyError);
     return toAuctionDto(updated);
@@ -220,7 +221,7 @@ export class AuctionsService {
       where: { id: a.productId, status: { not: 'SUSPENDED' } },
       data: { status: 'DRAFT' },
     });
-    await this.redis.del(HOME_CACHE_KEY);
+    await invalidateCatalog(this.redis);
     return toAuctionDto(updated);
   }
 
@@ -281,7 +282,7 @@ export class AuctionsService {
       winnerId: null,
       finalPrice: Number(updated.currentPrice),
     });
-    await this.redis.del(HOME_CACHE_KEY);
+    await invalidateCatalog(this.redis);
     return toAuctionDto(updated);
   }
 
@@ -335,38 +336,48 @@ export class AuctionsService {
   async list(q: AuctionListQuery, viewer?: AuthUser): Promise<ProductListResponse> {
     const statuses: AuctionStatus[] =
       q.status === 'live' ? ['LIVE'] : q.status === 'scheduled' ? ['SCHEDULED'] : ['ENDED', 'SETTLED'];
-    const where: Prisma.ProductWhereInput = {
-      deletedAt: null,
-      publishedAt: { not: null },
-      auction: { status: { in: statuses } },
-      // 내가 차단한 판매자의 경매는 뺀다
-      ...(await this.safety.excludeBlocked(viewer?.id, 'sellerId')),
+    // 경매 쪽(status, 시각 인덱스)에서 출발해 상품 공개 조건을 확인한다 — 상품 쪽에서 경매 열로 정렬하면 상품 표 전체를 훑는다
+    const where: Prisma.AuctionWhereInput = {
+      status: { in: statuses },
+      // ENDED·SETTLED 는 항상 endedAt 이 있다 — 부분 인덱스 auction_ended_idx 를 타게 조건으로 건다
+      ...(q.status === 'ended' ? { endedAt: { not: null } } : {}),
+      product: {
+        deletedAt: null,
+        publishedAt: { not: null },
+        // 내가 차단한 판매자의 경매는 뺀다
+        ...(await this.safety.excludeBlocked(viewer?.id, 'sellerId')),
+      },
     };
-    const orderBy: Prisma.ProductOrderByWithRelationInput[] =
+    // 동순위는 productId — 경매마다 상품이 하나라 기존 상품 id 정렬과 같다
+    const orderBy: Prisma.AuctionOrderByWithRelationInput[] =
       q.status === 'ended'
-        ? [{ auction: { endedAt: 'desc' } }, { id: 'asc' }]
+        ? [{ endedAt: 'desc' }, { productId: 'asc' }]
         : q.sort === 'popular'
-          ? [{ auction: { bidCount: 'desc' } }, { id: 'asc' }]
+          ? [{ bidCount: 'desc' }, { productId: 'asc' }]
           : q.sort === 'latest'
-            ? [{ auction: { startsAt: 'desc' } }, { id: 'asc' }]
+            ? [{ startsAt: 'desc' }, { productId: 'asc' }]
             : q.status === 'scheduled'
-              ? [{ auction: { startsAt: 'asc' } }, { id: 'asc' }]
-              : [{ auction: { endsAt: 'asc' } }, { id: 'asc' }];
+              ? [{ startsAt: 'asc' }, { productId: 'asc' }]
+              : [{ endsAt: 'asc' }, { productId: 'asc' }];
     const offset = decodeCursor(q.cursor);
-    const [rows, total] = await Promise.all([
-      this.prisma.product.findMany({ where, select: cardSelect, orderBy, skip: offset, take: q.limit }),
-      this.prisma.product.count({ where }),
-    ]);
-    const favs = await this.products.favoriteSet(
-      viewer?.id,
-      rows.map((r) => r.id),
+    const ids = await this.prisma.auction.findMany({
+      where,
+      orderBy,
+      select: { productId: true },
+      skip: offset,
+      take: q.limit + 1,
+    });
+    const page = await paginate(
+      ids.map((a) => a.productId),
+      q.limit,
+      offset,
+      () => this.products.countCached('auctions', where, () => this.prisma.auction.count({ where })),
     );
-    const next = offset + rows.length;
-    return {
-      items: rows.map((r) => toCard(r, favs)),
-      nextCursor: next < total ? encodeCursor(next) : null,
-      total,
-    };
+    const [rows, favs] = await Promise.all([
+      this.products.cardsByIds(page.rows),
+      this.products.favoriteSet(viewer?.id, page.rows),
+    ]);
+    return { items: rows.map((r) => toCard(r, favs)), nextCursor: page.nextCursor, total: page.total };
   }
 
   /** 내 입찰 내역 (경매별 요약) · 낙찰 내역 */

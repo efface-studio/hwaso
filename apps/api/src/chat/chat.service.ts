@@ -292,26 +292,27 @@ export class ChatService {
   /** 내 채팅 목록: 최근 대화 순. 나간 방은 새 메시지가 오면 다시 보인다 */
   async rooms(user: AuthUser): Promise<ChatRoomDto[]> {
     // ponytail: 최근 100개 방만 — 그 이상은 페이지네이션 추가
-    const rows = await this.withLastMessage(
-      await this.prisma.chatRoom.findMany({
+    const [rooms, blocks] = await Promise.all([
+      this.prisma.chatRoom.findMany({
         where: { OR: [{ buyerId: user.id }, { sellerId: user.id }] },
         include: roomInclude,
         orderBy: { lastMessageAt: 'desc' },
         take: ROOM_LIMIT,
       }),
-    );
+      this.blockSets(user.id),
+    ]);
+    const rows = await this.withLastMessage(rooms);
     const visible = rows.filter((r) => {
       const mine = r.readStates.find((s) => s.userId === user.id);
       const last = r.last;
       if (!last) return r.buyerId === user.id && !mine?.hiddenAt; // 빈 방은 연 사람에게만
       return !mine?.hiddenAt || last.createdAt > mine.hiddenAt;
     });
-    const [unread, blocks, presence] = await Promise.all([
+    const [unread, presence] = await Promise.all([
       this.unreadByRoom(
         user.id,
         visible.map((r) => r.id),
       ),
-      this.blockSets(user.id),
       this.presence.of(visible.map((r) => (r.buyerId === user.id ? r.sellerId : r.buyerId))),
     ]);
     // 고정한 방이 먼저(최근에 고정한 순), 나머지는 최근 대화 순
@@ -323,18 +324,18 @@ export class ChatService {
   }
 
   async room(user: AuthUser, roomId: string): Promise<ChatRoomDto> {
-    await this.member(user, roomId);
-    const base = await this.prisma.chatRoom.findUniqueOrThrow({
-      where: { id: roomId },
-      include: roomInclude,
-    });
-    const r = (await this.withLastMessage([base]))[0]!;
-    const [unread, blocks, presence] = await Promise.all([
-      this.unreadByRoom(user.id, [roomId]),
+    // 참여자 확인은 같은 방 조회 결과로 한다 (방을 두 번 읽지 않는다)
+    const [base, blocks] = await Promise.all([
+      this.prisma.chatRoom.findUnique({ where: { id: roomId }, include: roomInclude }),
       this.blockSets(user.id),
-      this.presence.of([r.buyerId === user.id ? r.sellerId : r.buyerId]),
     ]);
-    return this.toRoom(r, user.id, unread.get(roomId) ?? 0, blocks, presence);
+    if (!base || (base.buyerId !== user.id && base.sellerId !== user.id)) throw new AppException('NOT_FOUND');
+    const [[r], unread, presence] = await Promise.all([
+      this.withLastMessage([base]),
+      this.unreadByRoom(user.id, [roomId]),
+      this.presence.of([base.buyerId === user.id ? base.sellerId : base.buyerId]),
+    ]);
+    return this.toRoom(r!, user.id, unread.get(roomId) ?? 0, blocks, presence);
   }
 
   /** 하단 탭·헤더 배지: 알림을 끈 방은 제외 */
@@ -355,13 +356,12 @@ export class ChatService {
 
   /** 최신순 페이지 (before = 이 메시지보다 이전). 나간 뒤에는 그 이후 메시지만 보인다 */
   async messages(user: AuthUser, roomId: string, before?: string): Promise<Page<ChatMessageDto>> {
-    const { mine } = await this.member(user, roomId);
-    const pivot = before
-      ? await this.prisma.chatMessage.findFirst({
-          where: { id: before, roomId },
-          select: { createdAt: true },
-        })
-      : null;
+    const [{ mine }, pivot] = await Promise.all([
+      this.member(user, roomId),
+      before
+        ? this.prisma.chatMessage.findFirst({ where: { id: before, roomId }, select: { createdAt: true } })
+        : null,
+    ]);
     const rows = await this.prisma.chatMessage.findMany({
       where: {
         roomId,

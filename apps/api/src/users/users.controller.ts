@@ -24,19 +24,19 @@ export class UsersController {
   @OptionalAuth()
   @Get(':id')
   async profile(@Param('id') id: string, @CurrentUser() viewer?: AuthUser): Promise<PublicProfileDto> {
-    const u = await this.prisma.user.findFirst({
-      where: { id, status: { not: 'DELETED' } },
-      select: {
-        id: true,
-        role: true,
-        createdAt: true,
-        profile: true,
-        seller: { select: { userId: true } },
-        _count: { select: { followers: true, following: true } },
-      },
-    });
-    if (!u?.profile) throw new AppException('NOT_FOUND', '사용자를 찾을 수 없습니다.');
-    const [sellingCount, soldCount, following, followsMe] = await Promise.all([
+    // 개수·팔로우 여부는 id 만 있으면 되므로 사용자 조회와 함께 읽는다 (없는 사용자면 버린다)
+    const [u, sellingCount, soldCount, following, followsMe] = await Promise.all([
+      this.prisma.user.findFirst({
+        where: { id, status: { not: 'DELETED' } },
+        select: {
+          id: true,
+          role: true,
+          createdAt: true,
+          profile: true,
+          seller: { select: { userId: true } },
+          _count: { select: { followers: true, following: true } },
+        },
+      }),
       this.prisma.product.count({
         where: {
           sellerId: id,
@@ -57,6 +57,7 @@ export class UsersController {
           })
         : null,
     ]);
+    if (!u?.profile) throw new AppException('NOT_FOUND', '사용자를 찾을 수 없습니다.');
     return {
       id: u.id,
       nickname: u.profile.nickname,
@@ -85,20 +86,23 @@ export class UsersController {
     @Query(new ZodPipe(productsQuery)) q: { tab: 'selling' | 'sold' },
     @CurrentUser() viewer?: AuthUser,
   ) {
+    const [blocked, rows] = await Promise.all([
+      this.safety.blockedIds(viewer?.id),
+      this.prisma.product.findMany({
+        where: {
+          AND: [
+            VISIBLE_PRODUCT,
+            { sellerId: id },
+            { status: q.tab === 'sold' ? 'SOLD' : { in: ['ACTIVE', 'RESERVED'] } },
+          ],
+        },
+        select: cardSelect,
+        orderBy: { publishedAt: 'desc' },
+        take: 120,
+      }),
+    ]);
     // 내가 차단한 판매자의 작품 목록은 비워서 준다
-    if ((await this.safety.blockedIds(viewer?.id)).includes(id)) return [];
-    const rows = await this.prisma.product.findMany({
-      where: {
-        AND: [
-          VISIBLE_PRODUCT,
-          { sellerId: id },
-          { status: q.tab === 'sold' ? 'SOLD' : { in: ['ACTIVE', 'RESERVED'] } },
-        ],
-      },
-      select: cardSelect,
-      orderBy: { publishedAt: 'desc' },
-      take: 120,
-    });
+    if (blocked.includes(id)) return [];
     const favs = await this.products.favoriteSet(
       viewer?.id,
       rows.map((r) => r.id),
