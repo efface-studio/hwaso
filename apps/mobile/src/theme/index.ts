@@ -7,7 +7,8 @@ import {
   type TypographyToken,
 } from '@shop/tokens';
 import { createContext, useContext } from 'react';
-import { useColorScheme, type TextStyle } from 'react-native';
+import { Dimensions, useColorScheme, type TextStyle } from 'react-native';
+import { BREAKPOINT } from '@/hooks/use-layout';
 import { usePrefs } from '@/stores/prefs';
 
 export type Colors = Record<keyof typeof palette.light, string>;
@@ -46,6 +47,22 @@ const AccentContext = createContext<Accent>('brand');
 /** 이 아래의 화면은 useTheme() 의 강조 색(primary 계열)이 accent 로 바뀐다 */
 export const AccentProvider = AccentContext.Provider;
 
+/**
+ * 태블릿(아이패드·안드로이드 태블릿)에서 글자·컨트롤을 키우는 배율. 휴대폰 크기 그대로면 넓은 화면에서 글자와 버튼이
+ * 작아 보인다 — 글자 크기·행간, 컨트롤 높이, 최소 터치 영역, 기본 아이콘 크기에 곱한다 (휴대폰은 1).
+ * 앱은 세로 전용이라 기기 화면의 짧은 변으로 한 번만 정한다 (docs/MOBILE_NAVIGATION.md 「화면 폭과 배치」).
+ */
+export const TABLET_SCALE = 1.2;
+const screen = Dimensions.get('screen');
+/** 태블릿 기기 (화면 짧은 변 600 이상) */
+export const IS_TABLET = Math.min(screen.width, screen.height) >= BREAKPOINT.regular;
+const scale = IS_TABLET ? TABLET_SCALE : 1;
+/**
+ * 탭 바 아이콘·글자 배율. 아이패드도 아이폰과 같은 아래쪽 떠 있는 탭 바를 쓰는데(react-native-screens 패치),
+ * 탭 바 높이·폭은 시스템이 고정한다 — 이보다 키우면 아이콘과 글자가 겹친다 (2배에서 겹침 확인).
+ */
+export const TAB_BAR_SCALE = IS_TABLET ? 1.2 : 1;
+
 function buildTheme(scheme: Scheme, senior: boolean, accent: Accent) {
   const base = palette[scheme];
   const colors: Colors = {
@@ -61,18 +78,21 @@ function buildTheme(scheme: Scheme, senior: boolean, accent: Accent) {
     if (!style) {
       const s = senior ? seniorTypography[t] : typography[t];
       const tok = typography[t];
+      const size = Math.round(s.size * scale);
       style = {
-        fontSize: s.size,
-        lineHeight: s.lineHeight,
+        fontSize: size,
+        lineHeight: Math.round(s.lineHeight * scale),
         fontWeight: FONT_WEIGHT[tok.weight],
-        letterSpacing: tok.tracking * s.size,
+        letterSpacing: tok.tracking * size,
       };
       typeCache.set(t, style);
     }
     return style;
   };
 
-  const inputLineHeight = Math.round((senior ? seniorTypography.body.size : typography.body.size) * 1.34);
+  const inputLineHeight = Math.round(
+    (senior ? seniorTypography.body.size : typography.body.size) * scale * 1.34,
+  );
   /**
    * 입력창 글자. iOS 한 줄 입력창(UITextField)은 lineHeight 를 주면 남는 행간이 글자 위에 붙어
    * 글자가 아래로 치우친다 — 한 줄일 때는 행간을 빼고 글꼴 기본 높이로 가운데 정렬되게 한다.
@@ -95,9 +115,13 @@ function buildTheme(scheme: Scheme, senior: boolean, accent: Accent) {
     inputLineHeight,
     radius,
     space: (n: number) => n * 4,
+    /** 태블릿 배율 (휴대폰 1) — 고정 크기(카드 폭 등)를 태블릿에서 키울 때 곱한다 */
+    scale,
     /** 최소 터치 영역 */
-    touch: senior ? seniorTokens.touchTarget : 44,
-    controlHeight: senior ? seniorTokens.controlHeight : 48,
+    touch: Math.round((senior ? seniorTokens.touchTarget : 44) * scale),
+    controlHeight: Math.round((senior ? seniorTokens.controlHeight : 48) * scale),
+    /** 기본 아이콘 크기 */
+    iconSize: Math.round((senior ? 26 : 22) * scale),
   };
 }
 

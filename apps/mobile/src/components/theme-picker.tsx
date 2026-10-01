@@ -144,8 +144,9 @@ export function ThemePicker({
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', gap: 10, paddingVertical: 12 },
-  option: { flex: 1, alignItems: 'center', gap: 10 },
+  row: { flexDirection: 'row', justifyContent: 'center', gap: 10, paddingVertical: 12 },
+  // 넓은 화면(아이패드)에서 미리보기가 지나치게 커지지 않게
+  option: { flex: 1, maxWidth: 160, alignItems: 'center', gap: 10 },
   ring: { width: '100%', padding: 3, borderWidth: 2, borderRadius: 20 },
   phone: { borderRadius: 15, borderWidth: StyleSheet.hairlineWidth * 2, overflow: 'hidden', padding: 0 },
   labelRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },

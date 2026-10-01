@@ -39,7 +39,8 @@ export function BannerCarousel({ banners }: { banners: BannerDto[] }) {
 
   if (!banners.length) return null;
   return (
-    <View>
+    // 넓은 화면에서는 배너 폭으로 가운데 — 넘김(pagingEnabled)은 목록 폭 단위라 목록 폭을 배너 폭과 같게 둔다
+    <View style={{ width, alignSelf: 'center' }}>
       <FlatList
         ref={list}
         data={banners}

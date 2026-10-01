@@ -25,6 +25,7 @@ import { actionSheet } from '@/lib/action-sheet';
 import { CATEGORY_GROUP_LABEL } from '@/lib/admin';
 import { api } from '@/lib/api';
 import { useTheme } from '@/theme';
+import { readable } from '@/hooks/use-layout';
 
 /** 스키마 기본 메시지가 영어인 항목은 한국어로 바꿔 보여준다 */
 const FIELD_MESSAGE: Record<string, string | undefined> = {
@@ -251,7 +252,7 @@ export default function CategoriesScreen() {
 }
 
 const styles = StyleSheet.create({
-  body: { paddingBottom: 48 },
+  body: { ...readable, paddingBottom: 48 },
   intro: { paddingHorizontal: 16, paddingTop: 8 },
   indent: { width: 8 },
   section: { gap: 8 },

@@ -4,6 +4,7 @@ import {
   type KeyboardAwareScrollViewProps,
   type KeyboardAwareScrollViewRef,
 } from 'react-native-keyboard-controller';
+import { readable } from '@/hooks/use-layout';
 
 export type FormScrollRef = KeyboardAwareScrollViewRef;
 
@@ -15,20 +16,24 @@ export const useFormScrollExtraOffset = () => useContext(ExtraOffsetContext);
  * 입력칸이 있는 화면의 스크롤. 키보드가 올라오면 포커스된 입력칸이 키보드 위로 보이게 스크롤한다.
  * ScrollView 와 같은 props 를 받는다 (레이아웃은 바뀌지 않고 키보드만큼 아래 여백이 생긴다).
  * 여러 줄 입력칸은 라이브러리가 커서(첫 줄)만 맞추므로, Field 가 알려준 만큼 여백을 더해 칸 전체가 보이게 한다.
+ * 넓은 화면(아이패드)에서는 본문 폭을 줄여 가운데 둔다 — 화면 전체 폭을 쓰려면 fullWidth.
  */
-export const FormScroll = forwardRef<FormScrollRef, KeyboardAwareScrollViewProps>(function FormScroll(
-  { bottomOffset = 24, keyboardShouldPersistTaps = 'handled', ...props },
-  ref,
-) {
-  const [extra, setExtra] = useState(0);
-  return (
-    <ExtraOffsetContext.Provider value={setExtra}>
-      <KeyboardAwareScrollView
-        ref={ref}
-        bottomOffset={bottomOffset + extra}
-        keyboardShouldPersistTaps={keyboardShouldPersistTaps}
-        {...props}
-      />
-    </ExtraOffsetContext.Provider>
-  );
-});
+export const FormScroll = forwardRef<FormScrollRef, KeyboardAwareScrollViewProps & { fullWidth?: boolean }>(
+  function FormScroll(
+    { bottomOffset = 24, keyboardShouldPersistTaps = 'handled', fullWidth, contentContainerStyle, ...props },
+    ref,
+  ) {
+    const [extra, setExtra] = useState(0);
+    return (
+      <ExtraOffsetContext.Provider value={setExtra}>
+        <KeyboardAwareScrollView
+          ref={ref}
+          bottomOffset={bottomOffset + extra}
+          keyboardShouldPersistTaps={keyboardShouldPersistTaps}
+          contentContainerStyle={fullWidth ? contentContainerStyle : [readable, contentContainerStyle]}
+          {...props}
+        />
+      </ExtraOffsetContext.Provider>
+    );
+  },
+);

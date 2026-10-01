@@ -1,5 +1,5 @@
 import { ApiError, newIdempotencyKey } from '@shop/api-client';
-import { formatRemaining, type AuctionDto } from '@shop/shared';
+import { formatRemaining, type AuctionDto, type AuctionSnapshot } from '@shop/shared';
 import { useQueryClient } from '@tanstack/react-query';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
@@ -13,6 +13,7 @@ import { Sheet } from '@/components/ui/sheet';
 import { Empty, Loading } from '@/components/ui/state';
 import { Text } from '@/components/ui/text';
 import { useAuctionLive } from '@/hooks/use-auction-live';
+import { readable, useLayout, useReadableGutter } from '@/hooks/use-layout';
 import { dateTimeFormat, formatPrice } from '@/i18n/format';
 import { label } from '@/i18n/labels';
 import { api } from '@/lib/api';
@@ -112,10 +113,49 @@ function AmountSheet({
   );
 }
 
+/** 넓은 화면 왼쪽 칸: 작품 사진과 이름 (누르면 작품 상세) */
+function ProductPane({ product }: { product: AuctionSnapshot['product'] }) {
+  const t = useTheme();
+  const { t: tr } = useTranslation('product');
+  return (
+    <Link href={{ pathname: '/products/[id]', params: { id: product.id } }} asChild>
+      <Pressable
+        accessibilityRole="link"
+        // Link asChild 는 배열 스타일을 넘기지 못한다 — 하나로 합쳐 준다
+        style={StyleSheet.flatten([
+          styles.pane,
+          { backgroundColor: product.image?.dominantColor ?? t.colors.surface2 },
+        ])}
+      >
+        {product.image && (
+          <Image
+            source={mediaUrl(product.image.key, 1600)}
+            placeholder={mediaUrl(product.image.key, 400)}
+            placeholderContentFit="contain"
+            style={StyleSheet.absoluteFill}
+            contentFit="contain"
+            transition={t.senior ? 0 : 150}
+          />
+        )}
+        <View style={[styles.paneCaption, { backgroundColor: t.colors.overlay }]}>
+          <Text variant="small" style={{ color: '#fff' }} numberOfLines={1}>
+            {product.artistName ?? tr('detail.unknownArtist')}
+          </Text>
+          <Text variant="bodyStrong" style={{ color: '#fff' }} numberOfLines={2}>
+            {product.title}
+          </Text>
+        </View>
+      </Pressable>
+    </Link>
+  );
+}
+
 export default function AuctionScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const t = useTheme();
   const insets = useSafeAreaInsets();
+  const { split, width } = useLayout();
+  const gutter = useReadableGutter(12);
   const { t: tr } = useTranslation(['product', 'common']);
   const qc = useQueryClient();
   const user = useAuthStore((s) => s.user);
@@ -167,165 +207,206 @@ export default function AuctionScreen() {
     );
   };
 
-  return (
-    <View style={{ flex: 1, backgroundColor: t.colors.background }}>
-      <Stack.Screen options={{ title: tr('common:screen.auction') }} />
-      <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={{ paddingBottom: 24 }}>
-        <Link href={{ pathname: '/products/[id]', params: { id: s.product.id } }} asChild>
-          <Pressable accessibilityRole="link" style={styles.product}>
-            <View
-              style={[styles.thumb, { backgroundColor: s.product.image?.dominantColor ?? t.colors.surface2 }]}
-            >
-              {s.product.image && (
-                <Image
-                  source={mediaUrl(s.product.image.key, 400)}
-                  style={StyleSheet.absoluteFill}
-                  contentFit="contain"
-                />
-              )}
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text variant="small" color="muted">
-                {s.product.artistName ?? tr('detail.unknownArtist')}
-              </Text>
-              <Text variant="bodyStrong" numberOfLines={2}>
-                {s.product.title}
-              </Text>
-            </View>
-          </Pressable>
-        </Link>
-
-        <View style={[styles.panel, { borderColor: t.colors.border }]}>
-          <Countdown a={a} />
-          <View>
-            <Text variant="caption" color="muted">
-              {a.bidCount ? tr('auction.currentPrice') : tr('auction.startPrice')}
-            </Text>
-            <Text variant="priceLg" accessibilityLiveRegion="polite">
-              {formatPrice(a.currentPrice)}
-            </Text>
-            <Text variant="small" color="muted">
-              {tr('auction.stats', { bids: a.bidCount, bidders: a.bidderCount, watchers: s.watchers })}
-              {live.connected ? '' : ` · ${tr('auction.connecting')}`}
-            </Text>
-          </View>
-          {leading && a.status === 'LIVE' && (
-            <Text variant="bodyStrong" color="primary">
-              {tr('auction.leading')}
-            </Text>
-          )}
-          {s.myLastBid != null && !leading && a.status === 'LIVE' && (
-            <Text variant="small" color="destructive">
-              {tr('auction.outbid', { amount: formatPrice(s.myLastBid) })}
-            </Text>
-          )}
-          {won && (
-            <View style={{ gap: 8 }}>
-              <Text variant="bodyStrong" color="primary">
-                {tr('auction.won')}
-              </Text>
-              <Button
-                title={tr('auction.goPay')}
-                onPress={() => router.push({ pathname: '/orders', params: { filter: 'pending' } })}
-              />
-            </View>
-          )}
-          {live.notice && (
-            <Text variant="small" color="warning" accessibilityLiveRegion="assertive">
-              {live.notice.text}
-            </Text>
-          )}
-          <Text variant="caption" color="muted">
-            {tr('auction.increment', { amount: formatPrice(a.bidIncrement) })}
-            {a.buyNowPrice ? ` · ${tr('auction.buyNowPrice', { amount: formatPrice(a.buyNowPrice) })}` : ''}
-            {a.autoExtend
-              ? ` · ${tr('auction.autoExtend', { window: a.extensionWindowSec, extension: a.extensionSec })}`
-              : ''}
-          </Text>
-        </View>
-
-        {a.description ? (
-          <View style={styles.block}>
-            <Text variant="h3">{tr('auction.about')}</Text>
-            <Text>{a.description}</Text>
-          </View>
-        ) : null}
-
-        <View style={styles.block}>
-          <Text variant="h3" accessibilityRole="header">
-            {tr('auction.history')}
-          </Text>
-          {live.bids.length === 0 ? (
-            <Text color="muted">{tr('auction.noBids')}</Text>
-          ) : (
-            live.bids.map((b) => (
-              <View key={b.id} style={[styles.bid, { borderColor: t.colors.borderSoft }]}>
-                <Text variant="small" style={{ flex: 1 }}>
-                  {b.isMine ? tr('auction.me') : b.bidderMasked}
-                  {b.isBuyNow ? ` · ${tr('auction.buyNow')}` : ''}
-                </Text>
-                <Text variant="small" color="muted">
-                  {dateTimeFormat({ hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(
-                    new Date(b.createdAt),
-                  )}
-                </Text>
-                <Text variant="bodyStrong" style={{ minWidth: 110, textAlign: 'right' }}>
-                  {formatPrice(b.amount)}
-                </Text>
-              </View>
-            ))
-          )}
-        </View>
-      </ScrollView>
-
-      {a.status === 'LIVE' && !mine && (
+  const productRow = (
+    <Link href={{ pathname: '/products/[id]', params: { id: s.product.id } }} asChild>
+      <Pressable accessibilityRole="link" style={styles.product}>
         <View
-          style={[
-            styles.bar,
-            {
-              paddingBottom: Math.max(insets.bottom, 12),
-              borderColor: t.colors.border,
-              backgroundColor: t.colors.background,
-            },
-          ]}
+          style={[styles.thumb, { backgroundColor: s.product.image?.dominantColor ?? t.colors.surface2 }]}
         >
-          {leading ? (
-            <Text variant="bodyStrong" color="primary" style={{ flex: 1, textAlign: 'center' }}>
-              {tr('auction.leadingBar')}
-            </Text>
-          ) : (
-            <>
-              <Button
-                title={tr('auction.enterAmount')}
-                variant="outline"
-                size="lg"
-                onPress={() => requireLogin() && setSheet(true)}
-              />
-              <Button
-                title={tr('auction.bidShort', { amount: formatPrice(a.minNextBid) })}
-                size="lg"
-                loading={busy}
-                style={{ flex: 1 }}
-                onPress={() => place(a.minNextBid)}
-              />
-            </>
-          )}
-          {a.buyNowPrice != null && !leading && (
-            <Button
-              title={tr('auction.buyNow')}
-              variant="secondary"
-              size="lg"
-              onPress={() => place(a.buyNowPrice!, true)}
+          {s.product.image && (
+            <Image
+              source={mediaUrl(s.product.image.key, 400)}
+              style={StyleSheet.absoluteFill}
+              contentFit="contain"
             />
           )}
         </View>
+        <View style={{ flex: 1 }}>
+          <Text variant="small" color="muted">
+            {s.product.artistName ?? tr('detail.unknownArtist')}
+          </Text>
+          <Text variant="bodyStrong" numberOfLines={2}>
+            {s.product.title}
+          </Text>
+        </View>
+      </Pressable>
+    </Link>
+  );
+  const details = (
+    <>
+      <View style={[styles.panel, { borderColor: t.colors.border }]}>
+        <Countdown a={a} />
+        <View>
+          <Text variant="caption" color="muted">
+            {a.bidCount ? tr('auction.currentPrice') : tr('auction.startPrice')}
+          </Text>
+          <Text variant="priceLg" accessibilityLiveRegion="polite">
+            {formatPrice(a.currentPrice)}
+          </Text>
+          <Text variant="small" color="muted">
+            {tr('auction.stats', { bids: a.bidCount, bidders: a.bidderCount, watchers: s.watchers })}
+            {live.connected ? '' : ` · ${tr('auction.connecting')}`}
+          </Text>
+        </View>
+        {leading && a.status === 'LIVE' && (
+          <Text variant="bodyStrong" color="primary">
+            {tr('auction.leading')}
+          </Text>
+        )}
+        {s.myLastBid != null && !leading && a.status === 'LIVE' && (
+          <Text variant="small" color="destructive">
+            {tr('auction.outbid', { amount: formatPrice(s.myLastBid) })}
+          </Text>
+        )}
+        {won && (
+          <View style={{ gap: 8 }}>
+            <Text variant="bodyStrong" color="primary">
+              {tr('auction.won')}
+            </Text>
+            <Button
+              title={tr('auction.goPay')}
+              onPress={() => router.push({ pathname: '/orders', params: { filter: 'pending' } })}
+            />
+          </View>
+        )}
+        {live.notice && (
+          <Text variant="small" color="warning" accessibilityLiveRegion="assertive">
+            {live.notice.text}
+          </Text>
+        )}
+        <Text variant="caption" color="muted">
+          {tr('auction.increment', { amount: formatPrice(a.bidIncrement) })}
+          {a.buyNowPrice ? ` · ${tr('auction.buyNowPrice', { amount: formatPrice(a.buyNowPrice) })}` : ''}
+          {a.autoExtend
+            ? ` · ${tr('auction.autoExtend', { window: a.extensionWindowSec, extension: a.extensionSec })}`
+            : ''}
+        </Text>
+      </View>
+
+      {a.description ? (
+        <View style={styles.block}>
+          <Text variant="h3">{tr('auction.about')}</Text>
+          <Text>{a.description}</Text>
+        </View>
+      ) : null}
+
+      <View style={styles.block}>
+        <Text variant="h3" accessibilityRole="header">
+          {tr('auction.history')}
+        </Text>
+        {live.bids.length === 0 ? (
+          <Text color="muted">{tr('auction.noBids')}</Text>
+        ) : (
+          live.bids.map((b) => (
+            <View key={b.id} style={[styles.bid, { borderColor: t.colors.borderSoft }]}>
+              <Text variant="small" style={{ flex: 1 }}>
+                {b.isMine ? tr('auction.me') : b.bidderMasked}
+                {b.isBuyNow ? ` · ${tr('auction.buyNow')}` : ''}
+              </Text>
+              <Text variant="small" color="muted">
+                {dateTimeFormat({ hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(
+                  new Date(b.createdAt),
+                )}
+              </Text>
+              <Text variant="bodyStrong" style={{ minWidth: 110, textAlign: 'right' }}>
+                {formatPrice(b.amount)}
+              </Text>
+            </View>
+          ))
+        )}
+      </View>
+    </>
+  );
+  const bar = a.status === 'LIVE' && !mine && (
+    <View
+      style={[
+        styles.bar,
+        {
+          paddingHorizontal: split ? 12 : gutter,
+          paddingBottom: Math.max(insets.bottom, 12),
+          borderColor: t.colors.border,
+          backgroundColor: t.colors.background,
+        },
+      ]}
+    >
+      {leading ? (
+        <Text variant="bodyStrong" color="primary" style={{ flex: 1, textAlign: 'center' }}>
+          {tr('auction.leadingBar')}
+        </Text>
+      ) : (
+        <>
+          <Button
+            title={tr('auction.enterAmount')}
+            variant="outline"
+            size="lg"
+            onPress={() => requireLogin() && setSheet(true)}
+          />
+          <Button
+            title={tr('auction.bidShort', { amount: formatPrice(a.minNextBid) })}
+            size="lg"
+            loading={busy}
+            style={{ flex: 1 }}
+            onPress={() => place(a.minNextBid)}
+          />
+        </>
       )}
-      {sheet && <AmountSheet a={a} onClose={() => setSheet(false)} onBid={(n) => place(n)} />}
+      {a.buyNowPrice != null && !leading && (
+        <Button
+          title={tr('auction.buyNow')}
+          variant="secondary"
+          size="lg"
+          onPress={() => place(a.buyNowPrice!, true)}
+        />
+      )}
+    </View>
+  );
+  const amountSheet = sheet && <AmountSheet a={a} onClose={() => setSheet(false)} onBid={(n) => place(n)} />;
+
+  // 넓은 화면(아이패드 가로 등): 왼쪽 작품 사진 · 오른쪽 경매 정보와 입찰 버튼
+  if (split)
+    return (
+      <View style={[styles.split, { backgroundColor: t.colors.background }]}>
+        <Stack.Screen options={{ title: tr('common:screen.auction') }} />
+        <ProductPane product={s.product} />
+        <View
+          style={{
+            width: Math.min(Math.max(width * 0.4, 380), 480),
+            borderLeftWidth: StyleSheet.hairlineWidth,
+            borderColor: t.colors.border,
+          }}
+        >
+          <ScrollView
+            contentInsetAdjustmentBehavior="automatic"
+            contentContainerStyle={{ paddingTop: 16, paddingBottom: 24 }}
+          >
+            {details}
+          </ScrollView>
+          {bar}
+        </View>
+        {amountSheet}
+      </View>
+    );
+
+  return (
+    <View style={{ flex: 1, backgroundColor: t.colors.background }}>
+      <Stack.Screen options={{ title: tr('common:screen.auction') }} />
+      <ScrollView
+        contentInsetAdjustmentBehavior="automatic"
+        contentContainerStyle={[readable, { paddingBottom: 24 }]}
+      >
+        {productRow}
+        {details}
+      </ScrollView>
+      {bar}
+      {amountSheet}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  split: { flex: 1, flexDirection: 'row' },
+  pane: { flex: 1, overflow: 'hidden' },
+  paneCaption: { position: 'absolute', left: 0, right: 0, bottom: 0, padding: 16, gap: 2 },
   product: { flexDirection: 'row', gap: 12, padding: 16, alignItems: 'center' },
   thumb: { width: 72, height: 72, overflow: 'hidden' },
   panel: {
@@ -346,7 +427,6 @@ const styles = StyleSheet.create({
   bar: {
     flexDirection: 'row',
     gap: 8,
-    paddingHorizontal: 12,
     paddingTop: 10,
     borderTopWidth: StyleSheet.hairlineWidth,
   },

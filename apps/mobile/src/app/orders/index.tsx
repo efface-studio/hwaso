@@ -14,6 +14,7 @@ import { List } from '@/components/ui/list';
 import { formatDate, formatPrice } from '@/i18n/format';
 import { api } from '@/lib/api';
 import { useTheme } from '@/theme';
+import { readable } from '@/hooks/use-layout';
 
 type Filter = OrderListQuery['filter'];
 
@@ -37,7 +38,7 @@ export default function OrdersScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: t.colors.background }}>
       <Stack.Screen options={{ title: as === 'buyer' ? tr('list.buyerTitle') : tr('list.sellerTitle') }} />
-      <View style={{ paddingVertical: 8 }}>
+      <View style={[readable, { paddingVertical: 8 }]}>
         <Chips
           label={tr('list.statusFilter')}
           value={filter}

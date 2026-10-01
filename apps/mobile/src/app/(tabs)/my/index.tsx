@@ -16,6 +16,7 @@ import { useAuthStore } from '@/stores/auth';
 import { usePrefs } from '@/stores/prefs';
 import { useTheme } from '@/theme';
 import { label } from '@/i18n/labels';
+import { readable } from '@/hooks/use-layout';
 
 function Row({
   label,
@@ -349,7 +350,7 @@ export default function MyScreen() {
 }
 
 const styles = StyleSheet.create({
-  body: { padding: 16, paddingBottom: 48 },
+  body: { ...readable, padding: 16, paddingBottom: 48 },
   profile: { paddingTop: 8, gap: 16 },
   identity: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },

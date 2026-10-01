@@ -37,6 +37,7 @@ import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
 import { useTheme } from '@/theme';
 import { schemaMessage } from '@/i18n/validation';
+import { useReadableGutter } from '@/hooks/use-layout';
 
 const DRAFT_KEY = 'hwaso.sell-draft';
 type Step = 'photos' | 'basic' | 'price' | 'auction' | 'detail' | 'review';
@@ -55,6 +56,7 @@ export default function SellNewScreen() {
   const t = useTheme();
   const { t: tr } = useTranslation(['sell', 'common']);
   const insets = useSafeAreaInsets();
+  const gutter = useReadableGutter();
   const qc = useQueryClient();
   const user = useAuthStore((s) => s.user);
   const scroll = useRef<FormScrollRef>(null);
@@ -300,6 +302,7 @@ export default function SellNewScreen() {
         style={[
           styles.bar,
           {
+            paddingHorizontal: gutter,
             paddingBottom: Math.max(insets.bottom, 12),
             borderColor: t.colors.border,
             backgroundColor: t.colors.background,
@@ -332,5 +335,5 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  bar: { paddingHorizontal: 16, paddingTop: 10, borderTopWidth: StyleSheet.hairlineWidth },
+  bar: { paddingTop: 10, borderTopWidth: StyleSheet.hairlineWidth },
 });

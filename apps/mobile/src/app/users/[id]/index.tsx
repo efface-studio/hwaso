@@ -23,6 +23,7 @@ import { requireLogin } from '@/lib/require-login';
 import { env } from '@/lib/env';
 import { useAuthStore } from '@/stores/auth';
 import { useTheme } from '@/theme';
+import { readable } from '@/hooks/use-layout';
 
 type Tab = 'selling' | 'sold' | 'reviews';
 const errMsg = (e: unknown) => (e instanceof ApiError ? e.message : i18n.t('common:state.actionFailed'));
@@ -203,7 +204,7 @@ function Header({
     ]);
 
   return (
-    <View>
+    <View style={readable}>
       <Stack.Screen
         options={{
           title: u.nickname,
@@ -236,7 +237,13 @@ function Header({
           )}
         </View>
         <View style={{ alignItems: 'center', gap: 4 }}>
-          <Text variant="h1" style={styles.name}>
+          <Text
+            variant="h1"
+            style={[
+              styles.name,
+              { fontSize: Math.round(26 * t.scale), lineHeight: Math.round(32 * t.scale) },
+            ]}
+          >
             {u.nickname}
           </Text>
           <Text variant="small" color="muted">

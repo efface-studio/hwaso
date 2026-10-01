@@ -14,6 +14,7 @@ import { api } from '@/lib/api';
 import { mediaUrl } from '@/lib/media';
 import { useAuthStore } from '@/stores/auth';
 import { useTheme } from '@/theme';
+import { readable } from '@/hooks/use-layout';
 
 export const CART_KEY = ['cart'] as const;
 
@@ -179,7 +180,7 @@ export default function CartScreen() {
 }
 
 const styles = StyleSheet.create({
-  body: { padding: 16, gap: 16 },
+  body: { ...readable, padding: 16, gap: 16 },
   group: { borderWidth: StyleSheet.hairlineWidth, borderRadius: 8, overflow: 'hidden' },
   seller: {
     flexDirection: 'row',

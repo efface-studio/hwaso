@@ -15,6 +15,7 @@ import { dt, ROLE_LABEL, USER_STATUS_LABEL } from '@/lib/admin';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
 import { useTheme, type Colors } from '@/theme';
+import { readable } from '@/hooks/use-layout';
 
 /** 조치 후 다시 불러올 목록·상세 */
 const INVALIDATE = ['users', 'user', 'sellers'];
@@ -344,7 +345,7 @@ export default function AdminMemberScreen() {
 }
 
 const styles = StyleSheet.create({
-  body: { paddingTop: 8, paddingBottom: 48 },
+  body: { ...readable, paddingTop: 8, paddingBottom: 48 },
   pad: { paddingHorizontal: 16 },
   identity: { paddingHorizontal: 16, paddingTop: 4, gap: 2 },
   statusLine: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },

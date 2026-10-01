@@ -15,6 +15,7 @@ import { appDevice } from '@/lib/device';
 import { useAuthStore } from '@/stores/auth';
 import { showWelcome } from '@/lib/welcome';
 import { useTheme } from '@/theme';
+import { NARROW_WIDTH } from '@/hooks/use-layout';
 
 /** 회원가입: 이메일 인증 → 비밀번호·닉네임·약관 (이용약관·개인정보·만 14세는 필수, 마케팅은 선택) */
 export default function SignupScreen() {
@@ -110,5 +111,5 @@ export default function SignupScreen() {
 }
 
 const styles = StyleSheet.create({
-  body: { padding: 20, gap: 16, paddingBottom: 40 },
+  body: { maxWidth: NARROW_WIDTH, padding: 20, gap: 16, paddingBottom: 40 },
 });

@@ -14,6 +14,7 @@ import { actionSheet } from '@/lib/action-sheet';
 import { dt } from '@/lib/admin';
 import { api } from '@/lib/api';
 import { useTheme } from '@/theme';
+import { readable } from '@/hooks/use-layout';
 
 const PLATFORMS: { value: OtaPlatform; label: string }[] = [
   { value: 'ios', label: 'iOS' },
@@ -156,6 +157,6 @@ export default function UpdatesScreen() {
 }
 
 const styles = StyleSheet.create({
-  body: { paddingBottom: 48 },
+  body: { ...readable, paddingBottom: 48 },
   segment: { paddingHorizontal: 16, paddingTop: 8 },
 });

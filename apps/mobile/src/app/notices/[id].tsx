@@ -7,6 +7,7 @@ import { Text } from '@/components/ui/text';
 import { formatDate } from '@/i18n/format';
 import { api } from '@/lib/api';
 import { useTheme } from '@/theme';
+import { readable } from '@/hooks/use-layout';
 
 /** 공지 상세 (본문은 줄바꿈만 있는 순수 텍스트) */
 export default function NoticeScreen() {
@@ -34,5 +35,5 @@ export default function NoticeScreen() {
 }
 
 const styles = StyleSheet.create({
-  body: { padding: 20, gap: 4, paddingBottom: 48 },
+  body: { ...readable, padding: 20, gap: 4, paddingBottom: 48 },
 });

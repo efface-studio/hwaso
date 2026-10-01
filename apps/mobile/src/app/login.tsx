@@ -123,7 +123,13 @@ export default function LoginScreen() {
           <View style={styles.hero}>
             <HwasoMark size={compact ? 52 : 64} />
             <View style={styles.titleRow}>
-              <Text variant="h1" style={compact ? styles.titleCompact : styles.title}>
+              <Text
+                variant="h1"
+                style={[
+                  compact ? styles.titleCompact : styles.title,
+                  t.scale > 1 && { fontSize: Math.round(30 * t.scale), lineHeight: Math.round(38 * t.scale) },
+                ]}
+              >
                 {tr('login.brand')}
               </Text>
               <Text variant="small" color="muted">
