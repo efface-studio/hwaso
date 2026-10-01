@@ -10,7 +10,6 @@ import {
   type ServerToClientEvents,
 } from '@shop/shared';
 import { useInfiniteQuery, useQuery, useQueryClient, type InfiniteData } from '@tanstack/react-query';
-import { Image } from 'expo-image';
 import { Link, router, Stack, useLocalSearchParams, type NativeStackNavigationOptions } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, AppState, FlatList, Pressable, StyleSheet, View, type ListRenderItem } from 'react-native';
@@ -24,6 +23,7 @@ import { Composer, type ComposerHandle } from '@/components/chat/composer';
 import { localizePreview, presenceText } from '@/components/chat/localize';
 import { PhrasesSheet } from '@/components/chat/phrases-sheet';
 import { Button } from '@/components/ui/button';
+import { MediaImage } from '@/components/ui/media-image';
 import { Empty, Loading } from '@/components/ui/state';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
@@ -34,9 +34,8 @@ import { actionSheet } from '@/lib/action-sheet';
 import { api } from '@/lib/api';
 import { askPushInContext } from '@/lib/push-prompt';
 import { goBack } from '@/lib/nav';
-import { mediaUrl } from '@/lib/media';
 import { getRealtime } from '@/lib/realtime';
-import { pickImages, uploadAsset } from '@/lib/upload';
+import { pickImages, uploadAll } from '@/lib/upload';
 import { useAuthStore } from '@/stores/auth';
 import { useTheme } from '@/theme';
 import { readable, useReadableGutter } from '@/hooks/use-layout';
@@ -438,7 +437,7 @@ export default function ChatRoomScreen() {
     const assets = await pickImages(source, CHAT_IMAGES_MAX);
     if (!assets.length) return;
     try {
-      const imgs = await Promise.all(assets.slice(0, CHAT_IMAGES_MAX).map((a) => uploadAsset(a)));
+      const imgs = await uploadAll(assets.slice(0, CHAT_IMAGES_MAX));
       send({ kind: 'IMAGE', imageKeys: imgs.map((i) => i.key) }, { image: imgs[0], images: imgs });
     } catch (e) {
       Alert.alert(tr('errors.uploadFailed'), errMsg(e));
@@ -489,8 +488,9 @@ export default function ChatRoomScreen() {
               style={[styles.thumb, { backgroundColor: r.product.image?.dominantColor ?? t.colors.surface2 }]}
             >
               {r.product.image && (
-                <Image
-                  source={mediaUrl(r.product.image.key, 400)}
+                <MediaImage
+                  mediaKey={r.product.image.key}
+                  displayWidth={44}
                   style={StyleSheet.absoluteFill}
                   contentFit="contain"
                 />

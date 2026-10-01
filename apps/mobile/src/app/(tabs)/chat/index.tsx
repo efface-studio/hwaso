@@ -1,12 +1,12 @@
 import { CHAT_ROOM_FILTERS, filterChatRooms, type ChatRoomDto, type ChatRoomFilter } from '@shop/shared';
 import { useQuery } from '@tanstack/react-query';
-import { Image } from 'expo-image';
 import { router, Stack } from 'expo-router';
 import { memo, useCallback, useState } from 'react';
 import { Pressable, StyleSheet, View, type ListRenderItem } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { localizePreview } from '@/components/chat/localize';
 import { AppRefreshControl } from '@/components/ui/app-refresh-control';
+import { MediaImage } from '@/components/ui/media-image';
 import { usePullRefresh } from '@/hooks/use-pull-refresh';
 import { Avatar } from '@/components/ui/avatar';
 import { Chips } from '@/components/ui/chips';
@@ -16,7 +16,6 @@ import { Separator } from '@/components/ui/separator';
 import { List } from '@/components/ui/list';
 import { formatRelative } from '@/i18n/format';
 import { api } from '@/lib/api';
-import { mediaUrl } from '@/lib/media';
 import { useAuthStore } from '@/stores/auth';
 import { useTheme } from '@/theme';
 
@@ -82,8 +81,9 @@ const Row = memo(function Row({
         </View>
       )}
       {r.product?.image && (
-        <Image
-          source={mediaUrl(r.product.image.key, 400)}
+        <MediaImage
+          mediaKey={r.product.image.key}
+          displayWidth={44}
           style={[styles.thumb, { backgroundColor: r.product.image.dominantColor }]}
           contentFit="cover"
         />

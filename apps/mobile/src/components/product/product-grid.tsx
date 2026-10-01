@@ -1,6 +1,6 @@
 import type { ProductCardDto, ProductListParams } from '@shop/shared';
 import { useInfiniteQuery } from '@tanstack/react-query';
-import type { ReactElement } from 'react';
+import { useMemo, type ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator } from 'react-native';
 import { AppRefreshControl } from '@/components/ui/app-refresh-control';
@@ -10,7 +10,7 @@ import { useGrid } from '@/hooks/use-grid';
 import { useInfinitePullRefresh } from '@/hooks/use-pull-refresh';
 import { api } from '@/lib/api';
 import { useTheme } from '@/theme';
-import { ProductCard } from './product-card';
+import { useCardRenderer } from './product-card';
 
 /** 작품 목록 그리드: 무한 스크롤 + 당겨서 새로고침 */
 export function ProductGrid({
@@ -25,6 +25,7 @@ export function ProductGrid({
   const t = useTheme();
   const { t: tr } = useTranslation('home');
   const g = useGrid();
+  const renderCard = useCardRenderer(g.cardWidth);
   const queryKey = ['products', params];
   const q = useInfiniteQuery({
     queryKey,
@@ -34,14 +35,16 @@ export function ProductGrid({
     getNextPageParam: (last) => last.nextCursor ?? undefined,
   });
   const pull = useInfinitePullRefresh(queryKey, q.refetch);
-  const items: ProductCardDto[] = q.data?.pages.flatMap((p) => p.items) ?? [];
+  // 페이지를 합친 배열은 데이터가 바뀔 때만 새로 만든다 (다시 그릴 때마다 새 배열이면 목록이 모든 칸을 다시 비교한다)
+  const items: ProductCardDto[] = useMemo(() => q.data?.pages.flatMap((p) => p.items) ?? [], [q.data]);
   return (
     <List
       key={g.columns}
       data={items}
       numColumns={g.columns}
       keyExtractor={(p) => p.id}
-      renderItem={({ item }) => <ProductCard p={item} width={g.cardWidth} />}
+      renderItem={renderCard}
+      {...g.listProps}
       ListHeaderComponent={header}
       ListEmptyComponent={
         q.isPending ? (

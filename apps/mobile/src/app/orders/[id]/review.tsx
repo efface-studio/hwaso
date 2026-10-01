@@ -1,7 +1,6 @@
 import { ApiError } from '@shop/api-client';
 import { containsProhibited, createReviewSchema } from '@shop/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Image } from 'expo-image';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -9,13 +8,13 @@ import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
 import { FormScroll } from '@/components/ui/form-scroll';
+import { MediaImage } from '@/components/ui/media-image';
 import { Loading } from '@/components/ui/state';
 import { Text } from '@/components/ui/text';
 import i18n from '@/i18n';
 import { api } from '@/lib/api';
-import { mediaUrl } from '@/lib/media';
 import { goBack } from '@/lib/nav';
-import { pickImages, uploadAsset } from '@/lib/upload';
+import { pickImages, uploadAll } from '@/lib/upload';
 import { useTheme } from '@/theme';
 
 const MAX_IMAGES = 5;
@@ -67,7 +66,7 @@ export default function ReviewScreen() {
     if (!assets.length) return;
     setUploading(true);
     try {
-      const keys = (await Promise.all(assets.map(uploadAsset))).map((i) => i.key);
+      const keys = (await uploadAll(assets)).map((i) => i.key);
       setImages((prev) => [...prev, ...keys].slice(0, MAX_IMAGES));
     } catch (e) {
       Alert.alert(tr('review.uploadFailed'), errMsg(e));
@@ -131,7 +130,7 @@ export default function ReviewScreen() {
       <View style={styles.photos}>
         {images.map((key) => (
           <View key={key} style={[styles.photo, { backgroundColor: t.colors.surface2 }]}>
-            <Image source={mediaUrl(key, 400)} style={StyleSheet.absoluteFill} contentFit="cover" />
+            <MediaImage mediaKey={key} displayWidth={72} style={StyleSheet.absoluteFill} contentFit="cover" />
             {!locked && (
               <Pressable
                 accessibilityRole="button"

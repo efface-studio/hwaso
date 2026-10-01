@@ -1,13 +1,12 @@
 import type { ChatMessageDto, SendMessageInput } from '@shop/shared';
-import { Image } from 'expo-image';
 import { Link } from 'expo-router';
 import { memo, useMemo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { localizePreview, systemText } from '@/components/chat/localize';
+import { MediaImage } from '@/components/ui/media-image';
 import { Text } from '@/components/ui/text';
 import { dateTimeFormat, formatPrice, formatTime } from '@/i18n/format';
-import { mediaUrl } from '@/lib/media';
 import { useTheme } from '@/theme';
 
 export type PendingMessage = ChatMessageDto & { pending?: 'sending' | 'failed'; retry?: SendMessageInput };
@@ -24,9 +23,10 @@ function Body({ m }: { m: PendingMessage }) {
   if (m.kind === 'IMAGE' && m.images.length > 1) return <ImageGrid images={m.images} />;
   if (m.kind === 'IMAGE' && m.image)
     return (
-      <Image
+      <MediaImage
         accessibilityLabel={tr('message.photo')}
-        source={mediaUrl(m.image.key, 800)}
+        mediaKey={m.image.key}
+        displayWidth={200}
         style={{
           width: 200,
           aspectRatio: m.image.width / m.image.height || 1,
@@ -41,8 +41,9 @@ function Body({ m }: { m: PendingMessage }) {
         <Pressable accessibilityRole="link" style={styles.row}>
           <View style={[styles.thumb, { backgroundColor: t.colors.background }]}>
             {m.product.image && (
-              <Image
-                source={mediaUrl(m.product.image.key, 400)}
+              <MediaImage
+                mediaKey={m.product.image.key}
+                displayWidth={52}
                 style={StyleSheet.absoluteFill}
                 contentFit="contain"
               />
@@ -86,7 +87,12 @@ function ImageGrid({ images }: { images: PendingMessage['images'] }) {
     <View style={styles.grid} accessibilityLabel={tr('message.photos', { count: images.length })}>
       {shown.map((img, i) => (
         <View key={img.key} style={[styles.cell, { backgroundColor: img.dominantColor }]}>
-          <Image source={mediaUrl(img.key, 400)} style={StyleSheet.absoluteFill} contentFit="cover" />
+          <MediaImage
+            mediaKey={img.key}
+            displayWidth={100}
+            style={StyleSheet.absoluteFill}
+            contentFit="cover"
+          />
           {rest > 0 && i === shown.length - 1 && (
             <View style={[StyleSheet.absoluteFill, styles.more]}>
               <Text variant="bodyStrong" style={{ color: '#fff' }}>

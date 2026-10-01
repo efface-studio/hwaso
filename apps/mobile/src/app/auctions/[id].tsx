@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next';
 import { Alert, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '@/components/ui/button';
+import { MediaImage } from '@/components/ui/media-image';
 import { Sheet } from '@/components/ui/sheet';
 import { Empty, Loading } from '@/components/ui/state';
 import { Text } from '@/components/ui/text';
@@ -129,8 +130,10 @@ function ProductPane({ product }: { product: AuctionSnapshot['product'] }) {
       >
         {product.image && (
           <Image
+            // 두 칸 배치(900pt 이상)의 왼쪽 칸 — 칸 폭 × 화면 배율이 w800 을 넘어 가장 큰 파생본
             source={mediaUrl(product.image.key, 1600)}
             placeholder={mediaUrl(product.image.key, 400)}
+            cachePolicy="memory-disk"
             placeholderContentFit="contain"
             style={StyleSheet.absoluteFill}
             contentFit="contain"
@@ -214,8 +217,9 @@ export default function AuctionScreen() {
           style={[styles.thumb, { backgroundColor: s.product.image?.dominantColor ?? t.colors.surface2 }]}
         >
           {s.product.image && (
-            <Image
-              source={mediaUrl(s.product.image.key, 400)}
+            <MediaImage
+              mediaKey={s.product.image.key}
+              displayWidth={72}
               style={StyleSheet.absoluteFill}
               contentFit="contain"
             />

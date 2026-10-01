@@ -3,7 +3,7 @@ import { router, Stack } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { AppRefreshControl } from '@/components/ui/app-refresh-control';
 import { useInfinitePullRefresh } from '@/hooks/use-pull-refresh';
-import { ProductCard } from '@/components/product/product-card';
+import { useCardRenderer } from '@/components/product/product-card';
 import { Empty, Loading } from '@/components/ui/state';
 import { List } from '@/components/ui/list';
 import { useGrid } from '@/hooks/use-grid';
@@ -15,6 +15,7 @@ export default function FeedScreen() {
   const t = useTheme();
   const { t: tr } = useTranslation(['home', 'common']);
   const g = useGrid();
+  const renderCard = useCardRenderer(g.cardWidth);
   const q = useInfiniteQuery({
     queryKey: ['following-feed'],
     queryFn: ({ pageParam }) => api.community.feed(pageParam),
@@ -30,7 +31,8 @@ export default function FeedScreen() {
       data={q.data?.pages.flatMap((p) => p.items) ?? []}
       numColumns={g.columns}
       keyExtractor={(p) => p.id}
-      renderItem={({ item }) => <ProductCard p={item} width={g.cardWidth} />}
+      renderItem={renderCard}
+      {...g.listProps}
       columnWrapperStyle={g.columns > 1 ? { gap: g.gap, paddingHorizontal: g.padding } : undefined}
       contentContainerStyle={{ flexGrow: 1, gap: 20, paddingVertical: 16 }}
       refreshControl={<AppRefreshControl refreshing={pull.refreshing} onRefresh={pull.onRefresh} />}

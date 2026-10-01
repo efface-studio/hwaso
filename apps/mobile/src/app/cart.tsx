@@ -1,17 +1,16 @@
 import { ApiError } from '@shop/api-client';
 import { type CartItemDto } from '@shop/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Image } from 'expo-image';
 import { router, Stack } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
+import { MediaImage } from '@/components/ui/media-image';
 import { Empty, Loading } from '@/components/ui/state';
 import { Text } from '@/components/ui/text';
 import { formatPrice } from '@/i18n/format';
 import { api } from '@/lib/api';
-import { mediaUrl } from '@/lib/media';
 import { useAuthStore } from '@/stores/auth';
 import { useTheme } from '@/theme';
 import { readable } from '@/hooks/use-layout';
@@ -98,8 +97,9 @@ export default function CartScreen() {
                   style={[styles.thumb, { backgroundColor: t.colors.backgroundSoft }]}
                 >
                   {i.product.image && (
-                    <Image
-                      source={mediaUrl(i.product.image.key, 400)}
+                    <MediaImage
+                      mediaKey={i.product.image.key}
+                      displayWidth={80}
                       style={StyleSheet.absoluteFill}
                       contentFit="contain"
                     />

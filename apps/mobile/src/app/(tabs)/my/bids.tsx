@@ -1,11 +1,11 @@
 import type { MyBidDto } from '@shop/shared';
 import { useQuery } from '@tanstack/react-query';
-import { Image } from 'expo-image';
 import { router, Stack } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { AppRefreshControl } from '@/components/ui/app-refresh-control';
+import { MediaImage } from '@/components/ui/media-image';
 import { usePullRefresh } from '@/hooks/use-pull-refresh';
 import { Button } from '@/components/ui/button';
 import { Chips } from '@/components/ui/chips';
@@ -17,7 +17,6 @@ import i18n from '@/i18n';
 import { formatPrice, formatRelative } from '@/i18n/format';
 import { label } from '@/i18n/labels';
 import { api } from '@/lib/api';
-import { mediaUrl } from '@/lib/media';
 import { useTheme, type Colors } from '@/theme';
 import { readable } from '@/hooks/use-layout';
 
@@ -91,8 +90,9 @@ export default function MyBidsScreen() {
                   style={[styles.thumb, { backgroundColor: t.colors.backgroundSoft }]}
                 >
                   {b.product.image && (
-                    <Image
-                      source={mediaUrl(b.product.image.key, 400)}
+                    <MediaImage
+                      mediaKey={b.product.image.key}
+                      displayWidth={72}
                       style={StyleSheet.absoluteFill}
                       contentFit="contain"
                     />
