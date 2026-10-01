@@ -36,9 +36,34 @@ export function encrypt(plain: string): string {
 export function decrypt(payload: string): string {
   const [iv, tag, enc] = payload.split('.').map((p) => Buffer.from(p, 'base64url'));
   if (!iv || !tag || !enc) throw new Error('invalid payload');
-  const decipher = createDecipheriv('aes-256-gcm', Buffer.from(env().DATA_ENCRYPTION_KEY, 'hex'), iv);
-  decipher.setAuthTag(tag);
-  return Buffer.concat([decipher.update(enc), decipher.final()]).toString('utf8');
+  const open = (hexKey: string) => {
+    const decipher = createDecipheriv('aes-256-gcm', Buffer.from(hexKey, 'hex'), iv);
+    decipher.setAuthTag(tag);
+    return Buffer.concat([decipher.update(enc), decipher.final()]).toString('utf8');
+  };
+  const { DATA_ENCRYPTION_KEY: current, DATA_ENCRYPTION_KEY_PREVIOUS: previous } = env();
+  try {
+    return open(current);
+  } catch (err) {
+    // 키 교체 중: 아직 재암호화하지 않은 값은 이전 키로 연다 (GCM 태그가 맞아야만 성공)
+    if (!previous) throw err;
+    return open(previous);
+  }
+}
+
+/** 현재 키로 암호화된 값인지 — 키 교체 후 재암호화 대상을 고를 때 쓴다 */
+export function isCurrentKey(payload: string): boolean {
+  const [iv, tag, enc] = payload.split('.').map((p) => Buffer.from(p, 'base64url'));
+  if (!iv || !tag || !enc) return false;
+  try {
+    const decipher = createDecipheriv('aes-256-gcm', Buffer.from(env().DATA_ENCRYPTION_KEY, 'hex'), iv);
+    decipher.setAuthTag(tag);
+    decipher.update(enc);
+    decipher.final();
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /** "1234567890123" → "*********0123" */

@@ -233,6 +233,7 @@ export class AuthController {
   @DemoBlocked()
   @Post('password/reset')
   @HttpCode(204)
+  @RateLimit({ name: 'password-reset', limit: 10, windowSec: 600, by: 'ip' })
   resetPassword(@Body(new ZodPipe(resetPasswordSchema)) body: ResetPasswordInput, @Req() req: Request) {
     return this.auth.resetPassword(body, client(req));
   }
@@ -241,6 +242,8 @@ export class AuthController {
   @DemoBlocked()
   @Post('password/change')
   @HttpCode(204)
+  // 탈취한 access 토큰으로 현재 비밀번호를 대입하지 못하게 (웹은 재인증 예외라 이 한도가 유일한 방어)
+  @RateLimit({ name: 'password-change', limit: 10, windowSec: 600, by: 'user' })
   async changePassword(
     @CurrentUser() user: AuthUser,
     @Body(new ZodPipe(changePasswordSchema)) body: ChangePasswordInput,
@@ -340,6 +343,7 @@ export class AuthController {
   @DemoBlocked()
   @Delete('account')
   @HttpCode(204)
+  @RateLimit({ name: 'account-delete', limit: 10, windowSec: 600, by: 'user' })
   async deleteAccount(
     @CurrentUser() user: AuthUser,
     @Body(new ZodPipe(deleteAccountSchema)) body: DeleteAccountInput,
@@ -354,6 +358,8 @@ export class AuthController {
   @Public()
   @DemoBlocked()
   @Get('oauth/:provider/url')
+  // 호출마다 Redis 에 state 를 10분 저장한다 — 대량 호출로 메모리를 채우지 못하게
+  @RateLimit({ name: 'oauth-url', limit: 30, windowSec: 60, by: 'ip' })
   oauthUrl(@Param('provider') p: string, @Query(new ZodPipe(urlQuery)) q: z.infer<typeof urlQuery>) {
     if (!q.redirectUri && !q.appRedirect) throw new AppException('VALIDATION_FAILED');
     return this.oauth.authorizeUrl(providerFromParam(p), q.redirectUri ?? '', q.appRedirect);

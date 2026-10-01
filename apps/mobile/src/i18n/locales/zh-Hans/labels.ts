@@ -85,6 +85,11 @@ const zhHans: Translation<typeof ko> = {
     SECURITY_NEW_DEVICE: '新设备登录',
     WELCOME: '注册成功',
     SYSTEM: '通知',
+    ADMIN_REPORT: '收到举报',
+    ADMIN_SELLER_PENDING: '卖家认证申请',
+    ADMIN_CERTIFICATE_PENDING: '鉴定证书审核请求',
+    ADMIN_PAYMENT_ISSUE: '支付异常',
+    ADMIN_APP_UPDATE: '应用更新',
   },
   productStatus: {
     DRAFT: '草稿',

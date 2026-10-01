@@ -173,6 +173,12 @@ enum NotificationType {
   FOLLOWING_NEW_ITEM
   SECURITY_NEW_DEVICE
   WELCOME
+  /// 관리자 알림 (관리자만 받는다 — docs/API.md "Notifications")
+  ADMIN_REPORT
+  ADMIN_SELLER_PENDING
+  ADMIN_CERTIFICATE_PENDING
+  ADMIN_PAYMENT_ISSUE
+  ADMIN_APP_UPDATE
 }
 
 enum SecurityEventType {
@@ -242,7 +248,7 @@ model User {
   emailVerifiedAt    DateTime?  @db.Timestamptz
   role               Role       @default(USER)
   status             UserStatus @default(ACTIVE)
-  /// 알림 설정: { push: { auction, trade, chat, activity }, quietHours } (docs/API.md)
+  /// 알림 설정: { push: { auction, trade, chat, activity }, quietHours, admin? } (docs/API.md)
   /// 정지 사유 등 운영 조치 사유 (회원에게 로그인 시 안내)
   statusReason       String?
   /// 기간 정지 종료 시각. SUSPENDED 인데 null 이면 영구 정지 (지나면 로그인·워커가 해제)

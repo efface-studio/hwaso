@@ -15,6 +15,8 @@ import { z } from 'zod';
 import { AuditService, type AuditContext } from '../admin/audit.service';
 import { AppException } from '../common/app-exception';
 import { env } from '../config/env';
+import { AdminNotifier } from '../notifications/admin-notifier';
+import { logNotifyError } from '../notifications/notification-events';
 import { PrismaService, type Tx } from '../prisma/prisma.service';
 import { PUBLIC_PREFIX, S3Service } from '../storage/s3.service';
 import {
@@ -75,6 +77,7 @@ export class OtaService {
     private readonly prisma: PrismaService,
     private readonly s3: S3Service,
     private readonly audit: AuditService,
+    private readonly admins: AdminNotifier,
   ) {}
 
   // ───── 앱 ─────
@@ -176,6 +179,8 @@ export class OtaService {
         createdAt: await this.nextCreatedAt(this.prisma, input),
       },
     });
+    // 배포 스크립트(토큰)로 올라오므로 일으킨 관리자가 없다 — 관리자 전원에게
+    void this.admins.appUpdate(row).catch(logNotifyError);
     return toOtaDto(row);
   }
 
@@ -244,6 +249,7 @@ export class OtaService {
       ...input,
       rolledBack: result.rolledBack,
     });
+    void this.admins.appUpdate(result.row, { rollback: true, actorId: ctx.user.id }).catch(logNotifyError);
     return toOtaDto(result.row);
   }
 

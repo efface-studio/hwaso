@@ -58,9 +58,17 @@ API 통합 테스트는 **모킹하지 않은 DB** 로 돈다. 동시성·잠금
 
 ## E2E
 
-- 로컬: API(4000)·웹(3000)을 띄운 상태에서 `pnpm --filter @shop/web e2e`. 시드 계정(buyer1~4, seller1~5)을 쓰며, 관리자 테스트는 시드 기본 관리자(`admin@shop.local`)가 있어야 통과한다.
+- 로컬: API(4000)·웹(3000)을 띄운 상태에서 `pnpm --filter @shop/web e2e`. 시드 계정(buyer1~4, seller1~5)을 쓰며, 관리자 테스트는 시드 관리자(`admin@shop.local`)를 `SEED_ADMIN_PASSWORD`(시드 계정 비밀번호와 같게) 로 만들어 두어야 통과한다.
 - CI(`e2e` 잡): 빌드 → `prisma migrate deploy` → `SEED_OFFLINE=1` 시드(이미지 다운로드·S3 없이 고정 키) → Playwright 가 API·웹을 띄워 실행. 실패하면 리포트·트레이스를 아티팩트로 올린다.
 - 시드 데이터를 공유하므로 한 워커로 순서대로 돈다. 데이터 준비(배송지·입찰 가능한 경매 찾기)는 API 로 한다.
+
+## 시드 안전장치 (`prisma/seed-guard.ts`)
+
+시드는 DB 를 비우고 저장소에 공개된 기본 비밀번호로 계정을 만든다. 그래서:
+
+- `NODE_ENV=production` 이면 실행하지 않는다.
+- DB 이름이 운영 DB(`shop`)면 `SEED_ALLOW_PRODUCTION=1` 을 명시해야 실행된다. 개발 API 도 같은 DB 를 쓰므로 실수로 운영 데이터를 지우지 않게 한다. 개발용으로는 별도 DB(예: `shop_dev`)를 권장한다.
+- 최고 관리자(`SUPER_ADMIN`)는 `SEED_ADMIN_PASSWORD` 를 지정했을 때만 그 비밀번호로 만든다. 없으면 아무도 모르는 임의 비밀번호라 로그인할 수 없다 — 기본 비밀번호의 최고 관리자가 생기지 않게.
 
 ## 기준
 

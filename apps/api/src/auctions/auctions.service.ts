@@ -192,11 +192,14 @@ export class AuctionsService {
   async schedule(user: AuthUser, id: string) {
     const a = await this.owned(user, id);
     await this.assertSchedule(a.startsAt, a.endsAt, a.startPrice, a.buyNowPrice, true);
-    const updated = await this.transition(id, 'DRAFT', 'SCHEDULED');
     const product = await this.prisma.product.findUniqueOrThrow({
       where: { id: a.productId },
-      select: { publishedAt: true },
+      select: { publishedAt: true, status: true, deletedAt: true },
     });
+    // 관리자가 숨긴(SUSPENDED)·삭제된 작품은 예약 취소 → 재예약으로 다시 공개하지 못한다
+    if (product.status === 'SUSPENDED' || product.deletedAt)
+      throw new AppException('PRODUCT_NOT_EDITABLE', '게시가 중지된 작품은 경매를 예약할 수 없습니다.');
+    const updated = await this.transition(id, 'DRAFT', 'SCHEDULED');
     await this.prisma.product.update({
       where: { id: a.productId },
       data: { status: 'ACTIVE', publishedAt: product.publishedAt ?? new Date(), listPrice: a.startPrice },
@@ -212,7 +215,11 @@ export class AuctionsService {
     if (a.startsAt <= new Date())
       throw new AppException('INVALID_TRANSITION', '이미 시작 시간이 지났습니다.');
     const updated = await this.transition(id, 'SCHEDULED', 'DRAFT');
-    await this.prisma.product.update({ where: { id: a.productId }, data: { status: 'DRAFT' } });
+    // 관리자 게시 중지(SUSPENDED)는 유지한다
+    await this.prisma.product.updateMany({
+      where: { id: a.productId, status: { not: 'SUSPENDED' } },
+      data: { status: 'DRAFT' },
+    });
     await this.redis.del(HOME_CACHE_KEY);
     return toAuctionDto(updated);
   }
