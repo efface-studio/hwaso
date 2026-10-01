@@ -9,25 +9,12 @@ import { Logo } from '@/components/layout/logo';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { api } from '@/lib/api';
-import { completeLogin, OAUTH_MODE_KEY, oauthRedirectUri, safeNext } from '@/lib/auth';
+import { completeLogin, oauthRedirectUri } from '@/lib/auth';
 import { webDevice } from '@/lib/device';
+import { oauthStateMatches, takeOAuthIntent } from '@/lib/redirect';
 import { toast } from '@/stores/toast';
 
 const PROVIDERS: AuthProvider[] = ['GOOGLE', 'APPLE', 'KAKAO', 'NAVER'];
-
-function readMode(): { mode: 'login' | 'link'; next: string } {
-  try {
-    const raw = sessionStorage.getItem(OAUTH_MODE_KEY);
-    sessionStorage.removeItem(OAUTH_MODE_KEY);
-    if (raw) {
-      const v = JSON.parse(raw) as { mode?: string; next?: string };
-      return { mode: v.mode === 'link' ? 'link' : 'login', next: safeNext(v.next) };
-    }
-  } catch {
-    // 기본값으로 진행
-  }
-  return { mode: 'login', next: '/' };
-}
 
 function Callback() {
   const { provider: raw } = useParams<{ provider: string }>();
@@ -42,10 +29,17 @@ function Callback() {
     const provider = raw.toUpperCase() as AuthProvider;
     const code = params.get('code');
     const state = params.get('state');
-    const { mode, next } = readMode();
+    const intent = takeOAuthIntent();
+    const mode = intent?.mode ?? 'login';
+    const next = intent?.next ?? '/';
 
     if (!PROVIDERS.includes(provider) || params.get('error') || !code || !state) {
       setError('로그인이 취소되었거나 요청이 올바르지 않습니다.');
+      return;
+    }
+    // 이 탭에서 시작한 로그인이 아니면 거부한다 (다른 사람의 code/state 링크로 그 계정에 로그인되는 것 방지)
+    if (!oauthStateMatches(intent, state)) {
+      setError('로그인 요청이 만료되었거나 올바르지 않습니다. 다시 시도해주세요.');
       return;
     }
     const redirectUri = oauthRedirectUri(provider);

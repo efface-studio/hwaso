@@ -1,9 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 import type { Notification, NotificationType, Prisma } from '@prisma/client';
 import {
+  ADMIN_ROLES,
   NOTIFICATION_CATEGORY,
   inQuietHours,
+  resolveAdminNotificationPrefs,
   resolveNotificationPrefs,
+  type Role,
   type NotificationDto,
   type NotificationPrefs,
   type Page,
@@ -100,7 +103,8 @@ export class NotificationsService {
       const pushTo = (input.push === false ? [] : users)
         .filter((u) => {
           const prefs = resolveNotificationPrefs(u.notificationPrefs);
-          const allowed = category === 'system' || prefs.push[category];
+          // 관리자 알림은 받는 사람을 고를 때 관리자 설정으로 이미 걸렀다 (admin-notifier)
+          const allowed = category === 'system' || category === 'admin' || prefs.push[category];
           return allowed && !(prefs.quietHours && quiet);
         })
         .map((u) => u.id);
@@ -199,17 +203,34 @@ export class NotificationsService {
 
   // ───── 설정 · 푸시 토큰 ─────
 
-  async prefs(userId: string): Promise<NotificationPrefs> {
-    const u = await this.prisma.user.findUniqueOrThrow({
-      where: { id: userId },
-      select: { notificationPrefs: true },
-    });
-    return resolveNotificationPrefs(u.notificationPrefs);
+  /** 관리자에게만 관리자 알림 설정(admin)을 함께 돌려준다 */
+  private prefsView(raw: unknown, role: Role): NotificationPrefs {
+    const prefs = resolveNotificationPrefs(raw);
+    if (!ADMIN_ROLES.includes(role)) return prefs;
+    return { ...prefs, admin: resolveAdminNotificationPrefs((raw as { admin?: unknown } | null)?.admin) };
   }
 
-  async setPrefs(userId: string, prefs: NotificationPrefs) {
-    await this.prisma.user.update({ where: { id: userId }, data: { notificationPrefs: prefs as object } });
-    return prefs;
+  async prefs(user: { id: string; role: Role }): Promise<NotificationPrefs> {
+    const u = await this.prisma.user.findUniqueOrThrow({
+      where: { id: user.id },
+      select: { notificationPrefs: true },
+    });
+    return this.prefsView(u.notificationPrefs, user.role);
+  }
+
+  /**
+   * 관리자가 아니면 admin 은 무시한다(저장하지 않음). 관리자가 admin 을 빼고 보내면(이전 앱) 저장된 값을 유지한다
+   */
+  async setPrefs(user: { id: string; role: Role }, input: NotificationPrefs) {
+    const u = await this.prisma.user.findUniqueOrThrow({
+      where: { id: user.id },
+      select: { notificationPrefs: true },
+    });
+    const stored = (u.notificationPrefs as { admin?: unknown } | null)?.admin;
+    const admin = ADMIN_ROLES.includes(user.role) && input.admin ? input.admin : stored;
+    const next = { push: input.push, quietHours: input.quietHours, ...(admin ? { admin } : {}) };
+    await this.prisma.user.update({ where: { id: user.id }, data: { notificationPrefs: next as object } });
+    return this.prefsView(next, user.role);
   }
 
   /** 같은 기기 토큰이 다른 계정에 있으면 현재 로그인 계정으로 옮긴다 (기기당 한 계정) */

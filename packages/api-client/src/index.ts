@@ -13,7 +13,7 @@ export type { UploadedImage } from './endpoints/market';
 export type { OrderCounts } from './endpoints/orders';
 export type { BlockedUser } from './endpoints/chat';
 export { newIdempotencyKey, type BidResult } from './endpoints/auctions';
-export { createRealtime, type RealtimeSocket } from './realtime';
+export { createLogStream, createRealtime, type LogStreamSocket, type RealtimeSocket } from './realtime';
 export { ApiError, buildQuery, createHttp, type Http, type HttpConfig, type Query } from './http';
 
 export function createApiClient(config: HttpConfig) {
