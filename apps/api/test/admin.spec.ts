@@ -81,6 +81,50 @@ describe('access', () => {
   });
 });
 
+describe('dashboard', () => {
+  it('14-day series splits on Korean midnight and the whole dashboard is cached for 30s', async () => {
+    const DAY = 86_400_000;
+    const kst = new Date(Date.now() + 9 * 3_600_000);
+    kst.setUTCHours(0, 0, 0, 0);
+    const today = new Date(kst.getTime() - 9 * 3_600_000);
+    // 한국 시간 자정 직전·정각 경계에 가입·결제
+    const before = await createUser(t);
+    const at = await createUser(t);
+    await t.prisma.user.update({
+      where: { id: before.id },
+      data: { createdAt: new Date(today.getTime() - 1) },
+    });
+    await t.prisma.user.update({ where: { id: at.id }, data: { createdAt: today } });
+    const { orderId } = await paidOrder();
+    await t.prisma.order.update({ where: { id: orderId }, data: { paidAt: new Date(today.getTime() - 1) } });
+
+    const admin = await createUser(t, 'ADMIN');
+    await t.redis.del('admin:dashboard');
+    const d = await t.http.get(`${A}/dashboard`).set(admin.auth).expect(200);
+    const series = d.body.series as { date: string; signups: number; orders: number; gmv: number }[];
+    expect(series.at(-1)!.date).toBe(kst.toISOString().slice(0, 10));
+    for (const [i, day] of series.entries()) {
+      const start = new Date(today.getTime() - (13 - i) * DAY);
+      const range = { gte: start, lt: new Date(start.getTime() + DAY) };
+      const orders = await t.prisma.order.aggregate({
+        where: { paidAt: range },
+        _count: true,
+        _sum: { totalAmount: true },
+      });
+      expect(day).toEqual({
+        date: new Date(start.getTime() + 9 * 3_600_000).toISOString().slice(0, 10),
+        signups: await t.prisma.user.count({ where: { createdAt: range } }),
+        orders: orders._count,
+        gmv: Number(orders._sum.totalAmount ?? 0),
+      });
+    }
+
+    await createUser(t);
+    const cached = await t.http.get(`${A}/dashboard`).set(admin.auth).expect(200);
+    expect(cached.body.users.total).toBe(d.body.users.total);
+  });
+});
+
 describe('members', () => {
   it('suspend logs the user out with a reason, restore brings them back', async () => {
     const admin = await createUser(t, 'ADMIN');

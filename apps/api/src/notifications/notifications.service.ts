@@ -13,7 +13,7 @@ import { AppException } from '../common/app-exception';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeService } from '../realtime/realtime';
 import { env } from '../config/env';
-import { PushService, type PushSender } from './push.service';
+import { PushService, type PushMessage, type PushSender } from './push.service';
 
 export interface NotifyInput {
   type: NotificationType;
@@ -30,6 +30,7 @@ export interface NotifyInput {
 }
 
 const PAGE = 30;
+const PUSH_CONCURRENCY = 10;
 
 export const toNotificationDto = (n: Notification): NotificationDto => ({
   id: n.id,
@@ -59,41 +60,56 @@ export class NotificationsService {
     const ids = [...new Set((Array.isArray(userIds) ? userIds : [userIds]).filter((x): x is string => !!x))];
     if (!ids.length) return;
     try {
-      // ponytail: 수신자별 순차 처리 — 관심 수천 명 단위 발송이 느려지면 큐(BullMQ)로 분리
+      // ponytail: 수신자 전체를 한 번에 저장 — 관심 수천 명 단위 발송이 느려지면 큐(BullMQ)로 분리
       const users = await this.prisma.user.findMany({
         where: { id: { in: ids }, status: { not: 'DELETED' } },
         select: { id: true, notificationPrefs: true },
       });
+      if (!users.length) return;
       const category = NOTIFICATION_CATEGORY[input.type];
-      for (const u of users) {
-        if (input.store !== false) {
-          const n = await this.prisma.notification.create({
-            data: {
-              userId: u.id,
-              type: input.type,
-              title: input.title,
-              body: input.body,
-              link: input.link ?? null,
-              data: (input.data ?? undefined) as object | undefined,
-            },
-          });
-          this.realtime.toUser(u.id, 'NOTIFICATION', {
+      const quiet = inQuietHours();
+      const created =
+        input.store === false
+          ? []
+          : await this.prisma.notification.createManyAndReturn({
+              data: users.map((u) => ({
+                userId: u.id,
+                type: input.type,
+                title: input.title,
+                body: input.body,
+                link: input.link ?? null,
+                data: (input.data ?? undefined) as object | undefined,
+              })),
+            });
+
+      const pushTo = users
+        .filter((u) => {
+          const prefs = resolveNotificationPrefs(u.notificationPrefs);
+          const allowed = category === 'system' || prefs.push[category];
+          return allowed && !(prefs.quietHours && quiet);
+        })
+        .map((u) => u.id);
+      if (pushTo.length)
+        void this.sendPushes(pushTo, {
+          title: input.title,
+          body: input.body,
+          link: input.link,
+          sender: input.sender,
+          threadId: input.threadId,
+        });
+
+      if (created.length) {
+        const counts = await this.prisma.notification.groupBy({
+          by: ['userId'],
+          where: { userId: { in: created.map((n) => n.userId) }, readAt: null },
+          _count: true,
+        });
+        const unread = new Map(counts.map((c) => [c.userId, c._count]));
+        for (const n of created)
+          this.realtime.toUser(n.userId, 'NOTIFICATION', {
             notification: toNotificationDto(n),
-            unreadCount: await this.unreadCount(u.id),
+            unreadCount: unread.get(n.userId) ?? 0,
           });
-        }
-        const prefs = resolveNotificationPrefs(u.notificationPrefs);
-        const allowed = category === 'system' || prefs.push[category];
-        if (allowed && !(prefs.quietHours && inQuietHours()))
-          void this.push
-            .send(u.id, {
-              title: input.title,
-              body: input.body,
-              link: input.link,
-              sender: input.sender,
-              threadId: input.threadId,
-            })
-            .catch((err: unknown) => this.logger.warn({ err }, 'push failed'));
       }
     } catch (err) {
       this.logger.error({ err, type: input.type }, 'notify failed');
@@ -113,6 +129,19 @@ export class NotificationsService {
       name: p.nickname,
       avatarUrl: p.avatarKey ? `${env().MEDIA_PUBLIC_URL}/${p.avatarKey}/w400.webp` : null,
     };
+  }
+
+  /** 푸시는 응답을 기다리지 않되, 수신자가 많아도 동시에 PUSH_CONCURRENCY 명까지만 보낸다 */
+  private async sendPushes(userIds: string[], msg: PushMessage) {
+    for (let i = 0; i < userIds.length; i += PUSH_CONCURRENCY) {
+      await Promise.all(
+        userIds
+          .slice(i, i + PUSH_CONCURRENCY)
+          .map((id) =>
+            this.push.send(id, msg).catch((err: unknown) => this.logger.warn({ err }, 'push failed')),
+          ),
+      );
+    }
   }
 
   // ───── 알림함 ─────

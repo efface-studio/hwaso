@@ -4,7 +4,7 @@ import { AppException } from '../common/app-exception';
 import type { AuthUser } from '../common/auth';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { cardInclude, PUBLIC_PRODUCT, toCard } from '../products/product.mapper';
+import { cardSelect, PUBLIC_PRODUCT, toCard } from '../products/product.mapper';
 import { decodeCursor, encodeCursor, ProductsService } from '../products/products.service';
 
 const PAGE = 30;
@@ -105,7 +105,7 @@ export class FollowsService {
     const where = { ...PUBLIC_PRODUCT, seller: { followers: { some: { followerId: user.id } } } };
     const rows = await this.prisma.product.findMany({
       where,
-      include: cardInclude,
+      select: cardSelect,
       orderBy: [{ publishedAt: 'desc' }, { id: 'desc' }],
       skip: offset,
       take: 24 + 1,

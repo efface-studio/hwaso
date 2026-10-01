@@ -5,7 +5,7 @@ import { AppException } from '../common/app-exception';
 import { CurrentUser, OptionalAuth, type AuthUser } from '../common/auth';
 import { ZodPipe } from '../common/zod.pipe';
 import { PrismaService } from '../prisma/prisma.service';
-import { cardInclude, toCard, VISIBLE_PRODUCT } from '../products/product.mapper';
+import { cardSelect, toCard, VISIBLE_PRODUCT } from '../products/product.mapper';
 import { ProductsModule } from '../products/products.controller';
 import { ProductsService } from '../products/products.service';
 
@@ -91,7 +91,7 @@ export class UsersController {
           { status: q.tab === 'sold' ? 'SOLD' : { in: ['ACTIVE', 'RESERVED'] } },
         ],
       },
-      include: cardInclude,
+      select: cardSelect,
       orderBy: { publishedAt: 'desc' },
       take: 120,
     });
