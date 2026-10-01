@@ -92,7 +92,7 @@ PostgreSQL 16 · Prisma 6. 스키마 원본은 `apps/api/prisma/schema.prisma` �
 | `RecentView`   | userId, productId, viewedAt                                                                                                                                                                                                                                                                                                                                        | PK(userId, productId)                                                    |
 | `Inquiry`      | productId, userId, question, answer?, answeredAt?, isPrivate                                                                                                                                                                                                                                                                                                       | 상품 문의                                                                |
 
-인덱스: `Product(status, publishedAt desc)`, `Product(categoryId, status)`, `Product(sellerId, status)`, `Product(listPrice)`, `Product(favoriteCount)`, 공개 목록 최신순 부분 인덱스 `product_published_idx (publishedAt desc, id) WHERE deletedAt IS NULL AND publishedAt IS NOT NULL`, GIN trigram `Product.title`·`maker/brand/era/material` 결합식·`Artist.name`·`Profile.nickname`.
+인덱스: `Product(status, publishedAt desc)`, `Product(categoryId, status)`, `Product(sellerId, status)`, `Product(listPrice)`, `Product(favoriteCount)`, 공개 목록 최신순 부분 인덱스 `product_published_idx (publishedAt desc, id) WHERE deletedAt IS NULL AND publishedAt IS NOT NULL`, 공개 상품 개수(전체·카테고리)용 같은 조건의 부분 인덱스 `product_public_status_category_idx (status, categoryId)` — index-only scan 으로 세어 Product 순차 스캔을 피한다, GIN trigram `Product.title`·`maker/brand/era/material` 결합식·`Artist.name`·`Profile.nickname`.
 
 부분 인덱스 조건에 `status` 를 넣지 않는 이유: Prisma 는 enum 값을 바인드 파라미터로 보내므로 `status IN (...)` 가 인덱스 조건을 만족한다고 플래너가 증명하지 못한다. `status` 는 인덱스를 따라 읽으며 거른다.
 
@@ -109,7 +109,9 @@ CHECK 제약:
 - `"currentPrice" >= "startPrice"`, `"bidIncrement" > 0`, `"endsAt" > "startsAt"`, `"buyNowPrice" IS NULL OR "buyNowPrice" > "startPrice"`
 - `AuctionBid.amount > 0`
 
-인덱스: `Auction(status, endsAt)`, `Auction(status, startsAt)`, `AuctionBid(auctionId, createdAt desc)`, `AuctionBid(bidderId, createdAt desc)`.
+인덱스: `Auction(status, endsAt)`, `Auction(status, startsAt)`, 종료된 경매 최근 종료순 부분 인덱스 `auction_ended_idx (endedAt desc) WHERE endedAt IS NOT NULL` (ENDED·SETTLED 는 항상 endedAt 이 있어 쿼리에 `endedAt IS NOT NULL` 을 함께 건다), `AuctionBid(auctionId, createdAt desc)`, `AuctionBid(bidderId, createdAt desc)`.
+
+경매 목록(`/auctions`)과 상품 목록 마감 임박순(`sort=ending_soon`)은 **Auction 에서 출발**해 위 인덱스 순서대로 읽고 상품 조건은 PK 로 확인한다. 상품 쪽에서 `auction.endsAt` 으로 정렬하면 Prisma 가 Auction 을 두 번 조인해 Product 전체를 해시 조인으로 훑는다 (3만 건 기준 약 20ms → 1ms 미만).
 
 ### 주문·결제·배송·정산
 
@@ -162,6 +164,7 @@ CHECK 제약:
 - `prisma migrate dev` 로 생성하며, 커밋된 migration SQL 은 이후 수정하지 않는다.
 - Prisma 가 표현하지 못하는 것(CHECK, pg_trgm 확장/GIN 인덱스, 부분 인덱스)은 생성된 migration SQL 에 수동 추가하고 schema.prisma 해당 모델에 주석으로 남긴다.
 - 운영 적용은 `prisma migrate deploy`.
+- `migrate deploy` 는 마이그레이션을 트랜잭션으로 실행하므로 `CREATE INDEX CONCURRENTLY` 를 쓸 수 없다. 일반 `CREATE INDEX` 는 만드는 동안 그 표의 **쓰기**(INSERT·UPDATE·DELETE)를 막는다 (읽기는 된다). 표가 커서 잠금이 길어질 것 같으면 배포 전에 같은 이름의 인덱스를 `CONCURRENTLY` 로 먼저 만들어 두고, 마이그레이션은 `CREATE INDEX IF NOT EXISTS` 로 건너뛰게 쓴다 (`20261004000000_perf_list_indexes`).
 
 ## 시드
 

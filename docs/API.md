@@ -42,6 +42,11 @@ NestJS REST API. Base URL `/api/v1`. 모든 요청/응답은 JSON (업로드 제
 
 `?cursor=&limit=` (기본 24, 최대 60). 커서는 `(sortValue, id)` 를 base64url 로 인코딩한 불투명 문자열.
 
+상품·경매 목록(`/products`, `/auctions`)의 `{items, nextCursor, total}`:
+
+- `nextCursor` 는 `limit + 1` 건을 읽어 정한다 — `total` 과 무관하게 정확하다.
+- `total` 은 다음 페이지가 없으면 `지금까지 넘긴 수 + 이번 건수` 로 정하고(개수 쿼리 없음), 있으면 개수를 세서 Redis 에 30초 캐시한다 (같은 조건 기준, 상품 게시·수정·중지·재개·삭제·경매 예약/취소·시작/종료 때 즉시 무효). 주문·채팅으로 판매 완료·예약 중이 되는 변경은 무효화하지 않아 개수가 최대 30초 늦을 수 있다 — 목록 자체(`items`)는 항상 DB 를 읽는다.
+
 ### 금액
 
 요청/응답 모두 정수(원). 소수·문자열 금액은 400.
@@ -75,6 +80,8 @@ NestJS REST API. Base URL `/api/v1`. 모든 요청/응답은 JSON (업로드 제
   | 300s    | `/sitemap`, `/auth/providers`, `/notifications/push-config`                               |
 
   홈·목록·상세처럼 `isFavorite`·경매 가격이 들어가는 응답과 로그인 사용자 응답에는 걸지 않는다. 에러 응답은 항상 `Cache-Control: no-store`.
+
+- **서버 캐시 (Redis, 공개 집계)**: 홈 섹션 60초, 목록 `total` 30초, `/products/facets` 60초, 검색어별 후보 상품 id 60초. 홈 외의 집계는 세대 번호(`catalog:ver`)를 키에 넣고, 상품·경매 노출이 바뀌면 세대를 올려 한 번에 무효화한다 (docs/ARCHITECTURE.md §8). 검색 후보가 캐시되어 있어도 목록은 공개 조건·필터·정렬을 DB 에서 다시 확인한다.
 
 ### 응답 크기
 

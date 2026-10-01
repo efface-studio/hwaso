@@ -6,7 +6,7 @@ import { logNotifyError, NotificationEvents } from '../notifications/notificatio
 import { RedisService } from '../redis/redis.service';
 import { readAuctionPolicy } from './auction-policy';
 import { finalizeAuction } from './finalize';
-import { HOME_CACHE_KEY } from '../products/products.service';
+import { invalidateCatalog } from '../products/catalog-cache';
 
 const TICK_MS = 1000;
 const BATCH = 50;
@@ -21,7 +21,7 @@ export class AuctionScheduler implements OnApplicationBootstrap, OnApplicationSh
   private readonly logger = new Logger(AuctionScheduler.name);
   private timer: ReturnType<typeof setInterval> | null = null;
   private running = false;
-  /** 이번 틱에 경매 상태가 바뀌었으면 틱 끝에 홈 캐시를 한 번만 지운다 */
+  /** 이번 틱에 경매 상태가 바뀌었으면 틱 끝에 홈·목록 집계 캐시를 한 번만 무효화한다 */
   private homeDirty = false;
 
   constructor(
@@ -55,9 +55,9 @@ export class AuctionScheduler implements OnApplicationBootstrap, OnApplicationSh
     } finally {
       if (this.homeDirty) {
         this.homeDirty = false;
-        await this.redis
-          .del(HOME_CACHE_KEY)
-          .catch((err: unknown) => this.logger.warn({ err }, 'home cache invalidation failed'));
+        await invalidateCatalog(this.redis).catch((err: unknown) =>
+          this.logger.warn({ err }, 'catalog cache invalidation failed'),
+        );
       }
       this.running = false;
     }

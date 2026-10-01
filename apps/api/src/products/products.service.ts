@@ -15,8 +15,10 @@ import type { AuthUser } from '../common/auth';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 import { SafetyService } from '../safety/safety.controller';
+import { catalogCached, HOME_CACHE_KEY } from './catalog-cache';
 import {
   cardSelect,
+  type CardRow,
   detailInclude,
   PUBLIC_PRODUCT,
   PUBLIC_PRODUCT_SQL,
@@ -30,15 +32,34 @@ const RELEVANCE_CANDIDATES = 500;
 /** 검색 후보 id 가 이보다 많으면(흔한 검색어) id 목록 대신 기존 OR 조건으로 찾는다 */
 const SEARCH_ID_LIMIT = 5000;
 const RECENT_VIEWS_KEEP = 50;
-/** 홈 섹션 캐시 키 — 상품·경매가 바뀌면 지운다 */
-export const HOME_CACHE_KEY = 'home:v3';
+export { HOME_CACHE_KEY };
 /** 홈 재생성 중 다른 요청에 내줄 직전 값 (무효화해도 지우지 않는다) */
 const HOME_STALE_KEY = `${HOME_CACHE_KEY}:stale`;
 const HOME_LOCK_KEY = `${HOME_CACHE_KEY}:lock`;
 const HOME_TTL_SEC = 60;
 const POPULAR_ARTISTS_TTL_SEC = 300;
+/** 목록 전체 개수·검색 후보·필터 선택지 캐시 (catalog-cache.ts — 상품이 바뀌면 세대가 올라 바로 무효) */
+const COUNT_TTL_SEC = 30;
+const SEARCH_TTL_SEC = 60;
+const FACETS_TTL_SEC = 60;
 
 export const encodeCursor = (offset: number) => Buffer.from(String(offset)).toString('base64url');
+
+/**
+ * limit+1 건을 읽은 결과로 다음 페이지 여부를 정한다. 전체 개수는 다음 페이지가 있을 때만 센다
+ * (마지막 페이지면 offset + 건수가 곧 전체 개수. 빈 페이지인데 offset 이 있으면 커서가 끝을 넘은 것이라 센다)
+ */
+export async function paginate<T>(found: T[], limit: number, offset: number, count: () => Promise<number>) {
+  const rows = found.slice(0, limit);
+  const hasMore = found.length > limit;
+  let total = offset + rows.length;
+  if (hasMore || (!rows.length && offset)) {
+    const n = await count();
+    // 캐시된 개수가 조금 낡았어도 다음 페이지가 있다는 사실과 어긋나지 않게
+    total = hasMore ? Math.max(n, offset + found.length) : n;
+  }
+  return { rows, nextCursor: hasMore ? encodeCursor(offset + rows.length) : null, total };
+}
 export function decodeCursor(cursor?: string): number {
   if (!cursor) return 0;
   const n = Number(Buffer.from(cursor, 'base64url').toString());
@@ -109,9 +130,8 @@ export class ProductsService {
     if (q.region?.length) and.push({ OR: q.region.map((v) => ({ region: { startsWith: v } })) });
     if (q.auctionOnly) and.push({ saleType: 'AUCTION' });
     if (q.verifiedOnly) and.push({ verificationStatus: 'VERIFIED' });
-    if (q.sort === 'ending_soon') {
-      and.push({ saleType: 'AUCTION', auction: { status: 'LIVE' } });
-    }
+    // 마감 임박순의 "진행 중 경매" 조건은 list() 가 경매 쪽 조건(status LIVE)으로 건다
+    if (q.sort === 'ending_soon') and.push({ saleType: 'AUCTION' });
     return { AND: and };
   }
 
@@ -119,8 +139,13 @@ export class ProductsService {
    * 검색어가 들어간 공개 상품 id (docs/ARCHITECTURE.md §7). 조인한 OR ILIKE 는 trigram 인덱스를 못 타므로
    * 테이블별 ILIKE 를 UNION 한다. 제작자·브랜드·시대·소재는 product_search_trgm 과 같은 식으로 후보를 좁힌 뒤
    * 필드별로 다시 확인한다 (필드 경계를 넘는 일치 제외). 후보가 SEARCH_ID_LIMIT 를 넘으면 null.
+   * 두 글자 검색어는 trigram 인덱스를 못 타 표를 훑으므로 결과를 검색어별로 캐시한다 (목록 쿼리가 공개 조건을 다시 확인)
    */
-  private async searchIds(term: string): Promise<string[] | null> {
+  private searchIds(term: string): Promise<string[] | null> {
+    return catalogCached(this.redis, 'search', term, SEARCH_TTL_SEC, () => this.findSearchIds(term));
+  }
+
+  private async findSearchIds(term: string): Promise<string[] | null> {
     // Prisma contains 와 같은 패턴 — 와일드카드(%, _)를 이스케이프하지 않는다
     const like = `%${term}%`;
     const rows = await this.prisma.$queryRaw<{ id: string }[]>`
@@ -153,8 +178,6 @@ export class ProductsService {
         return [{ listPrice: { sort: 'desc', nulls: 'last' } }, { id: 'asc' }];
       case 'popular':
         return [{ favoriteCount: 'desc' }, { viewCount: 'desc' }, { id: 'asc' }];
-      case 'ending_soon':
-        return [{ auction: { endsAt: 'asc' } }, { id: 'asc' }];
       default:
         return [{ publishedAt: 'desc' }, { id: 'asc' }];
     }
@@ -162,12 +185,13 @@ export class ProductsService {
 
   async list(q: ProductListQuery, viewer?: AuthUser): Promise<ProductListResponse> {
     // 내가 차단한 판매자의 작품은 목록에서 뺀다
-    const where: Prisma.ProductWhereInput = {
-      AND: [await this.buildWhere(q), await this.safety.excludeBlocked(viewer?.id, 'sellerId')],
-    };
+    const [filter, notBlocked] = await Promise.all([
+      this.buildWhere(q),
+      this.safety.excludeBlocked(viewer?.id, 'sellerId'),
+    ]);
+    const where: Prisma.ProductWhereInput = { AND: [filter, notBlocked] };
     const offset = decodeCursor(q.cursor);
-    let rows;
-    let total: number;
+    let page: { rows: CardRow[]; nextCursor: string | null; total: number };
 
     if (q.q && q.sort === 'relevance') {
       const candidates = await this.prisma.product.findMany({
@@ -192,41 +216,68 @@ export class ProductsService {
         return s + Math.log1p(c.favoriteCount);
       };
       const ordered = candidates.sort((a, b) => score(b) - score(a)).map((c) => c.id);
-      total = ordered.length;
-      const pageIds = ordered.slice(offset, offset + q.limit);
-      const found = await this.prisma.product.findMany({
-        where: { id: { in: pageIds } },
-        select: cardSelect,
+      const rows = await this.cardsByIds(ordered.slice(offset, offset + q.limit));
+      const next = offset + rows.length;
+      page = { rows, nextCursor: next < ordered.length ? encodeCursor(next) : null, total: ordered.length };
+    } else if (q.sort === 'ending_soon') {
+      // 경매(status, endsAt) 인덱스에서 출발한다 — 상품 쪽에서 경매 종료 시각으로 정렬하면 상품 표 전체를 훑는다
+      const auctionWhere: Prisma.AuctionWhereInput = { status: 'LIVE', product: where };
+      const ids = await this.prisma.auction.findMany({
+        where: auctionWhere,
+        // productId 는 경매마다 하나라 기존 상품 id 동순위 정렬과 같다
+        orderBy: [{ endsAt: 'asc' }, { productId: 'asc' }],
+        select: { productId: true },
+        skip: offset,
+        take: q.limit + 1,
       });
-      const byId = new Map(found.map((p) => [p.id, p]));
-      rows = pageIds.map((id) => byId.get(id)!).filter(Boolean);
+      const idPage = await paginate(
+        ids.map((a) => a.productId),
+        q.limit,
+        offset,
+        () => this.countCached('ending', where, () => this.prisma.auction.count({ where: auctionWhere })),
+      );
+      page = { ...idPage, rows: await this.cardsByIds(idPage.rows) };
     } else {
-      [rows, total] = await Promise.all([
-        this.prisma.product.findMany({
-          where,
-          select: cardSelect,
-          orderBy: this.orderBy(q.sort),
-          skip: offset,
-          take: q.limit,
-        }),
-        this.prisma.product.count({ where }),
-      ]);
+      const found = await this.prisma.product.findMany({
+        where,
+        select: cardSelect,
+        orderBy: this.orderBy(q.sort),
+        skip: offset,
+        take: q.limit + 1,
+      });
+      page = await paginate(found, q.limit, offset, () =>
+        this.countCached('products', where, () => this.prisma.product.count({ where })),
+      );
     }
 
     const favs = await this.favoriteSet(
       viewer?.id,
-      rows.map((r) => r.id),
+      page.rows.map((r) => r.id),
     );
-    const next = offset + rows.length;
-    return {
-      items: rows.map((r) => toCard(r, favs)),
-      nextCursor: next < total ? encodeCursor(next) : null,
-      total,
-    };
+    return { items: page.rows.map((r) => toCard(r, favs)), nextCursor: page.nextCursor, total: page.total };
   }
 
-  /** 필터 UI 용 선택지 (현재 카테고리 기준 상위 값) */
-  async facets(category?: string): Promise<FacetsDto> {
+  /** 목록 전체 개수 (30초 캐시, 상품이 바뀌면 세대가 올라 무효) — where 가 같으면 같은 키 */
+  countCached(name: string, where: unknown, count: () => Promise<number>): Promise<number> {
+    return catalogCached(this.redis, `count:${name}`, where, COUNT_TTL_SEC, count);
+  }
+
+  /** id 순서대로 카드를 읽는다 (빠진 id 는 건너뛴다) */
+  async cardsByIds(ids: string[]): Promise<CardRow[]> {
+    if (!ids.length) return [];
+    const found = await this.prisma.product.findMany({ where: { id: { in: ids } }, select: cardSelect });
+    const byId = new Map(found.map((p) => [p.id, p]));
+    return ids.map((id) => byId.get(id)).filter((p): p is CardRow => !!p);
+  }
+
+  /** 필터 UI 용 선택지 (현재 카테고리 기준 상위 값). 공개 상품 전체를 집계하므로 60초 캐시 */
+  facets(category?: string): Promise<FacetsDto> {
+    return catalogCached(this.redis, 'facets', category ?? '', FACETS_TTL_SEC, () =>
+      this.buildFacets(category),
+    );
+  }
+
+  private async buildFacets(category?: string): Promise<FacetsDto> {
     const where: Prisma.ProductWhereInput = category
       ? { AND: [PUBLIC_PRODUCT, { categoryId: { in: await this.categoryIds(category) } }] }
       : PUBLIC_PRODUCT;
@@ -308,30 +359,34 @@ export class ProductsService {
   }
 
   async detail(id: string, viewer?: AuthUser): Promise<ProductDetailDto> {
-    const p = await this.prisma.product.findFirst({
-      where: { id, OR: [VISIBLE_PRODUCT, ...(viewer ? [{ sellerId: viewer.id, deletedAt: null }] : [])] },
-      include: detailInclude,
-    });
-    if (!p) throw new AppException('NOT_FOUND', '상품을 찾을 수 없습니다.');
-    const [favs, blocked] = await Promise.all([
-      this.favoriteSet(viewer?.id, [p.id]),
+    // 관심·차단 여부는 상품 id 만 있으면 되므로 상품 조회와 함께 읽는다
+    const [p, favs, blocked] = await Promise.all([
+      this.prisma.product.findFirst({
+        where: { id, OR: [VISIBLE_PRODUCT, ...(viewer ? [{ sellerId: viewer.id, deletedAt: null }] : [])] },
+        include: detailInclude,
+      }),
+      this.favoriteSet(viewer?.id, [id]),
       this.safety.blockedIds(viewer?.id),
     ]);
+    if (!p) throw new AppException('NOT_FOUND', '상품을 찾을 수 없습니다.');
     // 차단한 판매자의 작품도 링크로 들어오면 열리되, 클라이언트가 가림 처리하도록 표시한다
     return toDetail(p, viewer?.id, favs.has(p.id), blocked.includes(p.sellerId));
   }
 
   async related(id: string, viewer?: AuthUser) {
-    const base = await this.prisma.product.findUnique({
-      where: { id },
-      select: { categoryId: true, artistId: true },
-    });
+    const [base, notBlocked] = await Promise.all([
+      this.prisma.product.findUnique({
+        where: { id },
+        select: { categoryId: true, artistId: true },
+      }),
+      this.safety.excludeBlocked(viewer?.id, 'sellerId'),
+    ]);
     if (!base) throw new AppException('NOT_FOUND');
     const rows = await this.prisma.product.findMany({
       where: {
         AND: [
           PUBLIC_PRODUCT,
-          await this.safety.excludeBlocked(viewer?.id, 'sellerId'),
+          notBlocked,
           { id: { not: id } },
           { OR: [{ categoryId: base.categoryId }, ...(base.artistId ? [{ artistId: base.artistId }] : [])] },
         ],
@@ -392,14 +447,20 @@ export class ProductsService {
       ...base.collections.flatMap((c) => c.items),
     ];
     const ids = [...new Set(all.map((c) => c.id))];
-    const blockedSellers = await this.safety.blockedIds(viewer.id);
     const [favs, hidden] = await Promise.all([
       this.favoriteSet(viewer.id, ids),
-      blockedSellers.length
-        ? this.prisma.product
-            .findMany({ where: { id: { in: ids }, sellerId: { in: blockedSellers } }, select: { id: true } })
-            .then((rows) => new Set(rows.map((r) => r.id)))
-        : new Set<string>(),
+      this.safety.blockedIds(viewer.id).then(async (blockedSellers) =>
+        blockedSellers.length
+          ? new Set(
+              (
+                await this.prisma.product.findMany({
+                  where: { id: { in: ids }, sellerId: { in: blockedSellers } },
+                  select: { id: true },
+                })
+              ).map((r) => r.id),
+            )
+          : new Set<string>(),
+      ),
     ]);
     const mark = <T extends { id: string; isFavorite: boolean }>(list: T[]) =>
       list.filter((c) => !hidden.has(c.id)).map((c) => ({ ...c, isFavorite: favs.has(c.id) }));
@@ -472,6 +533,7 @@ export class ProductsService {
       newArrivals,
       popularArtists,
       notices,
+      topCategories,
     ] = await Promise.all([
       this.prisma.banner.findMany({
         where: { isActive: true, placement: 'home', startsAt: { lte: now }, endsAt: { gt: now } },
@@ -490,28 +552,30 @@ export class ProductsService {
         take: 3,
         select: { id: true, title: true, publishedAt: true },
       }),
+      // 추천 컬렉션: 상품이 많은 하위 카테고리 3개
+      this.prisma.product.groupBy({
+        by: ['categoryId'],
+        where: PUBLIC_PRODUCT,
+        _count: true,
+        orderBy: { _count: { categoryId: 'desc' } },
+        take: 3,
+      }),
     ]);
 
-    // 추천 컬렉션: 상품이 많은 하위 카테고리 3개
-    const topCategories = await this.prisma.product.groupBy({
-      by: ['categoryId'],
-      where: PUBLIC_PRODUCT,
-      _count: true,
-      orderBy: { _count: { categoryId: 'desc' } },
-      take: 3,
-    });
-    const collections = await Promise.all(
-      topCategories.map(async (tc) => {
-        const category = await this.prisma.category.findUniqueOrThrow({
-          where: { id: tc.categoryId },
-          select: { slug: true, name: true },
-        });
-        return {
-          category,
-          items: await cards({ categoryId: tc.categoryId }, [{ favoriteCount: 'desc' }], 4),
-        };
+    const [categories, collectionItems] = await Promise.all([
+      this.prisma.category.findMany({
+        where: { id: { in: topCategories.map((tc) => tc.categoryId) } },
+        select: { id: true, slug: true, name: true },
       }),
-    );
+      Promise.all(
+        topCategories.map((tc) => cards({ categoryId: tc.categoryId }, [{ favoriteCount: 'desc' }], 4)),
+      ),
+    ]);
+    const categoryById = new Map(categories.map((c) => [c.id, { slug: c.slug, name: c.name }]));
+    const collections = topCategories.flatMap((tc, i) => {
+      const category = categoryById.get(tc.categoryId);
+      return category ? [{ category, items: collectionItems[i]! }] : [];
+    });
 
     return {
       banners: banners.map((b) => ({

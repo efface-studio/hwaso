@@ -1,6 +1,14 @@
 import { readFileSync } from 'node:fs';
 import sharp from 'sharp';
-import { decodeHeic, hasHeicBrand, InvalidImageError, MAX_UPLOAD_BYTES, processImage } from './image';
+import {
+  decodeHeic,
+  hasHeicBrand,
+  InvalidImageError,
+  MAX_UPLOAD_BYTES,
+  prepareImage,
+  processImage,
+  settleAll,
+} from './image';
 
 // macOS sips 로 만든 HEVC HEIC — 64x32(왼쪽 빨강·오른쪽 파랑) 원본에 방향 6(90도 회전) 이 irot 로 들어 있다
 const orientedHeic = readFileSync(new URL('../../test/fixtures/oriented.heic', import.meta.url));
@@ -151,5 +159,39 @@ describe('processImage', () => {
     ]);
     expect(a.key).toMatch(/^img\/\d{4}\/\d{2}\/[\w-]{16}$/);
     expect(a.key).not.toBe(b.key);
+  });
+});
+
+describe('prepareImage · settleAll', () => {
+  it('큰 폭부터 인코딩을 시작하고, 파일마다 따로 기다릴 수 있다', async () => {
+    const input = await sharp({ create: { width: 2000, height: 1000, channels: 3, background: '#556677' } })
+      .jpeg()
+      .toBuffer();
+    const img = await prepareImage(input);
+    expect([img.width, img.height, img.originalFormat]).toEqual([2000, 1000, 'jpeg']);
+    const files = await Promise.all(img.variants);
+    expect(files.map((f) => f.path.slice(img.key.length))).toEqual([
+      '/w1600.webp',
+      '/w1600.avif',
+      '/w800.webp',
+      '/w800.avif',
+      '/w400.webp',
+      '/w400.avif',
+    ]);
+    expect((await img.master).path).toBe(`${img.key}.avif`);
+    expect(await img.dominantColor).toMatch(/^#[0-9a-f]{6}$/);
+  });
+
+  it('settleAll 은 모두 끝날 때까지 기다린 뒤 첫 실패를 던진다', async () => {
+    let slowDone = false;
+    const slow = new Promise<number>((r) =>
+      setTimeout(() => {
+        slowDone = true;
+        r(2);
+      }, 30),
+    );
+    await expect(settleAll([Promise.reject(new Error('boom')), slow])).rejects.toThrow('boom');
+    expect(slowDone).toBe(true);
+    await expect(settleAll([Promise.resolve(1), slow])).resolves.toEqual([1, 2]);
   });
 });

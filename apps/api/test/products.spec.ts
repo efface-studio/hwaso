@@ -341,6 +341,59 @@ describe('관심상품 · 최근 본 상품 · 문의', () => {
   });
 });
 
+describe('목록 개수·필터 선택지 캐시 (catalog-cache)', () => {
+  it('마지막 페이지는 받은 건수로 개수를 정하고, 개수는 캐시하되 상품 노출이 바뀌면 바로 새로 센다', async () => {
+    const seller = await createUser(t, 'SELLER');
+    const { child } = await createCategory(t);
+    const first = await createProduct(t, { sellerId: seller.id, categoryId: child.id });
+    for (let i = 0; i < 2; i++) await createProduct(t, { sellerId: seller.id, categoryId: child.id });
+    const list = (limit: number) =>
+      t.http.get(`/api/v1/products?category=${child.slug}&limit=${limit}`).expect(200);
+
+    const page1 = await list(2);
+    expect(page1.body.total).toBe(3);
+    expect(page1.body.nextCursor).not.toBeNull();
+
+    // API 를 거치지 않고 추가하면(세대가 그대로) 같은 조건의 개수는 캐시 값이다
+    await createProduct(t, { sellerId: seller.id, categoryId: child.id });
+    expect((await list(2)).body.total).toBe(3);
+    // 마지막 페이지는 개수를 세지 않고 받은 건수가 곧 전체 개수
+    expect((await list(10)).body).toMatchObject({ total: 4, nextCursor: null });
+
+    // 판매 중지는 세대를 올려 개수를 바로 다시 센다
+    await t.http.post(`/api/v1/products/${first.id}/pause`).set(seller.auth).expect(204);
+    const after = await list(2);
+    expect(after.body.total).toBe(3);
+    expect(after.body.items.map((i: { id: string }) => i.id)).not.toContain(first.id);
+  });
+
+  it('필터 선택지(facets)는 캐시하고, 상품 노출이 바뀌면 새로 집계한다', async () => {
+    const seller = await createUser(t, 'SELLER');
+    const { child } = await createCategory(t);
+    const p = await createProduct(t, { sellerId: seller.id, categoryId: child.id, price: 300_000 });
+    const facets = () => t.http.get(`/api/v1/products/facets?category=${child.slug}`).expect(200);
+    expect((await facets()).body.priceRange).toEqual({ min: 300_000, max: 300_000 });
+
+    await createProduct(t, { sellerId: seller.id, categoryId: child.id, price: 500_000 });
+    expect((await facets()).body.priceRange).toEqual({ min: 300_000, max: 300_000 });
+
+    await t.http.post(`/api/v1/products/${p.id}/pause`).set(seller.auth).expect(204);
+    expect((await facets()).body.priceRange).toEqual({ min: 500_000, max: 500_000 });
+  });
+
+  it('검색 후보도 세대별로 캐시하되, 목록은 공개 조건을 다시 확인한다', async () => {
+    const seller = await createUser(t, 'SELLER');
+    const { child } = await createCategory(t);
+    const word = `청자${Date.now().toString(36)}`;
+    const p = await createProduct(t, { sellerId: seller.id, categoryId: child.id, title: `${word} 매병` });
+    const search = () => t.http.get(`/api/v1/products?q=${encodeURIComponent(word)}`).expect(200);
+    expect((await search()).body.items.map((i: { id: string }) => i.id)).toEqual([p.id]);
+    // 캐시된 후보에 있어도 비공개가 되면 목록에서 빠진다 (세대를 올리지 않는 직접 변경)
+    await t.prisma.product.update({ where: { id: p.id }, data: { status: 'HIDDEN' } });
+    expect((await search()).body.items).toEqual([]);
+  });
+});
+
 describe('홈 (GET /home)', () => {
   it('캐시가 비었을 때 동시에 들어온 요청은 한 번만 만든다', async () => {
     const svc = t.app.get(ProductsService) as unknown as { buildHome: () => Promise<unknown> };
