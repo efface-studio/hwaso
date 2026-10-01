@@ -121,7 +121,7 @@ const config: ExpoConfig = {
   ios: {
     bundleIdentifier: 'dev.efface.hwaso',
     appleTeamId: '3NVCLTSP9V',
-    buildNumber: '2',
+    buildNumber: '3',
     // iPad 지원 — 화면 폭에 맞춘 배치(src/hooks/use-layout.ts). 세로 전용이라 전체 화면만 쓴다:
     // 멀티태스킹(Split View·Slide Over)을 지원하는 iPad 앱은 네 방향을 모두 지원해야 App Store 에 올릴 수 있다 (ITMS-90474).
     // 심사에 iPad 13" 스크린숏이 필요하다
