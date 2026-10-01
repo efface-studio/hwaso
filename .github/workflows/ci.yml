@@ -94,6 +94,8 @@ jobs:
       MEDIA_PUBLIC_URL: http://localhost:9000/shop-media/public
       WEB_ORIGIN: http://localhost:3000
       SEED_OFFLINE: '1'
+      # 시드는 기본 비밀번호로 최고 관리자를 만들지 않는다 — E2E 관리자 로그인용으로 명시 (fixtures.ts 의 PASSWORD 와 같게)
+      SEED_ADMIN_PASSWORD: 'shop1234!'
     steps:
       - uses: actions/checkout@v4
 

@@ -327,17 +327,16 @@ export interface AdminReportRow {
 
 // ───── 콘텐츠 ─────
 
+/** 사이트 안 경로만 — `//host`·`/\host` 처럼 다른 사이트로 가는 주소는 막는다 (오픈 리다이렉트) */
+export const SITE_PATH = /^\/(?![/\\])[^\s\\]*$/;
+
 export const bannerSchema = z
   .strictObject({
     title: z.string().trim().min(1).max(60),
     subtitle: z.string().trim().max(120).default(''),
     tone: z.enum(['dark', 'light']).default('dark'),
     imageKey: z.string().min(1).max(200),
-    link: z
-      .string()
-      .trim()
-      .regex(/^\/[^\s]*$/, '사이트 안 경로(/로 시작)만 쓸 수 있어요.')
-      .max(300),
+    link: z.string().trim().regex(SITE_PATH, '사이트 안 경로(/로 시작)만 쓸 수 있어요.').max(300),
     placement: z.enum(['home']).default('home'),
     sortOrder: z.number().int().min(0).max(999).default(0),
     startsAt: z.iso.datetime({ offset: true }),
@@ -379,13 +378,7 @@ export type BroadcastKind = (typeof BROADCAST_KINDS)[number];
 export const broadcastSchema = z.strictObject({
   title: z.string().trim().min(1).max(60),
   body: z.string().trim().min(1).max(200),
-  link: z
-    .string()
-    .trim()
-    .regex(/^\/[^\s]*$/)
-    .max(300)
-    .nullable()
-    .default(null),
+  link: z.string().trim().regex(SITE_PATH).max(300).nullable().default(null),
   audience: z.enum(['all', 'sellers', 'buyers']),
   /**
    * NOTICE(기본): 운영 공지 — 모두에게. MARKETING: 광고성 정보 — 수신 동의자에게만, 제목에 (광고),

@@ -23,6 +23,24 @@ const REDACT = [
   '*.bankAccount',
 ];
 
+/** URL 쿼리로 오는 인증 값(OAuth code·state, 토큰) — 요청 로그에서 값만 가린다 */
+const SECRET_QUERY =
+  /^(code|state|token|access_token|refresh_token|id_token|identityToken|password|secret)$/i;
+
+export function redactUrl(url: string): string {
+  const q = url.indexOf('?');
+  if (q < 0) return url;
+  const params = new URLSearchParams(url.slice(q + 1));
+  let hit = false;
+  for (const key of new Set(params.keys())) {
+    if (SECRET_QUERY.test(key)) {
+      params.set(key, '[redacted]');
+      hit = true;
+    }
+  }
+  return hit ? `${url.slice(0, q)}?${params.toString()}` : url;
+}
+
 export const logger = pino({
   level: process.env.LOG_LEVEL ?? (process.env.NODE_ENV === 'test' ? 'silent' : 'info'),
   redact: { paths: REDACT, censor: '[redacted]' },
@@ -45,7 +63,7 @@ export const httpLogger = pinoHttp({
     req: (req: { id: string; method: string; url: string }) => ({
       id: req.id,
       method: req.method,
-      url: req.url,
+      url: redactUrl(req.url),
     }),
     res: (res: { statusCode: number }) => ({ statusCode: res.statusCode }),
   },

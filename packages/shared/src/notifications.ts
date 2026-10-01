@@ -168,9 +168,52 @@ export const notificationReadSchema = z.union([
   z.strictObject({ all: z.literal(true) }),
 ]);
 
-export const pushTokenSchema = z.strictObject({
-  /** apns: iOS 기기 토큰(hex) / fcm: Android 기기 토큰 / expo: ExponentPushToken[…] / web: PushSubscription JSON */
-  token: z.string().min(10).max(2000),
-  platform: z.enum(['apns', 'fcm', 'expo', 'web']),
-});
+/**
+ * 웹 푸시 endpoint 허용 호스트 — 브라우저 푸시 서비스만. 서버가 이 주소로 직접 POST 하므로
+ * 임의 주소를 받으면 내부망 요청(SSRF)·제3자 대상 증폭에 쓰일 수 있다 (docs/SECURITY.md)
+ */
+const WEB_PUSH_HOSTS =
+  /^(fcm\.googleapis\.com|updates\.push\.services\.mozilla\.com|web\.push\.apple\.com|[a-z0-9-]+\.notify\.windows\.com)$/;
+
+export function isAllowedWebPushEndpoint(endpoint: unknown): boolean {
+  if (typeof endpoint !== 'string') return false;
+  try {
+    const u = new URL(endpoint);
+    return (
+      u.protocol === 'https:' && !u.port && !u.username && !u.password && WEB_PUSH_HOSTS.test(u.hostname)
+    );
+  } catch {
+    return false;
+  }
+}
+
+/** PushSubscription JSON: 허용된 endpoint + 암호화 키 */
+const isWebSubscription = (token: string) => {
+  try {
+    const s = JSON.parse(token) as { endpoint?: unknown; keys?: { p256dh?: unknown; auth?: unknown } };
+    return (
+      isAllowedWebPushEndpoint(s.endpoint) &&
+      typeof s.keys?.p256dh === 'string' &&
+      typeof s.keys.auth === 'string'
+    );
+  } catch {
+    return false;
+  }
+};
+
+export const pushTokenSchema = z
+  .strictObject({
+    /** apns: iOS 기기 토큰(hex) / fcm: Android 기기 토큰 / expo: ExponentPushToken[…] / web: PushSubscription JSON */
+    token: z.string().min(10).max(2000),
+    platform: z.enum(['apns', 'fcm', 'expo', 'web']),
+  })
+  .refine((v) => v.platform !== 'web' || isWebSubscription(v.token), {
+    message: '지원하지 않는 푸시 구독입니다.',
+    path: ['token'],
+  })
+  // APNs 기기 토큰은 hex — 요청 경로(/3/device/{token})에 그대로 들어간다
+  .refine((v) => v.platform !== 'apns' || /^[0-9a-f]{64,200}$/i.test(v.token), {
+    message: '올바르지 않은 기기 토큰입니다.',
+    path: ['token'],
+  });
 export type PushTokenInput = z.infer<typeof pushTokenSchema>;
