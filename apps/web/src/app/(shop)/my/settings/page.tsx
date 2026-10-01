@@ -24,6 +24,7 @@ import { Alert, Badge } from '@/components/ui/display';
 import { Field, Input, Textarea } from '@/components/ui/field';
 import { api } from '@/lib/api';
 import { safeNext, startOAuth } from '@/lib/auth';
+import { uploadImage } from '@/lib/upload';
 import { useAuthStore } from '@/stores/auth';
 import { toast } from '@/stores/toast';
 
@@ -65,7 +66,7 @@ function ProfileSection() {
   const upload = async (f: File) => {
     setUploading(true);
     try {
-      const img = await api.market.uploadImage(f, f.name);
+      const img = await uploadImage(f);
       setAvatarKey(img.key);
     } catch (e) {
       toast.error(msg(e));

@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
 import { ProductGridSkeleton } from '@/components/product/product-card';
+import { parseSearch, SEED_TIMEOUT_MS, toListParams } from '@/components/search/search-params';
 import { SearchView } from '@/components/search/search-view';
 import { Breadcrumb } from '@/components/ui/navigation';
 import { safe, serverApi } from '@/lib/server-api';
@@ -42,6 +43,12 @@ export default async function CategoryPage({ params }: Props) {
   const tree = await safe(serverApi.market.categories());
   const hit = tree ? find(tree, slug) : null;
   if (tree && !hit) notFound();
+  // 필터 없는 첫 페이지를 함께 넘긴다 — 정적(ISR) 화면이라 목록은 클라이언트가 그리지만 API 왕복이 없어진다.
+  // 있는 카테고리만 (임의 slug 로 데이터 캐시가 늘지 않게)
+  const listParams = toListParams(parseSearch(new URLSearchParams(), slug));
+  const page = hit
+    ? await safe(serverApi.market.products(listParams, AbortSignal.timeout(SEED_TIMEOUT_MS)))
+    : null;
 
   return (
     <>
@@ -63,7 +70,12 @@ export default async function CategoryPage({ params }: Props) {
           </div>
         }
       >
-        <SearchView categories={tree ?? []} fixedCategory={slug} title={hit?.node.name ?? '카테고리'} />
+        <SearchView
+          categories={tree ?? []}
+          fixedCategory={slug}
+          title={hit?.node.name ?? '카테고리'}
+          initial={page ? { params: listParams, page } : undefined}
+        />
       </Suspense>
     </>
   );

@@ -61,7 +61,8 @@ export function AuctionLive({ initial }: { initial: AuctionSnapshot }) {
             <MediaImage
               image={s.product.image}
               alt={s.product.title}
-              sizes="(min-width: 1024px) 60vw, 100vw"
+              // 왼쪽 칸은 페이지 폭(최대 1280)의 약 3/5 (상품 상세 갤러리와 같다)
+              sizes="(min-width: 1280px) 700px, (min-width: 768px) 60vw, 100vw"
               priority
               className="p-4 md:p-10"
             />

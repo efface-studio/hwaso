@@ -7,6 +7,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { mediaSrcSet, mediaUrl } from '@/lib/media';
 
 const INTERVAL_MS = 6000;
+/** 이미지 칸은 데스크톱에서 페이지 폭(최대 1280)의 3/5 — 넓은 화면에서 60vw 로 두면 필요 이상 큰 파생본을 고른다 */
+const SIZES = '(min-width: 1280px) 740px, (min-width: 768px) 60vw, 100vw';
 
 /**
  * 홈 상단 배너. 작품을 가리지 않도록 글은 이미지 옆(모바일은 아래) 단색 영역에 둔다 — 그라디언트·글래스 없음.
@@ -73,12 +75,12 @@ export function BannerCarousel({ banners }: { banners: BannerDto[] }) {
                 <source
                   type="image/avif"
                   srcSet={mediaSrcSet(b.imageKey, 'avif')}
-                  sizes="(min-width: 768px) 60vw, 100vw"
+                  sizes={SIZES}
                 />
                 <img
                   src={mediaUrl(b.imageKey, 1600)}
                   srcSet={mediaSrcSet(b.imageKey)}
-                  sizes="(min-width: 768px) 60vw, 100vw"
+                  sizes={SIZES}
                   alt=""
                   loading={i === 0 ? 'eager' : 'lazy'}
                   fetchPriority={i === 0 ? 'high' : undefined}

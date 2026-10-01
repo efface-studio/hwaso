@@ -16,6 +16,7 @@ import { Field, Input } from '@/components/ui/field';
 import { Select } from '@/components/ui/select';
 import { api } from '@/lib/api';
 import { mediaUrl } from '@/lib/media';
+import { uploadImage } from '@/lib/upload';
 import { toast } from '@/stores/toast';
 
 const local = (iso: string) =>
@@ -55,7 +56,7 @@ function Form({ initial, onClose }: { initial: AdminBannerRow | null; onClose: (
     if (!f) return;
     setUploading(true);
     try {
-      set({ imageKey: (await api.market.uploadImage(f, f.name)).key });
+      set({ imageKey: (await uploadImage(f)).key });
     } catch (e) {
       toast.error(e instanceof ApiError ? e.message : '이미지를 올리지 못했습니다.');
     } finally {

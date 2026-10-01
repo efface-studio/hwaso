@@ -32,6 +32,13 @@ export function FavoriteButton({
   const [n, setN] = useState(count ?? 0);
   const [pending, setPending] = useState(false);
   const [pop, setPop] = useState(false);
+  // 목록을 다시 받아 서버 값이 바뀌면 따른다 (서버가 그린 비로그인 사본 → 로그인 후 재조회)
+  const [prev, setPrev] = useState({ initial, count });
+  if (prev.initial !== initial || prev.count !== count) {
+    setPrev({ initial, count });
+    setOn(initial);
+    setN(count ?? 0);
+  }
   const user = useAuthStore((s) => s.user);
   const router = useRouter();
   const pathname = usePathname();

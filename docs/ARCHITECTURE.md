@@ -118,6 +118,7 @@ Client: 서버 이벤트로만 가격 갱신 (낙관적 업데이트 없음)
 ## 6. 이미지 파이프라인
 
 1. 클라이언트 → `POST /media/images` (multipart, 최대 30MB, 요청당 1장). 웹 `accept` 는 `image/*,.heic,.heif` (`IMAGE_UPLOAD`, packages/shared)
+   - 웹·앱 모두 올리기 전에 긴 변을 2400px 로 줄이고(JPEG 0.85, 이미 작으면 그대로) 3장씩 동시에 올린다 — 서버 디코딩·전송 시간이 원본(3~12MB) 대비 크게 준다. 웹 `apps/web/src/lib/upload.ts`, 앱 `apps/mobile/src/lib/upload.ts`
 2. 서버: 확장자/Content-Type 이 아니라 **sharp 로 실제 포맷 판별** (jpeg/png/webp/heif/avif/gif/tiff 외 거부, gif·tiff 는 첫 장), 픽셀 수 상한 100MP. iPhone HEIC(HEVC)는 sharp 가 디코딩하지 못해 `heic-decode`(WASM)를 워커 스레드에서 실행
 3. EXIF 방향 적용 후 **메타데이터(GPS 등) 제거**. 업로드 원본은 저장하지 않고, 재처리용 보관본(긴 변 ≤ 3200px, AVIF q80·effort 0·4:4:4, 알파 유지)을 `originals/<key>.avif` (비공개) 에 둔다. 원본 대비 약 1/4 크기이고 SSIM 은 JPEG q90 4:4:4 수준. 이 객체를 읽는 코드는 없다 (재처리·추가 폭 생성 때만 사용). 이전 업로드의 `originals/<key>.<원본 포맷>` 은 그대로 둔다
 4. 파생본: 폭 `400/800/1600` WebP(q82·effort 4) + AVIF(q55·effort 3·4:4:4) → `public/` prefix → `Cache-Control: public, max-age=31536000, immutable`, 운영 Cloudflare 캐시 HIT 확인
@@ -144,6 +145,7 @@ Client: 서버 이벤트로만 가격 갱신 (낙관적 업데이트 없음)
 - 인기 작가(`/artists/popular`, 홈 인기 작가): Redis 5분. 관리자 대시보드: Redis 30초.
 - 경매 정책(AuctionPolicy): 프로세스 메모리 60초. 관리자 변경은 변경을 처리한 프로세스에선 즉시, 다른 API 인스턴스·Worker 에선 60초 안에 반영.
 - 상품 상세 페이지: Next.js ISR(60s). 경매 가격/상태는 클라이언트가 항상 실시간 조회·구독.
+- 목록 첫 페이지: 카테고리(ISR 60s)와 검색의 정해진 조합(탭·카테고리·판매 방식 등, 검색어·가격 제외)은 웹 서버가 Next 데이터 캐시(60s)로 받아 넘긴다 (docs/WEB_ROUTES.md ¹).
 - 가격·입찰·재고·주문은 **캐시하지 않는다**.
 - HTTP: 사용자와 무관한 공개 GET(카테고리·공지·작가 등)만 `Cache-Control: public` 짧은 캐시, JSON 응답은 br/gzip 압축 (docs/API.md "캐시·압축").
 

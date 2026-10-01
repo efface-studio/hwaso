@@ -4,11 +4,11 @@ import { ApiError } from '@shop/api-client';
 import { formatPrice, POLICIES, type ProductDetailDto } from '@shop/shared';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Gavel, Share2 } from 'lucide-react';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { StartChatButton } from '@/components/chat/start-chat';
-import { ReportDialog } from '@/components/safety/report-dialog';
 import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
@@ -16,6 +16,11 @@ import { toast } from '@/stores/toast';
 import { AuctionCountdown } from './countdown';
 import { FavoriteButton } from './favorite-button';
 import { PriceTag, SaleTypeBadge } from './price';
+
+/** 신고 대화상자는 누를 때 불러온다 — 상세 화면 첫 번들에서 뺀다 */
+const ReportDialog = dynamic(() => import('@/components/safety/report-dialog').then((m) => m.ReportDialog), {
+  ssr: false,
+});
 
 async function share(title: string) {
   const url = window.location.href;

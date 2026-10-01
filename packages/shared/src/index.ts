@@ -18,6 +18,7 @@ export * from './banks';
 export * from './dto';
 export * from './realtime';
 export * from './ota';
+export * from './reauth';
 export * from './security';
 export * from './schemas/common';
 export * from './schemas/auth';
