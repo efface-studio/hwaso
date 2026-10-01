@@ -183,10 +183,18 @@ export default function SellNewScreen() {
       <Stack.Screen
         options={{
           title: tr('new.title', { step: idx + 1, total: steps.length }),
-          headerLeft:
-            idx > 0
-              ? () => <Button title={tr('common:action.back')} variant="ghost" size="sm" onPress={back} />
-              : undefined,
+          // 전체 화면 모달이라 시스템 뒤로 버튼이 없다 — 첫 단계는 닫기(작성 중인 내용은 임시저장돼 남는다)
+          headerLeft: () =>
+            idx > 0 ? (
+              <Button title={tr('common:action.back')} variant="ghost" size="sm" onPress={back} />
+            ) : (
+              <Button
+                title={tr('common:action.close')}
+                variant="ghost"
+                size="sm"
+                onPress={() => router.back()}
+              />
+            ),
         }}
       />
       <View style={[styles.progress, { backgroundColor: t.colors.surface2 }]}>
