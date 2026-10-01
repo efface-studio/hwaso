@@ -6,7 +6,7 @@ import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { mediaUrl } from '@/lib/media';
-import { pickImages, uploadAsset } from '@/lib/upload';
+import { pickImages, uploadAssets } from '@/lib/upload';
 import { useTheme } from '@/theme';
 
 /**
@@ -31,17 +31,12 @@ export function PhotoManager({
     const assets = await pickImages(source, left);
     if (!assets.length) return;
     setProgress({ done: 0, total: assets.length });
-    const uploaded: ImageDto[] = [];
-    let failed = 0;
-    // 순서를 지키려고 한 장씩 올린다
-    for (const a of assets) {
-      try {
-        uploaded.push(await uploadAsset(a));
-      } catch {
-        failed++;
-      }
-      setProgress((p) => p && { ...p, done: p.done + 1 });
-    }
+    // 3장씩 동시에 올리고, 결과는 고른 순서대로 붙인다
+    const results = await uploadAssets(assets, {
+      onEach: () => setProgress((p) => p && { ...p, done: p.done + 1 }),
+    });
+    const uploaded = results.filter((r) => r !== null);
+    const failed = results.length - uploaded.length;
     setProgress(null);
     onChange([...images, ...uploaded].slice(0, MAX_PRODUCT_IMAGES));
     if (failed) Alert.alert(tr('photos.uploadFailed', { count: failed }), tr('photos.uploadFailedMessage'));

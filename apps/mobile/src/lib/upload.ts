@@ -72,8 +72,33 @@ export async function cropSquare(
   return { uri: r.uri, fileName: `avatar-${Date.now()}.jpg`, mimeType: 'image/jpeg' };
 }
 
-/** 서버 업로드 — 서버가 크기 조정·EXIF(위치 정보) 제거·파생 이미지 생성을 한다 */
-export async function uploadAsset(asset: LocalImage): Promise<UploadedImage> {
+/** 업로드 전 긴 변 상한 — 서버 파생본 최대 폭(1600)보다 넉넉하고, 원본(12~48MP)보다 훨씬 가볍다 */
+const UPLOAD_MAX_EDGE = 2400;
+
+/**
+ * 긴 변이 UPLOAD_MAX_EDGE 보다 크면 줄여 JPEG 로 다시 저장한다 (원본 3~10MB → 보통 1MB 안팎).
+ * 이미 작으면(잘라 낸 프로필 사진 등) 그대로 둔다. 실패하면 원본을 그대로 올린다.
+ */
+async function shrinkForUpload(asset: LocalImage): Promise<LocalImage> {
+  if (Platform.OS === 'web') return asset;
+  try {
+    const image = await ImageManipulator.manipulate(asset.uri).renderAsync();
+    const long = Math.max(image.width, image.height);
+    if (long <= UPLOAD_MAX_EDGE) return asset;
+    const scale = UPLOAD_MAX_EDGE / long;
+    const resized = await ImageManipulator.manipulate(asset.uri)
+      .resize({ width: Math.round(image.width * scale), height: Math.round(image.height * scale) })
+      .renderAsync();
+    const out = await resized.saveAsync({ format: SaveFormat.JPEG, compress: 0.85 });
+    return { uri: out.uri, fileName: `photo-${Date.now()}.jpg`, mimeType: 'image/jpeg' };
+  } catch {
+    return asset;
+  }
+}
+
+/** 서버 업로드 — 앱에서 먼저 줄이고, 서버가 크기 조정·EXIF(위치 정보) 제거·파생 이미지 생성을 한다 */
+export async function uploadAsset(original: LocalImage): Promise<UploadedImage> {
+  const asset = await shrinkForUpload(original);
   const form = new FormData();
   const name = asset.fileName ?? `photo-${Date.now()}.jpg`;
   if (Platform.OS === 'web') {
@@ -82,4 +107,24 @@ export async function uploadAsset(asset: LocalImage): Promise<UploadedImage> {
     form.append('file', { uri: asset.uri, name, type: asset.mimeType ?? 'image/jpeg' } as unknown as Blob);
   }
   return api.market.uploadImageForm(form);
+}
+
+/**
+ * 여러 장을 동시에 limit 장씩 올린다. 결과는 고른 순서대로(실패한 자리는 null), 한 장 끝날 때마다 onEach.
+ */
+export async function uploadAssets(
+  assets: LocalImage[],
+  { limit = 3, onEach }: { limit?: number; onEach?: () => void } = {},
+): Promise<(UploadedImage | null)[]> {
+  const out: (UploadedImage | null)[] = new Array(assets.length).fill(null);
+  let next = 0;
+  const worker = async () => {
+    while (next < assets.length) {
+      const i = next++;
+      out[i] = await uploadAsset(assets[i]!).catch(() => null);
+      onEach?.();
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, assets.length) }, worker));
+  return out;
 }
