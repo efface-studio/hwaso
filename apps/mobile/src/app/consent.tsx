@@ -144,6 +144,9 @@ export default function ConsentScreen() {
           <Text color="muted">{tr('consent.description')}</Text>
 
           <View style={styles.section}>
+            <Text variant="label" color="muted" accessibilityRole="header">
+              {tr('consent.basicInfo')}
+            </Text>
             <Field
               label={tr('emailCode.email')}
               autoCapitalize="none"
@@ -154,7 +157,7 @@ export default function ConsentScreen() {
               error={errors.email}
               hint={
                 !needsVerify
-                  ? undefined
+                  ? tr('consent.emailGiven')
                   : isVerified
                     ? undefined
                     : givenEmail
@@ -224,10 +227,16 @@ export default function ConsentScreen() {
                 setErrors((e) => ({ ...e, nickname: undefined }));
               }}
               error={errors.nickname}
+              hint={tr('signup.nicknameHint')}
             />
           </View>
 
-          <Agreements value={agreement} onChange={setAgreement} />
+          <View style={styles.section}>
+            <Text variant="label" color="muted" accessibilityRole="header">
+              {tr('consent.agreements')}
+            </Text>
+            <Agreements value={agreement} onChange={setAgreement} />
+          </View>
         </View>
 
         {errors.form && (
