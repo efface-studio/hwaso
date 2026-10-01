@@ -120,7 +120,7 @@ const config: ExpoConfig = {
   ios: {
     bundleIdentifier: 'dev.efface.hwaso',
     appleTeamId: '3NVCLTSP9V',
-    buildNumber: '2',
+    buildNumber: '3',
     // iPhone 전용 (iPad 화면은 심사 대상이 되지 않게 지원하지 않는다)
     supportsTablet: false,
     usesAppleSignIn: true,
