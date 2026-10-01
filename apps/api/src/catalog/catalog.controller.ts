@@ -3,6 +3,7 @@ import type { ArtistDto, CategoryNode } from '@shop/shared';
 import { z } from 'zod';
 import { AppException } from '../common/app-exception';
 import { Public } from '../common/auth';
+import { PublicCache } from '../common/http-cache';
 import { ZodPipe } from '../common/zod.pipe';
 import { PrismaService } from '../prisma/prisma.service';
 import { imageSelect, PUBLIC_PRODUCT } from '../products/product.mapper';
@@ -24,6 +25,7 @@ export class CatalogController {
 
   /** 카테고리 트리 (60초 캐시, 관리자 수정 시 무효화) */
   @Public()
+  @PublicCache(60)
   @Get('categories')
   async categories(): Promise<CategoryNode[]> {
     const cached = await this.redis.get(CATEGORY_CACHE_KEY);
@@ -71,6 +73,7 @@ export class CatalogController {
 
   /** 웹 sitemap.xml 용 공개 URL 목록 */
   @Public()
+  @PublicCache(300)
   @Get('sitemap')
   async sitemap() {
     const [products, categories, artists] = await Promise.all([
@@ -91,6 +94,7 @@ export class CatalogController {
   }
 
   @Public()
+  @PublicCache(60)
   @Get('artists')
   async artists(@Query(new ZodPipe(artistQuery)) q: { q: string }) {
     const ci = { contains: q.q, mode: 'insensitive' as const };
@@ -109,6 +113,7 @@ export class CatalogController {
   }
 
   @Public()
+  @PublicCache(60)
   @Get('artists/:id')
   async artist(@Param('id') id: string): Promise<ArtistDto> {
     const a = await this.prisma.artist.findUnique({

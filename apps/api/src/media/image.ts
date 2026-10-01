@@ -12,6 +12,16 @@ export const MAX_UPLOAD_BYTES = IMAGE_UPLOAD.maxBytes;
 export const MAX_PIXELS = 100_000_000;
 export const VARIANT_WIDTHS = [400, 800, 1600] as const;
 const MAX_VARIANT_WIDTH = Math.max(...VARIANT_WIDTHS);
+/**
+ * 파생본 인코딩 설정 — SSIM·용량·인코딩 시간을 비교해 고른 값 (docs/ARCHITECTURE.md §6).
+ * AVIF effort 4 이상은 3% 줄이려고 5배 느려지고, WebP effort 6·smartSubsample 은 같은 SSIM 에서 이득이 없다
+ */
+const WEBP_OPTIONS = { quality: 82 } as const;
+const AVIF_OPTIONS = { quality: 55, effort: 3 } as const;
+/** 비공개 보관본: 업로드 원본 대신 긴 변 3200px AVIF 고화질 재인코딩 (EXIF/GPS 없음, 원본 대비 약 1/4) */
+export const MASTER_MAX_EDGE = 3200;
+// effort 0: SSIM 은 effort 2 와 같고(JPEG q90 4:4:4 수준) 용량 +2%, CPU 는 약 1/4
+const MASTER_AVIF_OPTIONS = { quality: 80, effort: 0 } as const;
 /** HEIC(HEVC) 은 WASM 디코더로 푼다 — 워커 스레드에서 실행해 이벤트 루프를 막지 않고, 시간·동시 실행 수를 제한한다 */
 export const HEIC_DECODE_TIMEOUT_MS = 20_000;
 const HEIC_MAX_CONCURRENCY = 2;
@@ -24,6 +34,8 @@ export interface ProcessedImage {
   height: number;
   dominantColor: string;
   originalFormat: string;
+  /** 비공개 보관본 (originals/<key>.avif) — 재처리용. 공개하지 않는다 */
+  master: { path: string; body: Buffer; contentType: string };
   variants: { path: string; body: Buffer; contentType: string }[];
 }
 
@@ -173,7 +185,7 @@ function toRaw(data: Buffer, info: OutputInfo): RawImage & { channels: 3 | 4 } {
 }
 
 /**
- * 이미지 검증 + EXIF 방향 적용 + 메타데이터 제거 + 파생본(WebP/AVIF 400/800/1600) 생성.
+ * 이미지 검증 + EXIF 방향 적용 + 메타데이터 제거 + 파생본(WebP/AVIF 400/800/1600)·보관본 생성.
  * sharp 는 withMetadata() 를 호출하지 않으면 EXIF/GPS 를 출력에 포함하지 않는다.
  * 재인코딩된 결과만 공개하므로 폴리글랏 파일에 숨긴 스크립트도 제거된다.
  */
@@ -207,13 +219,19 @@ export async function processImage(input: Buffer, opts: { avif?: boolean } = {})
   }).stats();
 
   const key = newImageKey();
+  // 보관본은 raw 에서 바로 만든다 — 파생본 기준(폭 1600)과 따로 줄여야 세로로 긴 이미지의 파생본 폭이 줄지 않는다
+  const masterJob = sharp(raw.data, { raw: { width, height, channels }, limitInputPixels: MAX_PIXELS })
+    .resize({ width: MASTER_MAX_EDGE, height: MASTER_MAX_EDGE, fit: 'inside', withoutEnlargement: true })
+    .avif(MASTER_AVIF_OPTIONS)
+    .toBuffer()
+    .then((body) => ({ path: `${key}.avif`, body, contentType: 'image/avif' }));
   const jobs: Promise<ProcessedImage['variants'][number]>[] = [];
   for (const w of VARIANT_WIDTHS) {
     const resized = fromBase().resize({ width: w, withoutEnlargement: true });
     jobs.push(
       resized
         .clone()
-        .webp({ quality: 82 })
+        .webp(WEBP_OPTIONS)
         .toBuffer()
         .then((body) => ({ path: `${key}/w${w}.webp`, body, contentType: 'image/webp' })),
     );
@@ -221,13 +239,13 @@ export async function processImage(input: Buffer, opts: { avif?: boolean } = {})
       jobs.push(
         resized
           .clone()
-          .avif({ quality: 55, effort: 3 })
+          .avif(AVIF_OPTIONS)
           .toBuffer()
           .then((body) => ({ path: `${key}/w${w}.avif`, body, contentType: 'image/avif' })),
       );
     }
   }
-  const variants = await Promise.all(jobs);
+  const [master, variants] = await Promise.all([masterJob, Promise.all(jobs)]);
 
   return {
     key,
@@ -235,6 +253,7 @@ export async function processImage(input: Buffer, opts: { avif?: boolean } = {})
     height,
     dominantColor: `#${hex(dominant.r)}${hex(dominant.g)}${hex(dominant.b)}`,
     originalFormat: format,
+    master,
     variants,
   };
 }

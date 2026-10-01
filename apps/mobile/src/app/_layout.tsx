@@ -48,6 +48,9 @@ function makeClient() {
     defaultOptions: {
       queries: {
         staleTime: 30_000,
+        // 탭을 오가거나 뒤로 돌아올 때 캐시를 바로 보여주고 뒤에서 갱신한다 (기본 5분 → 30분, 목록 JSON 은 수 KB).
+        // 로그아웃하면 realtime-sync 가 비활성 쿼리를 지운다
+        gcTime: 30 * 60_000,
         retry: (count, err) =>
           !(err instanceof ApiError && err.status >= 400 && err.status < 500) && count < 2,
       },

@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import type { Notification, NotificationType } from '@prisma/client';
+import type { Notification, NotificationType, Prisma } from '@prisma/client';
 import {
   NOTIFICATION_CATEGORY,
   inQuietHours,
@@ -34,7 +34,20 @@ export interface NotifyInput {
 const PAGE = 30;
 const PUSH_CONCURRENCY = 10;
 
-export const toNotificationDto = (n: Notification): NotificationDto => ({
+/** 알림함 목록에 필요한 열만 (data JSON 등 제외) */
+const notificationSelect = {
+  id: true,
+  type: true,
+  title: true,
+  body: true,
+  link: true,
+  readAt: true,
+  createdAt: true,
+} as const satisfies Prisma.NotificationSelect;
+
+export const toNotificationDto = (
+  n: Pick<Notification, keyof typeof notificationSelect>,
+): NotificationDto => ({
   id: n.id,
   type: n.type,
   title: n.title,
@@ -151,6 +164,7 @@ export class NotificationsService {
   async list(userId: string, cursor?: string): Promise<Page<NotificationDto>> {
     const rows = await this.prisma.notification.findMany({
       where: { userId },
+      select: notificationSelect,
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       take: PAGE + 1,
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),

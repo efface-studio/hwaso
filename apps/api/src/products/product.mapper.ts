@@ -2,6 +2,7 @@ import { Prisma } from '@prisma/client';
 import {
   minNextBid,
   type AuctionSummary,
+  type CardAuctionSummary,
   type ImageDto,
   type ProductCardDto,
   type ProductDetailDto,
@@ -34,13 +35,13 @@ const auctionSummarySelect = {
   endsAt: true,
 } as const;
 
-export const cardInclude = {
+const cardInclude = {
   images: { select: imageSelect, orderBy: { sortOrder: 'asc' }, take: 1 },
   artist: { select: { name: true } },
   auction: { select: auctionSummarySelect },
 } satisfies Prisma.ProductInclude;
 
-/** 카드에 필요한 열만 읽는다 (설명 등 긴 본문 제외). 카드 외 필드가 필요하면 cardInclude */
+/** 카드에 필요한 열만 읽는다 (설명 등 긴 본문 제외). 카드 외 필드가 필요하면 이 select 에 열을 더한다 */
 export const cardSelect = {
   id: true,
   title: true,
@@ -49,7 +50,6 @@ export const cardSelect = {
   saleType: true,
   status: true,
   price: true,
-  favoriteCount: true,
   ...cardInclude,
 } satisfies Prisma.ProductSelect;
 
@@ -84,9 +84,11 @@ function toImage(
 }
 
 function toAuctionSummary(a: CardRow['auction']): AuctionSummary | null {
-  if (!a) return null;
+  return a ? { id: a.id, ...toCardAuction(a) } : null;
+}
+
+function toCardAuction(a: NonNullable<CardRow['auction']>): CardAuctionSummary {
   return {
-    id: a.id,
     status: a.status,
     currentPrice: Number(a.currentPrice),
     bidCount: a.bidCount,
@@ -105,8 +107,7 @@ export function toCard(p: CardRow, favorites?: Set<string>): ProductCardDto {
     saleType: p.saleType,
     status: p.status,
     price: num(p.price),
-    auction: toAuctionSummary(p.auction),
-    favoriteCount: p.favoriteCount,
+    auction: p.auction ? toCardAuction(p.auction) : null,
     isFavorite: favorites?.has(p.id) ?? false,
   };
 }
@@ -128,6 +129,8 @@ export function toDetail(
   const cert = p.certificate;
   return {
     ...card,
+    auction: toAuctionSummary(p.auction),
+    favoriteCount: p.favoriteCount,
     description: p.description,
     images: p.images.map((i) => toImage(i)!),
     category: { id: p.category.id, slug: p.category.slug, name: p.category.name, path },

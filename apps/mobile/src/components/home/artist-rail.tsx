@@ -1,4 +1,4 @@
-import type { ArtistDto } from '@shop/shared';
+import type { ArtistCardDto } from '@shop/shared';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -8,7 +8,7 @@ import { mediaUrl } from '@/lib/media';
 import { useTheme } from '@/theme';
 
 /** 홈 인기 작가 가로 목록 */
-export function ArtistRail({ artists }: { artists: ArtistDto[] }) {
+export function ArtistRail({ artists }: { artists: ArtistCardDto[] }) {
   const t = useTheme();
   const { t: tr } = useTranslation('home');
   if (!artists.length) return null;
