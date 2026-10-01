@@ -3,7 +3,7 @@
 import { CONDITION_LABEL, ITEM_CONDITIONS, PROVENANCE_KINDS, type CategoryNode } from '@shop/shared';
 import { Plus, Trash2 } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { DateTimeInput } from '@/components/ui/date-picker';
+import { DateTimeInput } from '@/components/ui/date-picker-lazy';
 import { RadioGroup } from '@/components/ui/choice';
 import { Field, Input, PriceInput, Textarea } from '@/components/ui/field';
 import { Select } from '@/components/ui/select';

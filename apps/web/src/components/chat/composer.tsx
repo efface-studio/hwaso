@@ -12,13 +12,13 @@ import {
   Send,
   X,
 } from 'lucide-react';
-import dynamic from 'next/dynamic';
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
-import { controlClass, Field, Input } from '@/components/ui/field';
+import { DateTimeInput } from '@/components/ui/date-picker-lazy';
+import { Field, Input } from '@/components/ui/field';
 import { DropdownMenu } from '@/components/ui/menu';
-import { api } from '@/lib/api';
+import { uploadImages } from '@/lib/upload';
 import { toast } from '@/stores/toast';
 import { PhrasesDialog } from './phrases-dialog';
 
@@ -27,12 +27,6 @@ const localNow = (offsetMs: number) => {
   d.setMinutes(0, 0, 0);
   return new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
 };
-
-/** 날짜 선택기(react-day-picker)는 약속 대화상자를 열 때만 불러온다. 그동안 같은 크기 자리만 잡아 둔다 */
-const DateTimeInput = dynamic(() => import('@/components/ui/date-picker').then((m) => m.DateTimeInput), {
-  ssr: false,
-  loading: () => <div className={`${controlClass} h-11`} aria-hidden />,
-});
 
 function AppointmentDialog({
   open,
@@ -125,9 +119,11 @@ export function Composer({
     if (files.length > CHAT_IMAGES_MAX) toast.show(`사진은 한 번에 ${CHAT_IMAGES_MAX}장까지 보낼 수 있어요.`);
     setUploading(true);
     try {
-      const imgs = await Promise.all(
-        files.slice(0, CHAT_IMAGES_MAX).map((f) => api.market.uploadImage(f, f.name)),
-      );
+      // 3장씩 동시에 줄이고 올린다. 한 장이라도 실패하면 보내지 않는다
+      const results = await uploadImages(files.slice(0, CHAT_IMAGES_MAX));
+      const failed = results.find((r) => r.status === 'rejected');
+      if (failed) throw failed.reason;
+      const imgs = results.flatMap((r) => (r.status === 'fulfilled' ? [r.value] : []));
       onSend({ kind: 'IMAGE', imageKeys: imgs.map((i) => i.key) });
     } catch (e) {
       toast.error(e instanceof ApiError ? e.message : '사진을 올리지 못했습니다.');

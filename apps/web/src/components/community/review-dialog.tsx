@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
 import { Field, Textarea } from '@/components/ui/field';
 import { api } from '@/lib/api';
+import { uploadImages } from '@/lib/upload';
 import { toast } from '@/stores/toast';
 import { StarInput } from './stars';
 
@@ -53,10 +54,11 @@ export function ReviewDialog({
   const upload = async (files: File[]) => {
     setUploading(true);
     try {
-      for (const f of files.slice(0, 5 - images.length)) {
-        const img = await api.market.uploadImage(f, f.name);
-        setImages((prev) => [...prev, img]);
-      }
+      // 3장씩 동시에 줄이고 올린다. 성공한 사진은 고른 순서대로 붙이고, 실패가 있으면 알린다
+      const results = await uploadImages(files.slice(0, 5 - images.length));
+      setImages((prev) => [...prev, ...results.flatMap((r) => (r.status === 'fulfilled' ? [r.value] : []))]);
+      const failed = results.find((r) => r.status === 'rejected');
+      if (failed) throw failed.reason;
     } catch (e) {
       toast.error(e instanceof ApiError ? e.message : '사진을 올리지 못했습니다.');
     } finally {

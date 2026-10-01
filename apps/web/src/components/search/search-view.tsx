@@ -1,54 +1,31 @@
 'use client';
 
 import {
-  ITEM_CONDITIONS,
   PRODUCT_SORTS,
-  SALE_TYPES,
   SORT_LABEL,
   type CategoryNode,
-  type ItemCondition,
   type ProductListParams,
+  type ProductListResponse,
   type ProductSort,
-  type SaleType,
 } from '@shop/shared';
 import { keepPreviousData, useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { SearchX, SlidersHorizontal } from 'lucide-react';
+import dynamic from 'next/dynamic';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ProductGrid, ProductGridSkeleton } from '@/components/product/product-card';
 import { Button } from '@/components/ui/button';
-import { Sheet } from '@/components/ui/dialog';
 import { EmptyState } from '@/components/ui/display';
 import { Select } from '@/components/ui/select';
 import { api } from '@/lib/api';
+import { hasSessionHint } from '@/stores/auth';
 import { FilterPanel, type FilterValue } from './filter-panel';
 import { SearchAutocomplete } from './search-autocomplete';
+import { parseSearch, sameListParams, toListParams } from './search-params';
 
-const list = (v: string | null) => (v ? v.split(',').filter(Boolean) : []);
-const int = (v: string | null) => (v && /^\d+$/.test(v) ? Number(v) : undefined);
-
-/** URL 이 필터 상태의 원천이다 (공유·뒤로가기 보존 — docs/WEB_ROUTES.md) */
-function parse(sp: URLSearchParams, fixedCategory?: string) {
-  const q = sp.get('q') ?? '';
-  const sortRaw = sp.get('sort') as ProductSort | null;
-  const sort: ProductSort = sortRaw && PRODUCT_SORTS.includes(sortRaw) ? sortRaw : q ? 'relevance' : 'latest';
-  const filter: FilterValue = {
-    category: fixedCategory ?? sp.get('category') ?? undefined,
-    saleType: list(sp.get('saleType')).filter((v): v is SaleType =>
-      (SALE_TYPES as readonly string[]).includes(v),
-    ),
-    minPrice: int(sp.get('minPrice')),
-    maxPrice: int(sp.get('maxPrice')),
-    condition: list(sp.get('condition')).filter((v): v is ItemCondition =>
-      (ITEM_CONDITIONS as readonly string[]).includes(v),
-    ),
-    era: list(sp.get('era')),
-    material: list(sp.get('material')),
-    region: list(sp.get('region')),
-    verifiedOnly: sp.get('verifiedOnly') === 'true',
-  };
-  return { q, sort, filter };
-}
+/** 모바일 필터 시트(Radix Dialog)는 처음 열 때 불러온다 — 목록 화면 첫 번들에서 뺀다 */
+const loadDialog = () => import('@/components/ui/dialog');
+const Sheet = dynamic(() => loadDialog().then((m) => m.Sheet), { ssr: false });
 
 function activeCount(f: FilterValue, fixedCategory?: string) {
   return (
@@ -68,17 +45,21 @@ interface SearchViewProps {
   /** 카테고리 페이지: 카테고리 고정 */
   fixedCategory?: string;
   title?: string;
+  /** 서버가 미리 받은 첫 페이지 — 조회 조건이 같을 때만 쓴다 (API 왕복 없이 바로 그린다) */
+  initial?: { params: ProductListParams; page: ProductListResponse };
 }
 
-export function SearchView({ categories, fixedCategory, title }: SearchViewProps) {
+export function SearchView({ categories, fixedCategory, title, initial }: SearchViewProps) {
   const sp = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
   const { q, sort, filter } = useMemo(
-    () => parse(new URLSearchParams(sp.toString()), fixedCategory),
+    () => parseSearch(new URLSearchParams(sp.toString()), fixedCategory),
     [sp, fixedCategory],
   );
   const [sheetOpen, setSheetOpen] = useState(false);
+  // 한 번 연 뒤에는 계속 마운트해 둔다 (닫힘 애니메이션 유지)
+  const [sheetMounted, setSheetMounted] = useState(false);
 
   const update = useCallback(
     (patch: Partial<FilterValue> & { sort?: ProductSort }) => {
@@ -94,20 +75,8 @@ export function SearchView({ categories, fixedCategory, title }: SearchViewProps
     [sp, router, pathname, fixedCategory],
   );
 
-  const params: ProductListParams = {
-    q: q || undefined,
-    sort,
-    category: filter.category,
-    saleType: filter.saleType.length ? filter.saleType.join(',') : undefined,
-    minPrice: filter.minPrice,
-    maxPrice: filter.maxPrice,
-    condition: filter.condition.length ? filter.condition.join(',') : undefined,
-    era: filter.era.length ? filter.era.join(',') : undefined,
-    material: filter.material.length ? filter.material.join(',') : undefined,
-    region: filter.region.length ? filter.region.join(',') : undefined,
-    verifiedOnly: filter.verifiedOnly || undefined,
-    limit: 24,
-  } as ProductListParams;
+  const params = toListParams({ q, sort, filter });
+  const seeded = initial && sameListParams(initial.params, params) ? initial.page : undefined;
 
   const query = useInfiniteQuery({
     queryKey: ['products', params],
@@ -115,6 +84,9 @@ export function SearchView({ categories, fixedCategory, title }: SearchViewProps
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (last) => last.nextCursor ?? undefined,
     placeholderData: keepPreviousData,
+    initialData: seeded ? { pages: [seeded], pageParams: [undefined] } : undefined,
+    // 서버 사본은 비로그인 기준(관심 표시 없음) — 로그인한 적 있는 브라우저는 마운트 때 다시 받는다
+    initialDataUpdatedAt: seeded && typeof window !== 'undefined' && hasSessionHint() ? 0 : undefined,
   });
   const facets = useQuery({
     queryKey: ['facets', filter.category],
@@ -174,7 +146,18 @@ export function SearchView({ categories, fixedCategory, title }: SearchViewProps
               {total == null ? ' ' : `작품 ${total.toLocaleString('ko-KR')}개`}
             </p>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" className="lg:hidden" onClick={() => setSheetOpen(true)}>
+              <Button
+                variant="outline"
+                size="sm"
+                className="lg:hidden"
+                onClick={() => {
+                  setSheetMounted(true);
+                  setSheetOpen(true);
+                }}
+                // 누르기 전에 미리 받아 둔다
+                onPointerEnter={() => void loadDialog()}
+                onFocus={() => void loadDialog()}
+              >
                 <SlidersHorizontal className="size-4" aria-hidden />
                 필터{filters > 0 && <span className="tabular text-primary">{filters}</span>}
               </Button>
@@ -245,39 +228,41 @@ export function SearchView({ categories, fixedCategory, title }: SearchViewProps
         </div>
       </div>
 
-      <Sheet
-        open={sheetOpen}
-        onOpenChange={setSheetOpen}
-        side="bottom"
-        title="필터"
-        footer={
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={() =>
-                update({
-                  saleType: [],
-                  condition: [],
-                  era: [],
-                  material: [],
-                  region: [],
-                  minPrice: undefined,
-                  maxPrice: undefined,
-                  verifiedOnly: false,
-                  category: undefined,
-                })
-              }
-            >
-              초기화
-            </Button>
-            <Button block onClick={() => setSheetOpen(false)}>
-              {total == null ? '결과 보기' : `작품 ${total.toLocaleString('ko-KR')}개 보기`}
-            </Button>
-          </div>
-        }
-      >
-        {panel}
-      </Sheet>
+      {sheetMounted && (
+        <Sheet
+          open={sheetOpen}
+          onOpenChange={setSheetOpen}
+          side="bottom"
+          title="필터"
+          footer={
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() =>
+                  update({
+                    saleType: [],
+                    condition: [],
+                    era: [],
+                    material: [],
+                    region: [],
+                    minPrice: undefined,
+                    maxPrice: undefined,
+                    verifiedOnly: false,
+                    category: undefined,
+                  })
+                }
+              >
+                초기화
+              </Button>
+              <Button block onClick={() => setSheetOpen(false)}>
+                {total == null ? '결과 보기' : `작품 ${total.toLocaleString('ko-KR')}개 보기`}
+              </Button>
+            </div>
+          }
+        >
+          {panel}
+        </Sheet>
+      )}
     </div>
   );
 }

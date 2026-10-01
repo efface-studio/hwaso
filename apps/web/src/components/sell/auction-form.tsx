@@ -1,7 +1,7 @@
 'use client';
 
 import { formatPrice, suggestIncrement } from '@shop/shared';
-import { DateTimeInput } from '@/components/ui/date-picker';
+import { DateTimeInput } from '@/components/ui/date-picker-lazy';
 import { Switch } from '@/components/ui/choice';
 import { Field, PriceInput, Textarea } from '@/components/ui/field';
 

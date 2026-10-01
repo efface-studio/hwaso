@@ -7,11 +7,6 @@ import { deviceSchema } from './schemas/auth';
 export const REAUTH_METHODS = ['password', 'otp', 'biometric'] as const;
 export type ReauthMethod = (typeof REAUTH_METHODS)[number];
 
-/** 민감 작업 요청에 재인증 토큰을 싣는 헤더 */
-export const REAUTH_HEADER = 'x-reauth-token';
-/** 재인증 토큰 수명 (초) */
-export const REAUTH_TTL_SEC = 5 * 60;
-
 export const reauthSchema = z.discriminatedUnion('method', [
   z.strictObject({ method: z.literal('password'), password: z.string().min(1).max(200) }),
   z.strictObject({

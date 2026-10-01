@@ -6,8 +6,8 @@ import { ArrowLeft, ArrowRight, ImagePlus, X } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { MediaImage } from '@/components/product/media-image';
 import { Progress } from '@/components/ui/display';
-import { api } from '@/lib/api';
 import { cn } from '@/lib/cn';
+import { uploadImages } from '@/lib/upload';
 import { toast } from '@/stores/toast';
 
 export type DraftImage = UploadedImage;
@@ -31,29 +31,22 @@ export function ImageUploader({
   const upload = async (files: File[]) => {
     const picked = files.slice(0, left);
     if (files.length > left) toast.show(`사진은 최대 ${MAX_PRODUCT_IMAGES}장까지 올릴 수 있어요`);
-    const valid = picked.filter((f) => {
-      if (f.size > IMAGE_UPLOAD.maxBytes) {
-        toast.error(`${f.name}: ${IMAGE_UPLOAD.maxMb}MB 이하 사진만 올릴 수 있어요`);
-        return false;
-      }
-      return true;
+    // 큰 사진은 올리기 전에 줄이고, 줄여도 용량 상한을 넘는 파일은 lib/upload 가 걸러 오류로 돌려준다
+    if (!picked.length) return;
+    let done = 0;
+    setUploading({ done, total: picked.length });
+    // 고른 순서를 지키며 3장씩 동시에 줄이고 올린다
+    const results = await uploadImages(picked, {
+      onEach: () => setUploading({ done: ++done, total: picked.length }),
     });
-    if (!valid.length) return;
-    setUploading({ done: 0, total: valid.length });
     const uploaded: DraftImage[] = [];
-    // 순서를 지키고 서버 부하를 줄이기 위해 2장씩 올린다
-    for (let i = 0; i < valid.length; i += 2) {
-      const batch = valid.slice(i, i + 2);
-      const results = await Promise.allSettled(batch.map((f) => api.market.uploadImage(f, f.name)));
-      results.forEach((r, j) => {
-        if (r.status === 'fulfilled') uploaded.push(r.value);
-        else
-          toast.error(
-            `${batch[j]!.name}: ${r.reason instanceof ApiError ? r.reason.message : '업로드에 실패했어요'}`,
-          );
-      });
-      setUploading({ done: Math.min(i + 2, valid.length), total: valid.length });
-    }
+    results.forEach((r, i) => {
+      if (r.status === 'fulfilled') uploaded.push(r.value);
+      else
+        toast.error(
+          `${picked[i]!.name}: ${r.reason instanceof ApiError ? r.reason.message : '업로드에 실패했어요'}`,
+        );
+    });
     setUploading(null);
     onChange([...images, ...uploaded]);
   };
