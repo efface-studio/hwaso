@@ -53,11 +53,7 @@ const zhHant: Translation<typeof ko> = {
     viewA11y: '查看{{title}}',
   },
   consent: {
-    title: '完成註冊',
-    description: '請確認在 Hwaso 使用的電子郵件與暱稱，並同意服務條款。若不同意將會登出。',
-    basicInfo: '基本資料',
-    agreements: '同意條款',
-    emailGiven: '這是從社群帳號取得的電子郵件，交易通知將寄到此地址。',
+    description: '請確認電子郵件與暱稱，並同意條款。',
     emailMissing: '未能從社群帳號取得電子郵件，請驗證用於接收交易通知的電子郵件。',
     emailChanged: '若要使用其他電子郵件，請以驗證碼確認。',
     emailInvalid: '請輸入有效的電子郵件地址。',

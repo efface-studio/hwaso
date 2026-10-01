@@ -136,108 +136,97 @@ export default function ConsentScreen() {
       style={{ flex: 1, backgroundColor: t.colors.background }}
     >
       <ScrollView
-        contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + 24 }]}
+        // 기본은 한 화면에 들어가고, 작은 폰에서는 내용이 넘치면 스크롤된다 (버튼은 아래에 붙는다)
+        contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + 12 }]}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={{ gap: 6 }}>
-          <Text variant="h2" accessibilityRole="header">
-            {tr('consent.title')}
-          </Text>
+        <View style={styles.top}>
           <Text color="muted">{tr('consent.description')}</Text>
-        </View>
 
-        <View style={styles.section}>
-          <Text variant="label" color="muted" accessibilityRole="header">
-            {tr('consent.basicInfo')}
-          </Text>
-          <Field
-            label={tr('emailCode.email')}
-            autoCapitalize="none"
-            autoComplete="email"
-            keyboardType="email-address"
-            value={email}
-            onChangeText={changeEmail}
-            error={errors.email}
-            hint={
-              !needsVerify
-                ? tr('consent.emailGiven')
-                : isVerified
+          <View style={styles.section}>
+            <Field
+              label={tr('emailCode.email')}
+              autoCapitalize="none"
+              autoComplete="email"
+              keyboardType="email-address"
+              value={email}
+              onChangeText={changeEmail}
+              error={errors.email}
+              hint={
+                !needsVerify
                   ? undefined
-                  : givenEmail
-                    ? tr('consent.emailChanged')
-                    : tr('consent.emailMissing')
-            }
-          />
-          {needsVerify && isVerified && (
-            <Text variant="small" color="success" accessibilityLiveRegion="polite">
-              {tr('consent.verified')}
-            </Text>
-          )}
-          {needsVerify && !isVerified && !codeSent && (
-            <Button
-              title={tr('emailCode.send')}
-              variant="outline"
-              loading={sending}
-              disabled={!emailValid}
-              onPress={() => void sendCode()}
+                  : isVerified
+                    ? undefined
+                    : givenEmail
+                      ? tr('consent.emailChanged')
+                      : tr('consent.emailMissing')
+              }
             />
-          )}
-          {codeSent && !isVerified && (
-            <>
-              <Text variant="small" color="muted">
-                {tr('emailCode.sentGuide', { email: normalized })}
+            {needsVerify && isVerified && (
+              <Text variant="small" color="success" accessibilityLiveRegion="polite">
+                {tr('consent.verified')}
               </Text>
-              <Field
-                label={tr('emailCode.code')}
-                keyboardType="number-pad"
-                textContentType="oneTimeCode"
-                autoComplete="one-time-code"
-                maxLength={6}
-                value={code}
-                onChangeText={setCode}
-                error={errors.code}
+            )}
+            {needsVerify && !isVerified && !codeSent && (
+              <Button
+                title={tr('emailCode.send')}
+                variant="outline"
+                loading={sending}
+                disabled={!emailValid}
+                onPress={() => void sendCode()}
               />
-              <View style={styles.row}>
-                <Button
-                  title={
-                    cooldown > 0 ? tr('emailCode.resendIn', { seconds: cooldown }) : tr('emailCode.resend')
-                  }
-                  variant="ghost"
-                  disabled={cooldown > 0 || sending || checking}
-                  loading={sending}
-                  onPress={() => void sendCode()}
-                  style={{ flex: 1 }}
+            )}
+            {codeSent && !isVerified && (
+              <>
+                <Text variant="small" color="muted">
+                  {tr('emailCode.sentGuide', { email: normalized })}
+                </Text>
+                <Field
+                  label={tr('emailCode.code')}
+                  keyboardType="number-pad"
+                  textContentType="oneTimeCode"
+                  autoComplete="one-time-code"
+                  maxLength={6}
+                  value={code}
+                  onChangeText={setCode}
+                  error={errors.code}
                 />
-                <Button
-                  title={tr('consent.verify')}
-                  variant="outline"
-                  loading={checking}
-                  disabled={code.length !== 6}
-                  onPress={() => void verifyCode()}
-                  style={{ flex: 1 }}
-                />
-              </View>
-            </>
-          )}
-          <Field
-            label={tr('signup.nickname')}
-            autoCapitalize="none"
-            counter
-            maxLength={20}
-            value={nickname}
-            onChangeText={(v) => {
-              setNickname(v);
-              setErrors((e) => ({ ...e, nickname: undefined }));
-            }}
-            error={errors.nickname}
-            hint={tr('signup.nicknameHint')}
-          />
-        </View>
+                <View style={styles.row}>
+                  <Button
+                    title={
+                      cooldown > 0 ? tr('emailCode.resendIn', { seconds: cooldown }) : tr('emailCode.resend')
+                    }
+                    variant="ghost"
+                    disabled={cooldown > 0 || sending || checking}
+                    loading={sending}
+                    onPress={() => void sendCode()}
+                    style={{ flex: 1 }}
+                  />
+                  <Button
+                    title={tr('consent.verify')}
+                    variant="outline"
+                    loading={checking}
+                    disabled={code.length !== 6}
+                    onPress={() => void verifyCode()}
+                    style={{ flex: 1 }}
+                  />
+                </View>
+              </>
+            )}
+            <Field
+              label={tr('signup.nickname')}
+              autoCapitalize="none"
+              counter
+              maxLength={20}
+              value={nickname}
+              onChangeText={(v) => {
+                setNickname(v);
+                setErrors((e) => ({ ...e, nickname: undefined }));
+              }}
+              error={errors.nickname}
+            />
+          </View>
 
-        <View style={styles.section}>
-          <Text variant="label" color="muted" accessibilityRole="header">
-            {tr('consent.agreements')}
-          </Text>
           <Agreements value={agreement} onChange={setAgreement} />
         </View>
 
@@ -255,7 +244,13 @@ export default function ConsentScreen() {
             disabled={!ready}
             onPress={() => void submit()}
           />
-          <Button title={tr('consent.decline')} variant="ghost" block onPress={() => void logout()} />
+          <Button
+            title={tr('consent.decline')}
+            variant="ghost"
+            size="sm"
+            block
+            onPress={() => void logout()}
+          />
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -269,7 +264,8 @@ function hasField(details: Record<string, unknown> | undefined, field: string) {
 }
 
 const styles = StyleSheet.create({
-  body: { padding: 20, gap: 24 },
-  section: { gap: 14 },
+  body: { flexGrow: 1, justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 16, gap: 20 },
+  top: { gap: 16 },
+  section: { gap: 12 },
   row: { flexDirection: 'row', gap: 8 },
 });

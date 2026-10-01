@@ -53,12 +53,7 @@ const en: Translation<typeof ko> = {
     viewA11y: 'View {{title}}',
   },
   consent: {
-    title: 'Finish signing up',
-    description:
-      'Check the email and nickname you’ll use on Hwaso and agree to the terms. If you don’t agree, you’ll be logged out.',
-    basicInfo: 'Basic info',
-    agreements: 'Agreements',
-    emailGiven: 'This email came from your social account. We’ll send order updates here.',
+    description: 'Check your email and nickname, then agree to the terms.',
     emailMissing: 'Your social account didn’t share an email. Verify an email to receive order updates.',
     emailChanged: 'To use a different email, verify it with a code.',
     emailInvalid: 'Please enter a valid email address.',

@@ -51,11 +51,7 @@ const ko = {
     viewA11y: '{{title}} 보기',
   },
   consent: {
-    title: '가입 마무리',
-    description: '화소에서 쓸 이메일과 닉네임을 확인하고 약관에 동의해주세요. 동의하지 않으면 로그아웃돼요.',
-    basicInfo: '기본 정보',
-    agreements: '약관 동의',
-    emailGiven: '소셜 계정에서 받은 이메일이에요. 거래 안내를 이 주소로 보내요.',
+    description: '이메일과 닉네임을 확인하고 약관에 동의해주세요.',
     emailMissing: '소셜 계정에서 이메일을 받지 못했어요. 거래 안내를 받을 이메일을 인증해주세요.',
     emailChanged: '다른 이메일을 쓰려면 인증번호로 확인해주세요.',
     emailInvalid: '올바른 이메일 주소를 입력해주세요.',
