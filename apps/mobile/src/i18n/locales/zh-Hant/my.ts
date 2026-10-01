@@ -116,6 +116,9 @@ const zhHant: Translation<typeof ko> = {
     button: 'PASS 實名認證',
   },
   social: {
+    emptyTitle: '尚未連結社群帳號',
+    linkedCount: '已連結{{count}}個社群帳號',
+    intro: '連結後，不需密碼也能用該帳號登入。',
     linkedTitle: '已連結{{provider}}帳號',
     linkFailed: '無法連結',
     unlinkConfirm: '要解除{{provider}}連結嗎？',

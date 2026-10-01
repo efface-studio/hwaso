@@ -117,6 +117,9 @@ const en: Translation<typeof ko> = {
     button: 'Verify with PASS',
   },
   social: {
+    emptyTitle: 'No social accounts linked',
+    linkedCount: '{{count}} social account(s) linked',
+    intro: 'Link an account to sign in with it—no password needed.',
     linkedTitle: '{{provider}} account linked',
     linkFailed: "Couldn't link account",
     unlinkConfirm: 'Unlink {{provider}}?',
