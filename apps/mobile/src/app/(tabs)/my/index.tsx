@@ -44,13 +44,16 @@ function Row({
 
 /** 상단 프로필: 사진·닉네임·이메일·소개, 팔로워·팔로잉·후기·거래 수, 프로필 수정·보기 */
 /**
- * 닉네임 아래 계정 한 줄. 소셜로만 가입한 계정은 가입한 소셜 로고와 함께 보이고,
+ * 닉네임 아래 계정 한 줄. 연결된 소셜 계정이 있으면 이메일 앞에 로고를 겹쳐 나열하고,
  * 소셜에서 이메일을 받았으면 이메일, 못 받았으면(내부용 …@social.invalid) '카카오 계정' 처럼 소셜 이름을 쓴다.
  */
+const BADGE_SIZE = 18;
+const BADGE_OVERLAP = 6;
+
 function AccountLine({ user }: { user: MeDto }) {
+  const t = useTheme();
   const { t: tr } = useTranslation('my');
   const realEmail = !user.emailMissing;
-  const socialOnly = !user.hasPassword && user.socialProviders.length > 0;
   const text = realEmail
     ? user.email
     : user.socialProviders[0]
@@ -58,14 +61,23 @@ function AccountLine({ user }: { user: MeDto }) {
       : tr('myTab.socialAccount');
   return (
     <View style={styles.account}>
-      {socialOnly && (
+      {user.socialProviders.length > 0 && (
         <View
           style={styles.accountBadges}
           accessibilityElementsHidden
           importantForAccessibility="no-hide-descendants"
         >
-          {user.socialProviders.map((p) => (
-            <ProviderBadge key={p} provider={p} size={18} />
+          {/* 여러 개면 겹쳐 나열 — 화면 배경색 테두리로 로고끼리 구분한다 */}
+          {user.socialProviders.map((p, i) => (
+            <View
+              key={p}
+              style={[
+                styles.accountBadge,
+                { borderColor: t.colors.background, marginLeft: i === 0 ? 0 : -BADGE_OVERLAP },
+              ]}
+            >
+              <ProviderBadge provider={p} size={BADGE_SIZE} />
+            </View>
           ))}
         </View>
       )}
@@ -342,7 +354,8 @@ const styles = StyleSheet.create({
   identity: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   account: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  accountBadges: { flexDirection: 'row', gap: 3 },
+  accountBadges: { flexDirection: 'row' },
+  accountBadge: { borderWidth: 2, borderRadius: BADGE_SIZE / 2 + 2 },
   badge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999 },
   stats: {
     flexDirection: 'row',
