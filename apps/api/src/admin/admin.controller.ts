@@ -23,6 +23,7 @@ import type {
 } from '@prisma/client';
 import {
   adminAuctionsQuery,
+  adminCreateUserSchema,
   adminOrdersQuery,
   adminPaymentsQuery,
   adminProductsQuery,
@@ -30,6 +31,7 @@ import {
   adminRoleSchema,
   adminSellersQuery,
   adminSettlementsQuery,
+  adminUpdateUserSchema,
   adminUsersQuery,
   auctionPolicySchema,
   auditQuery,
@@ -42,8 +44,12 @@ import {
   pageQuery,
   reasonSchema,
   reportResolveSchema,
+  serverLogQuery,
   settlementActionSchema,
+  suspendSchema,
+  type AdminCreateUserInput,
   type AdminProductsQuery,
+  type AdminUpdateUserInput,
   type AdminUsersQuery,
   type AuctionPolicyInput,
   type BannerInput,
@@ -53,23 +59,27 @@ import {
   type NoticeInput,
   type PageQuery,
   type ReportAction,
+  type ServerLogFilterLevel,
 } from '@shop/shared';
 import { AuctionsModule } from '../auctions/auctions.controller';
 import { AuctionsService } from '../auctions/auctions.service';
 import { AuthModule } from '../auth/auth.controller';
 import { CurrentUser, Public, Roles, type AuthedRequest, type AuthUser } from '../common/auth';
 import { PublicCache } from '../common/http-cache';
-import { clientIp } from '../common/rate-limit';
+import { clientIp, RateLimit } from '../common/rate-limit';
 import { ZodPipe } from '../common/zod.pipe';
 import { OrdersModule } from '../orders/orders.controller';
 import { OrdersService } from '../orders/orders.service';
+import { RequireReauth } from '../security/reauth.guard';
 import { AdminCatalogService } from './admin-catalog.service';
 import { AdminCommerceService } from './admin-commerce.service';
 import { AdminContentService } from './admin-content.service';
 import { AdminDashboardService } from './admin-dashboard.service';
+import { AdminLogsGateway, AdminLogsService, LOG_VIEWER_ROLE } from './admin-logs';
 import { AdminReportsService } from './admin-reports.service';
 import { AdminUsersService } from './admin-users.service';
 import { AuditService, type AuditContext } from './audit.service';
+import { SuspensionScheduler } from './suspension-scheduler';
 
 type Reason = { reason: string };
 const ctx = (req: AuthedRequest): AuditContext => ({ user: req.user!, ip: clientIp(req) });
@@ -88,6 +98,7 @@ export class AdminController {
     private readonly audit: AuditService,
     private readonly auctions: AuctionsService,
     private readonly orders: OrdersService,
+    private readonly logs: AdminLogsService,
   ) {}
 
   @Get('dashboard')
@@ -107,10 +118,40 @@ export class AdminController {
     return this.users.detail(id);
   }
 
+  /** 계정 생성 (인증 메일 없이 인증 완료). 앱 세션은 재인증 필요 */
+  @Post('users')
+  @RequireReauth()
+  @RateLimit({ name: 'admin-user-create', limit: 30, windowSec: 3600, by: 'user' })
+  createUser(@Req() req: AuthedRequest, @Body(new ZodPipe(adminCreateUserSchema)) b: AdminCreateUserInput) {
+    return this.users.create(ctx(req), b);
+  }
+
+  @Patch('users/:id')
+  @RateLimit({ name: 'admin-user-update', limit: 120, windowSec: 3600, by: 'user' })
+  updateUser(
+    @Req() req: AuthedRequest,
+    @Param('id') id: string,
+    @Body(new ZodPipe(adminUpdateUserSchema)) b: AdminUpdateUserInput,
+  ) {
+    return this.users.update(ctx(req), id, b);
+  }
+
+  /** 회원 삭제 = 탈퇴와 같은 익명화. 앱 세션은 재인증 필요 */
+  @Delete('users/:id')
+  @RequireReauth()
+  @RateLimit({ name: 'admin-user-delete', limit: 30, windowSec: 3600, by: 'user' })
+  deleteUser(@Req() req: AuthedRequest, @Param('id') id: string, @Body(new ZodPipe(reasonSchema)) b: Reason) {
+    return this.users.remove(ctx(req), id, b.reason);
+  }
+
   @Post('users/:id/suspend')
   @HttpCode(200)
-  suspend(@Req() req: AuthedRequest, @Param('id') id: string, @Body(new ZodPipe(reasonSchema)) b: Reason) {
-    return this.users.suspend(ctx(req), id, b.reason);
+  suspend(
+    @Req() req: AuthedRequest,
+    @Param('id') id: string,
+    @Body(new ZodPipe(suspendSchema)) b: { reason: string; until: string | null },
+  ) {
+    return this.users.suspend(ctx(req), id, b.reason, b.until);
   }
 
   @Post('users/:id/restore')
@@ -396,6 +437,21 @@ export class AdminController {
     return this.content.broadcast(ctx(req), b);
   }
 
+  // ───── 서버 로그 (최고 관리자) ─────
+
+  /** 최근 로그 tail (가린 뒤). 실시간은 Socket.IO /admin-logs */
+  @Get('logs')
+  @Roles(LOG_VIEWER_ROLE)
+  @RateLimit({ name: 'admin-logs', limit: 60, windowSec: 60, by: 'user' })
+  async serverLogs(
+    @Req() req: AuthedRequest,
+    @Query(new ZodPipe(serverLogQuery))
+    q: { level: ServerLogFilterLevel; q?: string; after?: number; limit: number },
+  ) {
+    await this.logs.recordAccess(req.user!, clientIp(req), 'http');
+    return this.logs.tail(q);
+  }
+
   // ───── 감사 로그 ─────
 
   @Get('audit-logs')
@@ -435,6 +491,10 @@ export class NoticesController {
     AdminCommerceService,
     AdminContentService,
     AdminReportsService,
+    AdminLogsService,
+    AdminLogsGateway,
+    // 개발처럼 워커 없이 API 하나만 띄울 때 (운영 API 는 SCHEDULER_ENABLED=false, 워커가 실행)
+    SuspensionScheduler,
   ],
 })
 export class AdminModule {}

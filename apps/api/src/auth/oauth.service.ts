@@ -8,6 +8,7 @@ import {
 } from '@shop/shared';
 import { AppException } from '../common/app-exception';
 import { decrypt, encrypt, randomToken } from '../common/crypto';
+import { liftExpiredSuspension, suspensionMessage } from '../common/suspension';
 import { env, isProd } from '../config/env';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
@@ -144,13 +145,14 @@ export class OAuthService {
       include: { user: true },
     });
     if (linked) {
-      if (linked.user.status === 'SUSPENDED')
-        throw new AppException(
-          'ACCOUNT_RESTRICTED',
-          linked.user.statusReason
-            ? `이용이 제한된 계정입니다. 사유: ${linked.user.statusReason}`
-            : undefined,
-        );
+      // 기간 정지는 끝났으면 풀고 로그인시킨다 (docs/AUTH.md §8)
+      if (
+        linked.user.status === 'SUSPENDED' &&
+        !(await liftExpiredSuspension(this.prisma, this.redis, linked.user))
+      )
+        throw new AppException('ACCOUNT_RESTRICTED', suspensionMessage(linked.user), {
+          suspendedUntil: linked.user.suspendedUntil?.toISOString() ?? null,
+        });
       if (linked.user.status === 'DELETED') throw new AppException('INVALID_CREDENTIALS');
       // 다시 로그인하며 새 refresh 토큰을 받았으면 갱신한다 (탈퇴 시 폐기용)
       if (profile.revokeToken)

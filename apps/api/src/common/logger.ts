@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import pino from 'pino';
 import { pinoHttp } from 'pino-http';
+import { logBuffer } from './log-buffer';
 
 /** 로그에서 토큰·비밀번호·개인정보를 가린다 (docs/SECURITY.md) */
 const REDACT = [
@@ -44,6 +45,13 @@ export function redactUrl(url: string): string {
 export const logger = pino({
   level: process.env.LOG_LEVEL ?? (process.env.NODE_ENV === 'test' ? 'silent' : 'info'),
   redact: { paths: REDACT, censor: '[redacted]' },
+  // 관리자 실시간 로그용으로 최근 줄을 메모리에 남긴다 (가린 뒤 보관, docs/SECURITY.md "서버 로그 열람")
+  hooks: {
+    streamWrite: (s) => {
+      logBuffer.push(s);
+      return s;
+    },
+  },
   transport:
     process.env.NODE_ENV === 'development'
       ? { target: 'pino-pretty', options: { singleLine: true } }

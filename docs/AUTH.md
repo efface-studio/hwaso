@@ -83,21 +83,25 @@ iOS 앱의 Apple 로그인은 웹 OAuth 가 아니라 시스템 Sign in with App
 - 앱 세션은 위 확인에 더해 재인증 토큰(`x-reauth-token`)이 필요하다. 소셜 재인증만으로 확인하는 탈퇴는 그 자체를 재인증으로 본다 (docs/SECURITY.md §계정 보안).
 - 경로: 앱 마이 › 설정 › 회원 탈퇴, 웹 마이 › 설정. 로그인 없이 볼 수 있는 안내는 웹 `/account-deletion` (Google Play 데이터 삭제 URL).
 - 탈퇴는 필수 동의(§11) 전에도 할 수 있다.
+- 관리자 삭제(`DELETE /admin/users/:id`)도 같은 차단 조건·익명화(`AuthService.anonymizeAccount`)를 쓴다 (본인 확인 대신 관리자 권한·사유·감사 로그).
 - 차단 조건: 진행 중 주문(결제~배송), LIVE 경매 판매/최고 입찰 중 → 409 + 안내.
 - 처리: `User.status=DELETED`, email → `deleted+{id}@invalid`, passwordHash null, 프로필 익명화("탈퇴한 사용자"), 마케팅 동의 철회, 소셜 연결·세션·푸시 토큰 삭제, Apple 토큰 revoke. 주문/리뷰/입찰 기록은 거래 무결성과 법적 보관 의무로 익명 상태로 유지.
 
 ## 8. 권한 (RBAC)
 
-| Role            | 가능                                   |
-| --------------- | -------------------------------------- |
-| USER            | 탐색, 구매, 입찰, 채팅, 리뷰, 신고     |
-| SELLER          | + 상품/경매 등록, 판매 관리, 정산 조회 |
-| VERIFIED_SELLER | + 인증 배지, 고가 경매(1억 이상) 등록  |
-| ADMIN           | + 관리자 기능 (역할 부여 제외)         |
-| SUPER_ADMIN     | + ADMIN 부여/회수, 정책 변경           |
+| Role            | 가능                                                                       |
+| --------------- | -------------------------------------------------------------------------- |
+| USER            | 탐색, 구매, 입찰, 채팅, 리뷰, 신고                                         |
+| SELLER          | + 상품/경매 등록, 판매 관리, 정산 조회                                     |
+| VERIFIED_SELLER | + 인증 배지, 고가 경매(1억 이상) 등록                                      |
+| ADMIN           | + 관리자 기능 (일반 회원 대상만, 관리자 역할 부여 불가)                    |
+| SUPER_ADMIN     | + ADMIN·SUPER_ADMIN 부여/회수, 관리자 계정 관리, 서버 로그 열람, 정책 변경 |
 
 - 서버: `@Roles()` 데코레이터 + `RolesGuard`, 리소스 소유권은 서비스 계층에서 `WHERE sellerId = currentUser` 로 강제.
 - 클라이언트의 버튼 숨김은 UX 일 뿐 보안이 아니다.
+- 관리자끼리: 본인 계정에는 조치할 수 없고, 관리자 계정은 SUPER_ADMIN 만 다룬다. 마지막 활성 SUPER_ADMIN 은 강등·정지·삭제할 수 없다 (잠금 트랜잭션, docs/SECURITY.md "관리자 권한"). 관리자 역할에서 내려가면 모든 세션을 끊는다.
+- 이용 정지: `SUSPENDED` + 사유 + `suspendedUntil`(null 이면 영구). 정지하면 모든 기기에서 로그아웃되고, 로그인(비밀번호·소셜)하면 403 `ACCOUNT_RESTRICTED` 로 기간(`…까지 (n일 남음)` 또는 영구)과 사유를 안내한다(`details.suspendedUntil`). 기간이 지나면 그 로그인에서 바로 풀리고, 워커도 1분마다 푼다 (`user.suspension_expired` 감사 기록).
+- 관리자 계정 생성(`POST /admin/users`)은 이메일 인증 완료로 만들고 필수 동의는 비워 두어 첫 로그인 때 동의 화면(§11)을 거친다. "다음 로그인 때 비밀번호 변경 강제"는 아직 없다 — 임시 비밀번호는 회원이 설정에서 바꾼다.
 - 모든 USER 는 판매자 등록(`POST /me/seller`) 으로 SELLER 가 될 수 있다.
 
 ## 9. 생체 인증 (Mobile)

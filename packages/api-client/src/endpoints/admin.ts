@@ -1,5 +1,7 @@
 import type {
   AdminAuctionRow,
+  AdminCreateUserInput,
+  AdminCreateUserResult,
   AdminBannerRow,
   AdminCategoryRow,
   AdminCouponRow,
@@ -9,6 +11,7 @@ import type {
   AdminProductRow,
   AdminReportRow,
   AdminSettlementRow,
+  AdminUpdateUserInput,
   AdminUserDetail,
   AdminUserRow,
   AuctionPolicyInput,
@@ -27,6 +30,8 @@ import type {
   Paged,
   ReportAction,
   Role,
+  ServerLogQuery,
+  ServerLogTail,
 } from '@shop/shared';
 import type { Http, Query } from '../http';
 
@@ -38,12 +43,18 @@ export const adminApi = (http: Http) => ({
 
   users: (q: Query) => http.get<Paged<AdminUserRow>>('/admin/users', q),
   user: (userId: string) => http.get<AdminUserDetail>(`/admin/users/${id(userId)}`),
-  suspend: (userId: string, r: string) =>
-    http.post<AdminUserDetail>(`/admin/users/${id(userId)}/suspend`, reason(r)),
+  /** until: 정지 종료 일시(ISO). null 이면 영구 */
+  suspend: (userId: string, r: string, until: string | null = null) =>
+    http.post<AdminUserDetail>(`/admin/users/${id(userId)}/suspend`, { reason: r, until }),
   restore: (userId: string, r: string) =>
     http.post<AdminUserDetail>(`/admin/users/${id(userId)}/restore`, reason(r)),
   setRole: (userId: string, role: Role) =>
     http.patch<AdminUserDetail>(`/admin/users/${id(userId)}/role`, { role }),
+  createUser: (b: AdminCreateUserInput) => http.post<AdminCreateUserResult>('/admin/users', b),
+  updateUser: (userId: string, b: AdminUpdateUserInput) =>
+    http.patch<AdminUserDetail>(`/admin/users/${id(userId)}`, b),
+  deleteUser: (userId: string, r: string) =>
+    http.delete<{ id: string; deleted: true }>(`/admin/users/${id(userId)}`, reason(r)),
   resetStrikes: (userId: string, r: string) =>
     http.post<AdminUserDetail>(`/admin/users/${id(userId)}/reset-strikes`, reason(r)),
   sellers: (q: Query) => http.get<Paged<AdminUserRow>>('/admin/sellers', q),
@@ -104,6 +115,8 @@ export const adminApi = (http: Http) => ({
   broadcast: (b: BroadcastInput) => http.post<{ recipients: number; pushed: boolean }>('/admin/broadcast', b),
 
   auditLogs: (q: Query) => http.get<Paged<AuditLogRow>>('/admin/audit-logs', q),
+  /** 서버 로그 tail (최고 관리자). 실시간은 createLogStream */
+  serverLogs: (q: ServerLogQuery = {}) => http.get<ServerLogTail>('/admin/logs', { ...q }),
 
   /** 자체 호스팅 OTA 배포 (docs/MOBILE_RELEASE.md "OTA 업데이트") */
   ota: {

@@ -78,6 +78,8 @@ PostgreSQL 16 · Prisma 6. 스키마 원본은 `apps/api/prisma/schema.prisma` �
 | `Seller`           | userId(PK), businessName?, bankName, bankAccountMasked, bankAccountEnc, verifiedAt?                                                                                                                             | 정산 계좌 암호화 저장                                                                                                    |
 | `Address`          | userId, recipient, phone, zipCode, address1, address2, memo, isDefault                                                                                                                                          |                                                                                                                          |
 
+`User.statusReason?`·`User.suspendedUntil?`: 이용 정지 사유와 기간 정지 종료 시각 — `SUSPENDED` 인데 `suspendedUntil` 이 null 이면 영구 정지 (AUTH.md §8).
+
 ### 카탈로그
 
 | 모델           | 주요 필드                                                                                                                                                                                                                                                                                                                                                          | 비고                                                                     |
