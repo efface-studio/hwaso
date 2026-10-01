@@ -83,6 +83,7 @@ const zhHant: Translation<typeof ko> = {
     ORDER_UPDATED: '訂單',
     FOLLOWING_NEW_ITEM: '追蹤的新作品',
     SECURITY_NEW_DEVICE: '新裝置登入',
+    WELCOME: '註冊成功',
     SYSTEM: '通知',
   },
   productStatus: {

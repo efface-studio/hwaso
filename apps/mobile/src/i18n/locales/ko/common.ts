@@ -179,6 +179,11 @@ const ko = {
     allow: '알림 켜기',
     later: '나중에',
   },
+  welcome: {
+    title: '가입을 축하해요',
+    body: '{{nickname}}님, 화소에 오신 걸 환영해요.\n마음에 드는 작품을 찾아 관심 작품에 담아 보세요.',
+    browse: '둘러보기',
+  },
   auctionLive: {
     outbid: '더 높은 입찰이 들어왔어요',
     extended: '마감 직전 입찰로 {{seconds}}초 연장되었어요',

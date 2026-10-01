@@ -83,6 +83,7 @@ const en: Translation<typeof ko> = {
     ORDER_UPDATED: 'Order',
     FOLLOWING_NEW_ITEM: 'New from following',
     SECURITY_NEW_DEVICE: 'New device sign-in',
+    WELCOME: 'Welcome',
     SYSTEM: 'Notice',
   },
   productStatus: {

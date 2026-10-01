@@ -27,6 +27,7 @@ import { assertClean } from '../common/moderation';
 import { ZodPipe } from '../common/zod.pipe';
 import { IdentityModule } from '../identity/identity.controller';
 import { IdentityService } from '../identity/identity.service';
+import { logNotifyError, NotificationEvents } from '../notifications/notification-events';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 import { AuthModule } from '../auth/auth.controller';
@@ -45,6 +46,7 @@ export class AccountController {
     private readonly sessions: SessionService,
     private readonly security: SecurityService,
     private readonly auth: AuthService,
+    private readonly events: NotificationEvents,
   ) {}
 
   @Patch('users/me/profile')
@@ -156,6 +158,8 @@ export class AccountController {
       ...(nickname ? [this.prisma.profile.update({ where: { userId: user.id }, data: { nickname } })] : []),
     ]);
     await invalidateUserStatus(this.redis, user.id);
+    // 소셜 가입 마무리: 필수 동의가 처음 채워질 때만 (마케팅 수신 변경으로 다시 보낼 때는 보내지 않는다)
+    if (!hasRequiredConsent(u)) void this.events.welcome(user.id).catch(logNotifyError);
     return this.sessions.me(user.id);
   }
 

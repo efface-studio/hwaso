@@ -1,6 +1,6 @@
 import type { NotificationDto } from '@shop/shared';
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
-import { router, Stack, type Href } from 'expo-router';
+import { router, Stack } from 'expo-router';
 import { memo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert, Pressable, StyleSheet, View, type ListRenderItem } from 'react-native';
@@ -15,6 +15,7 @@ import i18n, { currentLanguage } from '@/i18n';
 import { dateTimeFormat } from '@/i18n/format';
 import { label } from '@/i18n/labels';
 import { api } from '@/lib/api';
+import { openAppPath } from '@/lib/nav';
 import { useAuthStore } from '@/stores/auth';
 import { useTheme } from '@/theme';
 
@@ -100,7 +101,7 @@ export default function NotificationsScreen() {
   const open = useCallback(
     async (n: NotificationDto) => {
       if (!n.readAt) await api.notifications.read({ ids: [n.id] }).then(refresh, () => undefined);
-      if (n.link) router.push(n.link as Href);
+      if (n.link) openAppPath(n.link);
     },
     [refresh],
   );

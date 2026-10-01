@@ -12,6 +12,7 @@ import { Text } from '@/components/ui/text';
 import { api } from '@/lib/api';
 import { appDevice } from '@/lib/device';
 import { useAuthStore } from '@/stores/auth';
+import { showWelcome } from '@/lib/welcome';
 import { useTheme } from '@/theme';
 
 /** 회원가입: 이메일 인증 → 비밀번호·닉네임·약관 (이용약관·개인정보·만 14세는 필수, 마케팅은 선택) */
@@ -48,6 +49,7 @@ export default function SignupScreen() {
       });
       // 로그인 상태가 되면 루트 가드가 로그인·가입 화면을 빼서 보던 화면으로 돌아간다
       await useAuthStore.getState().setSession(tokens);
+      showWelcome(tokens.user.profile.nickname);
     } catch (e) {
       if (e instanceof ApiError && e.code === 'NICKNAME_TAKEN') setErrors({ nickname: e.message });
       else setErrors({ form: e instanceof ApiError ? e.message : tr('signup.failed') });

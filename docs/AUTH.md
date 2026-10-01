@@ -124,6 +124,7 @@ iOS 앱의 Apple 로그인은 웹 OAuth 가 아니라 시스템 Sign in with App
   - 필수 동의 전이고 이메일이 임시 주소인데 토큰이 없으면 `400 VALIDATION_FAILED`("이메일을 입력해주세요.", details.fields.email). 이미 동의한 회원(마케팅 수신 변경 등)은 강제하지 않는다.
   - 닉네임: provider 이름으로 만든 닉네임을 채워 두고 고칠 수 있다. 바뀌었을 때만 `nickname` 을 보내며 금칙어(`PROHIBITED_CONTENT`)·중복(`409 NICKNAME_TAKEN`)을 검사한다. 닉네임 검사를 통과한 뒤에 이메일 토큰을 소비한다.
   - 검사를 모두 통과하면 동의·이메일·닉네임을 한 트랜잭션으로 기록한다. 실패하면 동의도 기록되지 않는다.
+- **가입 축하** (`WELCOME`): 가입이 끝나는 순간 회원마다 한 번 알림(알림함 + 푸시, 링크 `/`)을 보낸다 — 이메일 가입은 가입 직후, 소셜 가입은 `POST /me/consent` 로 필수 동의가 처음 채워질 때. 이미 동의한 회원의 재요청(마케팅 수신 변경)은 보내지 않고, 이미 받은 회원은 건너뛴다 (동시 요청은 Redis 잠금 `notify:welcome:{id}` 60초). 운영 알림(system)이라 알림 설정으로 끌 수 없고 방해 금지 시간에는 푸시만 보류한다. 앱은 같은 순간 가입 축하 팝업(`WelcomeHost`)을 띄운다.
 - 화면은 임시 주소를 보이지 않는다 (`emailMissing` 이면 이메일 대신 '소셜 계정' 표시 또는 생략).
 - 동의 전에는 읽기만 된다. 로그인이 필요한 쓰기 요청은 전역 `AuthGuard` 가 `403 CONSENT_REQUIRED` 로 막는다. 예외는 `@ConsentExempt()` — `AuthController` 전체(로그아웃·기기·비밀번호·소셜·탈퇴), `POST /me/consent`, `DELETE /me/push-tokens`. 동의 여부는 계정 상태 캐시(`user:status:{id}` = `상태:역할:동의(0/1)`, 30초)에 함께 두고 동의 시 무효화한다.
 - 마케팅(광고성 정보) 수신: `marketingOptIn` + 동의 시각 `marketingAgreedAt`. `POST /me/consent` 를 다시 보내 동의·철회한다 (필수 동의 시각은 처음 값을 유지). 광고성 전체 알림은 동의자에게만, 제목 `(광고)`, 21~8시(KST)에는 푸시하지 않는다 (docs/API.md Admin).

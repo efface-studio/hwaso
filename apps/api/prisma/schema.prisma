@@ -172,6 +172,7 @@ enum NotificationType {
   ORDER_UPDATED
   FOLLOWING_NEW_ITEM
   SECURITY_NEW_DEVICE
+  WELCOME
 }
 
 enum SecurityEventType {

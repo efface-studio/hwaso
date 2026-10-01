@@ -181,6 +181,11 @@ const en: Translation<typeof ko> = {
     allow: 'Turn on notifications',
     later: 'Not now',
   },
+  welcome: {
+    title: 'Welcome aboard',
+    body: '{{nickname}}, welcome to Hwaso.\nFind works you love and save them for later.',
+    browse: 'Start browsing',
+  },
   auctionLive: {
     outbid: "You've been outbid",
     extended: 'Extended by {{seconds}}s after a last-minute bid',

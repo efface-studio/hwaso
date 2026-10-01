@@ -2,7 +2,7 @@ import './zod-config';
 import * as z from 'zod';
 import type { NotificationType } from './enums';
 
-/** 알림 설정 단위. system(운영 공지·계정 보안)은 끌 수 없다 */
+/** 알림 설정 단위. system(운영 공지·계정 보안·가입 축하)은 끌 수 없다 */
 export const NOTIFICATION_CATEGORIES = ['auction', 'trade', 'chat', 'activity'] as const;
 export type NotificationCategory = (typeof NOTIFICATION_CATEGORIES)[number];
 
@@ -39,6 +39,7 @@ export const NOTIFICATION_CATEGORY: Record<NotificationType, NotificationCategor
   FOLLOWED: 'activity',
   FAVORITE_ON_SALE: 'activity',
   FOLLOWING_NEW_ITEM: 'activity',
+  WELCOME: 'system',
   SYSTEM: 'system',
   SECURITY_NEW_DEVICE: 'system',
 };

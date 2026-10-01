@@ -1,9 +1,9 @@
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
-import { router, type Href } from 'expo-router';
 import { Platform } from 'react-native';
 import i18n from '@/i18n';
 import { api } from './api';
+import { openAppPath } from './nav';
 import { secure } from './secure';
 
 const TOKEN_KEY = 'hwaso.pushToken';
@@ -93,7 +93,7 @@ export function listenNotificationTaps() {
   if (Platform.OS === 'web') return undefined;
   const open = (r: Notifications.NotificationResponse | null) => {
     const link = (r?.notification.request.content.data as { link?: string } | undefined)?.link;
-    if (link?.startsWith('/')) router.push(link as Href);
+    if (link?.startsWith('/')) openAppPath(link);
   };
   void Notifications.getLastNotificationResponseAsync().then(open);
   const sub = Notifications.addNotificationResponseReceivedListener(open);
