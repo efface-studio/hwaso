@@ -2,9 +2,13 @@
 
 import { ApiError } from '@shop/api-client';
 import {
+  ADMIN_NOTIFICATION_KINDS,
+  ADMIN_NOTIFICATION_LABEL,
+  ADMIN_ROLES,
   NOTIFICATION_CATEGORIES,
   NOTIFICATION_CATEGORY_LABEL,
   QUIET_HOURS,
+  type AdminNotificationPrefs,
   type NotificationPrefs,
 } from '@shop/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -95,9 +99,48 @@ function Marketing() {
   );
 }
 
+/**
+ * 관리자 알림 (관리자에게만). 일반 푸시 설정과 별개로, 끄면 알림함에도 쌓이지 않는다
+ */
+function AdminPrefs({
+  admin,
+  onChange,
+}: {
+  admin: AdminNotificationPrefs;
+  onChange: (next: AdminNotificationPrefs) => void;
+}) {
+  return (
+    <section className="flex flex-col gap-4 border-t border-border pt-6">
+      <h2 className="text-h3">관리자 알림</h2>
+      <p className="-mt-2 text-small text-muted">
+        관리자에게만 보이는 설정이에요. 끄면 알림함에도 쌓이지 않아요.
+      </p>
+      <Switch
+        checked={admin.enabled}
+        onCheckedChange={(v) => onChange({ ...admin, enabled: v })}
+        label="관리자 알림 받기"
+        description="신고, 판매자 인증, 감정서 검수, 결제 이상, 앱 업데이트"
+      />
+      <div className="flex flex-col gap-4 border-l border-border pl-4">
+        {ADMIN_NOTIFICATION_KINDS.map((k) => (
+          <Switch
+            key={k}
+            checked={admin.enabled && admin.types[k]}
+            disabled={!admin.enabled}
+            onCheckedChange={(v) => onChange({ ...admin, types: { ...admin.types, [k]: v } })}
+            label={ADMIN_NOTIFICATION_LABEL[k].label}
+            description={ADMIN_NOTIFICATION_LABEL[k].description}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function Prefs() {
   const qc = useQueryClient();
   const { data } = useQuery({ queryKey: ['notification-prefs'], queryFn: api.notifications.prefs });
+  const role = useAuthStore((s) => s.user?.role);
   const save = useMutation({
     mutationFn: (p: NotificationPrefs) => api.notifications.setPrefs(p),
     onMutate: (p) => qc.setQueryData(['notification-prefs'], p),
@@ -107,6 +150,8 @@ function Prefs() {
     },
   });
   if (!data) return <Skeleton className="h-64 w-full" />;
+  // 서버는 관리자에게만 admin 을 준다 — 역할이 바뀐 직후를 대비해 화면에서도 한 번 더 본다
+  const admin = role && ADMIN_ROLES.includes(role) ? data.admin : undefined;
   return (
     <div className="flex flex-col gap-6">
       <BrowserPush />
@@ -133,6 +178,7 @@ function Prefs() {
           description={`밤 ${QUIET_HOURS.start}시부터 아침 ${QUIET_HOURS.end}시까지 푸시를 보내지 않아요.`}
         />
       </section>
+      {admin && <AdminPrefs admin={admin} onChange={(next) => save.mutate({ ...data, admin: next })} />}
       <Marketing />
     </div>
   );

@@ -85,6 +85,11 @@ const en: Translation<typeof ko> = {
     SECURITY_NEW_DEVICE: 'New device sign-in',
     WELCOME: 'Welcome',
     SYSTEM: 'Notice',
+    ADMIN_REPORT: 'New report',
+    ADMIN_SELLER_PENDING: 'Seller verification request',
+    ADMIN_CERTIFICATE_PENDING: 'Certificate review request',
+    ADMIN_PAYMENT_ISSUE: 'Payment issue',
+    ADMIN_APP_UPDATE: 'App update',
   },
   productStatus: {
     DRAFT: 'Draft',
