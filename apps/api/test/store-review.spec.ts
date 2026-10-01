@@ -4,7 +4,7 @@ import { signPurposeToken } from '../src/common/auth';
 import { Clock } from '../src/common/clock';
 import { decrypt } from '../src/common/crypto';
 import { createTestApp, type TestContext } from './app';
-import { createCategory, createProduct, createUser, fakeUpload } from './fixtures';
+import { createCategory, createProduct, createUser, fakeUpload, reauth } from './fixtures';
 
 /**
  * 스토어 심사 대응 (#202): 필수 동의 · Apple 토큰 폐기 · 소셜 재인증 탈퇴 · 차단 필터 · 금칙어 · 광고성 알림
@@ -286,14 +286,15 @@ describe('Sign in with Apple — 토큰 저장 · 폐기', () => {
     await t.prisma.user.update({ where: { id: user.id }, data: { passwordHash: 'set' } });
     const sub = `apl${uniq()}`;
     const { revoke } = mockApple(sub);
+    const stepUp = { ...user.auth, ...(await reauth(t, user)) };
     await t.http
       .post('/api/v1/auth/social/apple')
-      .set(user.auth)
+      .set(stepUp)
       .send({ identityToken: 'x'.repeat(40), authorizationCode: 'link-code' })
       .expect(204);
     const me = await t.http.get('/api/v1/auth/me').set(user.auth).expect(200);
     expect(me.body.socialProviders).toEqual(['APPLE']);
-    await t.http.delete('/api/v1/auth/social/apple').set(user.auth).expect(204);
+    await t.http.delete('/api/v1/auth/social/apple').set(stepUp).expect(204);
     expect(revoke).toHaveBeenCalledWith(`apple-refresh-${sub}`, BUNDLE);
   });
 
@@ -317,7 +318,7 @@ describe('Sign in with Apple — 토큰 저장 · 폐기', () => {
       .expect(200);
     await t.http
       .post('/api/v1/auth/social/apple')
-      .set(user.auth)
+      .set({ ...user.auth, ...(await reauth(t, user)) })
       .send({ code: 'c', state: url.body.state, redirectUri: webRedirect })
       .expect(204);
     const row = await t.prisma.socialAccount.findFirstOrThrow({ where: { providerUserId: sub } });
@@ -336,6 +337,13 @@ describe('소셜 재인증으로 탈퇴', () => {
 
     // 다른 카카오 계정으로는 확인되지 않는다
     const wrong = await kakaoGrant(`other${uniq()}`);
+    // 소셜 재인증만 재인증 토큰을 대신한다 — 비밀번호를 섞어 보내면 앱 세션은 재인증이 필요하다
+    const mixed = await t.http
+      .delete('/api/v1/auth/account')
+      .set(auth)
+      .send({ provider: 'kakao', ...wrong, password: 'whatever1' })
+      .expect(403);
+    expect(mixed.body.error.code).toBe('REAUTH_REQUIRED');
     const denied = await t.http
       .delete('/api/v1/auth/account')
       .set(auth)

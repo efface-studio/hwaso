@@ -161,6 +161,11 @@ const zhHant: Translation<typeof ko> = {
     phone: '手機',
     web: '網頁',
   },
+  update: {
+    criticalTitle: '重要更新',
+    criticalMessage: '必要的修正已準備好，App 將重新啟動以完成更新。',
+    restart: '重新啟動',
+  },
   push: {
     channelName: '預設通知',
   },

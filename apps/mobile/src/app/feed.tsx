@@ -2,7 +2,7 @@ import { useInfiniteQuery } from '@tanstack/react-query';
 import { router, Stack } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { AppRefreshControl } from '@/components/ui/app-refresh-control';
-import { usePullRefresh } from '@/hooks/use-pull-refresh';
+import { useInfinitePullRefresh } from '@/hooks/use-pull-refresh';
 import { ProductCard } from '@/components/product/product-card';
 import { Empty, Loading } from '@/components/ui/state';
 import { List } from '@/components/ui/list';
@@ -21,13 +21,13 @@ export default function FeedScreen() {
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (last) => last.nextCursor ?? undefined,
   });
-  const pull = usePullRefresh(q.refetch);
+  const pull = useInfinitePullRefresh(['following-feed'], q.refetch);
   if (q.isPending) return <Loading variant="grid" />;
   return (
     <List
       key={g.columns}
       style={{ backgroundColor: t.colors.background }}
-      data={pull.refreshing ? [] : (q.data?.pages.flatMap((p) => p.items) ?? [])}
+      data={q.data?.pages.flatMap((p) => p.items) ?? []}
       numColumns={g.columns}
       keyExtractor={(p) => p.id}
       renderItem={({ item }) => <ProductCard p={item} width={g.cardWidth} />}
@@ -37,16 +37,12 @@ export default function FeedScreen() {
       onEndReached={() => q.hasNextPage && !q.isFetchingNextPage && void q.fetchNextPage()}
       ListHeaderComponent={<Stack.Screen options={{ title: tr('common:screen.feed') }} />}
       ListEmptyComponent={
-        pull.refreshing ? (
-          <Loading variant="grid" />
-        ) : (
-          <Empty
-            kind="people"
-            title={tr('feed.empty.title')}
-            description={tr('feed.empty.description')}
-            action={{ title: tr('feed.empty.action'), onPress: () => router.push('/search') }}
-          />
-        )
+        <Empty
+          kind="people"
+          title={tr('feed.empty.title')}
+          description={tr('feed.empty.description')}
+          action={{ title: tr('feed.empty.action'), onPress: () => router.push('/search') }}
+        />
       }
     />
   );

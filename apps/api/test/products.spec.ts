@@ -1,4 +1,5 @@
 import { CATEGORY_CACHE_KEY } from '../src/catalog/catalog.controller';
+import { HOME_CACHE_KEY, ProductsService } from '../src/products/products.service';
 import { createTestApp, type TestContext } from './app';
 import { createCategory, createProduct, createUser, fakeUpload } from './fixtures';
 
@@ -53,6 +54,79 @@ describe('상품 조회 (Read)', () => {
       .expect(200);
     const ids = res.body.items.map((i: { id: string }) => i.id);
     expect(ids.indexOf(exact.id)).toBeLessThan(ids.indexOf(partial.id));
+  });
+
+  it('검색어는 작가 영문명·제작자·카테고리·판매자 닉네임도 찾고, 필드 경계를 넘는 일치는 찾지 않는다', async () => {
+    const tag = `q${Date.now().toString(36)}`;
+    const seller = await createUser(t, 'SELLER');
+    const { child } = await createCategory(t);
+    const make = () => createProduct(t, { sellerId: seller.id, categoryId: child.id });
+
+    const artist = await t.prisma.artist.create({ data: { name: '홍길동', nameEn: `Hong ${tag}` } });
+    const byArtist = await make();
+    await t.prisma.product.update({ where: { id: byArtist.id }, data: { artistId: artist.id } });
+    const byMaker = await make();
+    await t.prisma.product.update({ where: { id: byMaker.id }, data: { maker: `공방 ${tag}` } });
+    const acrossFields = await make();
+    await t.prisma.product.update({
+      where: { id: acrossFields.id },
+      data: { maker: `${tag}A`, brand: `B${tag}` },
+    });
+    const category = await t.prisma.category.create({
+      data: { slug: `c-${tag}`, name: `분류${tag}`, group: 'ART', parentId: child.parentId },
+    });
+    const byCategory = await createProduct(t, { sellerId: seller.id, categoryId: category.id });
+    const nick = await createUser(t, 'SELLER');
+    await t.prisma.profile.update({ where: { userId: nick.id }, data: { nickname: `n${tag}` } });
+    const bySeller = await createProduct(t, { sellerId: nick.id, categoryId: child.id });
+    const draft = await createProduct(t, { sellerId: seller.id, categoryId: child.id, status: 'DRAFT' });
+    await t.prisma.product.update({ where: { id: draft.id }, data: { title: `초안 ${tag}` } });
+
+    const res = await t.http.get('/api/v1/products').query({ q: tag.toUpperCase(), limit: 50 }).expect(200);
+    expect(res.body.items.map((i: { id: string }) => i.id).toSorted()).toEqual(
+      [byArtist.id, byMaker.id, acrossFields.id, byCategory.id, bySeller.id].toSorted(),
+    );
+    expect(res.body.total).toBe(5);
+    // 제작자 끝과 브랜드 앞을 이어 붙인 문자열은 어느 한 필드에도 없다
+    const across = await t.http
+      .get('/api/v1/products')
+      .query({ q: `${tag}A B${tag}` })
+      .expect(200);
+    expect(across.body.total).toBe(0);
+  });
+
+  it('인기 작가: 공개 작품의 (관심 수 + 5) 합계순, 대표 이미지는 관심이 가장 많은 작품의 첫 이미지 (5분 캐시)', async () => {
+    const seller = await createUser(t, 'SELLER');
+    const { child } = await createCategory(t);
+    const tag = Date.now().toString(36);
+    const [a, b] = await Promise.all([
+      t.prisma.artist.create({ data: { name: `인기A${tag}` } }),
+      t.prisma.artist.create({ data: { name: `인기B${tag}` } }),
+    ]);
+    const work = async (artistId: string, favoriteCount: number, status?: 'DRAFT') => {
+      const p = await createProduct(t, { sellerId: seller.id, categoryId: child.id, status });
+      await t.prisma.product.update({ where: { id: p.id }, data: { artistId, favoriteCount } });
+      return p;
+    };
+    const aTop = await work(a.id, 900_000);
+    await work(a.id, 100_000);
+    await work(a.id, 5_000_000, 'DRAFT'); // 비공개 작품은 세지 않는다
+    await work(b.id, 2_000_000);
+    await t.redis.del('artists:popular:20');
+
+    const res = await t.http.get('/api/v1/artists/popular').expect(200);
+    const ids = res.body.map((x: { id: string }) => x.id);
+    expect(ids.slice(0, 2)).toEqual([b.id, a.id]);
+    const aImage = await t.prisma.productImage.findFirstOrThrow({ where: { productId: aTop.id } });
+    expect(res.body[1]).toMatchObject({
+      name: a.name,
+      productCount: 2,
+      image: { key: aImage.key, width: aImage.width, height: aImage.height },
+    });
+
+    await work(a.id, 9_000_000);
+    const cached = await t.http.get('/api/v1/artists/popular').expect(200);
+    expect(cached.body.map((x: { id: string }) => x.id).slice(0, 2)).toEqual([b.id, a.id]);
   });
 
   it('상세는 판매자 공개 정보만 포함한다 (이메일 비노출)', async () => {
@@ -264,6 +338,26 @@ describe('관심상품 · 최근 본 상품 · 문의', () => {
     expect(JSON.stringify(profile.body)).not.toContain('@');
     const sold = await t.http.get(`/api/v1/users/${seller.id}/products?tab=sold`).expect(200);
     expect(sold.body).toHaveLength(1);
+  });
+});
+
+describe('홈 (GET /home)', () => {
+  it('캐시가 비었을 때 동시에 들어온 요청은 한 번만 만든다', async () => {
+    const svc = t.app.get(ProductsService) as unknown as { buildHome: () => Promise<unknown> };
+    const build = svc.buildHome.bind(svc);
+    await t.redis.del(HOME_CACHE_KEY, `${HOME_CACHE_KEY}:stale`, `${HOME_CACHE_KEY}:lock`);
+    // 만드는 데 시간이 걸리는 동안 나머지 요청이 도착하게 한다
+    const spy = vi.spyOn(svc, 'buildHome').mockImplementation(async () => {
+      await new Promise((r) => setTimeout(r, 200));
+      return build();
+    });
+    try {
+      const res = await Promise.all(Array.from({ length: 5 }, () => t.http.get('/api/v1/home').expect(200)));
+      expect(spy).toHaveBeenCalledTimes(1);
+      expect(new Set(res.map((r) => JSON.stringify(r.body))).size).toBe(1);
+    } finally {
+      spy.mockRestore();
+    }
   });
 });
 

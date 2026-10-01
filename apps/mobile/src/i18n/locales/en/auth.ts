@@ -75,7 +75,6 @@ const en: Translation<typeof ko> = {
   },
   social: {
     continueWith: 'Continue with {{provider}}',
-    redirecting: 'Redirecting…',
     notConfiguredTitle: '{{provider}} login isn’t set up yet',
     notConfiguredMessage: 'This sign-in option isn’t available right now. Please use another option.',
     appleBuildOnlyTitle: 'Can’t sign in with Apple',

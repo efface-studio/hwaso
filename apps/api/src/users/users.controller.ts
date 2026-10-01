@@ -5,7 +5,7 @@ import { AppException } from '../common/app-exception';
 import { CurrentUser, OptionalAuth, type AuthUser } from '../common/auth';
 import { ZodPipe } from '../common/zod.pipe';
 import { PrismaService } from '../prisma/prisma.service';
-import { cardInclude, toCard, VISIBLE_PRODUCT } from '../products/product.mapper';
+import { cardSelect, toCard, VISIBLE_PRODUCT } from '../products/product.mapper';
 import { ProductsModule } from '../products/products.controller';
 import { ProductsService } from '../products/products.service';
 import { SafetyService } from '../safety/safety.controller';
@@ -36,7 +36,7 @@ export class UsersController {
       },
     });
     if (!u?.profile) throw new AppException('NOT_FOUND', '사용자를 찾을 수 없습니다.');
-    const [sellingCount, soldCount, following] = await Promise.all([
+    const [sellingCount, soldCount, following, followsMe] = await Promise.all([
       this.prisma.product.count({
         where: {
           sellerId: id,
@@ -49,6 +49,11 @@ export class UsersController {
       viewer
         ? this.prisma.follow.findUnique({
             where: { followerId_followingId: { followerId: viewer.id, followingId: id } },
+          })
+        : null,
+      viewer && viewer.id !== id
+        ? this.prisma.follow.findUnique({
+            where: { followerId_followingId: { followerId: id, followingId: viewer.id } },
           })
         : null,
     ]);
@@ -68,6 +73,7 @@ export class UsersController {
       sellingCount,
       soldCount,
       isFollowing: !!following,
+      followsMe: !!followsMe,
       joinedAt: u.createdAt.toISOString(),
     };
   }
@@ -89,7 +95,7 @@ export class UsersController {
           { status: q.tab === 'sold' ? 'SOLD' : { in: ['ACTIVE', 'RESERVED'] } },
         ],
       },
-      include: cardInclude,
+      select: cardSelect,
       orderBy: { publishedAt: 'desc' },
       take: 120,
     });

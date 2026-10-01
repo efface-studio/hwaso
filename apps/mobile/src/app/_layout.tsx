@@ -21,10 +21,13 @@ import { ActionSheetHost } from '@/components/action-sheet-host';
 import { AnimatedSplash } from '@/components/animated-splash';
 import { AppLock } from '@/components/app-lock';
 import { OfflineBanner } from '@/components/offline-banner';
+import { PrivacyShield } from '@/components/privacy-shield';
 import { PushPromptHost } from '@/components/push-prompt-host';
+import { ReauthHost } from '@/components/reauth-host';
 import { preloadTabIcons } from '@/components/tab-icons';
 import { refreshAccessToken } from '@/lib/api';
 import { isAdmin } from '@/lib/admin';
+import { OtaSync } from '@/lib/ota';
 import { guardRapidNavigation } from '@/lib/nav';
 import { connectQueryFocus } from '@/lib/query-focus';
 import { AppSync } from '@/lib/realtime-sync';
@@ -147,6 +150,7 @@ function Navigation() {
             <Stack.Screen name="settings/identity" options={{ title: tr('screen.identity') }} />
             <Stack.Screen name="settings/social" options={{ title: tr('screen.social') }} />
             <Stack.Screen name="settings/devices" options={{ title: tr('screen.devices') }} />
+            <Stack.Screen name="settings/security" options={{ title: '' }} />
             <Stack.Screen
               name="settings/notifications"
               options={{ title: tr('screen.notificationSettings') }}
@@ -192,11 +196,15 @@ export default function RootLayout() {
         <QueryClientProvider client={client}>
           <Navigation />
           <AppSync />
+          <OtaSync />
           <OfflineBanner />
           <ActionSheetHost />
+          <ReauthHost />
           <PushPromptHost />
           <AppLock />
           {hydrated && !splashDone && <AnimatedSplash ready={ready} onFinish={finishSplash} />}
+          {/* 앱 전환 화면(스냅숏)에 내용이 보이지 않게 — 가장 위에 */}
+          <PrivacyShield />
         </QueryClientProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

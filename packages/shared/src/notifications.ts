@@ -1,4 +1,5 @@
-import { z } from 'zod';
+import './zod-config';
+import * as z from 'zod';
 import type { NotificationType } from './enums';
 
 /** 알림 설정 단위. system(운영 공지·계정 보안·가입 축하)은 끌 수 없다 */
@@ -40,6 +41,7 @@ export const NOTIFICATION_CATEGORY: Record<NotificationType, NotificationCategor
   FOLLOWING_NEW_ITEM: 'activity',
   WELCOME: 'system',
   SYSTEM: 'system',
+  SECURITY_NEW_DEVICE: 'system',
 };
 
 export interface NotificationPrefs {
@@ -85,8 +87,8 @@ export const notificationReadSchema = z.union([
 ]);
 
 export const pushTokenSchema = z.strictObject({
-  /** Expo: ExponentPushToken[…] / 웹: PushSubscription JSON 문자열 */
+  /** apns: iOS 기기 토큰(hex) / fcm: Android 기기 토큰 / expo: ExponentPushToken[…] / web: PushSubscription JSON */
   token: z.string().min(10).max(2000),
-  platform: z.enum(['expo', 'web']),
+  platform: z.enum(['apns', 'fcm', 'expo', 'web']),
 });
 export type PushTokenInput = z.infer<typeof pushTokenSchema>;

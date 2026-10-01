@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, Module, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Module, Patch, Post, Req } from '@nestjs/common';
 import {
   consentSchema,
   ERROR_MESSAGES,
@@ -12,6 +12,7 @@ import {
   type SellerUpdateInput,
   type UpdateProfileInput,
 } from '@shop/shared';
+import type { Request } from 'express';
 import { AppException } from '../common/app-exception';
 import {
   ConsentExempt,
@@ -21,6 +22,7 @@ import {
   type AuthUser,
 } from '../common/auth';
 import { encrypt, maskTail } from '../common/crypto';
+import { clientIp } from '../common/rate-limit';
 import { assertClean } from '../common/moderation';
 import { ZodPipe } from '../common/zod.pipe';
 import { IdentityModule } from '../identity/identity.controller';
@@ -32,6 +34,8 @@ import { AuthModule } from '../auth/auth.controller';
 import { AuthService } from '../auth/auth.service';
 import { DemoBlocked } from '../auth/demo';
 import { SessionService } from '../auth/session.service';
+import { RequireReauth } from '../security/reauth.guard';
+import { SecurityService } from '../security/security.service';
 
 @Controller()
 export class AccountController {
@@ -40,6 +44,7 @@ export class AccountController {
     private readonly redis: RedisService,
     private readonly identity: IdentityService,
     private readonly sessions: SessionService,
+    private readonly security: SecurityService,
     private readonly auth: AuthService,
     private readonly events: NotificationEvents,
   ) {}
@@ -179,6 +184,7 @@ export class AccountController {
   async registerSeller(
     @CurrentUser() user: AuthUser,
     @Body(new ZodPipe(sellerRegisterSchema)) body: SellerRegisterInput,
+    @Req() req: Request,
   ) {
     // 판매자는 정산을 받으므로 본인인증을 요구한다 (PortOne 키가 설정된 환경)
     await this.identity.assertVerified(user.id);
@@ -199,14 +205,23 @@ export class AccountController {
       this.prisma.user.updateMany({ where: { id: user.id, role: 'USER' }, data: { role: 'SELLER' } }),
     ]);
     await invalidateUserStatus(this.redis, user.id);
+    await this.security.record(
+      user.id,
+      'SETTLEMENT_ACCOUNT_CHANGED',
+      await this.security.contextOf(user, clientIp(req)),
+      { registered: true, bankName: body.bankName, bankAccountMasked: maskTail(body.bankAccount) },
+    );
     return this.sessions.me(user.id);
   }
 
+  /** 정산 정보 수정 — 입금 계좌가 바뀔 수 있으므로 재인증을 요구한다 */
+  @RequireReauth()
   @DemoBlocked()
   @Patch('me/seller')
   async updateSeller(
     @CurrentUser() user: AuthUser,
     @Body(new ZodPipe(sellerUpdateSchema)) body: SellerUpdateInput,
+    @Req() req: Request,
   ) {
     const exists = await this.prisma.seller.findUnique({ where: { userId: user.id } });
     if (!exists) throw new AppException('SELLER_REQUIRED', undefined, undefined, 404);
@@ -221,6 +236,20 @@ export class AccountController {
           : {}),
       },
     });
+    const changed = (['bankName', 'bankAccount', 'accountHolder'] as const).filter(
+      (k) => body[k] !== undefined,
+    );
+    if (changed.length)
+      await this.security.record(
+        user.id,
+        'SETTLEMENT_ACCOUNT_CHANGED',
+        await this.security.contextOf(user, clientIp(req)),
+        {
+          fields: changed,
+          ...(body.bankName ? { bankName: body.bankName } : {}),
+          ...(body.bankAccount ? { bankAccountMasked: maskTail(body.bankAccount) } : {}),
+        },
+      );
     return this.seller(user);
   }
 }

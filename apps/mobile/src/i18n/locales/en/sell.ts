@@ -14,16 +14,26 @@ const en: Translation<typeof ko> = {
   },
   tab: {
     loginTitle: 'Log in to sell your artwork',
-    newProduct: '+ List an artwork',
-    ordersToShip: 'To ship',
-    liveAuctions: 'Live auctions',
     salesOrders: 'Sales orders',
     sellerInfo: 'Seller info · Payout account',
-    summary:
-      'Total views {{views}} · Saves {{favorites}} · Scheduled auctions {{scheduled}} · Unanswered questions {{inquiries}}',
     onboardingTitle: 'Sell your artwork on Hwaso',
     onboardingDescription:
       'Just add an account for your payouts.\nFrom taking photos to scheduling auctions, it all happens in the app.',
+    register: 'Add artwork',
+    tasks: {
+      title: 'To do',
+      toShip: 'Orders to ship',
+      inquiries: 'Questions awaiting reply',
+      drafts: 'Drafts to finish',
+    },
+    countCases: '{{count}}',
+    countItems: '{{count}}',
+    products: 'Your artworks',
+    auctions: 'In auction',
+    insights: 'Views {{views}} · Saves {{favorites}} · Scheduled auctions {{scheduled}}',
+    manage: 'Manage',
+    firstTitle: 'List your first artwork',
+    firstDescription: 'Take photos and set a price —\nyou can start selling right away.',
   },
   new: {
     title: 'List artwork {{step}}/{{total}}',

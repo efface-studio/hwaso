@@ -11,12 +11,15 @@ import { Field } from '@/components/ui/field';
 import { Empty, Loading } from '@/components/ui/state';
 import { Text } from '@/components/ui/text';
 import { api } from '@/lib/api';
+import { useScreenGuard } from '@/lib/screen-guard';
 import { useAuthStore } from '@/stores/auth';
 import { useTheme } from '@/theme';
 import { schemaMessage } from '@/i18n/validation';
 
 /** 판매자 등록 ↔ 정산 정보 조회·수정 (계좌번호는 서버가 암호화해 보관) */
 export default function SellerRegisterScreen() {
+  // 정산 계좌가 보이는 화면 — 캡처·화면 녹화 차단
+  useScreenGuard();
   const t = useTheme();
   const { t: tr } = useTranslation(['sell', 'common']);
   const qc = useQueryClient();

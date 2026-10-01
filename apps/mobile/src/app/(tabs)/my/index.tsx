@@ -6,15 +6,16 @@ import { useTranslation } from 'react-i18next';
 import { useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { AppRefreshControl } from '@/components/ui/app-refresh-control';
+import { ProviderBadge } from '@/components/auth/provider-logo';
 import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { ThemePicker } from '@/components/theme-picker';
 import { Text } from '@/components/ui/text';
-import { Skeleton, SkeletonFrame } from '@/components/ui/skeleton';
 import { api, logout } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
 import { usePrefs } from '@/stores/prefs';
 import { useTheme } from '@/theme';
+import { label } from '@/i18n/labels';
 
 function Row({
   label,
@@ -42,47 +43,36 @@ function Row({
 }
 
 /** 상단 프로필: 사진·닉네임·이메일·소개, 팔로워·팔로잉·후기·거래 수, 프로필 수정·보기 */
-/** 새로고침 중: 마이 화면 모양 그대로 (프로필 · 숫자 네 칸 · 버튼 두 개 · 메뉴 묶음) */
-function MySkeleton() {
-  const t = useTheme();
-  const rows = (n: number) =>
-    Array.from({ length: n }, (_, i) => (
-      <View key={i} style={[styles.row, { borderColor: t.colors.borderSoft, minHeight: t.touch + 12 }]}>
-        <Skeleton width={`${40 + ((i * 17) % 25)}%`} height={16} />
-      </View>
-    ));
+/**
+ * 닉네임 아래 계정 한 줄. 소셜로만 가입한 계정은 가입한 소셜 로고와 함께 보이고,
+ * 소셜에서 이메일을 받았으면 이메일, 못 받았으면(내부용 …@social.invalid) '카카오 계정' 처럼 소셜 이름을 쓴다.
+ */
+function AccountLine({ user }: { user: MeDto }) {
+  const { t: tr } = useTranslation('my');
+  const realEmail = !user.emailMissing;
+  const socialOnly = !user.hasPassword && user.socialProviders.length > 0;
+  const text = realEmail
+    ? user.email
+    : user.socialProviders[0]
+      ? tr('myTab.providerAccount', { provider: label('authProvider', user.socialProviders[0]) })
+      : tr('myTab.socialAccount');
   return (
-    <SkeletonFrame>
-      <View style={styles.profile}>
-        <View style={styles.identity}>
-          <Skeleton width={64} height={64} radius={32} />
-          <View style={{ flex: 1, gap: 8 }}>
-            <Skeleton width="45%" height={22} />
-            <Skeleton width="65%" height={14} />
-          </View>
-        </View>
-        <View style={[styles.stats, { borderColor: t.colors.borderSoft }]}>
-          {[0, 1, 2, 3].map((i) => (
-            <View key={i} style={[styles.stat, { gap: 6 }]}>
-              <Skeleton width={24} height={16} />
-              <Skeleton width={36} height={12} />
-            </View>
+    <View style={styles.account}>
+      {socialOnly && (
+        <View
+          style={styles.accountBadges}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+        >
+          {user.socialProviders.map((p) => (
+            <ProviderBadge key={p} provider={p} size={18} />
           ))}
         </View>
-        <View style={styles.actions}>
-          <Skeleton height={36} radius={t.radius.sm} style={{ flex: 1 }} />
-          <Skeleton height={36} radius={t.radius.sm} style={{ flex: 1 }} />
-        </View>
-      </View>
-      <View style={styles.group}>
-        <Skeleton width={40} height={14} />
-      </View>
-      {rows(5)}
-      <View style={styles.group}>
-        <Skeleton width={56} height={14} />
-      </View>
-      {rows(3)}
-    </SkeletonFrame>
+      )}
+      <Text variant="small" color="muted" numberOfLines={1} style={{ flexShrink: 1 }}>
+        {text}
+      </Text>
+    </View>
   );
 }
 
@@ -129,9 +119,7 @@ function ProfileHeader({ user }: { user: MeDto }) {
               </View>
             )}
           </View>
-          <Text variant="small" color="muted" numberOfLines={1}>
-            {user.emailMissing ? tr('myTab.socialAccount') : user.email}
-          </Text>
+          <AccountLine user={user} />
           {!!user.profile.bio && (
             <Text variant="small" numberOfLines={2}>
               {user.profile.bio}
@@ -242,7 +230,7 @@ export default function MyScreen() {
       const [me] = await Promise.all([
         api.auth.me(),
         qc.invalidateQueries({ queryKey: ['user', user.id] }),
-        // 스켈레톤이 한순간 깜빡이지 않게
+        // 새로고침 표시가 한순간 깜빡이지 않게
         new Promise((r) => setTimeout(r, 600)),
       ]);
       useAuthStore.getState().setUser(me);
@@ -261,94 +249,88 @@ export default function MyScreen() {
         user ? <AppRefreshControl refreshing={refreshing} onRefresh={() => void refresh()} /> : undefined
       }
     >
-      {refreshing ? (
-        <MySkeleton />
-      ) : (
-        <>
-          {user ? <ProfileHeader user={user} /> : <GuestHeader />}
-          {user &&
-            (
+      {user ? <ProfileHeader user={user} /> : <GuestHeader />}
+      {user &&
+        (
+          [
+            [
+              tr('myTab.group.shopping'),
               [
+                ['/orders', tr('myTab.menu.orders')],
+                ['/my/bids', tr('myTab.menu.bids')],
+                ['/cart', tr('myTab.menu.cart')],
+                ['/my/favorites', tr('myTab.menu.favorites')],
+                ['/my/recent', tr('myTab.menu.recent')],
+              ],
+            ],
+            [
+              tr('myTab.group.community'),
+              [
+                ['/feed', tr('myTab.menu.feed')],
                 [
-                  tr('myTab.group.shopping'),
-                  [
-                    ['/orders', tr('myTab.menu.orders')],
-                    ['/my/bids', tr('myTab.menu.bids')],
-                    ['/cart', tr('myTab.menu.cart')],
-                    ['/my/favorites', tr('myTab.menu.favorites')],
-                    ['/my/recent', tr('myTab.menu.recent')],
-                  ],
+                  { pathname: '/users/[id]/follows', params: { id: user.id, type: 'following' } },
+                  tr('myTab.menu.following'),
                 ],
-                [
-                  tr('myTab.group.community'),
-                  [
-                    ['/feed', tr('myTab.menu.feed')],
-                    [
-                      { pathname: '/users/[id]/follows', params: { id: user.id, type: 'following' } },
-                      tr('myTab.menu.following'),
-                    ],
-                    [{ pathname: '/users/[id]', params: { id: user.id } }, tr('myTab.menu.profileReviews')],
-                  ],
-                ],
-                [
-                  tr('myTab.group.account'),
-                  [
-                    ['/notifications', tr('myTab.menu.notifications')],
-                    ['/addresses', tr('myTab.menu.addresses')],
-                    ['/settings', tr('myTab.menu.settings')],
-                  ],
-                ],
-              ] as [string, [Href, string][]][]
-            ).map(([group, rows]) => (
-              <View key={group}>
-                <Text variant="label" color="muted" style={styles.group}>
-                  {group}
-                </Text>
-                {rows.map(([href, label]) => (
-                  <Pressable key={label} accessibilityRole="link" onPress={() => router.push(href)}>
-                    <Row label={label}>
-                      <Text color="faint">›</Text>
-                    </Row>
-                  </Pressable>
-                ))}
-              </View>
+                [{ pathname: '/users/[id]', params: { id: user.id } }, tr('myTab.menu.profileReviews')],
+              ],
+            ],
+            [
+              tr('myTab.group.account'),
+              [
+                ['/notifications', tr('myTab.menu.notifications')],
+                ['/addresses', tr('myTab.menu.addresses')],
+                ['/settings', tr('myTab.menu.settings')],
+              ],
+            ],
+          ] as [string, [Href, string][]][]
+        ).map(([group, rows]) => (
+          <View key={group}>
+            <Text variant="label" color="muted" style={styles.group}>
+              {group}
+            </Text>
+            {rows.map(([href, label]) => (
+              <Pressable key={label} accessibilityRole="link" onPress={() => router.push(href)}>
+                <Row label={label}>
+                  <Text color="faint">›</Text>
+                </Row>
+              </Pressable>
             ))}
-          {user ? (
-            <Pressable accessibilityRole="link" onPress={() => router.push('/support')}>
-              <Row label={tr('myTab.menu.support')}>
-                <Text color="faint">›</Text>
-              </Row>
-            </Pressable>
-          ) : (
-            <GuestMenu />
-          )}
-          <Text variant="label" color="muted" style={styles.group}>
-            {tr('myTab.group.display')}
-          </Text>
-          <ThemePicker value={theme} onChange={setTheme} />
-          <Row label={tr('myTab.senior.label')} description={tr('myTab.senior.description')}>
-            <Switch
-              style={{ alignSelf: 'center' }}
-              value={senior}
-              onValueChange={setSenior}
-              trackColor={{ true: t.colors.primary }}
-              accessibilityLabel={tr('myTab.senior.a11y')}
-            />
+          </View>
+        ))}
+      {user ? (
+        <Pressable accessibilityRole="link" onPress={() => router.push('/support')}>
+          <Row label={tr('myTab.menu.support')}>
+            <Text color="faint">›</Text>
           </Row>
-          {user && (
-            <Button
-              title={tr('myTab.logout')}
-              variant="ghost"
-              style={{ marginTop: 24 }}
-              onPress={() =>
-                Alert.alert(tr('myTab.logoutConfirm'), undefined, [
-                  { text: tr('common:action.cancel'), style: 'cancel' },
-                  { text: tr('myTab.logout'), style: 'destructive', onPress: () => void logout() },
-                ])
-              }
-            />
-          )}
-        </>
+        </Pressable>
+      ) : (
+        <GuestMenu />
+      )}
+      <Text variant="label" color="muted" style={styles.group}>
+        {tr('myTab.group.display')}
+      </Text>
+      <ThemePicker value={theme} onChange={setTheme} />
+      <Row label={tr('myTab.senior.label')} description={tr('myTab.senior.description')}>
+        <Switch
+          style={{ alignSelf: 'center' }}
+          value={senior}
+          onValueChange={setSenior}
+          trackColor={{ true: t.colors.primary }}
+          accessibilityLabel={tr('myTab.senior.a11y')}
+        />
+      </Row>
+      {user && (
+        <Button
+          title={tr('myTab.logout')}
+          variant="ghost"
+          style={{ marginTop: 24 }}
+          onPress={() =>
+            Alert.alert(tr('myTab.logoutConfirm'), undefined, [
+              { text: tr('common:action.cancel'), style: 'cancel' },
+              { text: tr('myTab.logout'), style: 'destructive', onPress: () => void logout() },
+            ])
+          }
+        />
       )}
     </ScrollView>
   );
@@ -359,6 +341,8 @@ const styles = StyleSheet.create({
   profile: { paddingTop: 8, gap: 16 },
   identity: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  account: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  accountBadges: { flexDirection: 'row', gap: 3 },
   badge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999 },
   stats: {
     flexDirection: 'row',

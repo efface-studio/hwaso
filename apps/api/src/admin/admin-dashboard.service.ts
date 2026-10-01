@@ -1,9 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import type { AdminDashboardDto } from '@shop/shared';
 import { PrismaService } from '../prisma/prisma.service';
+import { RedisService } from '../redis/redis.service';
 
 const PAID = ['PAID', 'PREPARING', 'SHIPPED', 'DELIVERED', 'COMPLETED', 'REFUND_REQUESTED'] as const;
 const DAY = 86_400_000;
+const CACHE_KEY = 'admin:dashboard';
+const CACHE_TTL_SEC = 30;
 
 /** 한국 시간 자정 (지표의 "오늘" 기준) */
 function kstMidnight(now = new Date()) {
@@ -14,9 +17,21 @@ function kstMidnight(now = new Date()) {
 
 @Injectable()
 export class AdminDashboardService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly redis: RedisService,
+  ) {}
 
+  /** 지표는 30초 캐시한다 (여러 관리자가 열어 두어도 집계는 30초에 한 번) */
   async get(): Promise<AdminDashboardDto> {
+    const cached = await this.redis.get(CACHE_KEY);
+    if (cached) return JSON.parse(cached) as AdminDashboardDto;
+    const dto = await this.compute();
+    await this.redis.set(CACHE_KEY, JSON.stringify(dto), 'EX', CACHE_TTL_SEC);
+    return dto;
+  }
+
+  private async compute(): Promise<AdminDashboardDto> {
     const p = this.prisma;
     const today = kstMidnight();
     const tomorrow = new Date(today.getTime() + DAY);
@@ -70,15 +85,30 @@ export class AdminDashboardService {
       p.auction.count({ where: { result: 'UNPAID', updatedAt: { gte: since30 } } }),
       p.settlement.aggregate({ where: { status: 'SCHEDULED' }, _sum: { netAmount: true } }),
       p.settlement.aggregate({ where: { status: 'HELD' }, _sum: { netAmount: true } }),
+      // 14일 추이: 표마다 한국 시간 날짜로 한 번씩 GROUP BY (Asia/Seoul 은 서머타임이 없어 kstMidnight 와 경계가 같다)
       p.$queryRaw<{ d: string; signups: bigint; orders: bigint; gmv: bigint }[]>`
         WITH days AS (
           SELECT generate_series(${since14}::timestamptz, ${today}::timestamptz, interval '1 day') AS start
+        ),
+        s AS (
+          SELECT date_trunc('day', u."createdAt" AT TIME ZONE 'Asia/Seoul') AS day, count(*) AS signups
+          FROM "User" u
+          WHERE u."createdAt" >= ${since14}::timestamptz AND u."createdAt" < ${tomorrow}::timestamptz
+          GROUP BY 1
+        ),
+        o AS (
+          SELECT date_trunc('day', o."paidAt" AT TIME ZONE 'Asia/Seoul') AS day,
+            count(*) AS orders, coalesce(sum(o."totalAmount"), 0) AS gmv
+          FROM "Order" o
+          WHERE o."paidAt" >= ${since14}::timestamptz AND o."paidAt" < ${tomorrow}::timestamptz
+          GROUP BY 1
         )
         SELECT to_char(d.start AT TIME ZONE 'Asia/Seoul', 'YYYY-MM-DD') AS d,
-          (SELECT count(*) FROM "User" u WHERE u."createdAt" >= d.start AND u."createdAt" < d.start + interval '1 day') AS signups,
-          (SELECT count(*) FROM "Order" o WHERE o."paidAt" >= d.start AND o."paidAt" < d.start + interval '1 day') AS orders,
-          (SELECT coalesce(sum(o."totalAmount"), 0) FROM "Order" o WHERE o."paidAt" >= d.start AND o."paidAt" < d.start + interval '1 day') AS gmv
-        FROM days d ORDER BY d.start`,
+          coalesce(s.signups, 0) AS signups, coalesce(o.orders, 0) AS orders, coalesce(o.gmv, 0) AS gmv
+        FROM days d
+        LEFT JOIN s ON s.day = d.start AT TIME ZONE 'Asia/Seoul'
+        LEFT JOIN o ON o.day = d.start AT TIME ZONE 'Asia/Seoul'
+        ORDER BY d.start`,
     ]);
 
     return {

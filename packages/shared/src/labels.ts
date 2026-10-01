@@ -107,6 +107,7 @@ export const NOTIFICATION_TYPE_LABEL: Record<NotificationType, string> = {
   FOLLOWING_NEW_ITEM: '팔로우 새 작품',
   WELCOME: '가입 축하',
   SYSTEM: '알림',
+  SECURITY_NEW_DEVICE: '새 기기 로그인',
 };
 
 export const PRODUCT_STATUS_LABEL: Record<ProductStatus, string> = {

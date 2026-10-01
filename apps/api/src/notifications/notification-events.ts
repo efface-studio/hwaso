@@ -188,11 +188,17 @@ export class NotificationEvents {
   async inquiryReceived(inquiryId: string) {
     const q = await this.prisma.inquiry.findUnique({
       where: { id: inquiryId },
-      select: { question: true, product: { select: { id: true, title: true, sellerId: true } } },
+      select: {
+        userId: true,
+        question: true,
+        product: { select: { id: true, title: true, sellerId: true } },
+      },
     });
     if (!q) return;
     await this.n.notify(q.product.sellerId, {
       type: 'INQUIRY_RECEIVED',
+      sender: await this.n.senderOf(q.userId),
+      threadId: `inquiry-${q.product.id}`,
       title: '새 상품 문의가 있어요',
       body: `${q.product.title} · ${q.question.slice(0, 60)}`,
       link: `/products/${q.product.id}#inquiries`,
@@ -202,11 +208,13 @@ export class NotificationEvents {
   async inquiryAnswered(inquiryId: string) {
     const q = await this.prisma.inquiry.findUnique({
       where: { id: inquiryId },
-      select: { userId: true, product: { select: { id: true, title: true } } },
+      select: { userId: true, product: { select: { id: true, title: true, sellerId: true } } },
     });
     if (!q) return;
     await this.n.notify(q.userId, {
       type: 'INQUIRY_ANSWERED',
+      sender: await this.n.senderOf(q.product.sellerId),
+      threadId: `inquiry-${q.product.id}`,
       title: '문의에 답변이 달렸어요',
       body: q.product.title,
       link: `/products/${q.product.id}#inquiries`,
