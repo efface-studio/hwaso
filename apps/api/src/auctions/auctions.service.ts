@@ -17,7 +17,7 @@ import { AppException } from '../common/app-exception';
 import type { AuthUser } from '../common/auth';
 import { logNotifyError, NotificationEvents } from '../notifications/notification-events';
 import { PrismaService } from '../prisma/prisma.service';
-import { cardInclude, cardSelect, toCard } from '../products/product.mapper';
+import { cardSelect, toCard } from '../products/product.mapper';
 import { decodeCursor, encodeCursor, HOME_CACHE_KEY, ProductsService } from '../products/products.service';
 import { RealtimeGateway, RealtimeService } from '../realtime/realtime';
 import { RedisService } from '../redis/redis.service';
@@ -281,7 +281,8 @@ export class AuctionsService {
   async snapshot(id: string, viewer?: AuthUser): Promise<AuctionSnapshot> {
     const a = await this.prisma.auction.findUnique({
       where: { id },
-      include: { product: { include: cardInclude } },
+      // 상품은 카드 열만 (설명·반품 정책 등 긴 본문 제외)
+      include: { product: { select: { ...cardSelect, deletedAt: true } } },
     });
     const isOwner = viewer && (a?.sellerId === viewer.id || ADMIN.includes(viewer.role));
     if (!a || (a.status === 'DRAFT' && !isOwner) || a.product.deletedAt) {
@@ -374,7 +375,7 @@ export class AuctionsService {
     if (!grouped.length) return [];
     const auctions = await this.prisma.auction.findMany({
       where: { id: { in: grouped.map((g) => g.auctionId) } },
-      include: { product: { include: cardInclude }, order: { select: { id: true } } },
+      include: { product: { select: cardSelect }, order: { select: { id: true } } },
     });
     const byId = new Map(auctions.map((a) => [a.id, a]));
     return grouped
@@ -408,7 +409,7 @@ export class AuctionsService {
       where: { sellerId: user.id },
       orderBy: { updatedAt: 'desc' },
       take: 200,
-      include: { product: { include: cardInclude } },
+      include: { product: { select: cardSelect } },
     });
     return rows.map((a: Auction & { product: Parameters<typeof toCard>[0] }) => {
       const card = toCard(a.product);

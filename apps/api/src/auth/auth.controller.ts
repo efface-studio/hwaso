@@ -46,6 +46,7 @@ import type { Request, Response } from 'express';
 import { z } from 'zod';
 import { AppException } from '../common/app-exception';
 import { ConsentExempt, CurrentUser, Public, type AuthUser } from '../common/auth';
+import { PublicCache } from '../common/http-cache';
 import { clientIp, RateLimit } from '../common/rate-limit';
 import { ZodPipe } from '../common/zod.pipe';
 import { env, isProd } from '../config/env';
@@ -128,6 +129,7 @@ export class AuthController {
   }
 
   @Public()
+  @PublicCache(300)
   @Get('providers')
   providers() {
     return {

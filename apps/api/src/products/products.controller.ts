@@ -24,6 +24,7 @@ import {
 import { z } from 'zod';
 import { AppException } from '../common/app-exception';
 import { CurrentUser, OptionalAuth, Public, type AuthedRequest, type AuthUser } from '../common/auth';
+import { PublicCache } from '../common/http-cache';
 import { clientIp, RateLimit } from '../common/rate-limit';
 import { logNotifyError, NotificationEvents } from '../notifications/notification-events';
 import { assertClean } from '../common/moderation';
@@ -59,12 +60,14 @@ export class ProductsController {
   }
 
   @Public()
+  @PublicCache(30)
   @Get('products/suggest')
   suggest(@Query(new ZodPipe(suggestQuery)) q: { q: string }) {
     return this.products.suggest(q.q);
   }
 
   @Public()
+  @PublicCache(60)
   @Get('products/facets')
   facets(@Query(new ZodPipe(facetsQuery)) q: { category?: string }) {
     return this.products.facets(q.category);

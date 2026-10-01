@@ -36,6 +36,8 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const body: Record<string, unknown> = { code, message };
     if (details) body.details = details;
     if (!isProd() && status >= 500 && exception instanceof Error) body.debug = exception.stack;
+    // @PublicCache 헤더는 핸들러 실행 전에 붙는다 — 에러 응답이 캐시되지 않게 덮어쓴다
+    res.setHeader('Cache-Control', 'no-store');
     res.status(status).json({ error: body });
   }
 
