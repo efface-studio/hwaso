@@ -119,9 +119,12 @@ Client: 서버 이벤트로만 가격 갱신 (낙관적 업데이트 없음)
 
 1. 클라이언트 → `POST /media/images` (multipart, 최대 30MB, 요청당 1장). 웹 `accept` 는 `image/*,.heic,.heif` (`IMAGE_UPLOAD`, packages/shared)
 2. 서버: 확장자/Content-Type 이 아니라 **sharp 로 실제 포맷 판별** (jpeg/png/webp/heif/avif/gif/tiff 외 거부, gif·tiff 는 첫 장), 픽셀 수 상한 100MP. iPhone HEIC(HEVC)는 sharp 가 디코딩하지 못해 `heic-decode`(WASM)를 워커 스레드에서 실행
-3. EXIF 방향 적용 후 **메타데이터(GPS 등) 제거**, 원본은 `originals/` (비공개) 에 보관
-4. 파생본: 폭 `400/800/1600` WebP + AVIF → `public/` prefix, 키에 콘텐츠 해시 포함 → CDN `immutable` 캐시
-   - 원본은 한 번만 디코딩한다: 방향 적용 + 1600 폭으로 줄인 픽셀에서 작은 파생본을 만들고, 인코딩은 병렬. 대표색은 64px 썸네일로 계산
+3. EXIF 방향 적용 후 **메타데이터(GPS 등) 제거**. 업로드 원본은 저장하지 않고, 재처리용 보관본(긴 변 ≤ 3200px, AVIF q80·effort 0·4:4:4, 알파 유지)을 `originals/<key>.avif` (비공개) 에 둔다. 원본 대비 약 1/4 크기이고 SSIM 은 JPEG q90 4:4:4 수준. 이 객체를 읽는 코드는 없다 (재처리·추가 폭 생성 때만 사용). 이전 업로드의 `originals/<key>.<원본 포맷>` 은 그대로 둔다
+4. 파생본: 폭 `400/800/1600` WebP(q82·effort 4) + AVIF(q55·effort 3·4:4:4) → `public/` prefix → `Cache-Control: public, max-age=31536000, immutable`, 운영 Cloudflare 캐시 HIT 확인
+   - 원본은 한 번만 디코딩한다: 방향 적용 + 1600 폭으로 줄인 픽셀에서 작은 파생본을 만들고, 인코딩은 병렬. 보관본은 파생본과 따로 raw 에서 줄인다 (세로로 긴 이미지의 파생본 폭이 줄지 않게). 대표색은 64px 썸네일로 계산
+   - 인코딩 설정은 SSIM·용량·시간 비교로 정했다 (2026-10, 시드 원본 8장): AVIF effort 4 이상은 3% 줄이려고 5배 느리고, 4:2:0·10bit 는 1~3% 차이, WebP effort 6·smartSubsample 은 같은 SSIM 에서 이득 없음
+   - 같은 폭에서 AVIF q55 는 WebP q82 보다 30~40% 작지만 SSIM 이 약간 낮다(≈0.958 vs 0.965). 앱(`apps/mobile/src/lib/media.ts`)은 WebP 를, 웹 `<picture>` 는 AVIF 우선 + WebP 대체를 쓴다
+   - 폭 목록은 DB 에 저장하지 않으므로(`ProductImage` 는 key·크기·대표색만) 폭을 추가하면 기존 이미지에는 그 파일이 없다 → 폭을 늘리려면 `originals/` 에서 백필한 뒤 클라이언트를 바꾼다
 5. `ProductImage` 에 key, width, height, dominantColor 저장 (로딩 placeholder 색)
 
 ### 앱 OTA 에셋
