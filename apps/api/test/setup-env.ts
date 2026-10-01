@@ -4,7 +4,8 @@ import { generateKeyPairSync } from 'node:crypto';
 const defaults: Record<string, string> = {
   NODE_ENV: 'test',
   DATABASE_URL_TEST: 'postgresql://shop:shop@localhost:5433/shop_test',
-  REDIS_URL: 'redis://localhost:6380',
+  // 운영·개발 서버는 같은 Redis 의 db 0 을 쓴다 — 테스트는 db 15 만 쓰고 비운다 (app.ts 에서 db 0 이면 거부)
+  REDIS_URL_TEST: 'redis://localhost:6380/15',
   JWT_SECRET: 'test-secret-test-secret-test-secret-00',
   OTP_SECRET: 'test-otp-secret-test-otp-secret-000000',
   DATA_ENCRYPTION_KEY: '1'.repeat(64),
@@ -51,3 +52,4 @@ Object.assign(process.env, {
   OTA_TEST_PUBLIC_KEY: ota.publicKey,
 });
 process.env.DATABASE_URL = process.env.DATABASE_URL_TEST;
+process.env.REDIS_URL = process.env.REDIS_URL_TEST;
