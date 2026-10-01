@@ -106,6 +106,8 @@ export class OrdersController {
 
   @Post('orders/quote')
   @HttpCode(200)
+  // 쿠폰 코드를 대입해 유효한 코드를 찾지 못하게 (결제 화면 재계산에는 넉넉한 한도)
+  @RateLimit({ name: 'order-quote', limit: 60, windowSec: 60, by: 'user' })
   quote(@CurrentUser() u: AuthUser, @Body(new ZodPipe(quoteOrderSchema)) body: QuoteOrderInput) {
     return this.orders.quote(u, body);
   }

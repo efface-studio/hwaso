@@ -190,6 +190,13 @@ export class SellerProductsService {
         new Set(p.images.map((i) => i.key)),
       );
     }
+    // 인증서 사진도 등록 때와 같이 본인이 올린 것만 (남의 인증서 이미지를 붙이지 못하게)
+    if (input.certificate?.imageKey)
+      await this.assertImagesOwned(
+        user.id,
+        [input.certificate.imageKey],
+        new Set(p.certificate?.imageKey ? [p.certificate.imageKey] : []),
+      );
     const saleType = input.saleType ?? p.saleType;
     const nextPrice = input.price !== undefined ? input.price : p.price == null ? null : Number(p.price);
     if (saleType !== 'AUCTION' && !nextPrice) {

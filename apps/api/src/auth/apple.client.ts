@@ -1,5 +1,14 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { appleClientSecret, appleSigningKey, type OAuthProfile, verifyAppleIdToken } from './oauth.providers';
+import { createRemoteJWKSet, type JWTVerifyGetKey } from 'jose';
+import { AppException } from '../common/app-exception';
+import { sha256 } from '../common/crypto';
+import { RedisService } from '../redis/redis.service';
+import {
+  appleClientSecret,
+  appleSigningKey,
+  type OAuthProfile,
+  verifyAppleIdTokenClaims,
+} from './oauth.providers';
 
 const APPLE_TOKEN_URL = 'https://appleid.apple.com/auth/token';
 const APPLE_REVOKE_URL = 'https://appleid.apple.com/auth/revoke';
@@ -12,10 +21,21 @@ const TIMEOUT_MS = 10_000;
 @Injectable()
 export class AppleAuthClient {
   private readonly logger = new Logger(AppleAuthClient.name);
+  /** Apple 공개키 (테스트에서 로컬 키로 교체) */
+  keys: JWTVerifyGetKey = createRemoteJWKSet(new URL('https://appleid.apple.com/auth/keys'));
 
-  /** identityToken 을 Apple 공개키로 검증 */
-  verifyIdToken(identityToken: string, audience: string[]): Promise<OAuthProfile> {
-    return verifyAppleIdToken(identityToken, audience);
+  constructor(private readonly redis: RedisService) {}
+
+  /**
+   * 앱이 보낸 identityToken 을 Apple 공개키로 검증하고 1회용으로 표시한다.
+   * 로그인·연결·탈퇴 확인마다 앱이 새로 Sign in with Apple 을 하므로, 같은 토큰이 다시 오면 탈취·재전송으로 보고 거부한다.
+   */
+  async verifyIdToken(identityToken: string, audience: string[]): Promise<OAuthProfile> {
+    const { profile, exp } = await verifyAppleIdTokenClaims(identityToken, audience, this.keys);
+    const ttl = Math.max(exp - Math.floor(Date.now() / 1000), 1) + 60;
+    const first = await this.redis.set(`apple:idtoken:${sha256(identityToken)}`, '1', 'EX', ttl, 'NX');
+    if (!first) throw new AppException('INVALID_TOKEN', 'Apple 로그인을 다시 시도해주세요.');
+    return profile;
   }
 
   /** 키가 설정돼 있어 교환·폐기를 할 수 있는지 */
