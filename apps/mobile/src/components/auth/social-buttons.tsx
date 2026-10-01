@@ -4,8 +4,8 @@ import { useQuery } from '@tanstack/react-query';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, Platform, Pressable, StyleSheet, View } from 'react-native';
-import { Text } from '@/components/ui/text';
+import { ActivityIndicator, Alert, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { ShimmerText } from '@/components/ui/shimmer-text';
 import { providerBrand as brand } from '@/components/auth/provider-logo';
 import { label } from '@/i18n/labels';
 import { api } from '@/lib/api';
@@ -91,7 +91,7 @@ export function SocialButtons({
                 },
               ]}
             >
-              {b.icon}
+              {busy === p ? <ActivityIndicator color={b.fg} /> : b.icon}
             </Pressable>
           );
         })}
@@ -121,9 +121,10 @@ export function SocialButtons({
             ]}
           >
             <View style={styles.icon}>{b.icon}</View>
-            <Text variant="bodyStrong" style={{ color: b.fg }}>
-              {busy === p ? tr('social.redirecting') : continueWith(p)}
-            </Text>
+            {/* 진행 중이면 글자가 스켈레톤처럼 반짝인다 */}
+            <ShimmerText active={busy === p} variant="bodyStrong" style={{ color: b.fg }}>
+              {continueWith(p)}
+            </ShimmerText>
           </Pressable>
         );
       })}

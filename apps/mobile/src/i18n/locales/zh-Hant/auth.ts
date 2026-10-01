@@ -47,7 +47,6 @@ const zhHant: Translation<typeof ko> = {
   },
   social: {
     continueWith: '使用{{provider}}繼續',
-    redirecting: '正在前往…',
     notConfiguredTitle: '{{provider}}登入尚未開放',
     notConfiguredMessage: '設定 API 金鑰後即可使用（apps/api/.env）。',
     appleBuildOnlyTitle: 'Apple 登入僅能在 App 建置版本中使用',
