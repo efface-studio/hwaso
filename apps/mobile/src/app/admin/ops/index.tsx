@@ -9,6 +9,7 @@ import { Text } from '@/components/ui/text';
 import { usePullRefresh } from '@/hooks/use-pull-refresh';
 import { api } from '@/lib/api';
 import { useTheme } from '@/theme';
+import { readable } from '@/hooks/use-layout';
 
 type MenuItem = {
   href: Href;
@@ -177,6 +178,6 @@ export default function OpsScreen() {
 }
 
 const styles = StyleSheet.create({
-  body: { paddingBottom: 48 },
+  body: { ...readable, paddingBottom: 48 },
   icon: { width: ICON, alignItems: 'center' },
 });

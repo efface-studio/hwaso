@@ -2,7 +2,7 @@
 
 App Store Connect 와 Google Play Console 에 입력할 답변, 심사 메모, 제출 전 점검 목록이다. 빌드·서명·EAS 절차는 docs/MOBILE_RELEASE.md, 동의·탈퇴·Apple 토큰은 docs/AUTH.md §5·§7·§11 을 본다.
 
-- 앱: 화소 (`dev.efface.hwaso`, iOS 는 iPhone 전용 — `ios.supportsTablet = false`)
+- 앱: 화소 (`dev.efface.hwaso`, iOS 는 iPhone·iPad — `ios.supportsTablet = true`, 세로 전용·iPad 전체 화면(`ios.requireFullScreen = true`). App Store Connect 에 iPad 13" 세로 스크린숏이 필요하고, 심사자가 iPad 에서 실행해 볼 수 있다)
 - 웹: `https://hwaso.kr` (아래 `<web>`)
 - 개인정보 처리방침: `<web>/privacy` · 이용약관: `<web>/terms` · 청약철회·환불: `<web>/policy/refund`
 - 계정 삭제 안내(로그인 불필요): `<web>/account-deletion` · 지원: `<web>/support`
@@ -160,6 +160,8 @@ Artwork content
 
 ### 앱 동작 (실기기)
 
+- [ ] iPad(또는 iPad 시뮬레이터) 세로 화면에서 둘러보기·로그인·결제 화면이 늘어지거나 겹치지 않는다 — 심사 기기가 iPad 일 수 있다 (2.1 앱 완성도·4.0 디자인)
+- [ ] App Store Connect 미디어: iPhone 6.9" 와 iPad 13" 세로 스크린숏 업로드
 - [ ] 로그인 없이 홈·검색·작품 상세·경매·프로필·정책 열람, 행동 버튼은 로그인 화면으로
 - [ ] 소셜 첫 가입 → 동의 화면 → 동의 전에는 글쓰기·채팅 불가
 - [ ] Apple 로그인 → 탈퇴 → 설정 › Apple ID › 암호 및 보안 › Apple로 로그인 목록에서 앱이 사라짐 (revoke 확인)

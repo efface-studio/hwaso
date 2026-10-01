@@ -8,7 +8,7 @@ import { ADMIN_TAB_ICONS, preloadTabIcons, useTabIcons } from '@/components/tab-
 import { isAdmin } from '@/lib/admin';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
-import { useTheme } from '@/theme';
+import { TAB_BAR_SCALE, useTheme } from '@/theme';
 
 /**
  * 하단 탭 — 네이티브 탭 바 (iOS 26 에서는 시스템 Liquid Glass, Android 는 Material 3).
@@ -63,7 +63,10 @@ export default function TabsLayout() {
   return (
     <>
       {my.capture}
-      <NativeTabs tintColor={t.colors.primary} labelStyle={{ fontSize: t.senior ? 13 : 11 }}>
+      <NativeTabs
+        tintColor={t.colors.primary}
+        labelStyle={{ fontSize: (t.senior ? 13 : 11) * TAB_BAR_SCALE }}
+      >
         <NativeTabs.Trigger name="home">
           <NativeTabs.Trigger.Label>{tr('tabs.home')}</NativeTabs.Trigger.Label>
           {icons.home ? (

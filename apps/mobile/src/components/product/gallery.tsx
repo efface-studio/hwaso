@@ -5,25 +5,31 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FlatList, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { Text } from '@/components/ui/text';
+import { READABLE_WIDTH } from '@/hooks/use-layout';
 import { mediaUrl } from '@/lib/media';
 import { useTheme } from '@/theme';
 
-/** 작품 사진 넘기기. 누르면 전체 화면 확대 보기 */
+/**
+ * 작품 사진 넘기기. 누르면 전체 화면 확대 보기.
+ * 크기를 주지 않으면 화면 폭에 맞추고(태블릿에서는 폭·높이 제한), 넓은 화면의 두 칸 배치에서는 왼쪽 칸 크기를 받는다.
+ */
 export function Gallery({
   productId,
   images,
   title,
+  size,
 }: {
   productId: string;
   images: ImageDto[];
   title: string;
+  size?: { width: number; height: number };
 }) {
   const t = useTheme();
   const { t: tr } = useTranslation('product');
   const { width: screen } = useWindowDimensions();
   // 태블릿에서는 사진이 화면을 다 차지하지 않게 폭을 제한한다
-  const width = Math.min(screen, 720);
-  const height = Math.min(width * 1.15, 640);
+  const width = size?.width ?? Math.min(screen, READABLE_WIDTH);
+  const height = size?.height ?? Math.min(width * 1.15, 640);
   const [index, setIndex] = useState(0);
   return (
     <View style={{ alignSelf: 'center', width }}>

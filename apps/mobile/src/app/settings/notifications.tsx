@@ -14,6 +14,7 @@ import { api } from '@/lib/api';
 import { registerPush } from '@/lib/push';
 import { useAuthStore } from '@/stores/auth';
 import { useTheme } from '@/theme';
+import { readable } from '@/hooks/use-layout';
 
 type OsState = 'granted' | 'denied' | 'undetermined' | 'unsupported';
 
@@ -233,7 +234,7 @@ export default function NotificationSettingsScreen() {
 }
 
 const styles = StyleSheet.create({
-  body: { padding: 16, gap: 6, paddingBottom: 48 },
+  body: { ...readable, padding: 16, gap: 6, paddingBottom: 48 },
   group: { marginTop: 20 },
   row: {
     flexDirection: 'row',

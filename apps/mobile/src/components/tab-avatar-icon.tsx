@@ -3,13 +3,13 @@ import { useEffect, useRef, useState, type RefObject } from 'react';
 import { PixelRatio, StyleSheet, Text, View, type ImageSourcePropType } from 'react-native';
 import { captureRef } from 'react-native-view-shot';
 import { mediaUrl } from '@/lib/media';
-import { useTheme } from '@/theme';
+import { TAB_BAR_SCALE, useTheme } from '@/theme';
 
-/** 원형 프로필 크기 (pt) */
-const AVATAR = 24;
+/** 원형 프로필 크기 (pt) — 태블릿은 탭 바 배율만큼 크게 */
+const AVATAR = Math.round(24 * TAB_BAR_SCALE);
 /** 캡처할 아이콘 크기 (pt): 원형 프로필 + 아래 글자 */
-const W = 36;
-const H = 42;
+const W = Math.round(36 * TAB_BAR_SCALE);
+const H = Math.round(42 * TAB_BAR_SCALE);
 
 type Icon = { default: ImageSourcePropType; selected: ImageSourcePropType };
 
@@ -118,8 +118,8 @@ function MyTabCapture({
           styles.label,
           {
             color: selected ? t.colors.primary : t.colors.foreground,
-            fontSize: t.senior ? 13 : 11,
-            lineHeight: t.senior ? 16 : 14,
+            fontSize: (t.senior ? 13 : 11) * TAB_BAR_SCALE,
+            lineHeight: (t.senior ? 16 : 14) * TAB_BAR_SCALE,
           },
         ]}
       >
@@ -152,7 +152,7 @@ const styles = StyleSheet.create({
   round: { position: 'absolute', top: 0, left: 0, width: AVATAR, height: AVATAR, borderRadius: AVATAR / 2 },
   center: { alignItems: 'center', justifyContent: 'center' },
   ring: { borderWidth: 1.5 },
-  initial: { fontSize: 11, fontWeight: '600' },
+  initial: { fontSize: 11 * TAB_BAR_SCALE, fontWeight: '600' },
   // 다른 탭 글자(시스템 탭 바 라벨)와 같은 굵기·크기
   label: { fontWeight: '500' },
 });

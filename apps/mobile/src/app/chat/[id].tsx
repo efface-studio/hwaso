@@ -39,6 +39,7 @@ import { getRealtime } from '@/lib/realtime';
 import { pickImages, uploadAsset } from '@/lib/upload';
 import { useAuthStore } from '@/stores/auth';
 import { useTheme } from '@/theme';
+import { readable, useReadableGutter } from '@/hooks/use-layout';
 
 type Pages = InfiniteData<Page<ChatMessageDto>>;
 const errMsg = (e: unknown) => (e instanceof ApiError ? e.message : i18n.t('common:state.actionFailed'));
@@ -49,6 +50,8 @@ export default function ChatRoomScreen() {
   const t = useTheme();
   const { t: tr } = useTranslation(['chat', 'common']);
   const insets = useSafeAreaInsets();
+  // 넓은 화면: 말풍선은 본문 폭(readable) 안에, 위·아래 바도 같은 폭에 맞춘다
+  const gutter = useReadableGutter(12);
   const qc = useQueryClient();
   const me = useAuthStore((s) => s.user);
   const roomKey = useMemo(() => ['chat', 'room', id], [id]);
@@ -477,7 +480,10 @@ export default function ChatRoomScreen() {
         <Link href={{ pathname: '/products/[id]', params: { id: r.product.id } }} asChild>
           <Pressable
             accessibilityRole="link"
-            style={StyleSheet.flatten([styles.product, { borderColor: t.colors.border }])}
+            style={StyleSheet.flatten([
+              styles.product,
+              { borderColor: t.colors.border, paddingHorizontal: gutter },
+            ])}
           >
             <View
               style={[styles.thumb, { backgroundColor: r.product.image?.dominantColor ?? t.colors.surface2 }]}
@@ -525,7 +531,7 @@ export default function ChatRoomScreen() {
         inverted
         data={items}
         keyExtractor={(m) => m.id}
-        contentContainerStyle={{ flexGrow: 1, padding: 16, gap: 8 }}
+        contentContainerStyle={[readable, { flexGrow: 1, padding: 16, gap: 8 }]}
         onEndReached={() => msgs.hasNextPage && !msgs.isFetchingNextPage && void msgs.fetchNextPage()}
         renderItem={renderItem}
         ListHeaderComponent={
@@ -546,7 +552,10 @@ export default function ChatRoomScreen() {
       {canSend && replying && (
         <Animated.View
           entering={FadeInDown.duration(160)}
-          style={[styles.replyBar, { borderColor: t.colors.border }]}
+          style={[
+            styles.replyBar,
+            { borderColor: t.colors.border, paddingLeft: gutter + 4, paddingRight: gutter - 4 },
+          ]}
         >
           <View style={{ flex: 1 }}>
             <Text variant="caption">{tr('message.replyTo', { name: authorOf(replying.senderId) })}</Text>
@@ -624,8 +633,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    paddingLeft: 16,
-    paddingRight: 8,
     borderTopWidth: StyleSheet.hairlineWidth,
   },
   round: { borderRadius: 999, alignItems: 'center', justifyContent: 'center' },

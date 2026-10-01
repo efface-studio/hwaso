@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { answerPushPrompt, usePushPrompt } from '@/lib/push-prompt';
 import { useTheme } from '@/theme';
+import { readable } from '@/hooks/use-layout';
 
 /**
  * 알림 권한 안내 시트: 무엇을 알려 주는지 짧게 말하고, '알림 켜기'를 누를 때만 시스템 권한 창을 띄운다.
@@ -19,29 +20,37 @@ export function PushPromptHost() {
   const later = () => void answerPushPrompt(false);
   return (
     <Modal visible transparent animationType={t.senior ? 'none' : 'slide'} onRequestClose={later}>
-      <Pressable accessibilityLabel={tr('pushPrompt.later')} style={styles.backdrop} onPress={later} />
-      <View
-        accessibilityViewIsModal
-        style={[
-          styles.panel,
-          { backgroundColor: t.colors.surface, paddingBottom: Math.max(insets.bottom, 16) },
-        ]}
-      >
-        <Text variant="h3" accessibilityRole="header">
-          {tr('pushPrompt.title')}
-        </Text>
-        <Text color="muted">{tr(`pushPrompt.reason.${reason}`)}</Text>
-        <Text variant="small" color="muted">
-          {tr('pushPrompt.hint')}
-        </Text>
-        <View style={styles.actions}>
-          <Button
-            title={tr('pushPrompt.allow')}
-            size="lg"
-            block
-            onPress={() => void answerPushPrompt(true)}
-          />
-          <Button title={tr('pushPrompt.later')} variant="ghost" block onPress={later} />
+      {/* 배경은 화면 전체, 패널은 아래 — 넓은 화면(아이패드)에서는 본문 폭으로 가운데 */}
+      <View style={styles.root}>
+        <Pressable
+          accessibilityLabel={tr('pushPrompt.later')}
+          style={[StyleSheet.absoluteFill, styles.backdrop]}
+          onPress={later}
+        />
+        <View
+          accessibilityViewIsModal
+          style={[
+            styles.panel,
+            readable,
+            { backgroundColor: t.colors.surface, paddingBottom: Math.max(insets.bottom, 16) },
+          ]}
+        >
+          <Text variant="h3" accessibilityRole="header">
+            {tr('pushPrompt.title')}
+          </Text>
+          <Text color="muted">{tr(`pushPrompt.reason.${reason}`)}</Text>
+          <Text variant="small" color="muted">
+            {tr('pushPrompt.hint')}
+          </Text>
+          <View style={styles.actions}>
+            <Button
+              title={tr('pushPrompt.allow')}
+              size="lg"
+              block
+              onPress={() => void answerPushPrompt(true)}
+            />
+            <Button title={tr('pushPrompt.later')} variant="ghost" block onPress={later} />
+          </View>
         </View>
       </View>
     </Modal>
@@ -49,7 +58,8 @@ export function PushPromptHost() {
 }
 
 const styles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' },
+  root: { flex: 1, justifyContent: 'flex-end' },
+  backdrop: { backgroundColor: 'rgba(0,0,0,0.4)' },
   panel: { borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: 20, gap: 8 },
   actions: { gap: 4, marginTop: 12 },
 });

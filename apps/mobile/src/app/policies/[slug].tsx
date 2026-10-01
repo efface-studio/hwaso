@@ -6,6 +6,7 @@ import { Empty } from '@/components/ui/state';
 import { Text } from '@/components/ui/text';
 import { currentLanguage } from '@/i18n';
 import { useTheme } from '@/theme';
+import { readable } from '@/hooks/use-layout';
 
 const isSlug = (v: string | undefined): v is PolicySlug => POLICY_SLUGS.some((s) => s === v);
 
@@ -74,7 +75,7 @@ export default function PolicyScreen() {
 }
 
 const styles = StyleSheet.create({
-  body: { padding: 20, paddingBottom: 48, gap: 28 },
+  body: { ...readable, padding: 20, paddingBottom: 48, gap: 28 },
   section: { gap: 8 },
   table: { borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden' },
   row: { padding: 14, gap: 6 },

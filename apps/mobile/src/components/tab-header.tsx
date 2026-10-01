@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import type { NativeStackNavigationOptions } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { Pressable, StyleSheet } from 'react-native';
+import { Pressable } from 'react-native';
 import logoDark from '../../assets/header-logo-dark.png';
 import logoLight from '../../assets/header-logo.png';
 import { Text } from '@/components/ui/text';
@@ -16,7 +16,7 @@ export function HeaderLogo({ onPress }: { onPress?: () => void }) {
   const logo = (
     <Image
       source={LOGO[t.scheme]}
-      style={styles.logo}
+      style={{ width: Math.round(33 * t.scale), height: Math.round(30 * t.scale) }}
       contentFit="contain"
       accessible={!onPress}
       accessibilityRole="image"
@@ -38,8 +38,13 @@ export function HeaderLogo({ onPress }: { onPress?: () => void }) {
 }
 
 function HeaderTitle({ title }: { title: string }) {
+  const t = useTheme();
   return (
-    <Text variant="h2" accessibilityRole="header" style={styles.title}>
+    <Text
+      variant="h2"
+      accessibilityRole="header"
+      style={{ fontSize: Math.round(22 * t.scale), lineHeight: Math.round(28 * t.scale) }}
+    >
       {title}
     </Text>
   );
@@ -66,8 +71,3 @@ export function tabHeaderOptions(
     ],
   };
 }
-
-const styles = StyleSheet.create({
-  logo: { width: 33, height: 30 },
-  title: { fontSize: 22, lineHeight: 28 },
-});

@@ -12,6 +12,7 @@ import { Text } from '@/components/ui/text';
 import { api } from '@/lib/api';
 import { goBack } from '@/lib/nav';
 import { useTheme } from '@/theme';
+import { NARROW_WIDTH } from '@/hooks/use-layout';
 
 /** 비밀번호 찾기: 이메일 인증 → 새 비밀번호 (모든 기기에서 로그아웃된다) */
 export default function ForgotPasswordScreen() {
@@ -42,7 +43,7 @@ export default function ForgotPasswordScreen() {
   return (
     <FormScroll
       style={{ backgroundColor: t.colors.background }}
-      contentContainerStyle={{ padding: 20, gap: 16 }}
+      contentContainerStyle={{ maxWidth: NARROW_WIDTH, padding: 20, gap: 16 }}
     >
       <Text variant="h2">{tr('forgotPassword.title')}</Text>
       {!token ? (

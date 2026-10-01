@@ -24,6 +24,7 @@ import { askPushInContext } from '@/lib/push-prompt';
 import { requireLogin } from '@/lib/require-login';
 import { env } from '@/lib/env';
 import { selectionHaptic } from '@/lib/haptics';
+import { useLayout, useReadableGutter } from '@/hooks/use-layout';
 import { useTheme } from '@/theme';
 
 function Spec({ label, value }: { label: string; value: string | null | undefined }) {
@@ -127,10 +128,12 @@ function Cta({ p }: { p: ProductDetailDto }) {
 }
 
 /** 하단 고정 바: 관심 · 공유 · 채팅 + 판매 방식별 CTA */
-function BottomBar({ p }: { p: ProductDetailDto }) {
+function BottomBar({ p, inPane = false }: { p: ProductDetailDto; inPane?: boolean }) {
   const t = useTheme();
   const { t: tr } = useTranslation(['product', 'common']);
   const insets = useSafeAreaInsets();
+  // 두 칸 배치에서는 오른쪽 칸 안에 놓이므로 칸 폭 그대로, 아니면 본문 폭에 맞춘다
+  const gutter = useReadableGutter(12);
   const qc = useQueryClient();
   const [fav, setFav] = useState({ on: p.isFavorite, count: p.favoriteCount });
   const [opening, setOpening] = useState(false);
@@ -164,6 +167,7 @@ function BottomBar({ p }: { p: ProductDetailDto }) {
       style={[
         styles.bar,
         {
+          paddingHorizontal: inPane ? 12 : gutter,
           paddingBottom: Math.max(insets.bottom, 12),
           borderColor: t.colors.border,
           backgroundColor: t.colors.background,
@@ -220,10 +224,28 @@ function BottomBar({ p }: { p: ProductDetailDto }) {
   );
 }
 
+/** 넓은 화면 왼쪽 칸: 칸 크기에 맞춰 사진을 넘긴다 (정보 칸을 스크롤해도 제자리) */
+function GalleryPane({ p }: { p: ProductDetailDto }) {
+  const t = useTheme();
+  const [size, setSize] = useState<{ width: number; height: number } | null>(null);
+  return (
+    <View
+      style={{ flex: 1, backgroundColor: t.colors.surface2 }}
+      onLayout={(e) => {
+        const { width, height } = e.nativeEvent.layout;
+        setSize((s) => (s?.width === width && s.height === height ? s : { width, height }));
+      }}
+    >
+      {size && <Gallery productId={p.id} images={p.images} title={p.title} size={size} />}
+    </View>
+  );
+}
+
 export default function ProductScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const t = useTheme();
   const { t: tr } = useTranslation(['product', 'common']);
+  const { split, width } = useLayout();
   const q = useQuery({ queryKey: ['product', id], queryFn: () => api.market.product(id) });
   // 비슷한 작품은 id 만 있으면 되므로 작품 정보와 함께 바로 불러온다
   const related = useQuery({ queryKey: ['related', id], queryFn: () => api.market.related(id) });
@@ -237,185 +259,219 @@ export default function ProductScreen() {
   const price = p.auction ? p.auction.currentPrice : p.price;
   const year = p.productionYear ? tr('detail.year', { year: p.productionYear }) : null;
 
+  const header = (
+    <Stack.Screen
+      options={{
+        title: '',
+        headerRight: () => (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={tr('detail.more')}
+            hitSlop={10}
+            onPress={() =>
+              actionSheet(p.title, [
+                {
+                  label: tr('detail.share'),
+                  onPress: () =>
+                    void Share.share({
+                      message: tr('detail.shareMessage', { title: p.title }),
+                      url: `${env.webUrl}/products/${p.id}`,
+                    }),
+                },
+                ...(p.isMine
+                  ? []
+                  : [
+                      {
+                        label: tr('detail.reportProduct'),
+                        destructive: true,
+                        onPress: () =>
+                          requireLogin() &&
+                          router.push({ pathname: '/report', params: { type: 'PRODUCT', id: p.id } }),
+                      },
+                    ]),
+              ])
+            }
+          >
+            <Icon ios="ellipsis.circle" android="more_horiz" />
+          </Pressable>
+        ),
+      }}
+    />
+  );
+  const info = (
+    <>
+      <View style={styles.head}>
+        {p.blockedByMe && (
+          <Text variant="small" color="muted" style={{ marginBottom: 6 }}>
+            {tr('detail.blockedSeller')}
+          </Text>
+        )}
+        <Text variant="label" color="primary">
+          {p.auction
+            ? tr('detail.auctionStatus', { status: label('auctionStatus', p.auction.status) })
+            : label('saleType', p.saleType)}
+          {p.status === 'SOLD' || p.status === 'RESERVED' ? ` · ${label('productStatus', p.status)}` : ''}
+        </Text>
+        {p.artist ? (
+          <Link href={{ pathname: '/artists/[id]', params: { id: p.artist.id } }} accessibilityRole="link">
+            <Text variant="bodyStrong">{p.artist.name}</Text>
+          </Link>
+        ) : (
+          <Text variant="bodyStrong">{p.artistName ?? tr('detail.unknownArtist')}</Text>
+        )}
+        <Text variant="h1">{p.title}</Text>
+        <Text variant="priceLg" style={{ marginTop: 6 }}>
+          {price != null ? formatPrice(price) : tr('detail.priceOnRequest')}
+          {p.auction && (
+            <Text variant="small" color="muted">
+              {'  '}
+              {tr('detail.bidCount', { count: p.auction.bidCount })}
+            </Text>
+          )}
+        </Text>
+        {p.saleType !== 'AUCTION' && (
+          <Text variant="small" color="muted">
+            {tr('detail.shipping', {
+              fee: p.shippingFee ? formatPrice(p.shippingFee) : tr('detail.freeShipping'),
+              method: p.shippingMethod,
+            })}
+          </Text>
+        )}
+        {/* 청약철회 안내 (전자상거래법) — 경매 낙찰도 같다 */}
+        {!p.isMine && (
+          <Pressable
+            accessibilityRole="link"
+            hitSlop={6}
+            onPress={() => router.push({ pathname: '/policies/[slug]', params: { slug: 'refund' } })}
+            style={{ marginTop: 4 }}
+          >
+            <Text variant="caption" color="muted">
+              {tr('detail.withdrawal')}{' '}
+              <Text variant="caption" color="primary">
+                {tr('detail.withdrawalLink')}
+              </Text>
+            </Text>
+          </Pressable>
+        )}
+      </View>
+
+      <Section title={tr('detail.section.info')}>
+        <Spec
+          label={tr('detail.spec.made')}
+          value={[p.maker, p.era, year].filter(Boolean).join(' · ') || null}
+        />
+        <Spec label={tr('detail.spec.material')} value={p.material} />
+        <Spec label={tr('detail.spec.size')} value={formatDimensions(p.widthCm, p.heightCm, p.depthCm)} />
+        <Spec
+          label={tr('detail.spec.condition')}
+          value={`${label('condition', p.condition)}${p.conditionNote ? ` — ${p.conditionNote}` : ''}`}
+        />
+        <Spec label={tr('detail.spec.region')} value={p.region} />
+        <Spec label={tr('detail.spec.verification')} value={label('verification', p.verificationStatus)} />
+      </Section>
+
+      {p.description ? (
+        <Section title={tr('detail.section.description')}>
+          <Text>{p.description}</Text>
+        </Section>
+      ) : null}
+
+      {p.certificate && (
+        <Section title={tr('detail.section.certificate')}>
+          <Spec label={tr('detail.spec.issuer')} value={p.certificate.issuer} />
+          <Spec label={tr('detail.spec.number')} value={p.certificate.number} />
+          <Spec
+            label={tr('detail.spec.verification')}
+            value={label('verification', p.certificate.verificationStatus)}
+          />
+          {p.certificate.authenticityNote ? (
+            <Text variant="small" color="muted">
+              {p.certificate.authenticityNote}
+            </Text>
+          ) : null}
+        </Section>
+      )}
+
+      {p.provenance.length > 0 && (
+        <Section title={tr('detail.section.provenance')}>
+          {p.provenance.map((v) => (
+            <View key={v.id} style={{ gap: 2 }}>
+              <Text variant="small" color="muted">
+                {v.period}
+              </Text>
+              <Text variant="bodyStrong">{v.title}</Text>
+              {v.description ? <Text variant="small">{v.description}</Text> : null}
+            </View>
+          ))}
+        </Section>
+      )}
+
+      {p.returnPolicy ? (
+        <Section title={tr('detail.section.returns')}>
+          <Text variant="small">{p.returnPolicy}</Text>
+        </Section>
+      ) : null}
+
+      <Section title={tr('detail.section.inquiries')}>
+        <Inquiries productId={p.id} isMine={p.isMine} />
+      </Section>
+
+      <Section title={tr('detail.section.seller')}>
+        <Link href={{ pathname: '/users/[id]', params: { id: p.seller.id } }} asChild>
+          <Pressable accessibilityRole="link" style={styles.seller}>
+            <Avatar avatarKey={p.seller.avatarKey} name={p.seller.nickname} size={48} />
+            <View style={{ flex: 1 }}>
+              <Text variant="bodyStrong">
+                {p.seller.nickname}
+                {p.seller.verified ? `  ✓ ${tr('detail.verifiedSeller')}` : ''}
+              </Text>
+              <Text variant="small" color="muted">
+                {tr('detail.sellerStats', {
+                  rating: p.seller.ratingAvg.toFixed(1),
+                  count: p.seller.ratingCount,
+                  trades: p.seller.tradeCount,
+                })}
+              </Text>
+            </View>
+          </Pressable>
+        </Link>
+      </Section>
+
+      {!!related.data?.length && <Rail title={tr('detail.section.related')} items={related.data} />}
+    </>
+  );
+
+  // 넓은 화면(아이패드 가로 등): 왼쪽 사진 · 오른쪽 정보와 하단 버튼 (사진이 없으면 한 칸)
+  if (split && p.images.length > 0)
+    return (
+      <View style={[styles.split, { backgroundColor: t.colors.background }]}>
+        {header}
+        <GalleryPane p={p} />
+        <View
+          style={{
+            width: Math.min(Math.max(width * 0.4, 380), 480),
+            borderLeftWidth: StyleSheet.hairlineWidth,
+            borderColor: t.colors.border,
+          }}
+        >
+          <FormScroll
+            fullWidth
+            contentInsetAdjustmentBehavior="automatic"
+            contentContainerStyle={{ paddingBottom: 24 }}
+          >
+            {info}
+          </FormScroll>
+          <BottomBar key={`${p.id}:${p.isFavorite}`} p={p} inPane />
+        </View>
+      </View>
+    );
+
   return (
     <View style={{ flex: 1, backgroundColor: t.colors.background }}>
-      <Stack.Screen
-        options={{
-          title: '',
-          headerRight: () => (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={tr('detail.more')}
-              hitSlop={10}
-              onPress={() =>
-                actionSheet(p.title, [
-                  {
-                    label: tr('detail.share'),
-                    onPress: () =>
-                      void Share.share({
-                        message: tr('detail.shareMessage', { title: p.title }),
-                        url: `${env.webUrl}/products/${p.id}`,
-                      }),
-                  },
-                  ...(p.isMine
-                    ? []
-                    : [
-                        {
-                          label: tr('detail.reportProduct'),
-                          destructive: true,
-                          onPress: () =>
-                            requireLogin() &&
-                            router.push({ pathname: '/report', params: { type: 'PRODUCT', id: p.id } }),
-                        },
-                      ]),
-                ])
-              }
-            >
-              <Icon ios="ellipsis.circle" android="more_horiz" />
-            </Pressable>
-          ),
-        }}
-      />
+      {header}
       <FormScroll contentInsetAdjustmentBehavior="automatic" contentContainerStyle={{ paddingBottom: 24 }}>
         {p.images.length > 0 && <Gallery productId={p.id} images={p.images} title={p.title} />}
-        <View style={styles.head}>
-          {p.blockedByMe && (
-            <Text variant="small" color="muted" style={{ marginBottom: 6 }}>
-              {tr('detail.blockedSeller')}
-            </Text>
-          )}
-          <Text variant="label" color="primary">
-            {p.auction
-              ? tr('detail.auctionStatus', { status: label('auctionStatus', p.auction.status) })
-              : label('saleType', p.saleType)}
-            {p.status === 'SOLD' || p.status === 'RESERVED' ? ` · ${label('productStatus', p.status)}` : ''}
-          </Text>
-          {p.artist ? (
-            <Link href={{ pathname: '/artists/[id]', params: { id: p.artist.id } }} accessibilityRole="link">
-              <Text variant="bodyStrong">{p.artist.name}</Text>
-            </Link>
-          ) : (
-            <Text variant="bodyStrong">{p.artistName ?? tr('detail.unknownArtist')}</Text>
-          )}
-          <Text variant="h1">{p.title}</Text>
-          <Text variant="priceLg" style={{ marginTop: 6 }}>
-            {price != null ? formatPrice(price) : tr('detail.priceOnRequest')}
-            {p.auction && (
-              <Text variant="small" color="muted">
-                {'  '}
-                {tr('detail.bidCount', { count: p.auction.bidCount })}
-              </Text>
-            )}
-          </Text>
-          {p.saleType !== 'AUCTION' && (
-            <Text variant="small" color="muted">
-              {tr('detail.shipping', {
-                fee: p.shippingFee ? formatPrice(p.shippingFee) : tr('detail.freeShipping'),
-                method: p.shippingMethod,
-              })}
-            </Text>
-          )}
-          {/* 청약철회 안내 (전자상거래법) — 경매 낙찰도 같다 */}
-          {!p.isMine && (
-            <Pressable
-              accessibilityRole="link"
-              hitSlop={6}
-              onPress={() => router.push({ pathname: '/policies/[slug]', params: { slug: 'refund' } })}
-              style={{ marginTop: 4 }}
-            >
-              <Text variant="caption" color="muted">
-                {tr('detail.withdrawal')}{' '}
-                <Text variant="caption" color="primary">
-                  {tr('detail.withdrawalLink')}
-                </Text>
-              </Text>
-            </Pressable>
-          )}
-        </View>
-
-        <Section title={tr('detail.section.info')}>
-          <Spec
-            label={tr('detail.spec.made')}
-            value={[p.maker, p.era, year].filter(Boolean).join(' · ') || null}
-          />
-          <Spec label={tr('detail.spec.material')} value={p.material} />
-          <Spec label={tr('detail.spec.size')} value={formatDimensions(p.widthCm, p.heightCm, p.depthCm)} />
-          <Spec
-            label={tr('detail.spec.condition')}
-            value={`${label('condition', p.condition)}${p.conditionNote ? ` — ${p.conditionNote}` : ''}`}
-          />
-          <Spec label={tr('detail.spec.region')} value={p.region} />
-          <Spec label={tr('detail.spec.verification')} value={label('verification', p.verificationStatus)} />
-        </Section>
-
-        {p.description ? (
-          <Section title={tr('detail.section.description')}>
-            <Text>{p.description}</Text>
-          </Section>
-        ) : null}
-
-        {p.certificate && (
-          <Section title={tr('detail.section.certificate')}>
-            <Spec label={tr('detail.spec.issuer')} value={p.certificate.issuer} />
-            <Spec label={tr('detail.spec.number')} value={p.certificate.number} />
-            <Spec
-              label={tr('detail.spec.verification')}
-              value={label('verification', p.certificate.verificationStatus)}
-            />
-            {p.certificate.authenticityNote ? (
-              <Text variant="small" color="muted">
-                {p.certificate.authenticityNote}
-              </Text>
-            ) : null}
-          </Section>
-        )}
-
-        {p.provenance.length > 0 && (
-          <Section title={tr('detail.section.provenance')}>
-            {p.provenance.map((v) => (
-              <View key={v.id} style={{ gap: 2 }}>
-                <Text variant="small" color="muted">
-                  {v.period}
-                </Text>
-                <Text variant="bodyStrong">{v.title}</Text>
-                {v.description ? <Text variant="small">{v.description}</Text> : null}
-              </View>
-            ))}
-          </Section>
-        )}
-
-        {p.returnPolicy ? (
-          <Section title={tr('detail.section.returns')}>
-            <Text variant="small">{p.returnPolicy}</Text>
-          </Section>
-        ) : null}
-
-        <Section title={tr('detail.section.inquiries')}>
-          <Inquiries productId={p.id} isMine={p.isMine} />
-        </Section>
-
-        <Section title={tr('detail.section.seller')}>
-          <Link href={{ pathname: '/users/[id]', params: { id: p.seller.id } }} asChild>
-            <Pressable accessibilityRole="link" style={styles.seller}>
-              <Avatar avatarKey={p.seller.avatarKey} name={p.seller.nickname} size={48} />
-              <View style={{ flex: 1 }}>
-                <Text variant="bodyStrong">
-                  {p.seller.nickname}
-                  {p.seller.verified ? `  ✓ ${tr('detail.verifiedSeller')}` : ''}
-                </Text>
-                <Text variant="small" color="muted">
-                  {tr('detail.sellerStats', {
-                    rating: p.seller.ratingAvg.toFixed(1),
-                    count: p.seller.ratingCount,
-                    trades: p.seller.tradeCount,
-                  })}
-                </Text>
-              </View>
-            </Pressable>
-          </Link>
-        </Section>
-
-        {!!related.data?.length && <Rail title={tr('detail.section.related')} items={related.data} />}
+        {info}
       </FormScroll>
       {/* 로그인하면 관심 여부가 계정 기준으로 다시 오므로 그때 하단 바 상태를 새로 맞춘다 */}
       <BottomBar key={`${p.id}:${p.isFavorite}`} p={p} />
@@ -424,6 +480,7 @@ export default function ProductScreen() {
 }
 
 const styles = StyleSheet.create({
+  split: { flex: 1, flexDirection: 'row' },
   head: { padding: 16, gap: 2 },
   section: { marginHorizontal: 16, paddingVertical: 16, gap: 10, borderTopWidth: StyleSheet.hairlineWidth },
   spec: { flexDirection: 'row', gap: 8 },
@@ -432,7 +489,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    paddingHorizontal: 12,
     paddingTop: 8,
     borderTopWidth: StyleSheet.hairlineWidth,
   },
