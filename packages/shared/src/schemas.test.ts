@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
+  consentSchema,
   createAuctionSchema,
+  deleteAccountSchema,
+  oauthLinkSchema,
   createProductSchema,
   loginSchema,
   placeBidSchema,
@@ -27,10 +30,60 @@ describe('auth 스키마', () => {
     expect(r.success).toBe(false);
   });
   it('비밀번호 정책', () => {
-    const base = { verificationToken: 'x'.repeat(20), nickname: '컬렉터', agreeTerms: true, device };
+    const base = {
+      verificationToken: 'x'.repeat(20),
+      nickname: '컬렉터',
+      agreeTerms: true,
+      agreePrivacy: true,
+      ageOver14: true,
+      device,
+    };
     expect(signupSchema.safeParse({ ...base, password: 'short1' }).success).toBe(false);
     expect(signupSchema.safeParse({ ...base, password: 'onlyletters' }).success).toBe(false);
     expect(signupSchema.safeParse({ ...base, password: 'letters123' }).success).toBe(true);
+  });
+  it('가입은 약관·개인정보·만 14세 동의가 모두 필요하다', () => {
+    const base = {
+      verificationToken: 'x'.repeat(20),
+      password: 'abcd1234',
+      nickname: '컬렉터',
+      agreeTerms: true,
+      agreePrivacy: true,
+      ageOver14: true,
+      device,
+    };
+    expect(signupSchema.safeParse(base).success).toBe(true);
+    expect(signupSchema.safeParse({ ...base, agreePrivacy: undefined }).success).toBe(false);
+    expect(signupSchema.safeParse({ ...base, ageOver14: false }).success).toBe(false);
+  });
+  it('동의: 필수 3개는 true 만, 마케팅은 기본 false', () => {
+    expect(consentSchema.parse({ terms: true, privacy: true, ageOver14: true })).toEqual({
+      terms: true,
+      privacy: true,
+      ageOver14: true,
+      marketing: false,
+    });
+    expect(consentSchema.safeParse({ terms: true, privacy: false, ageOver14: true }).success).toBe(false);
+  });
+  it('탈퇴 확인: 비밀번호 · 이메일 인증 · 소셜 재인증 중 하나', () => {
+    expect(deleteAccountSchema.safeParse({}).success).toBe(false);
+    expect(deleteAccountSchema.safeParse({ password: 'x' }).success).toBe(true);
+    const social = { code: 'c', state: 's'.repeat(10), redirectUri: 'http://localhost/cb' };
+    expect(deleteAccountSchema.safeParse({ provider: 'kakao', ...social }).success).toBe(true);
+    expect(deleteAccountSchema.safeParse({ provider: 'KAKAO', ...social }).success).toBe(true);
+    expect(deleteAccountSchema.safeParse({ provider: 'kakao', code: 'c' }).success).toBe(false);
+    const apple = { provider: 'apple', identityToken: 't'.repeat(30), authorizationCode: 'a' };
+    expect(deleteAccountSchema.safeParse(apple).success).toBe(true);
+    expect(deleteAccountSchema.safeParse({ ...apple, provider: 'kakao' }).success).toBe(false);
+  });
+  it('소셜 연결: 코드 흐름 또는 Apple 네이티브', () => {
+    expect(
+      oauthLinkSchema.safeParse({ code: 'c', state: 's'.repeat(10), redirectUri: 'http://x/cb' }).success,
+    ).toBe(true);
+    expect(oauthLinkSchema.safeParse({ identityToken: 't'.repeat(30), authorizationCode: 'a' }).success).toBe(
+      true,
+    );
+    expect(oauthLinkSchema.safeParse({ authorizationCode: 'a' }).success).toBe(false);
   });
 });
 

@@ -1,8 +1,6 @@
-import { z } from 'zod';
 import type { ChatMessageKind, ProductStatus, SaleType } from './enums';
 import type { ImageDto, UserSummary } from './dto';
 import { formatRelativeTime } from './format';
-import { id } from './schemas/common';
 
 /** 채팅방에 남는 거래 안내 (판매자의 상태 변경 · 주문 진행) */
 export const CHAT_SYSTEM_TEXT = {
@@ -21,8 +19,6 @@ export type ChatSystemEvent = keyof typeof CHAT_SYSTEM_TEXT;
 
 /** 판매자가 채팅에서 바꿀 수 있는 거래 상태 */
 export const CHAT_TRADE_STATUSES = ['ACTIVE', 'RESERVED', 'SOLD'] as const;
-export const chatTradeSchema = z.strictObject({ status: z.enum(CHAT_TRADE_STATUSES) });
-export type ChatTradeInput = z.infer<typeof chatTradeSchema>;
 
 export interface ChatMessageDto {
   id: string;
@@ -86,35 +82,8 @@ export interface ChatRoomDto {
 
 export const CHAT_MESSAGE_MAX = 1000;
 
-export const createChatRoomSchema = z.strictObject({ productId: id });
-
 /** 한 메시지에 보낼 수 있는 사진 수 */
 export const CHAT_IMAGES_MAX = 10;
-
-export const sendMessageSchema = z
-  .strictObject({
-    kind: z.enum(['TEXT', 'IMAGE', 'PRODUCT', 'APPOINTMENT']),
-    body: z.string().trim().max(CHAT_MESSAGE_MAX).optional(),
-    imageKey: z.string().max(200).optional(),
-    /** 사진 여러 장 (최대 CHAT_IMAGES_MAX). imageKey 한 장도 계속 받는다 */
-    imageKeys: z.array(z.string().max(200)).min(1).max(CHAT_IMAGES_MAX).optional(),
-    productId: id.optional(),
-    appointment: z
-      .strictObject({ at: z.iso.datetime({ offset: true }), place: z.string().trim().min(1).max(100) })
-      .optional(),
-    clientId: z.string().min(8).max(64).optional(),
-    /** 답장할 같은 방 메시지 */
-    replyToId: id.optional(),
-  })
-  .refine(
-    (v) =>
-      (v.kind === 'TEXT' && !!v.body) ||
-      (v.kind === 'IMAGE' && (!!v.imageKey || !!v.imageKeys?.length)) ||
-      (v.kind === 'PRODUCT' && !!v.productId) ||
-      (v.kind === 'APPOINTMENT' && !!v.appointment),
-    { message: '메시지 내용을 확인해주세요.' },
-  );
-export type SendMessageInput = z.infer<typeof sendMessageSchema>;
 
 /** 채팅 자주 쓰는 문구 — 저장한 적 없으면 기본 문구를 준다 */
 export const CHAT_PHRASES_MAX = 20;
@@ -126,16 +95,6 @@ export const CHAT_DEFAULT_PHRASES = [
   '택배 거래는 안전결제로 부탁드려요.',
   '확인하고 다시 연락드릴게요. 감사합니다!',
 ] as const;
-export const chatPhrasesSchema = z.strictObject({
-  phrases: z.array(z.string().trim().min(1).max(CHAT_PHRASE_MAX)).max(CHAT_PHRASES_MAX),
-});
-export type ChatPhrasesInput = z.infer<typeof chatPhrasesSchema>;
-
-/** 방 설정: 알림 끄기·상단 고정 (둘 중 하나 이상) */
-export const chatRoomSettingsSchema = z
-  .strictObject({ muted: z.boolean().optional(), pinned: z.boolean().optional() })
-  .refine((v) => v.muted !== undefined || v.pinned !== undefined, { message: '바꿀 설정이 없습니다.' });
-export type ChatRoomSettingsInput = z.infer<typeof chatRoomSettingsSchema>;
 
 /** 외부 거래 유도 표현 (메신저 아이디·계좌·전화번호). 차단하지 않고 안전 안내만 띄운다 */
 const EXTERNAL_TRADE =

@@ -90,6 +90,7 @@ const ja: Translation<typeof ko> = {
     notices: 'お知らせ',
     support: 'ヘルプ・規約',
     feed: 'フォロー中の新着',
+    consent: '登録の仕上げ',
   },
   language: {
     title: '言語',
@@ -160,8 +161,30 @@ const ja: Translation<typeof ko> = {
     phone: 'スマートフォン',
     web: 'Web',
   },
+  update: {
+    criticalTitle: '重要なアップデート',
+    criticalMessage: '必要な修正を適用します。アプリを再起動します。',
+    restart: '再起動',
+  },
   push: {
     channelName: '一般通知',
+  },
+  pushPrompt: {
+    title: '通知をオンにしますか？',
+    reason: {
+      chat: '相手から返信が来たらすぐにお知らせします。',
+      bid: 'より高い入札があったときやオークションが終了したときにお知らせします。',
+      favorite: 'お気に入り作品の価格が変わったりオークションが始まったりしたらお知らせします。',
+      follow: 'フォロー中の出品者が新しい作品を出品したらお知らせします。',
+    },
+    hint: '受け取る通知の種類や時間は、設定でいつでも変更できます。',
+    allow: '通知をオンにする',
+    later: 'あとで',
+  },
+  welcome: {
+    title: 'ご登録ありがとうございます',
+    body: '{{nickname}}さん、Hwaso へようこそ。\n気になる作品を見つけて、お気に入りに追加してみましょう。',
+    browse: '見てみる',
   },
   auctionLive: {
     outbid: 'より高い入札がありました',
@@ -180,6 +203,7 @@ const ja: Translation<typeof ko> = {
     bidIncrement: '入札単位は100ウォン以上にしてください。',
     endAfterStart: '終了時刻は開始時刻より後にしてください。',
     buyNowAboveStart: '即決価格は開始価格より高くしてください。',
+    prohibited: '使用できない表現が含まれています。修正してもう一度入力してください。',
   },
 };
 

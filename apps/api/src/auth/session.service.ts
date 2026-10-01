@@ -1,8 +1,20 @@
 import { Injectable } from '@nestjs/common';
 import type { User } from '@prisma/client';
-import type { AuthTokens, DeviceInput, MeDto, SessionDto } from '@shop/shared';
+import {
+  isPlaceholderEmail,
+  type AuthTokens,
+  type DeviceInput,
+  type MeDto,
+  type SessionDto,
+} from '@shop/shared';
 import { AppException } from '../common/app-exception';
-import { ACCESS_TOKEN_TTL_SEC, invalidateUserStatus, signAccessToken } from '../common/auth';
+import {
+  ACCESS_TOKEN_TTL_SEC,
+  hasRequiredConsent,
+  invalidateUserStatus,
+  markFamiliesRevoked,
+  signAccessToken,
+} from '../common/auth';
 import { maskIp, randomToken, sha256 } from '../common/crypto';
 import { PrismaService, type Tx } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
@@ -34,7 +46,7 @@ export class SessionService {
     client: ClientInfo,
     familyId?: string,
     db: Tx = this.prisma,
-  ): Promise<{ accessToken: string; refreshToken: string; sessionId: string }> {
+  ): Promise<{ accessToken: string; refreshToken: string; sessionId: string; familyId: string }> {
     const refreshToken = randomToken(32);
     const session = await db.session.create({
       data: {
@@ -48,8 +60,13 @@ export class SessionService {
         expiresAt: new Date(Date.now() + REFRESH_TTL_DAYS * 86_400_000),
       },
     });
-    const accessToken = await signAccessToken({ id: user.id, role: user.role, sessionId: session.id });
-    return { accessToken, refreshToken, sessionId: session.id };
+    const accessToken = await signAccessToken({
+      id: user.id,
+      role: user.role,
+      sessionId: session.id,
+      familyId: session.familyId,
+    });
+    return { accessToken, refreshToken, sessionId: session.id, familyId: session.familyId };
   }
 
   async rotate(
@@ -95,15 +112,36 @@ export class SessionService {
     return { ...next, user: s.user, platform: s.platform };
   }
 
+  /** 로그아웃. 폐기한 세션 정보를 돌려준다 (보안 이벤트 기록용) */
   async revokeByRefresh(refreshToken: string) {
     const s = await this.prisma.session.findUnique({ where: { refreshTokenHash: sha256(refreshToken) } });
-    if (s) await this.revokeFamily(s.familyId);
+    if (!s) return null;
+    await this.revokeFamily(s.familyId);
+    return s;
   }
 
   async revokeFamily(familyId: string) {
     await this.prisma.session.updateMany({
       where: { familyId, revokedAt: null },
       data: { revokedAt: new Date() },
+    });
+    await this.afterRevoke([familyId], { familyId });
+  }
+
+  /**
+   * 폐기 후처리: 이미 발급된 access 토큰을 즉시 거부하도록 Redis 에 표시하고, 그 기기의 생체 재인증 키를 지운다.
+   * refresh 회전(같은 family 안에서 행 교체)에는 호출하지 않는다 — 생체 키와 access 토큰은 기기 단위로 유지된다.
+   */
+  private async afterRevoke(
+    familyIds: string[],
+    keys: { familyId: string } | { userId: string; exceptFamily?: string | null },
+  ) {
+    await markFamiliesRevoked(this.redis, familyIds);
+    await this.prisma.biometricKey.deleteMany({
+      where:
+        'familyId' in keys
+          ? { familyId: keys.familyId }
+          : { userId: keys.userId, ...(keys.exceptFamily ? { familyId: { not: keys.exceptFamily } } : {}) },
     });
   }
 
@@ -114,10 +152,25 @@ export class SessionService {
 
   /** 비밀번호 변경·재설정·정지 시 (현재 기기 제외 가능) */
   async revokeAll(userId: string, exceptFamily?: string | null) {
+    const except = exceptFamily ? { familyId: { not: exceptFamily } } : {};
+    // 살아 있는 family + 최근 회전으로 행은 폐기됐지만 access 토큰이 아직 유효할 수 있는 family
+    const families = await this.prisma.session.findMany({
+      where: {
+        userId,
+        ...except,
+        OR: [{ revokedAt: null }, { createdAt: { gt: new Date(Date.now() - ACCESS_TOKEN_TTL_SEC * 1000) } }],
+      },
+      distinct: ['familyId'],
+      select: { familyId: true },
+    });
     await this.prisma.session.updateMany({
-      where: { userId, revokedAt: null, ...(exceptFamily ? { familyId: { not: exceptFamily } } : {}) },
+      where: { userId, revokedAt: null, ...except },
       data: { revokedAt: new Date() },
     });
+    await this.afterRevoke(
+      families.map((f) => f.familyId),
+      { userId, exceptFamily },
+    );
     await invalidateUserStatus(this.redis, userId);
   }
 
@@ -156,11 +209,14 @@ export class SessionService {
       email: u.email,
       role: u.role,
       emailVerified: !!u.emailVerifiedAt,
+      emailMissing: isPlaceholderEmail(u.email),
       hasPassword: !!u.passwordHash,
       isSeller: !!u.seller,
       identityVerified: !!u.identityVerifiedAt,
       isAdult: u.isAdult,
       socialProviders: u.socialAccounts.map((s) => s.provider),
+      consentRequired: !hasRequiredConsent(u),
+      marketingOptIn: u.marketingOptIn,
       profile: {
         nickname: u.profile?.nickname ?? '',
         bio: u.profile?.bio ?? '',

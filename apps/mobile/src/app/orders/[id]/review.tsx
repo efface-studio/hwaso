@@ -1,13 +1,14 @@
 import { ApiError } from '@shop/api-client';
-import { createReviewSchema } from '@shop/shared';
+import { containsProhibited, createReviewSchema } from '@shop/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
+import { FormScroll } from '@/components/ui/form-scroll';
 import { Loading } from '@/components/ui/state';
 import { Text } from '@/components/ui/text';
 import i18n from '@/i18n';
@@ -80,6 +81,7 @@ export default function ReviewScreen() {
       return setError(
         r.error.issues[0]?.path[0] === 'comment' ? tr('review.commentMin') : tr('review.checkContent'),
       );
+    if (containsProhibited(comment)) return setError(tr('common:validation.prohibited'));
     setError(null);
     save.mutate();
   };
@@ -88,11 +90,7 @@ export default function ReviewScreen() {
   const locked = !!existing && !existing.editable;
 
   return (
-    <ScrollView
-      style={{ backgroundColor: t.colors.background }}
-      contentContainerStyle={styles.body}
-      keyboardShouldPersistTaps="handled"
-    >
+    <FormScroll style={{ backgroundColor: t.colors.background }} contentContainerStyle={styles.body}>
       <Stack.Screen options={{ title: existing ? tr('review.myTitle') : tr('review.writeTitle') }} />
       <Text variant="label">{tr('review.question')}</Text>
       <View style={styles.stars} accessibilityLabel={tr('review.ratingA11y', { rating })}>
@@ -183,7 +181,7 @@ export default function ReviewScreen() {
           }
         />
       )}
-    </ScrollView>
+    </FormScroll>
   );
 }
 

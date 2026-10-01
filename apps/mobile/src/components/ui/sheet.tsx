@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Modal, ScrollView, StyleSheet, View } from 'react-native';
+import { Modal, StyleSheet, View } from 'react-native';
 import { Button } from '@/components/ui/button';
+import { FormScroll } from '@/components/ui/form-scroll';
 import { Text } from '@/components/ui/text';
 import { useTheme } from '@/theme';
 
@@ -25,11 +26,7 @@ export function Sheet({
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
-      <ScrollView
-        style={{ backgroundColor: t.colors.background }}
-        contentContainerStyle={styles.body}
-        keyboardShouldPersistTaps="handled"
-      >
+      <FormScroll style={{ backgroundColor: t.colors.background }} contentContainerStyle={styles.body}>
         <View style={styles.head}>
           <Text variant="h2" accessibilityRole="header" style={{ flex: 1 }}>
             {title}
@@ -37,7 +34,7 @@ export function Sheet({
           <Button title={tr('action.close')} variant="ghost" size="sm" onPress={onClose} />
         </View>
         {children}
-      </ScrollView>
+      </FormScroll>
     </Modal>
   );
 }

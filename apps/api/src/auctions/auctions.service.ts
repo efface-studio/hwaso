@@ -17,11 +17,13 @@ import { AppException } from '../common/app-exception';
 import type { AuthUser } from '../common/auth';
 import { logNotifyError, NotificationEvents } from '../notifications/notification-events';
 import { PrismaService } from '../prisma/prisma.service';
-import { cardInclude, toCard } from '../products/product.mapper';
+import { cardInclude, cardSelect, toCard } from '../products/product.mapper';
 import { decodeCursor, encodeCursor, HOME_CACHE_KEY, ProductsService } from '../products/products.service';
 import { RealtimeGateway, RealtimeService } from '../realtime/realtime';
 import { RedisService } from '../redis/redis.service';
+import { SafetyService } from '../safety/safety.controller';
 import { toAuctionDto } from './auction.mapper';
+import { readAuctionPolicy } from './auction-policy';
 
 const ADMIN = ['ADMIN', 'SUPER_ADMIN'];
 const MIN_LEAD_MS = 60_000;
@@ -35,14 +37,11 @@ export class AuctionsService {
     private readonly gateway: RealtimeGateway,
     private readonly products: ProductsService,
     private readonly events: NotificationEvents,
+    private readonly safety: SafetyService,
   ) {}
 
-  private async policy() {
-    return this.prisma.auctionPolicy.upsert({
-      where: { id: 'default' },
-      create: { id: 'default' },
-      update: {},
-    });
+  private policy() {
+    return readAuctionPolicy(this.prisma);
   }
 
   /** 일정·금액 규칙은 생성과 수정 모두에서 서버가 검증한다 (docs/AUCTION.md §2) */
@@ -332,6 +331,8 @@ export class AuctionsService {
       deletedAt: null,
       publishedAt: { not: null },
       auction: { status: { in: statuses } },
+      // 내가 차단한 판매자의 경매는 뺀다
+      ...(await this.safety.excludeBlocked(viewer?.id, 'sellerId')),
     };
     const orderBy: Prisma.ProductOrderByWithRelationInput[] =
       q.status === 'ended'
@@ -345,7 +346,7 @@ export class AuctionsService {
               : [{ auction: { endsAt: 'asc' } }, { id: 'asc' }];
     const offset = decodeCursor(q.cursor);
     const [rows, total] = await Promise.all([
-      this.prisma.product.findMany({ where, include: cardInclude, orderBy, skip: offset, take: q.limit }),
+      this.prisma.product.findMany({ where, select: cardSelect, orderBy, skip: offset, take: q.limit }),
       this.prisma.product.count({ where }),
     ]);
     const favs = await this.products.favoriteSet(

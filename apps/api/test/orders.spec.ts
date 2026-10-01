@@ -1,6 +1,6 @@
 import { OrdersService } from '../src/orders/orders.service';
 import { createTestApp, type TestContext } from './app';
-import { createCategory, createProduct, createUser } from './fixtures';
+import { createCategory, createProduct, createUser, reauth } from './fixtures';
 
 let t: TestContext;
 let orders: OrdersService;
@@ -57,6 +57,7 @@ async function pay(buyer: U, orderId: string, method = 'CARD') {
   const prep = await t.http
     .post(`/api/v1/orders/${orderId}/payments`)
     .set(buyer.auth)
+    .set(await reauth(t, buyer))
     .send({ method })
     .expect(201);
   const paymentKey = `pk_${++seq}_${Date.now()}`;
@@ -233,6 +234,7 @@ describe('payments', () => {
     const prep = await t.http
       .post(`/api/v1/orders/${created.body.id}/payments`)
       .set(buyer.auth)
+      .set(await reauth(t, buyer))
       .send({ method: 'CARD' })
       .expect(201);
     const before = t.toss.confirms.length;
@@ -266,6 +268,7 @@ describe('payments', () => {
     const prep = await t.http
       .post(`/api/v1/orders/${created.body.id}/payments`)
       .set(buyer.auth)
+      .set(await reauth(t, buyer))
       .send({ method: 'CARD' })
       .expect(201);
     await t.prisma.order.update({
@@ -368,11 +371,13 @@ describe('payments', () => {
     const noAddr = await t.http
       .post(`/api/v1/orders/${o.id}/payments`)
       .set(buyer.auth)
+      .set(await reauth(t, buyer))
       .send({ method: 'CARD' });
     expect(noAddr.body.error.code).toBe('ADDRESS_REQUIRED');
     const prep = await t.http
       .post(`/api/v1/orders/${o.id}/payments`)
       .set(buyer.auth)
+      .set(await reauth(t, buyer))
       .send({ method: 'CARD', addressId })
       .expect(201);
     await t.http

@@ -1,16 +1,7 @@
 import { ApiError } from '@shop/api-client';
 import { router } from 'expo-router';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  useWindowDimensions,
-  View,
-  type TextInput,
-} from 'react-native';
+import { Pressable, StyleSheet, useWindowDimensions, View, type TextInput } from 'react-native';
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -26,9 +17,12 @@ import { SocialButtons } from '@/components/auth/social-buttons';
 import { HwasoMark } from '@/components/brand/hwaso-mark';
 import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
+import { FormScroll } from '@/components/ui/form-scroll';
+import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { api } from '@/lib/api';
 import { appDevice } from '@/lib/device';
+import { goBack } from '@/lib/nav';
 import { useAuthStore } from '@/stores/auth';
 import { useLaunch } from '@/stores/launch';
 import { useTheme } from '@/theme';
@@ -61,13 +55,13 @@ const COMPACT_HEIGHT = 720;
 const MAX_WIDTH = 420;
 
 /**
- * 앱 첫 화면 — 로그인해야 앱에 들어간다 (루트 레이아웃의 Stack.Protected).
- * 로그인에 성공하면 루트 가드가 홈으로 보낸다.
+ * 로그인 — 로그인이 필요한 동작(관심·입찰·구매·채팅 등)이나 마이 탭에서 띄운다. 닫으면 둘러보던 화면으로.
+ * 로그인에 성공하면 루트 가드가 이 화면을 스택에서 빼서 보던 화면으로 돌아간다.
  * 한 화면에 들어가도록 높이에 맞춰 배치하고, 키보드가 올라오거나 큰 글씨 모드로 넘칠 때만 스크롤된다.
  */
 export default function LoginScreen() {
   const t = useTheme();
-  const { t: tr } = useTranslation('auth');
+  const { t: tr } = useTranslation(['auth', 'common', 'my']);
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
   const compact = height - insets.top - insets.bottom < COMPACT_HEIGHT;
@@ -95,12 +89,25 @@ export default function LoginScreen() {
     }
   };
 
+  const policy = (slug: 'terms' | 'privacy') =>
+    router.push({ pathname: '/policies/[slug]', params: { slug } });
+
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      style={{ flex: 1, backgroundColor: t.colors.background }}
-    >
-      <ScrollView
+    <View style={{ flex: 1, backgroundColor: t.colors.background }}>
+      {/* 로그인하지 않고 둘러보기 */}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={tr('login.close')}
+        hitSlop={8}
+        onPress={goBack}
+        style={({ pressed }) => [
+          styles.close,
+          { top: insets.top + 4, minWidth: t.touch, minHeight: t.touch, opacity: pressed ? 0.6 : 1 },
+        ]}
+      >
+        <Icon ios="xmark" android="close" color="muted" />
+      </Pressable>
+      <FormScroll
         contentContainerStyle={[
           styles.body,
           {
@@ -110,7 +117,6 @@ export default function LoginScreen() {
           },
         ]}
         alwaysBounceVertical={false}
-        keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
       >
         <Rise v={hero}>
@@ -191,9 +197,22 @@ export default function LoginScreen() {
             {/* 로그인되면 루트 가드가 이동을 맡는다 */}
             <SocialButtons compact={compact} onDone={() => {}} />
           </View>
+          <View style={[styles.links, { marginTop: compact ? 18 : 24 }]}>
+            <Pressable accessibilityRole="link" hitSlop={8} onPress={() => policy('terms')}>
+              <Text variant="caption" color="faint">
+                {tr('my:policy.title.terms')}
+              </Text>
+            </Pressable>
+            <View style={[styles.dot, { backgroundColor: t.colors.border }]} />
+            <Pressable accessibilityRole="link" hitSlop={8} onPress={() => policy('privacy')}>
+              <Text variant="caption" color="faint">
+                {tr('my:policy.title.privacy')}
+              </Text>
+            </Pressable>
+          </View>
         </Rise>
-      </ScrollView>
-    </KeyboardAvoidingView>
+      </FormScroll>
+    </View>
   );
 }
 
@@ -206,6 +225,7 @@ const styles = StyleSheet.create({
     maxWidth: MAX_WIDTH + 48,
     alignSelf: 'center',
   },
+  close: { position: 'absolute', left: 12, zIndex: 1, alignItems: 'center', justifyContent: 'center' },
   hero: { alignItems: 'center', gap: 4 },
   titleRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6, marginTop: 8 },
   title: { fontSize: 30, lineHeight: 38 },

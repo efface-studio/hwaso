@@ -12,11 +12,11 @@ import {
   Send,
   X,
 } from 'lucide-react';
+import dynamic from 'next/dynamic';
 import { useEffect, useRef, useState } from 'react';
-import { DateTimeInput } from '@/components/ui/date-picker';
 import { Button } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
-import { Field, Input } from '@/components/ui/field';
+import { controlClass, Field, Input } from '@/components/ui/field';
 import { DropdownMenu } from '@/components/ui/menu';
 import { api } from '@/lib/api';
 import { toast } from '@/stores/toast';
@@ -27,6 +27,12 @@ const localNow = (offsetMs: number) => {
   d.setMinutes(0, 0, 0);
   return new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
 };
+
+/** 날짜 선택기(react-day-picker)는 약속 대화상자를 열 때만 불러온다. 그동안 같은 크기 자리만 잡아 둔다 */
+const DateTimeInput = dynamic(() => import('@/components/ui/date-picker').then((m) => m.DateTimeInput), {
+  ssr: false,
+  loading: () => <div className={`${controlClass} h-11`} aria-hidden />,
+});
 
 function AppointmentDialog({
   open,

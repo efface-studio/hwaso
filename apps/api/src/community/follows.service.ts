@@ -4,8 +4,9 @@ import { AppException } from '../common/app-exception';
 import type { AuthUser } from '../common/auth';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { cardInclude, PUBLIC_PRODUCT, toCard } from '../products/product.mapper';
+import { cardSelect, PUBLIC_PRODUCT, toCard } from '../products/product.mapper';
 import { decodeCursor, encodeCursor, ProductsService } from '../products/products.service';
+import { SafetyService } from '../safety/safety.controller';
 
 const PAGE = 30;
 
@@ -15,6 +16,7 @@ export class FollowsService {
     private readonly prisma: PrismaService,
     private readonly notifications: NotificationsService,
     private readonly products: ProductsService,
+    private readonly safety: SafetyService,
   ) {}
 
   async follow(user: AuthUser, targetId: string) {
@@ -26,13 +28,11 @@ export class FollowsService {
     });
     if (!existed) {
       await this.prisma.follow.create({ data: { followerId: user.id, followingId: targetId } });
-      const me = await this.prisma.profile.findUnique({
-        where: { userId: user.id },
-        select: { nickname: true },
-      });
+      const me = await this.notifications.senderOf(user.id);
       await this.notifications.notify(targetId, {
         type: 'FOLLOWED',
-        title: `${me?.nickname ?? '누군가'}님이 회원님을 팔로우해요`,
+        sender: me,
+        title: `${me?.name ?? '누군가'}님이 회원님을 팔로우해요`,
         body: '프로필을 둘러보세요.',
         link: `/users/${user.id}`,
       });
@@ -67,11 +67,18 @@ export class FollowsService {
     });
     const users = rows.slice(0, PAGE).map((r) => (kind === 'followers' ? r.follower : r.following));
     const ids = users.map((u) => u.id);
-    const [mine, selling] = await Promise.all([
+    const [mine, fans, selling] = await Promise.all([
       viewerId
         ? this.prisma.follow.findMany({
             where: { followerId: viewerId, followingId: { in: ids } },
             select: { followingId: true },
+          })
+        : [],
+      // 목록의 사람 중 나를 팔로우하는 사람 (맞팔로우 버튼)
+      viewerId
+        ? this.prisma.follow.findMany({
+            where: { followerId: { in: ids }, followingId: viewerId },
+            select: { followerId: true },
           })
         : [],
       this.prisma.product.groupBy({
@@ -81,12 +88,14 @@ export class FollowsService {
       }),
     ]);
     const followed = new Set(mine.map((m) => m.followingId));
+    const followsMe = new Set(fans.map((f) => f.followerId));
     const items: FollowUserDto[] = users.map((u) => ({
       id: u.id,
       nickname: u.profile?.nickname ?? '탈퇴한 회원',
       avatarKey: u.profile?.avatarKey ?? null,
       bio: u.profile?.bio ?? '',
       isFollowing: followed.has(u.id),
+      followsMe: followsMe.has(u.id),
       sellingCount: selling.find((s) => s.sellerId === u.id)?._count ?? 0,
     }));
     return { items, nextCursor: rows.length > PAGE ? encodeCursor(offset + PAGE) : null };
@@ -95,10 +104,14 @@ export class FollowsService {
   /** 팔로우한 판매자의 새 작품 (최신 게시순) */
   async feed(user: AuthUser, cursor: string | undefined) {
     const offset = decodeCursor(cursor);
-    const where = { ...PUBLIC_PRODUCT, seller: { followers: { some: { followerId: user.id } } } };
+    const where = {
+      ...PUBLIC_PRODUCT,
+      ...(await this.safety.excludeBlocked(user.id, 'sellerId')),
+      seller: { followers: { some: { followerId: user.id } } },
+    };
     const rows = await this.prisma.product.findMany({
       where,
-      include: cardInclude,
+      select: cardSelect,
       orderBy: [{ publishedAt: 'desc' }, { id: 'desc' }],
       skip: offset,
       take: 24 + 1,

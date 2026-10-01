@@ -14,16 +14,26 @@ const ja: Translation<typeof ko> = {
   },
   tab: {
     loginTitle: '作品を販売するにはログインしてください',
-    newProduct: '+ 作品を出品する',
-    ordersToShip: '発送待ち',
-    liveAuctions: '開催中のオークション',
     salesOrders: '販売注文',
     sellerInfo: '販売者情報・振込口座',
-    summary:
-      '累計閲覧 {{views}}・お気に入り {{favorites}}・予約オークション {{scheduled}}・未回答の質問 {{inquiries}}',
     onboardingTitle: 'Hwasoで作品を販売しましょう',
     onboardingDescription:
       '売上金の受取口座を登録するだけで\n写真撮影からオークションの予約までアプリですぐにできます。',
+    register: '作品を登録',
+    tasks: {
+      title: 'やること',
+      toShip: '発送する注文',
+      inquiries: '回答待ちの質問',
+      drafts: '続きを書く下書き',
+    },
+    countCases: '{{count}}件',
+    countItems: '{{count}}件',
+    products: '作品の状況',
+    auctions: 'オークション中',
+    insights: '累計閲覧 {{views}} · お気に入り {{favorites}} · 予約オークション {{scheduled}}',
+    manage: '管理',
+    firstTitle: '最初の作品を登録しましょう',
+    firstDescription: '写真を撮って価格を決めるだけで\nすぐに販売を始められます。',
   },
   new: {
     title: '作品を出品 {{step}}/{{total}}',

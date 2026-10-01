@@ -88,6 +88,7 @@ const ko = {
     notices: '공지사항',
     support: '고객센터',
     feed: '팔로잉 새 작품',
+    consent: '가입 마무리',
   },
   language: {
     title: '언어',
@@ -158,8 +159,30 @@ const ko = {
     phone: '휴대폰',
     web: '웹',
   },
+  update: {
+    criticalTitle: '중요 업데이트',
+    criticalMessage: '꼭 필요한 수정이 적용돼요. 앱을 다시 시작할게요.',
+    restart: '다시 시작',
+  },
   push: {
     channelName: '기본 알림',
+  },
+  pushPrompt: {
+    title: '알림을 켜 둘까요?',
+    reason: {
+      chat: '상대가 답장하면 바로 알려 드려요.',
+      bid: '다른 사람이 더 높게 입찰하거나 경매가 끝나면 알려 드려요.',
+      favorite: '관심 작품의 가격이 바뀌거나 경매가 시작되면 알려 드려요.',
+      follow: '팔로우한 판매자가 새 작품을 올리면 알려 드려요.',
+    },
+    hint: '받을 알림 종류와 시간은 설정에서 언제든 바꿀 수 있어요.',
+    allow: '알림 켜기',
+    later: '나중에',
+  },
+  welcome: {
+    title: '가입을 축하해요',
+    body: '{{nickname}}님, 화소에 오신 걸 환영해요.\n마음에 드는 작품을 찾아 관심 작품에 담아 보세요.',
+    browse: '둘러보기',
   },
   auctionLive: {
     outbid: '더 높은 입찰이 들어왔어요',
@@ -178,6 +201,7 @@ const ko = {
     bidIncrement: '입찰 단위는 100원 이상이어야 합니다.',
     endAfterStart: '종료 시간은 시작 시간 이후여야 합니다.',
     buyNowAboveStart: '즉시 구매가는 시작가보다 높아야 합니다.',
+    prohibited: '쓸 수 없는 표현이 들어 있어요. 고쳐서 다시 입력해주세요.',
   },
 } as const;
 

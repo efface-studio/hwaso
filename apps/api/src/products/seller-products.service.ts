@@ -3,6 +3,7 @@ import type { Prisma } from '@prisma/client';
 import type { CreateProductInput, UpdateProductInput } from '@shop/shared';
 import { SELLER_ROLES } from '@shop/shared';
 import { AppException } from '../common/app-exception';
+import { assertClean } from '../common/moderation';
 import type { AuthUser } from '../common/auth';
 import { logNotifyError, NotificationEvents } from '../notifications/notification-events';
 import { PrismaService, type Tx } from '../prisma/prisma.service';
@@ -64,6 +65,7 @@ export class SellerProductsService {
 
   async create(user: AuthUser, input: CreateProductInput) {
     this.assertSeller(user);
+    assertClean({ title: input.title, description: input.description });
     await this.assertCategory(input.categoryId);
     await this.assertImagesOwned(
       user.id,
@@ -162,6 +164,7 @@ export class SellerProductsService {
   }
 
   async update(user: AuthUser, id: string, input: UpdateProductInput) {
+    assertClean({ title: input.title, description: input.description });
     const p = await this.owned(user, id);
     const auctionLocked = p.auction && ['LIVE', 'ENDED', 'SETTLED'].includes(p.auction.status);
     const priceTouched = input.price !== undefined || input.saleType !== undefined;

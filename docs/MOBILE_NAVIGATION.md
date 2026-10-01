@@ -15,13 +15,16 @@ src/app
 │  ├─ chat/               Stack: 채팅 목록 (탭 배지 = 안 읽은 수)
 │  └─ my/                 Stack: 마이 · 설정(테마·시니어 모드)
 ├─ products/[id].tsx      작품 상세
-├─ login.tsx              로그인 (modal)
+├─ login.tsx              로그인 (아래에서 올라오는 화면, 닫고 둘러보기)
+├─ consent.tsx            필수 동의 (약관·개인정보·만 14세 + 선택 마케팅)
 └─ +not-found.tsx
 ```
 
 - 탭 순서는 웹 하단 탭과 같다: 홈 · 경매 · 판매 · 채팅 · 마이 (검색은 홈 헤더).
 - 각 탭 안에 native Stack 을 두어 큰 제목(iOS large title)·뒤로 가기를 OS 기본 동작으로 쓴다.
-- 로그인이 필요한 화면은 `/login` 모달을 띄우고 성공하면 닫힌다.
+- 로그인 없이 둘러볼 수 있다: 홈·경매·검색·작품/경매/작가/사용자 상세·공지·고객센터·약관 (App Store 5.1.1(v)).
+- 관심·팔로우·입찰·구매·채팅·문의·신고 같은 동작은 `requireLogin()` 이 `/login` 을 띄우고, 로그인하면 보던 화면으로 돌아온다. 채팅·판매 탭과 마이 탭은 비로그인 안내 화면을 보여준다.
+- 동의가 남은 계정(`MeDto.consentRequired`)은 `/consent` 만 열린다 (소셜 첫 가입 등).
 - 웹 미리보기(`pnpm --filter @shop/mobile web`)에서는 탭이 기본 구현으로 대체된다.
 
 ## 2. Deep Linking
@@ -40,7 +43,7 @@ scheme `hwaso://`, universal link `https://hwaso.kr` (`APP_LINK_HOST`). 파일 �
 | `/notifications`           | Notifications    |
 | `/auth/callback/:provider` | 소셜 로그인 복귀 |
 
-푸시 알림의 `data.link` 는 위 경로를 그대로 담고, 탭 시 `router.push(link)` 로 이동한다 (앱이 꺼져 있었으면 마지막 알림 응답으로 이동). 지금 보고 있는 화면과 같은 링크의 알림은 배너를 띄우지 않는다.
+푸시 알림의 `data.link` 는 위 경로를 그대로 담고, 탭 시 `router.push(link)` 로 이동한다 (웹 홈 `/` 은 쌓인 화면을 닫고 홈 탭으로 — `openAppPath`) (앱이 꺼져 있었으면 마지막 알림 응답으로 이동). 지금 보고 있는 화면과 같은 링크의 알림은 배너를 띄우지 않는다.
 
 `/report?type=USER|PRODUCT|REVIEW|MESSAGE&id=` 는 공용 신고 모달이다.
 
@@ -60,17 +63,17 @@ scheme `hwaso://`, universal link `https://hwaso.kr` (`APP_LINK_HOST`). 파일 �
 
 ## 3. 네이티브 기능
 
-| 기능                   | 패키지                                                 | 사용                                                                          |
-| ---------------------- | ------------------------------------------------------ | ----------------------------------------------------------------------------- |
-| Push                   | `expo-notifications`                                   | 로그인 직후 권한 요청, Expo push token → `/me/push-tokens` (로그아웃 시 해제) |
-| Camera / Photo Library | `expo-image-picker` (카메라 + 앨범, 다중 선택 최대 20) | 상품 등록, 채팅 이미지                                                        |
-| 이미지 압축            | `expo-image-manipulator`                               | 업로드 전 긴 변 2400px, JPEG 0.85 (서버에서 재처리)                           |
-| Share                  | RN `Share`                                             | 상품/경매 공유 (웹 URL)                                                       |
-| Secure Storage         | `expo-secure-store`                                    | refresh 토큰                                                                  |
-| Biometric              | `expo-local-authentication`                            | 앱 잠금 해제 (설정)                                                           |
-| Browser Auth           | `expo-web-browser` + `expo-auth-session`               | 소셜 로그인, 결제·우편번호 웹 브리지                                          |
-| Haptics                | `expo-haptics`                                         | 입찰 성공/실패                                                                |
-| Image                  | `expo-image`                                           | 캐시, placeholder 색                                                          |
+| 기능                   | 패키지                                                 | 사용                                                                                                            |
+| ---------------------- | ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------- |
+| Push                   | `expo-notifications`                                   | 맥락 안에서 권한 요청(첫 채팅·입찰·관심·팔로우 뒤 안내 시트, 설정), 토큰 → `/me/push-tokens` (로그아웃 시 해제) |
+| Camera / Photo Library | `expo-image-picker` (카메라 + 앨범, 다중 선택 최대 20) | 상품 등록, 채팅 이미지                                                                                          |
+| 이미지 압축            | `expo-image-manipulator`                               | 업로드 전 긴 변 2400px, JPEG 0.85 (서버에서 재처리)                                                             |
+| Share                  | RN `Share`                                             | 상품/경매 공유 (웹 URL)                                                                                         |
+| Secure Storage         | `expo-secure-store`                                    | refresh 토큰                                                                                                    |
+| Biometric              | `expo-local-authentication`                            | 앱 잠금 해제 (설정)                                                                                             |
+| Browser Auth           | `expo-web-browser` + `expo-auth-session`               | 소셜 로그인, 결제·우편번호 웹 브리지                                                                            |
+| Haptics                | `expo-haptics`                                         | 입찰 성공/실패                                                                                                  |
+| Image                  | `expo-image`                                           | 캐시, placeholder 색                                                                                            |
 
 ## 4. Mobile UX
 
@@ -79,6 +82,7 @@ scheme `hwaso://`, universal link `https://hwaso.kr` (`APP_LINK_HOST`). 파일 �
 - 필터/정렬: 바텀시트 (`@gorhom/bottom-sheet`), 적용 버튼에 결과 수 표시.
 - 상품 등록: 한 화면 한 질문. 사진 → 상품명 → 카테고리 → 가격 → 판매 방식 → 상세 정보(선택, 접힘) → 등록. 입력값은 단계 이동 시 로컬 저장(드래프트 복구).
 - 숫자 입력은 `number-pad`, 날짜는 네이티브 DateTimePicker.
+- 키보드: 루트에 `KeyboardProvider`(react-native-keyboard-controller). 입력칸이 있는 화면·시트는 `FormScroll`(KeyboardAwareScrollView)로 포커스된 입력칸을 키보드 위로 스크롤하고, 채팅 입력창은 라이브러리 `KeyboardAvoidingView`로 키보드 바로 위에 붙인다.
 - 경매 화면: 포그라운드 복귀(`AppState`) 시 시간 재동기화 + 스냅샷 재조회. 입찰 버튼은 "최소 입찰가로 입찰" + 직접 입력 두 가지.
 - 이미지 갤러리: 가로 페이징 + 탭 시 전체 화면 핀치 줌.
 

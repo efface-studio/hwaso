@@ -90,6 +90,7 @@ const zhHant: Translation<typeof ko> = {
     notices: '公告',
     support: '客服中心',
     feed: '關注的新作品',
+    consent: '完成註冊',
   },
   language: {
     title: '語言',
@@ -160,8 +161,30 @@ const zhHant: Translation<typeof ko> = {
     phone: '手機',
     web: '網頁',
   },
+  update: {
+    criticalTitle: '重要更新',
+    criticalMessage: '必要的修正已準備好，App 將重新啟動以完成更新。',
+    restart: '重新啟動',
+  },
   push: {
     channelName: '預設通知',
+  },
+  pushPrompt: {
+    title: '要開啟通知嗎？',
+    reason: {
+      chat: '對方回覆時會第一時間通知你。',
+      bid: '有人出價更高或拍賣結束時會通知你。',
+      favorite: '收藏的作品價格變動或開始拍賣時會通知你。',
+      follow: '你追蹤的賣家上架新作品時會通知你。',
+    },
+    hint: '可隨時在設定中變更接收的通知類型與時間。',
+    allow: '開啟通知',
+    later: '稍後再說',
+  },
+  welcome: {
+    title: '恭喜註冊成功',
+    body: '{{nickname}}，歡迎來到 Hwaso。\n找到喜歡的作品，加入收藏吧。',
+    browse: '去逛逛',
   },
   auctionLive: {
     outbid: '有人出了更高的價',
@@ -180,6 +203,7 @@ const zhHant: Translation<typeof ko> = {
     bidIncrement: '加價幅度不得低於100韓元。',
     endAfterStart: '結束時間必須晚於開始時間。',
     buyNowAboveStart: '直購價必須高於起標價。',
+    prohibited: '內容含有不允許使用的詞語，請修改後重新輸入。',
   },
 };
 

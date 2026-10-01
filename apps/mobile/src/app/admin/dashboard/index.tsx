@@ -219,7 +219,7 @@ export default function AdminDashboardScreen() {
   const d = q.data;
 
   let body;
-  if (!d || pull.refreshing) {
+  if (!d) {
     body =
       q.isError && !d ? (
         <Empty

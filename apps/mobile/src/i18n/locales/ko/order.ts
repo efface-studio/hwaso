@@ -39,6 +39,8 @@ const ko = {
     couponApplied: '{{name}} 적용됨',
     agree: '주문 내용을 확인했으며 결제에 동의합니다 (필수)',
     escrowNotice: '화소는 통신판매중개자이며 결제 대금은 구매 확정 전까지 안전하게 보관됩니다.',
+    withdrawal: '받은 날부터 7일 이내에 청약철회(반품)를 요청할 수 있어요. 경매 낙찰 작품도 같아요.',
+    withdrawalLink: '청약철회·환불 안내',
     addAddress: '배송지를 추가해주세요.',
   },
   pay: {

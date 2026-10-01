@@ -1,12 +1,14 @@
+import { OAuthService } from '../src/auth/oauth.service';
 import { PROVIDERS } from '../src/auth/oauth.providers';
 import { createTestApp, type TestContext } from './app';
-import { createCategory, createProduct, createUser } from './fixtures';
+import { createCategory, createProduct, createUser, reauth } from './fixtures';
 
 let t: TestContext;
 let n = 0;
 const email = () => `user${Date.now()}${++n}@test.local`;
 const web = { name: 'Chrome', platform: 'web' as const };
 const ios = { name: 'iPhone 17', platform: 'ios' as const };
+const agree = { agreeTerms: true, agreePrivacy: true, ageOver14: true } as const;
 
 beforeAll(async () => {
   t = await createTestApp();
@@ -41,7 +43,7 @@ async function signup(addr = email(), device: typeof web | typeof ios = ios, pas
   const verificationToken = await verifiedToken(addr);
   const res = await t.http
     .post('/api/v1/auth/signup')
-    .send({ verificationToken, password, nickname: `닉${Date.now() % 1e7}${n}`, agreeTerms: true, device })
+    .send({ verificationToken, password, nickname: `닉${Date.now() % 1e7}${n}`, ...agree, device })
     .expect(201);
   return { addr, password, res };
 }
@@ -100,7 +102,7 @@ describe('회원가입 (Signup)', () => {
       verificationToken: token,
       password: 'abcd1234',
       nickname: `중복${n}`,
-      agreeTerms: true,
+      ...agree,
       device: ios,
     };
     await t.http.post('/api/v1/auth/signup').send(body).expect(201);
@@ -253,7 +255,10 @@ describe('비밀번호 재설정 ↔ 변경', () => {
 
   it('변경: 현재 비밀번호가 맞아야 하고 현재 기기는 유지된다', async () => {
     const { res } = await signup();
-    const auth = { Authorization: `Bearer ${res.body.accessToken}` };
+    const auth = {
+      Authorization: `Bearer ${res.body.accessToken}`,
+      ...(await reauth(t, res.body.accessToken)),
+    };
     await t.http
       .post('/api/v1/auth/password/change')
       .set(auth)
@@ -271,7 +276,10 @@ describe('비밀번호 재설정 ↔ 변경', () => {
 describe('회원 탈퇴 (가입의 짝)', () => {
   it('진행 중인 거래가 있으면 막고, 없으면 익명화한다', async () => {
     const { addr, res } = await signup();
-    const auth = { Authorization: `Bearer ${res.body.accessToken}` };
+    const auth = {
+      Authorization: `Bearer ${res.body.accessToken}`,
+      ...(await reauth(t, res.body.accessToken)),
+    };
     const seller = await createUser(t, 'SELLER');
     const { child } = await createCategory(t);
     const p = await createProduct(t, { sellerId: seller.id, categoryId: child.id });
@@ -448,7 +456,10 @@ describe('소셜 로그인 (카카오 흐름으로 공통 로직 검증)', () =>
   it('연결 ↔ 해제, 마지막 로그인 수단은 해제 불가', async () => {
     const id = `k3${Date.now()}`;
     const social = await kakaoLogin(id, null);
-    const auth = { Authorization: `Bearer ${social.body.accessToken}` };
+    const auth = {
+      Authorization: `Bearer ${social.body.accessToken}`,
+      ...(await reauth(t, social.body.accessToken)),
+    };
     const res = await t.http.delete('/api/v1/auth/social/kakao').set(auth).expect(409);
     expect(res.body.error.code).toBe('LAST_LOGIN_METHOD');
     // 비밀번호를 설정하면 해제할 수 있다 (소셜 전용 계정은 현재 비밀번호 없이 첫 설정)
@@ -458,5 +469,49 @@ describe('소셜 로그인 (카카오 흐름으로 공통 로직 검증)', () =>
       .send({ currentPassword: 'x', newPassword: 'first1234' })
       .expect(204);
     await t.http.delete('/api/v1/auth/social/kakao').set(auth).expect(204);
+  });
+});
+
+describe('iOS 네이티브 Apple 계정 연결', () => {
+  it('로그인해야 하고, 검증된 Apple 계정을 현재 계정에 연결한다', async () => {
+    await t.http
+      .post('/api/v1/auth/social/apple/native')
+      .send({ identityToken: 'x'.repeat(40) })
+      .expect(401);
+    const { res } = await signup();
+    const auth = { Authorization: `Bearer ${res.body.accessToken}` };
+    // 소셜 연결은 앱 세션에서 재인증이 필요하다
+    await t.http
+      .post('/api/v1/auth/social/apple/native')
+      .set(auth)
+      .send({ identityToken: 'x'.repeat(40) })
+      .expect(403);
+    const spy = vi.spyOn(OAuthService.prototype, 'appleNativeProfile').mockResolvedValue({
+      providerUserId: `apple${Date.now()}`,
+      email: null,
+      emailVerified: false,
+      name: null,
+    });
+    await t.http
+      .post('/api/v1/auth/social/apple/native')
+      .set({ ...auth, ...(await reauth(t, res.body.accessToken)) })
+      .send({ identityToken: 'x'.repeat(40) })
+      .expect(204);
+    const me = await t.http.get('/api/v1/auth/me').set(auth).expect(200);
+    expect(me.body.socialProviders).toContain('APPLE');
+    spy.mockRestore();
+  });
+
+  it('Apple 번들 ID 가 설정되지 않았으면 400', async () => {
+    const { res } = await signup();
+    const r = await t.http
+      .post('/api/v1/auth/social/apple/native')
+      .set({
+        Authorization: `Bearer ${res.body.accessToken}`,
+        ...(await reauth(t, res.body.accessToken)),
+      })
+      .send({ identityToken: 'x'.repeat(40) })
+      .expect(400);
+    expect(r.body.error.code).toBe('PROVIDER_NOT_CONFIGURED');
   });
 });

@@ -82,6 +82,8 @@ const zhHans: Translation<typeof ko> = {
     REVIEW_RECEIVED: '新评价',
     ORDER_UPDATED: '订单',
     FOLLOWING_NEW_ITEM: '关注的新作品',
+    SECURITY_NEW_DEVICE: '新设备登录',
+    WELCOME: '注册成功',
     SYSTEM: '通知',
   },
   productStatus: {

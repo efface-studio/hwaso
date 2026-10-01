@@ -40,7 +40,7 @@ export function FollowList({ userId, kind }: { userId: string; kind: 'followers'
                 </span>
               </span>
             </Link>
-            <FollowButton userId={u.id} initial={u.isFollowing} size="sm" />
+            <FollowButton userId={u.id} initial={u.isFollowing} followsMe={u.followsMe} size="sm" />
           </li>
         ))}
       </ul>

@@ -1,9 +1,10 @@
 import { broadcastSchema, type BroadcastInput } from '@shop/shared';
 import { useState } from 'react';
-import { Alert, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, StyleSheet, View } from 'react-native';
 import { useAdminAction } from '@/components/admin/admin-list';
 import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
+import { FormScroll } from '@/components/ui/form-scroll';
 import { Icon } from '@/components/ui/icon';
 import { RadioList } from '@/components/ui/radio';
 import { Text } from '@/components/ui/text';
@@ -60,11 +61,10 @@ export default function AdminBroadcastScreen() {
   };
 
   return (
-    <ScrollView
+    <FormScroll
       style={{ backgroundColor: t.colors.background }}
       contentContainerStyle={styles.body}
       contentInsetAdjustmentBehavior="automatic"
-      keyboardShouldPersistTaps="handled"
       keyboardDismissMode="interactive"
     >
       <Text variant="small" color="muted">
@@ -154,7 +154,7 @@ export default function AdminBroadcastScreen() {
       </View>
 
       <Button title="보내기" block size="lg" loading={send.isPending} onPress={submit} />
-    </ScrollView>
+    </FormScroll>
   );
 }
 

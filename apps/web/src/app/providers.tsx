@@ -3,6 +3,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ApiError } from '@shop/api-client';
 import { useEffect, useState, type ReactNode } from 'react';
+import { ConsentGate } from '@/components/auth/consent-gate';
 import { Toaster } from '@/components/ui/toaster';
 import { refreshAccessToken } from '@/lib/api';
 import { RealtimeSync } from '@/lib/realtime-sync';
@@ -44,6 +45,7 @@ export function Providers({ children }: { children: ReactNode }) {
   return (
     <QueryClientProvider client={client}>
       <AuthBootstrap />
+      <ConsentGate />
       <RealtimeSync />
       {children}
       <Toaster />

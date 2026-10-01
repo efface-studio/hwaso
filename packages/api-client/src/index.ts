@@ -5,6 +5,7 @@ import { chatApi, safetyApi } from './endpoints/chat';
 import { communityApi } from './endpoints/community';
 import { auctionsApi } from './endpoints/auctions';
 import { marketApi } from './endpoints/market';
+import { meApi } from './endpoints/me';
 import { notificationsApi } from './endpoints/notifications';
 import { ordersApi } from './endpoints/orders';
 
@@ -29,6 +30,9 @@ export function createApiClient(config: HttpConfig) {
     community: communityApi(http),
     admin: adminApi(http),
     notices: noticesApi(http),
+    me: meApi(http),
+    /** 재인증 토큰 저장 — 만료 전까지 모든 요청에 x-reauth-token 으로 붙는다 (null 이면 지움) */
+    setReauthToken: http.setReauthToken,
     time: () => http.get<{ serverTime: string }>('/time'),
   };
 }

@@ -41,6 +41,8 @@ const zhHant: Translation<typeof ko> = {
     couponApplied: '已套用{{name}}',
     agree: '我已確認訂單內容並同意付款（必填）',
     escrowNotice: 'Hwaso 為交易仲介平台，款項會在確認收貨前由平台安全保管。',
+    withdrawal: '自收到商品之日起 7 天內可申請撤銷訂購（退貨），拍賣得標的作品也適用。',
+    withdrawalLink: '撤銷訂購與退款說明',
     addAddress: '請新增收件地址。',
   },
   pay: {

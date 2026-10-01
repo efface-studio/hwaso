@@ -1,6 +1,6 @@
 import { ApiError } from '@shop/api-client';
+import { containsProhibited } from '@shop/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { router } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert, Pressable, StyleSheet, Switch, TextInput, View } from 'react-native';
@@ -9,6 +9,7 @@ import { Text } from '@/components/ui/text';
 import i18n from '@/i18n';
 import { formatRelative } from '@/i18n/format';
 import { api } from '@/lib/api';
+import { requireLogin } from '@/lib/require-login';
 import { useAuthStore } from '@/stores/auth';
 import { useTheme } from '@/theme';
 
@@ -87,8 +88,9 @@ export function Inquiries({ productId, isMine }: { productId: string; isMine: bo
               size="sm"
               loading={ask.isPending}
               onPress={() => {
-                if (!user) return router.push('/login');
+                if (!requireLogin()) return;
                 if (question.trim().length < 2) return Alert.alert(tr('inquiry.tooShort'));
+                if (containsProhibited(question)) return Alert.alert(tr('common:validation.prohibited'));
                 ask.mutate();
               }}
             />
@@ -169,7 +171,11 @@ export function Inquiries({ productId, isMine }: { productId: string; isMine: bo
                       size="sm"
                       loading={reply.isPending}
                       disabled={!answer.trim()}
-                      onPress={() => reply.mutate(x.id)}
+                      onPress={() =>
+                        containsProhibited(answer)
+                          ? Alert.alert(tr('common:validation.prohibited'))
+                          : reply.mutate(x.id)
+                      }
                     />
                   </View>
                 </View>

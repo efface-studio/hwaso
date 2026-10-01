@@ -16,7 +16,15 @@ afterAll(async () => {
 async function tokenFor(role: 'USER' | 'SELLER' = 'USER') {
   const email = `u${Date.now()}${Math.random().toString(36).slice(2, 6)}@test.local`;
   const user = await t.prisma.user.create({
-    data: { email, role, emailVerifiedAt: new Date(), profile: { create: { nickname: email.slice(0, 18) } } },
+    data: {
+      email,
+      role,
+      emailVerifiedAt: new Date(),
+      termsAgreedAt: new Date(),
+      privacyAgreedAt: new Date(),
+      ageConfirmedAt: new Date(),
+      profile: { create: { nickname: email.slice(0, 18) } },
+    },
   });
   return signAccessToken({ id: user.id, role, sessionId: 'test' });
 }

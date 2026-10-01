@@ -54,9 +54,12 @@ export default function SupportScreen() {
     [tr('support.company.ceo'), COMPANY.ceo],
     [tr('support.company.address'), COMPANY.address],
     [tr('support.company.bizNo'), COMPANY.bizNo],
-    [tr('support.company.mailOrderNo'), COMPANY.mailOrderNo],
-    [tr('support.company.privacyOfficer'), COMPANY.privacyOfficer],
-    [tr('support.company.hosting'), COMPANY.hosting],
+    [tr('support.company.mailOrderNo'), COMPANY.mailOrderNumber],
+    [
+      tr('support.company.privacyOfficer'),
+      `${COMPANY.privacyOfficer.name} (${COMPANY.privacyOfficer.email})`,
+    ],
+    [tr('support.company.hosting'), COMPANY.hostingProvider],
   ];
 
   return (

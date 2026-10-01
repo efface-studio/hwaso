@@ -8,13 +8,14 @@ import { env } from './env';
 export class BridgeCancelled extends Error {}
 
 /**
- * 웹 브리지 페이지(토스 결제창·카카오 우편번호)를 인앱 브라우저로 열고, 앱 딥링크로 돌아온 쿼리를 받는다.
+ * 웹 브리지 페이지(토스 결제창·카카오 우편번호·본인인증)를 인앱 브라우저로 열고, 앱 딥링크로 돌아온 쿼리를 받는다.
  * iOS 는 ASWebAuthenticationSession, Android 는 Custom Tabs — 카드사 앱 전환도 브라우저가 처리한다.
+ * 로그인이 아니므로 쿠키를 나누지 않는 세션으로 연다 — iOS 가 "…에 로그인하려고 합니다" 확인 창을 띄우지 않는다.
  */
 async function openBridge(path: string, params: Record<string, string> = {}): Promise<URLSearchParams> {
   const ret = Linking.createURL('bridge');
   const url = `${env.webUrl}/app-bridge/${path}?${new URLSearchParams({ ...params, return: ret })}`;
-  const r = await WebBrowser.openAuthSessionAsync(url, ret);
+  const r = await WebBrowser.openAuthSessionAsync(url, ret, { preferEphemeralSession: true });
   if (r.type !== 'success') throw new BridgeCancelled();
   return new URL(r.url).searchParams;
 }

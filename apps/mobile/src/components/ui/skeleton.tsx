@@ -23,7 +23,7 @@ import { useTheme } from '@/theme';
 
 /** 빛 띠 폭과 한 번 지나가는 시간 */
 const BAND = 180;
-const SWEEP_MS = 1400;
+export const SWEEP_MS = 1400;
 
 /** 한 화면의 블록들이 같은 빛 띠를 공유하도록 진행도(0→1)를 나눠 쓴다 */
 const ShimmerClock = createContext<SharedValue<number> | null>(null);

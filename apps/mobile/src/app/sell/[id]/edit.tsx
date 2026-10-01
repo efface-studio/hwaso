@@ -1,13 +1,20 @@
 import { ApiError } from '@shop/api-client';
-import { draftFromProduct, draftToInput, updateProductSchema, type ProductDraft } from '@shop/shared';
+import {
+  containsProhibited,
+  draftFromProduct,
+  draftToInput,
+  updateProductSchema,
+  type ProductDraft,
+} from '@shop/shared';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, StyleSheet, View } from 'react-native';
 import { AuthenticityFields, BasicFields, DetailFields, PriceFields } from '@/components/sell/fields';
 import { PhotoManager } from '@/components/sell/photo-manager';
 import { Button } from '@/components/ui/button';
+import { FormScroll } from '@/components/ui/form-scroll';
 import { Empty, Loading } from '@/components/ui/state';
 import { Text } from '@/components/ui/text';
 import i18n from '@/i18n';
@@ -98,9 +105,12 @@ export default function EditProductScreen() {
       ? { ...input, images: undefined, price: undefined, saleType: undefined }
       : input;
     const r = updateProductSchema.safeParse(body);
-    if (!r.success) {
-      const e: Record<string, string> = {};
-      for (const i of r.error.issues) e[i.path.join('.')] ??= schemaMessage(i.message);
+    const e: Record<string, string> = {};
+    if (!r.success) for (const i of r.error.issues) e[i.path.join('.')] ??= schemaMessage(i.message);
+    // 쓸 수 없는 표현은 서버도 막지만, 입력한 자리에서 먼저 알려 준다
+    if (containsProhibited(d.title)) e.title ??= tr('common:validation.prohibited');
+    if (containsProhibited(d.description)) e.description ??= tr('common:validation.prohibited');
+    if (!r.success || Object.keys(e).length) {
       setErrors(e);
       return;
     }
@@ -128,11 +138,7 @@ export default function EditProductScreen() {
     ]);
 
   return (
-    <ScrollView
-      style={{ backgroundColor: t.colors.background }}
-      contentContainerStyle={styles.body}
-      keyboardShouldPersistTaps="handled"
-    >
+    <FormScroll style={{ backgroundColor: t.colors.background }} contentContainerStyle={styles.body}>
       <Stack.Screen options={{ title: tr('common:screen.sellEdit') }} />
       <View style={styles.actions}>
         <Text variant="label" color={p.status === 'ACTIVE' ? 'primary' : 'muted'}>
@@ -209,7 +215,7 @@ export default function EditProductScreen() {
       )}
       <Button title={tr('common:action.save')} size="lg" loading={pending === 'save'} onPress={save} />
       <Button title={tr('edit.delete')} variant="ghost" loading={pending === 'delete'} onPress={remove} />
-    </ScrollView>
+    </FormScroll>
   );
 }
 

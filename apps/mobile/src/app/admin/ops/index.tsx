@@ -53,7 +53,7 @@ function MenuRow({ item }: { item: MenuItem }) {
   );
 }
 
-/** 운영 메뉴: 신고·카테고리·경매 정책·콘텐츠·쿠폰·감사 로그 */
+/** 운영 메뉴: 신고·카테고리·경매 정책·콘텐츠·쿠폰·앱 업데이트·감사 로그 */
 export default function OpsScreen() {
   const t = useTheme();
   // 신고 옆에 열린 신고 수 (대시보드와 같은 캐시)
@@ -129,6 +129,18 @@ export default function OpsScreen() {
           description: '할인 쿠폰 발급·기간 관리',
           sf: 'ticket',
           md: 'confirmation_number',
+        },
+      ],
+    ],
+    [
+      '앱',
+      [
+        {
+          href: '/admin/ops/updates',
+          label: '앱 업데이트',
+          description: '배포 기록·배포 비율·되돌리기',
+          sf: 'arrow.down.app',
+          md: 'system_update',
         },
       ],
     ],

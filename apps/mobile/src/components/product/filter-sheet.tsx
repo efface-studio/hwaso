@@ -2,8 +2,9 @@ import { ITEM_CONDITIONS, SALE_TYPES, type ItemCondition, type SaleType } from '
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Modal, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
+import { Modal, Pressable, StyleSheet, Switch, View } from 'react-native';
 import { Button } from '@/components/ui/button';
+import { FormScroll } from '@/components/ui/form-scroll';
 import { PriceField } from '@/components/ui/inputs';
 import { Text } from '@/components/ui/text';
 import { formatPrice } from '@/i18n/format';
@@ -161,7 +162,7 @@ export function FilterButton({
               onPress={() => setOpen(false)}
             />
           </View>
-          <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
+          <FormScroll contentContainerStyle={styles.body}>
             <MultiChips
               label={tr('filter.saleType')}
               value={draft.saleType}
@@ -224,7 +225,7 @@ export function FilterButton({
                 accessibilityLabel={tr('filter.verifiedOnly')}
               />
             </View>
-          </ScrollView>
+          </FormScroll>
           <View style={[styles.foot, { borderColor: t.colors.border }]}>
             <Button
               title={tr('common:action.reset')}

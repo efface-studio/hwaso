@@ -1,4 +1,4 @@
-import { COMPANY } from '@shop/shared';
+import { COMPANY, POLICIES } from '@shop/shared';
 import Link from 'next/link';
 import { BrandBanner } from '@/components/brand/brand-banner';
 import { SeniorQuickToggle } from './senior-toggle';
@@ -6,10 +6,14 @@ import { ThemeSelect } from './theme-select';
 
 const FOOTER_LINKS = [
   ['/notices', '공지사항'],
-  ['/terms', '이용약관'],
-  ['/privacy', '개인정보처리방침'],
-  ['/policy/auction', '경매 운영 정책'],
-  ['/policy/authenticity', '검수·진품 보증 정책'],
+  ['/support', '고객센터'],
+  [POLICIES.terms.path, '이용약관'],
+  // 개인정보처리방침은 다른 약관과 구분되게 강조한다 (개인정보 보호법 표시 관행)
+  [POLICIES.privacy.path, '개인정보처리방침'],
+  [POLICIES.refund.path, POLICIES.refund.title],
+  [POLICIES.auction.path, '경매 운영 정책'],
+  [POLICIES.authenticity.path, '검수·진품 보증 정책'],
+  ['/account-deletion', '계정 삭제 안내'],
 ] as const;
 
 export function Footer() {
@@ -42,7 +46,9 @@ export function Footer() {
                 <Link
                   key={href}
                   href={href}
-                  className={href === '/privacy' ? 'font-semibold text-foreground' : 'hover:text-foreground'}
+                  className={
+                    href === POLICIES.privacy.path ? 'font-semibold text-foreground' : 'hover:text-foreground'
+                  }
                 >
                   {label}
                 </Link>
@@ -57,7 +63,7 @@ export function Footer() {
 
         <address className="flex flex-col gap-1 border-t border-border-soft pt-6 text-caption text-muted not-italic">
           <p>
-            상호 {COMPANY.name} · 대표 {COMPANY.ceo} · 개인정보보호책임자 {COMPANY.privacyOfficer}
+            상호 {COMPANY.name} · 대표 {COMPANY.ceo}
           </p>
           <p>주소 {COMPANY.address}</p>
           <p>
@@ -70,9 +76,19 @@ export function Footer() {
             >
               사업자정보 확인
             </a>{' '}
-            · 통신판매업 신고 {COMPANY.mailOrderNo}
+            · 통신판매업 신고번호 {COMPANY.mailOrderNumber}
           </p>
-          <p>호스팅 서비스 제공 {COMPANY.hosting}</p>
+          <p>
+            개인정보 보호책임자 {COMPANY.privacyOfficer.name} (
+            <a
+              href={`mailto:${COMPANY.privacyOfficer.email}`}
+              className="hover:text-foreground hover:underline"
+            >
+              {COMPANY.privacyOfficer.email}
+            </a>
+            )
+          </p>
+          <p>호스팅 서비스 제공 {COMPANY.hostingProvider}</p>
         </address>
 
         <div className="flex flex-col gap-2 text-caption text-muted">

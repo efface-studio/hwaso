@@ -14,10 +14,12 @@ import { AppException } from '../common/app-exception';
 import type { AuthUser } from '../common/auth';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
+import { SafetyService } from '../safety/safety.controller';
 import {
-  cardInclude,
+  cardSelect,
   detailInclude,
   PUBLIC_PRODUCT,
+  PUBLIC_PRODUCT_SQL,
   toCard,
   toDetail,
   VISIBLE_PRODUCT,
@@ -25,9 +27,16 @@ import {
 
 /** ponytail: 관련도 정렬은 일치 후보 최대 500건을 앱에서 점수화 — 카탈로그가 커지면 OpenSearch 로 전환 (docs/ARCHITECTURE.md §7) */
 const RELEVANCE_CANDIDATES = 500;
+/** 검색 후보 id 가 이보다 많으면(흔한 검색어) id 목록 대신 기존 OR 조건으로 찾는다 */
+const SEARCH_ID_LIMIT = 5000;
 const RECENT_VIEWS_KEEP = 50;
 /** 홈 섹션 캐시 키 — 상품·경매가 바뀌면 지운다 */
 export const HOME_CACHE_KEY = 'home:v2';
+/** 홈 재생성 중 다른 요청에 내줄 직전 값 (무효화해도 지우지 않는다) */
+const HOME_STALE_KEY = `${HOME_CACHE_KEY}:stale`;
+const HOME_LOCK_KEY = `${HOME_CACHE_KEY}:lock`;
+const HOME_TTL_SEC = 60;
+const POPULAR_ARTISTS_TTL_SEC = 300;
 
 export const encodeCursor = (offset: number) => Buffer.from(String(offset)).toString('base64url');
 export function decodeCursor(cursor?: string): number {
@@ -41,6 +50,7 @@ export class ProductsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
+    private readonly safety: SafetyService,
   ) {}
 
   async favoriteSet(userId: string | undefined, productIds: string[]): Promise<Set<string>> {
@@ -64,20 +74,23 @@ export class ProductsService {
   async buildWhere(q: ProductListQuery): Promise<Prisma.ProductWhereInput> {
     const and: Prisma.ProductWhereInput[] = [PUBLIC_PRODUCT];
     if (q.q) {
-      const term = q.q;
-      const ci = { contains: term, mode: 'insensitive' as const };
-      and.push({
-        OR: [
-          { title: ci },
-          { artist: { OR: [{ name: ci }, { nameEn: ci }] } },
-          { maker: ci },
-          { brand: ci },
-          { era: ci },
-          { material: ci },
-          { category: { name: ci } },
-          { seller: { profile: { nickname: ci } } },
-        ],
-      });
+      const ids = await this.searchIds(q.q);
+      if (ids) and.push({ id: { in: ids } });
+      else {
+        const ci = { contains: q.q, mode: 'insensitive' as const };
+        and.push({
+          OR: [
+            { title: ci },
+            { artist: { OR: [{ name: ci }, { nameEn: ci }] } },
+            { maker: ci },
+            { brand: ci },
+            { era: ci },
+            { material: ci },
+            { category: { name: ci } },
+            { seller: { profile: { nickname: ci } } },
+          ],
+        });
+      }
     }
     if (q.category) and.push({ categoryId: { in: await this.categoryIds(q.category) } });
     if (q.minPrice != null) and.push({ listPrice: { gte: BigInt(q.minPrice) } });
@@ -102,6 +115,36 @@ export class ProductsService {
     return { AND: and };
   }
 
+  /**
+   * 검색어가 들어간 공개 상품 id (docs/ARCHITECTURE.md §7). 조인한 OR ILIKE 는 trigram 인덱스를 못 타므로
+   * 테이블별 ILIKE 를 UNION 한다. 제작자·브랜드·시대·소재는 product_search_trgm 과 같은 식으로 후보를 좁힌 뒤
+   * 필드별로 다시 확인한다 (필드 경계를 넘는 일치 제외). 후보가 SEARCH_ID_LIMIT 를 넘으면 null.
+   */
+  private async searchIds(term: string): Promise<string[] | null> {
+    // Prisma contains 와 같은 패턴 — 와일드카드(%, _)를 이스케이프하지 않는다
+    const like = `%${term}%`;
+    const rows = await this.prisma.$queryRaw<{ id: string }[]>`
+      SELECT p.id FROM "Product" p
+      WHERE ${PUBLIC_PRODUCT_SQL}
+        AND p.id IN (
+          SELECT id FROM "Product" WHERE "title" ILIKE ${like}
+          UNION ALL
+          SELECT id FROM "Product"
+          WHERE (coalesce("maker", '') || ' ' || coalesce("brand", '') || ' ' || coalesce("era", '') || ' ' || coalesce("material", '')) ILIKE ${like}
+            AND ("maker" ILIKE ${like} OR "brand" ILIKE ${like} OR "era" ILIKE ${like} OR "material" ILIKE ${like})
+          UNION ALL
+          SELECT x.id FROM "Product" x JOIN "Artist" a ON a.id = x."artistId" WHERE a."name" ILIKE ${like}
+          UNION ALL
+          SELECT x.id FROM "Product" x JOIN "Artist" a ON a.id = x."artistId" WHERE a."nameEn" ILIKE ${like}
+          UNION ALL
+          SELECT x.id FROM "Product" x JOIN "Category" c ON c.id = x."categoryId" WHERE c."name" ILIKE ${like}
+          UNION ALL
+          SELECT x.id FROM "Product" x JOIN "Profile" f ON f."userId" = x."sellerId" WHERE f."nickname" ILIKE ${like}
+        )
+      LIMIT ${SEARCH_ID_LIMIT + 1}`;
+    return rows.length > SEARCH_ID_LIMIT ? null : rows.map((r) => r.id);
+  }
+
   private orderBy(sort: ProductListQuery['sort']): Prisma.ProductOrderByWithRelationInput[] {
     switch (sort) {
       case 'price_asc':
@@ -118,7 +161,10 @@ export class ProductsService {
   }
 
   async list(q: ProductListQuery, viewer?: AuthUser): Promise<ProductListResponse> {
-    const where = await this.buildWhere(q);
+    // 내가 차단한 판매자의 작품은 목록에서 뺀다
+    const where: Prisma.ProductWhereInput = {
+      AND: [await this.buildWhere(q), await this.safety.excludeBlocked(viewer?.id, 'sellerId')],
+    };
     const offset = decodeCursor(q.cursor);
     let rows;
     let total: number;
@@ -150,7 +196,7 @@ export class ProductsService {
       const pageIds = ordered.slice(offset, offset + q.limit);
       const found = await this.prisma.product.findMany({
         where: { id: { in: pageIds } },
-        include: cardInclude,
+        select: cardSelect,
       });
       const byId = new Map(found.map((p) => [p.id, p]));
       rows = pageIds.map((id) => byId.get(id)!).filter(Boolean);
@@ -158,7 +204,7 @@ export class ProductsService {
       [rows, total] = await Promise.all([
         this.prisma.product.findMany({
           where,
-          include: cardInclude,
+          select: cardSelect,
           orderBy: this.orderBy(q.sort),
           skip: offset,
           take: q.limit,
@@ -267,8 +313,12 @@ export class ProductsService {
       include: detailInclude,
     });
     if (!p) throw new AppException('NOT_FOUND', '상품을 찾을 수 없습니다.');
-    const favs = await this.favoriteSet(viewer?.id, [p.id]);
-    return toDetail(p, viewer?.id, favs.has(p.id));
+    const [favs, blocked] = await Promise.all([
+      this.favoriteSet(viewer?.id, [p.id]),
+      this.safety.blockedIds(viewer?.id),
+    ]);
+    // 차단한 판매자의 작품도 링크로 들어오면 열리되, 클라이언트가 가림 처리하도록 표시한다
+    return toDetail(p, viewer?.id, favs.has(p.id), blocked.includes(p.sellerId));
   }
 
   async related(id: string, viewer?: AuthUser) {
@@ -281,11 +331,12 @@ export class ProductsService {
       where: {
         AND: [
           PUBLIC_PRODUCT,
+          await this.safety.excludeBlocked(viewer?.id, 'sellerId'),
           { id: { not: id } },
           { OR: [{ categoryId: base.categoryId }, ...(base.artistId ? [{ artistId: base.artistId }] : [])] },
         ],
       },
-      include: cardInclude,
+      select: cardSelect,
       orderBy: [{ favoriteCount: 'desc' }, { publishedAt: 'desc' }],
       take: 12,
     });
@@ -329,12 +380,9 @@ export class ProductsService {
   }
 
   async home(viewer?: AuthUser): Promise<HomeDto> {
-    const cacheKey = HOME_CACHE_KEY;
-    const cached = await this.redis.get(cacheKey);
-    const base = cached ? (JSON.parse(cached) as HomeDto) : await this.buildHome();
-    if (!cached) await this.redis.set(cacheKey, JSON.stringify(base), 'EX', 60);
+    const base = await this.homeBase();
     if (!viewer) return base;
-    // 개인화: 관심 여부만 사용자별로 덮어쓴다
+    // 개인화: 관심 여부를 사용자별로 덮어쓰고, 차단한 판매자의 작품은 뺀다
     const all = [
       ...base.liveAuctions,
       ...base.endingSoon,
@@ -343,9 +391,18 @@ export class ProductsService {
       ...base.newArrivals,
       ...base.collections.flatMap((c) => c.items),
     ];
-    const favs = await this.favoriteSet(viewer.id, [...new Set(all.map((c) => c.id))]);
+    const ids = [...new Set(all.map((c) => c.id))];
+    const blockedSellers = await this.safety.blockedIds(viewer.id);
+    const [favs, hidden] = await Promise.all([
+      this.favoriteSet(viewer.id, ids),
+      blockedSellers.length
+        ? this.prisma.product
+            .findMany({ where: { id: { in: ids }, sellerId: { in: blockedSellers } }, select: { id: true } })
+            .then((rows) => new Set(rows.map((r) => r.id)))
+        : new Set<string>(),
+    ]);
     const mark = <T extends { id: string; isFavorite: boolean }>(list: T[]) =>
-      list.map((c) => ({ ...c, isFavorite: favs.has(c.id) }));
+      list.filter((c) => !hidden.has(c.id)).map((c) => ({ ...c, isFavorite: favs.has(c.id) }));
     return {
       ...base,
       liveAuctions: mark(base.liveAuctions),
@@ -357,6 +414,39 @@ export class ProductsService {
     };
   }
 
+  /**
+   * 홈 공통 섹션 (Redis 60초). 캐시가 비면 잠금(SET NX)을 잡은 한 요청만 다시 만든다.
+   * 나머지는 직전 값이 있으면 그것을, 없으면 잠시 기다렸다가 새 값을 쓴다.
+   */
+  private async homeBase(): Promise<HomeDto> {
+    const cached = await this.redis.get(HOME_CACHE_KEY);
+    if (cached) return JSON.parse(cached) as HomeDto;
+    const locked = await this.redis.set(HOME_LOCK_KEY, '1', 'EX', 10, 'NX');
+    if (!locked) {
+      const stale = await this.redis.get(HOME_STALE_KEY);
+      if (stale) return JSON.parse(stale) as HomeDto;
+      for (let i = 0; i < 20; i++) {
+        await new Promise((r) => setTimeout(r, 50));
+        const fresh = await this.redis.get(HOME_CACHE_KEY);
+        if (fresh) return JSON.parse(fresh) as HomeDto;
+      }
+      // 만드는 쪽이 1초 넘게 걸리면 직접 만든다 (캐시는 그쪽이 채운다)
+      return this.buildHome();
+    }
+    try {
+      const base = await this.buildHome();
+      const json = JSON.stringify(base);
+      await this.redis
+        .multi()
+        .set(HOME_CACHE_KEY, json, 'EX', HOME_TTL_SEC)
+        .set(HOME_STALE_KEY, json, 'EX', HOME_TTL_SEC * 10)
+        .exec();
+      return base;
+    } finally {
+      await this.redis.del(HOME_LOCK_KEY);
+    }
+  }
+
   private async buildHome(): Promise<HomeDto> {
     const cards = async (
       where: Prisma.ProductWhereInput,
@@ -366,7 +456,7 @@ export class ProductsService {
       (
         await this.prisma.product.findMany({
           where: { AND: [PUBLIC_PRODUCT, where] },
-          include: cardInclude,
+          select: cardSelect,
           orderBy,
           take,
         })
@@ -442,37 +532,69 @@ export class ProductsService {
     };
   }
 
+  /** 인기 작가: 공개 작품의 (관심 수 + 5) 합계 순. 작품 수가 많아도 작가 단위로 집계해 상위 take 명만 읽는다 (Redis 5분) */
   async popularArtists(take: number): Promise<ArtistDto[]> {
-    const artists = await this.prisma.artist.findMany({
-      where: { products: { some: PUBLIC_PRODUCT } },
-      include: {
-        products: {
-          where: PUBLIC_PRODUCT,
-          orderBy: { favoriteCount: 'desc' },
-          select: { favoriteCount: true, images: { take: 1, orderBy: { sortOrder: 'asc' } } },
-        },
-      },
-    });
-    return artists
-      .map((a) => ({ a, score: a.products.reduce((s, p) => s + p.favoriteCount + 5, 0) }))
-      .sort((x, y) => y.score - x.score)
-      .slice(0, take)
-      .map(({ a }) => {
-        const img = a.products[0]?.images[0];
-        return {
-          id: a.id,
-          name: a.name,
-          nameEn: a.nameEn,
-          birthYear: a.birthYear,
-          deathYear: a.deathYear,
-          nationality: a.nationality,
-          bio: a.bio,
-          productCount: a.products.length,
-          image: img
-            ? { key: img.key, width: img.width, height: img.height, dominantColor: img.dominantColor }
-            : null,
-        };
-      });
+    const key = `artists:popular:${take}`;
+    const cached = await this.redis.get(key);
+    if (cached) return JSON.parse(cached) as ArtistDto[];
+    const rows = await this.prisma.$queryRaw<
+      {
+        id: string;
+        name: string;
+        nameEn: string | null;
+        birthYear: number | null;
+        deathYear: number | null;
+        nationality: string | null;
+        bio: string;
+        productCount: bigint;
+        key: string | null;
+        width: number | null;
+        height: number | null;
+        dominantColor: string | null;
+      }[]
+    >`
+      WITH top AS (
+        SELECT p."artistId" AS id, sum(p."favoriteCount" + 5) AS score, count(*) AS "productCount"
+        FROM "Product" p
+        WHERE p."artistId" IS NOT NULL AND ${PUBLIC_PRODUCT_SQL}
+        GROUP BY p."artistId"
+        ORDER BY score DESC, p."artistId"
+        LIMIT ${take}
+      )
+      SELECT a.id, a.name, a."nameEn", a."birthYear", a."deathYear", a.nationality, a.bio, top."productCount",
+        img.key, img.width, img.height, img."dominantColor"
+      FROM top
+      JOIN "Artist" a ON a.id = top.id
+      LEFT JOIN LATERAL (
+        SELECT p.id FROM "Product" p
+        WHERE p."artistId" = top.id AND ${PUBLIC_PRODUCT_SQL}
+        ORDER BY p."favoriteCount" DESC, p.id
+        LIMIT 1
+      ) best ON true
+      LEFT JOIN LATERAL (
+        SELECT i.key, i.width, i.height, i."dominantColor" FROM "ProductImage" i
+        WHERE i."productId" = best.id
+        ORDER BY i."sortOrder"
+        LIMIT 1
+      ) img ON true
+      ORDER BY top.score DESC, top.id`;
+    // 대표 이미지는 관심 수가 가장 많은 작품의 첫 이미지
+    const result: ArtistDto[] = rows.map((r) => ({
+      id: r.id,
+      name: r.name,
+      nameEn: r.nameEn,
+      birthYear: r.birthYear,
+      deathYear: r.deathYear,
+      nationality: r.nationality,
+      bio: r.bio,
+      productCount: Number(r.productCount),
+      image:
+        r.key != null
+          ? { key: r.key, width: r.width!, height: r.height!, dominantColor: r.dominantColor! }
+          : null,
+    }));
+    await this.redis.set(key, JSON.stringify(result), 'EX', POPULAR_ARTISTS_TTL_SEC);
+    return result;
   }
 
   async inquiries(productId: string, viewer?: AuthUser): Promise<InquiryDto[]> {
@@ -482,7 +604,7 @@ export class ProductsService {
     });
     if (!product) throw new AppException('NOT_FOUND');
     const rows = await this.prisma.inquiry.findMany({
-      where: { productId },
+      where: { productId, ...(await this.safety.excludeBlocked(viewer?.id, 'userId')) },
       orderBy: { createdAt: 'desc' },
       take: 50,
       include: { user: { select: { profile: { select: { nickname: true } } } } },

@@ -12,16 +12,26 @@ const ko = {
   },
   tab: {
     loginTitle: '작품을 판매하려면 로그인해주세요',
-    newProduct: '+ 작품 등록하기',
-    ordersToShip: '발송 대기',
-    liveAuctions: '진행 경매',
     salesOrders: '판매 주문',
     sellerInfo: '판매자 정보 · 정산 계좌',
-    summary:
-      '누적 조회 {{views}} · 관심 {{favorites}} · 예약 경매 {{scheduled}} · 답변 대기 문의 {{inquiries}}',
     onboardingTitle: '화소에서 작품을 판매해보세요',
     onboardingDescription:
       '판매 대금을 받을 계좌만 등록하면\n사진 촬영부터 경매 예약까지 앱에서 바로 할 수 있어요.',
+    register: '작품 등록',
+    tasks: {
+      title: '할 일',
+      toShip: '발송할 주문',
+      inquiries: '답변을 기다리는 문의',
+      drafts: '이어서 쓸 임시 저장',
+    },
+    countCases: '{{count}}건',
+    countItems: '{{count}}개',
+    products: '내 작품 현황',
+    auctions: '경매 중',
+    insights: '누적 조회 {{views}} · 관심 {{favorites}} · 예약 경매 {{scheduled}}',
+    manage: '관리',
+    firstTitle: '첫 작품을 등록해 보세요',
+    firstDescription: '사진을 찍고 가격만 정하면\n바로 판매를 시작할 수 있어요.',
   },
   new: {
     title: '작품 등록 {{step}}/{{total}}',

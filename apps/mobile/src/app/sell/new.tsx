@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ApiError } from '@shop/api-client';
 import {
   auctionToInput,
+  containsProhibited,
   createAuctionSchema,
   createProductSchema,
   defaultAuction,
@@ -15,7 +16,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, Stack } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   AuctionFields,
@@ -26,6 +27,7 @@ import {
 } from '@/components/sell/fields';
 import { PhotoManager } from '@/components/sell/photo-manager';
 import { Button } from '@/components/ui/button';
+import { FormScroll, type FormScrollRef } from '@/components/ui/form-scroll';
 import { Empty } from '@/components/ui/state';
 import { Text } from '@/components/ui/text';
 import i18n from '@/i18n';
@@ -55,7 +57,7 @@ export default function SellNewScreen() {
   const insets = useSafeAreaInsets();
   const qc = useQueryClient();
   const user = useAuthStore((s) => s.user);
-  const scroll = useRef<ScrollView>(null);
+  const scroll = useRef<FormScrollRef>(null);
   const categories = useQuery({
     queryKey: ['categories'],
     queryFn: api.market.categories,
@@ -121,6 +123,7 @@ export default function SellNewScreen() {
     if (s === 'photos' && d.images.length === 0) e.images = tr('new.validation.images');
     if (s === 'basic') {
       if (d.title.trim().length < 2) e.title = tr('new.validation.title');
+      else if (containsProhibited(d.title)) e.title = tr('common:validation.prohibited');
       if (!d.categoryId) e.categoryId = tr('new.validation.category');
     }
     if (s === 'price' && d.saleType !== 'AUCTION' && !d.price) e.price = tr('new.validation.price');
@@ -130,7 +133,11 @@ export default function SellNewScreen() {
       const r = createAuctionSchema.safeParse(auctionToInput(withIncrement(auction), 'x'));
       if (!r.success) Object.assign(e, issuesToErrors(r.error.issues));
     }
+    // 쓸 수 없는 표현은 서버도 막지만, 입력한 자리에서 먼저 알려 준다
+    if ((s === 'detail' || s === 'review') && containsProhibited(d.description))
+      e.description = tr('common:validation.prohibited');
     if (s === 'review') {
+      if (containsProhibited(d.title)) e.title = tr('common:validation.prohibited');
       const r = createProductSchema.safeParse(draftToInput(d, true));
       if (!r.success) Object.assign(e, issuesToErrors(r.error.issues));
     }
@@ -183,10 +190,18 @@ export default function SellNewScreen() {
       <Stack.Screen
         options={{
           title: tr('new.title', { step: idx + 1, total: steps.length }),
-          headerLeft:
-            idx > 0
-              ? () => <Button title={tr('common:action.back')} variant="ghost" size="sm" onPress={back} />
-              : undefined,
+          // 전체 화면 모달이라 시스템 뒤로 버튼이 없다 — 첫 단계는 닫기(작성 중인 내용은 임시저장돼 남는다)
+          headerLeft: () =>
+            idx > 0 ? (
+              <Button title={tr('common:action.back')} variant="ghost" size="sm" onPress={back} />
+            ) : (
+              <Button
+                title={tr('common:action.close')}
+                variant="ghost"
+                size="sm"
+                onPress={() => router.back()}
+              />
+            ),
         }}
       />
       <View style={[styles.progress, { backgroundColor: t.colors.surface2 }]}>
@@ -200,7 +215,7 @@ export default function SellNewScreen() {
           }}
         />
       </View>
-      <ScrollView ref={scroll} contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
+      <FormScroll ref={scroll} contentContainerStyle={styles.body}>
         <Text variant="h1" accessibilityRole="header">
           {tr(`new.steps.${step}`)}
         </Text>
@@ -280,7 +295,7 @@ export default function SellNewScreen() {
             {firstError}
           </Text>
         )}
-      </ScrollView>
+      </FormScroll>
       <View
         style={[
           styles.bar,

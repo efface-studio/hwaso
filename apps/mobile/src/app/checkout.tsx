@@ -4,12 +4,13 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AddressPicker } from '@/components/order/address-list';
 import { AmountSummary, OrderItemRow, payMethods } from '@/components/order/order-ui';
 import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
+import { FormScroll } from '@/components/ui/form-scroll';
 import { RadioList } from '@/components/ui/radio';
 import { Empty, Loading } from '@/components/ui/state';
 import { Text } from '@/components/ui/text';
@@ -113,7 +114,7 @@ export default function CheckoutScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: t.colors.background }}>
       <Stack.Screen options={{ title: tr('checkout.title') }} />
-      <ScrollView contentContainerStyle={{ paddingBottom: 24 }} keyboardShouldPersistTaps="handled">
+      <FormScroll contentContainerStyle={{ paddingBottom: 24 }}>
         <Section title={tr('checkout.section.items')}>
           {q?.items.map((i) => (
             <OrderItemRow key={i.productId} item={i} />
@@ -197,8 +198,20 @@ export default function CheckoutScreen() {
           <Text variant="caption" color="muted">
             {tr('checkout.escrowNotice')}
           </Text>
+          <Pressable
+            accessibilityRole="link"
+            hitSlop={6}
+            onPress={() => router.push({ pathname: '/policies/[slug]', params: { slug: 'refund' } })}
+          >
+            <Text variant="caption" color="muted">
+              {tr('checkout.withdrawal')}{' '}
+              <Text variant="caption" color="primary">
+                {tr('checkout.withdrawalLink')}
+              </Text>
+            </Text>
+          </Pressable>
         </Section>
-      </ScrollView>
+      </FormScroll>
       <View
         style={[
           styles.bar,

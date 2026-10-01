@@ -20,6 +20,10 @@ import type {
   NoticeDto,
   NoticeInput,
   OrderDetailDto,
+  OtaListQuery,
+  OtaPatchInput,
+  OtaRollbackInput,
+  OtaUpdateDto,
   Paged,
   ReportAction,
   Role,
@@ -97,9 +101,18 @@ export const adminApi = (http: Http) => ({
   updateNotice: (noticeId: string, b: NoticeInput) =>
     http.put<NoticeDto>(`/admin/notices/${id(noticeId)}`, b),
   deleteNotice: (noticeId: string) => http.delete(`/admin/notices/${id(noticeId)}`),
-  broadcast: (b: BroadcastInput) => http.post<{ recipients: number }>('/admin/broadcast', b),
+  broadcast: (b: BroadcastInput) => http.post<{ recipients: number; pushed: boolean }>('/admin/broadcast', b),
 
   auditLogs: (q: Query) => http.get<Paged<AuditLogRow>>('/admin/audit-logs', q),
+
+  /** 자체 호스팅 OTA 배포 (docs/MOBILE_RELEASE.md "OTA 업데이트") */
+  ota: {
+    list: (q: OtaListQuery = {}) => http.get<OtaUpdateDto[]>('/admin/ota', q),
+    update: (updateId: string, b: OtaPatchInput) => http.patch<OtaUpdateDto>(`/admin/ota/${id(updateId)}`, b),
+    // channel 을 빼면 서버가 production 으로 채운다
+    rollback: (b: Omit<OtaRollbackInput, 'channel'> & { channel?: string }) =>
+      http.post<OtaUpdateDto>('/admin/ota/rollback', b),
+  },
 });
 
 export const noticesApi = (http: Http) => ({

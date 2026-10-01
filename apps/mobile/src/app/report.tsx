@@ -4,9 +4,10 @@ import { useMutation } from '@tanstack/react-query';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, ScrollView, StyleSheet } from 'react-native';
+import { Alert, StyleSheet } from 'react-native';
 import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
+import { FormScroll } from '@/components/ui/form-scroll';
 import { RadioList } from '@/components/ui/radio';
 import { Empty } from '@/components/ui/state';
 import { Text } from '@/components/ui/text';
@@ -34,7 +35,7 @@ export default function ReportScreen() {
   if (!target || !id) return <Empty kind="error" title={tr('report.invalid')} />;
 
   return (
-    <ScrollView style={{ backgroundColor: t.colors.background }} contentContainerStyle={styles.body}>
+    <FormScroll style={{ backgroundColor: t.colors.background }} contentContainerStyle={styles.body}>
       <Stack.Screen options={{ title: tr('report.title', { target: label('reportTarget', target) }) }} />
       <Text variant="label">{tr('report.reason')}</Text>
       <RadioList
@@ -58,7 +59,7 @@ export default function ReportScreen() {
         loading={m.isPending}
         onPress={() => m.mutate()}
       />
-    </ScrollView>
+    </FormScroll>
   );
 }
 

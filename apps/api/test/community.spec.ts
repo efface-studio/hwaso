@@ -140,6 +140,25 @@ describe('follows', () => {
     expect(await t.prisma.follow.count({ where: { followingId: seller.id } })).toBe(0);
   });
 
+  it('상대가 나를 팔로우하면 followsMe — 프로필·팔로워 목록 모두', async () => {
+    const me = await createUser(t);
+    const fan = await createUser(t);
+    await t.http.post(`/api/v1/users/${me.id}/follow`).set(fan.auth).expect(200);
+
+    const profile = await t.http.get(`/api/v1/users/${fan.id}`).set(me.auth).expect(200);
+    expect(profile.body).toMatchObject({ isFollowing: false, followsMe: true });
+    const followers = await t.http.get(`/api/v1/users/${me.id}/followers`).set(me.auth).expect(200);
+    expect(followers.body.items[0]).toMatchObject({ id: fan.id, isFollowing: false, followsMe: true });
+
+    // 맞팔로우하면 둘 다 참
+    await t.http.post(`/api/v1/users/${fan.id}/follow`).set(me.auth).expect(200);
+    const after = await t.http.get(`/api/v1/users/${fan.id}`).set(me.auth).expect(200);
+    expect(after.body).toMatchObject({ isFollowing: true, followsMe: true });
+    // 로그인하지 않으면 모름
+    const anon = await t.http.get(`/api/v1/users/${fan.id}`).expect(200);
+    expect(anon.body.followsMe).toBe(false);
+  });
+
   it('followers hear about new works and see them in the feed', async () => {
     const seller = await createUser(t, 'SELLER');
     const fan = await createUser(t);

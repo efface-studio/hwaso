@@ -78,11 +78,13 @@ export function useTabIconSet<S extends IconSet>(set: S) {
 
 export const useTabIcons = () => useTabIconSet(TAB_ICONS);
 
-/** 앱을 켤 때 사용자·관리자 탭 아이콘 이미지를 미리 만들어 둔다 (탭 바가 SF Symbol → 이미지로 바로 바뀌게) */
-export function preloadTabIcons() {
-  for (const set of [TAB_ICONS, ADMIN_TAB_ICONS] as IconSet[])
-    for (const [off, on] of Object.values(set)) {
-      void load(off).catch(() => undefined);
-      void load(on).catch(() => undefined);
-    }
+/**
+ * 탭 아이콘 이미지를 미리 만들어 둔다 (탭 바가 SF Symbol → 이미지로 바로 바뀌게).
+ * 앱을 켤 때는 사용자 탭만 — 관리자 탭은 관리자 계정일 때만 따로 부른다.
+ */
+export function preloadTabIcons(set: IconSet = TAB_ICONS) {
+  for (const [off, on] of Object.values(set)) {
+    void load(off).catch(() => undefined);
+    void load(on).catch(() => undefined);
+  }
 }

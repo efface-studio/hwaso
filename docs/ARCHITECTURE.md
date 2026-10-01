@@ -37,7 +37,7 @@ docs/         설계 문서
  Web (Next SSR) ──HTTP──┐                               │
  Mobile (Expo)  ──HTTP──┼──> API (NestJS, N 인스턴스) ───┼──> PostgreSQL
                 ──WS────┘     └ Socket.IO Gateway        │
-                                 └ Redis adapter ─────> Redis (pub/sub, rate limit, cache)
+                                 └ Redis adapter ─────> Redis (pub/sub, rate limit, cache, 세션 폐기 표시)
                          Worker (같은 코드베이스, 엔트리 `worker.ts`)
                            ├ 경매 스케줄러: SCHEDULED→LIVE, LIVE→ENDED (1초 폴링, SKIP LOCKED)
                            ├ 주문 결제 기한 만료
@@ -70,7 +70,30 @@ docs/         설계 문서
 | `notifications` | 인앱 알림 + 푸시 (Expo / Web Push)                               |
 | `reports`       | 신고                                                             |
 | `admin`         | 회원·상품·경매·주문 관리, 검수, 정책, 배너/공지/쿠폰, 감사 로그  |
+| `ota`           | 앱 OTA 업데이트 서버 (Expo Updates v1 매니페스트·서명·점진 배포) |
 | `settlements`   | 판매자 정산                                                      |
+| 모듈            | 책임                                                                                                                              |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `prisma`        | PrismaClient                                                                                                                      |
+| `redis`         | ioredis 클라이언트                                                                                                                |
+| `auth`          | 가입/로그인/토큰/세션·기기/소셜/이메일 인증/비밀번호 재설정/탈퇴                                                                  |
+| `security`      | 민감 작업 재인증 가드(`@RequireReauth`), 생체 재인증 키, 보안 이벤트·새 기기 알림, 기기 무결성 신고 (docs/SECURITY.md §계정 보안) |
+| `users`         | 프로필, 팔로우, 거래 신뢰도                                                                                                       |
+| `catalog`       | 카테고리(트리), 작가                                                                                                              |
+| `products`      | 상품 CRUD, 인증서/출처, 검색·필터·자동완성                                                                                        |
+| `media`         | 업로드 검증, sharp 변환, S3 저장                                                                                                  |
+| `favorites`     | 관심상품                                                                                                                          |
+| `auctions`      | 경매 생성/상태 전이/입찰/즉시구매/연장, 스케줄러                                                                                  |
+| `realtime`      | Socket.IO 게이트웨이, 룸/인증, 이벤트 발행                                                                                        |
+| `orders`        | 장바구니, 주문, 주문 상태 전이                                                                                                    |
+| `payments`      | `PaymentProvider` (Mock / TossPayments)                                                                                           |
+| `shipping`      | 배송지, 송장, `CarrierProvider`                                                                                                   |
+| `chat`          | 1:1 채팅                                                                                                                          |
+| `reviews`       | 거래 리뷰                                                                                                                         |
+| `notifications` | 인앱 알림 + 푸시 (Expo / Web Push)                                                                                                |
+| `reports`       | 신고                                                                                                                              |
+| `admin`         | 회원·상품·경매·주문 관리, 검수, 정책, 배너/공지/쿠폰, 감사 로그                                                                   |
+| `settlements`   | 판매자 정산                                                                                                                       |
 
 각 모듈은 `controller → service → prisma`. 별도 Repository 계층은 두지 않는다 (Prisma 가 그 역할).
 
@@ -98,17 +121,25 @@ Client: 서버 이벤트로만 가격 갱신 (낙관적 업데이트 없음)
 2. 서버: 확장자/Content-Type 이 아니라 **sharp 로 실제 포맷 판별** (jpeg/png/webp/heif/avif/gif/tiff 외 거부, gif·tiff 는 첫 장), 픽셀 수 상한 100MP. iPhone HEIC(HEVC)는 sharp 가 디코딩하지 못해 `heic-decode`(WASM)를 워커 스레드에서 실행
 3. EXIF 방향 적용 후 **메타데이터(GPS 등) 제거**, 원본은 `originals/` (비공개) 에 보관
 4. 파생본: 폭 `400/800/1600` WebP + AVIF → `public/` prefix, 키에 콘텐츠 해시 포함 → CDN `immutable` 캐시
+   - 원본은 한 번만 디코딩한다: 방향 적용 + 1600 폭으로 줄인 픽셀에서 작은 파생본을 만들고, 인코딩은 병렬. 대표색은 64px 썸네일로 계산
 5. `ProductImage` 에 key, width, height, dominantColor 저장 (로딩 placeholder 색)
+
+### 앱 OTA 에셋
+
+배포 스크립트가 올린 JS 번들·에셋은 가공 없이 `public/ota/<sha256 hex><ext>` 에 저장한다 (내용 주소라 같은 파일은 같은 키, CDN `immutable`). 매니페스트는 DB(`OtaUpdate`) 에서 만들어 서명하고, 서명한 파트는 API 인스턴스 메모리에 행 단위로 캐시한다 (내용이 바뀌지 않는다). 흐름은 docs/MOBILE_RELEASE.md "OTA 업데이트".
 
 ## 7. 검색
 
-- PostgreSQL `pg_trgm` + ILIKE/유사도 — 상품명·작가·제작자·브랜드·시대·소재·판매자.
+- PostgreSQL `pg_trgm` + ILIKE/유사도 — 상품명·작가·제작자·브랜드·시대·소재·카테고리·판매자.
+- 조인한 OR ILIKE 는 trigram 인덱스를 못 타므로, 먼저 테이블별 ILIKE 를 `UNION` 해 공개 상품 id 후보를 모으고(`product_title_trgm`·`product_search_trgm`·`artist_name_trgm`·`profile_nickname_trgm`) 목록 쿼리는 `id IN (...)` + 나머지 필터·정렬로 조회한다. 후보가 5,000건을 넘는 흔한 검색어는 기존 OR 조건으로 찾는다.
 - 자동완성: `pg_trgm` 유사도 상위 N (상품명/작가/카테고리).
 - 확장 경로: 카탈로그가 커지거나 형태소 분석이 필요해지면 OpenSearch 인덱서로 전환. API 계약 유지.
 
 ## 8. 캐시
 
-- 카테고리 트리, 홈 섹션: Redis 60초.
+- 카테고리 트리, 홈 섹션: Redis 60초. 홈은 캐시가 비면 잠금(`SET NX`)을 잡은 한 요청만 다시 만들고, 나머지는 직전 값(`home:v2:stale`)을 쓰거나 잠시 기다린다. 경매 스케줄러는 틱마다 홈 캐시를 한 번만 지운다.
+- 인기 작가(`/artists/popular`, 홈 인기 작가): Redis 5분. 관리자 대시보드: Redis 30초.
+- 경매 정책(AuctionPolicy): 프로세스 메모리 60초. 관리자 변경은 변경을 처리한 프로세스에선 즉시, 다른 API 인스턴스·Worker 에선 60초 안에 반영.
 - 상품 상세 페이지: Next.js ISR(60s). 경매 가격/상태는 클라이언트가 항상 실시간 조회·구독.
 - 가격·입찰·재고·주문은 **캐시하지 않는다**.
 
