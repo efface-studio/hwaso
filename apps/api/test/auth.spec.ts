@@ -1,7 +1,7 @@
 import { OAuthService } from '../src/auth/oauth.service';
 import { PROVIDERS } from '../src/auth/oauth.providers';
 import { createTestApp, type TestContext } from './app';
-import { createCategory, createProduct, createUser } from './fixtures';
+import { createCategory, createProduct, createUser, reauth } from './fixtures';
 
 let t: TestContext;
 let n = 0;
@@ -254,7 +254,10 @@ describe('비밀번호 재설정 ↔ 변경', () => {
 
   it('변경: 현재 비밀번호가 맞아야 하고 현재 기기는 유지된다', async () => {
     const { res } = await signup();
-    const auth = { Authorization: `Bearer ${res.body.accessToken}` };
+    const auth = {
+      Authorization: `Bearer ${res.body.accessToken}`,
+      ...(await reauth(t, res.body.accessToken)),
+    };
     await t.http
       .post('/api/v1/auth/password/change')
       .set(auth)
@@ -272,7 +275,10 @@ describe('비밀번호 재설정 ↔ 변경', () => {
 describe('회원 탈퇴 (가입의 짝)', () => {
   it('진행 중인 거래가 있으면 막고, 없으면 익명화한다', async () => {
     const { addr, res } = await signup();
-    const auth = { Authorization: `Bearer ${res.body.accessToken}` };
+    const auth = {
+      Authorization: `Bearer ${res.body.accessToken}`,
+      ...(await reauth(t, res.body.accessToken)),
+    };
     const seller = await createUser(t, 'SELLER');
     const { child } = await createCategory(t);
     const p = await createProduct(t, { sellerId: seller.id, categoryId: child.id });
@@ -449,7 +455,10 @@ describe('소셜 로그인 (카카오 흐름으로 공통 로직 검증)', () =>
   it('연결 ↔ 해제, 마지막 로그인 수단은 해제 불가', async () => {
     const id = `k3${Date.now()}`;
     const social = await kakaoLogin(id, null);
-    const auth = { Authorization: `Bearer ${social.body.accessToken}` };
+    const auth = {
+      Authorization: `Bearer ${social.body.accessToken}`,
+      ...(await reauth(t, social.body.accessToken)),
+    };
     const res = await t.http.delete('/api/v1/auth/social/kakao').set(auth).expect(409);
     expect(res.body.error.code).toBe('LAST_LOGIN_METHOD');
     // 비밀번호를 설정하면 해제할 수 있다 (소셜 전용 계정은 현재 비밀번호 없이 첫 설정)

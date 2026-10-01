@@ -3,7 +3,7 @@ import { AuctionScheduler } from '../src/auctions/auction-scheduler';
 import { NotificationsService } from '../src/notifications/notifications.service';
 import { RealtimeService } from '../src/realtime/realtime';
 import { createTestApp, type TestContext } from './app';
-import { createCategory, createProduct, createUser } from './fixtures';
+import { createCategory, createProduct, createUser, reauth } from './fixtures';
 
 let t: TestContext;
 
@@ -228,6 +228,7 @@ describe('trade events', () => {
     const prep = await t.http
       .post(`/api/v1/orders/${order.body.id}/payments`)
       .set(buyer.auth)
+      .set(await reauth(t, buyer))
       .send({ method: 'CARD' })
       .expect(201);
     await t.http

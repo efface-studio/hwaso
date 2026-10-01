@@ -39,6 +39,8 @@ enum VerificationPurpose {
   SIGNUP
   RESET_PASSWORD
   DELETE_ACCOUNT
+  /// 로그인한 사용자의 민감 작업 재인증 (서버 내부용 — 공개 send-code 로는 요청할 수 없다)
+  REAUTH
 }
 
 enum SaleType {
@@ -169,6 +171,24 @@ enum NotificationType {
   REVIEW_RECEIVED
   ORDER_UPDATED
   FOLLOWING_NEW_ITEM
+  SECURITY_NEW_DEVICE
+}
+
+enum SecurityEventType {
+  LOGIN
+  LOGIN_FAILED
+  NEW_DEVICE
+  LOGOUT
+  SESSION_REVOKED
+  PASSWORD_CHANGED
+  SETTLEMENT_ACCOUNT_CHANGED
+  REAUTH
+  REAUTH_FAILED
+  BIOMETRIC_REGISTERED
+  BIOMETRIC_REMOVED
+  INTEGRITY_WARNING
+  ACCOUNT_LINKED
+  ACCOUNT_UNLINKED
 }
 
 enum ChatMessageKind {
@@ -272,6 +292,8 @@ model User {
   blockedBy      UserBlock[]        @relation("Blocked")
 
   @@index([createdAt])
+  securityEvents SecurityEvent[]
+  biometricKeys  BiometricKey[]
 }
 
 model Profile {
@@ -316,6 +338,39 @@ model Session {
 
   @@index([userId, revokedAt])
   @@index([familyId])
+}
+
+/// 계정 보안 이벤트 (docs/SECURITY.md §계정 보안). 사용자에게 보여주는 기록이며 append-only
+model SecurityEvent {
+  id        String            @id @default(cuid())
+  userId    String
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      SecurityEventType
+  ip        String?
+  /// 기기 이름 (Session.deviceName)
+  device    String?
+  /// 세션 family ID (= SessionDto.id). refresh 회전에도 같은 기기면 같은 값
+  sessionId String?
+  detail    Json?
+  createdAt DateTime          @default(now()) @db.Timestamptz
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([sessionId, type, createdAt])
+}
+
+/// 생체 재인증 키. 기기 세션(family)당 1개 — refresh 회전에도 유지되고 세션이 폐기되면 삭제된다
+model BiometricKey {
+  id         String    @id @default(uuid()) @db.Uuid
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  familyId   String    @unique
+  /// SHA-256(secret). 원문은 발급 시 한 번만 내려준다
+  secretHash String
+  deviceName String
+  createdAt  DateTime  @default(now()) @db.Timestamptz
+  lastUsedAt DateTime? @db.Timestamptz
+
+  @@index([userId])
 }
 
 model VerificationCode {

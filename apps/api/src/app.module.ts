@@ -21,6 +21,7 @@ import { ProductsModule } from './products/products.controller';
 import { RealtimeEmitterModule } from './realtime/realtime';
 import { RedisModule } from './redis/redis.service';
 import { SafetyModule } from './safety/safety.controller';
+import { SecurityModule } from './security/security.controller';
 import { StorageModule } from './storage/s3.service';
 import { UsersModule } from './users/users.controller';
 
@@ -31,6 +32,7 @@ import { UsersModule } from './users/users.controller';
     RateLimitModule,
     StorageModule,
     MailModule,
+    SecurityModule,
     AuthModule,
     AccountModule,
     HealthModule,

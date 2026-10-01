@@ -37,7 +37,7 @@ docs/         설계 문서
  Web (Next SSR) ──HTTP──┐                               │
  Mobile (Expo)  ──HTTP──┼──> API (NestJS, N 인스턴스) ───┼──> PostgreSQL
                 ──WS────┘     └ Socket.IO Gateway        │
-                                 └ Redis adapter ─────> Redis (pub/sub, rate limit, cache)
+                                 └ Redis adapter ─────> Redis (pub/sub, rate limit, cache, 세션 폐기 표시)
                          Worker (같은 코드베이스, 엔트리 `worker.ts`)
                            ├ 경매 스케줄러: SCHEDULED→LIVE, LIVE→ENDED (1초 폴링, SKIP LOCKED)
                            ├ 주문 결제 기한 만료
@@ -67,11 +67,33 @@ docs/         설계 문서
 | `shipping`      | 배송지, 송장, `CarrierProvider`                                  |
 | `chat`          | 1:1 채팅                                                         |
 | `reviews`       | 거래 리뷰                                                        |
-| `notifications` | 인앱 알림 + 푸시 (APNs / FCM / Web Push)                         |
+| `notifications` | 인앱 알림 + 푸시 (Expo / Web Push)                               |
 | `reports`       | 신고                                                             |
 | `admin`         | 회원·상품·경매·주문 관리, 검수, 정책, 배너/공지/쿠폰, 감사 로그  |
 | `ota`           | 앱 OTA 업데이트 서버 (Expo Updates v1 매니페스트·서명·점진 배포) |
 | `settlements`   | 판매자 정산                                                      |
+| 모듈            | 책임                                                                                                                              |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `prisma`        | PrismaClient                                                                                                                      |
+| `redis`         | ioredis 클라이언트                                                                                                                |
+| `auth`          | 가입/로그인/토큰/세션·기기/소셜/이메일 인증/비밀번호 재설정/탈퇴                                                                  |
+| `security`      | 민감 작업 재인증 가드(`@RequireReauth`), 생체 재인증 키, 보안 이벤트·새 기기 알림, 기기 무결성 신고 (docs/SECURITY.md §계정 보안) |
+| `users`         | 프로필, 팔로우, 거래 신뢰도                                                                                                       |
+| `catalog`       | 카테고리(트리), 작가                                                                                                              |
+| `products`      | 상품 CRUD, 인증서/출처, 검색·필터·자동완성                                                                                        |
+| `media`         | 업로드 검증, sharp 변환, S3 저장                                                                                                  |
+| `favorites`     | 관심상품                                                                                                                          |
+| `auctions`      | 경매 생성/상태 전이/입찰/즉시구매/연장, 스케줄러                                                                                  |
+| `realtime`      | Socket.IO 게이트웨이, 룸/인증, 이벤트 발행                                                                                        |
+| `orders`        | 장바구니, 주문, 주문 상태 전이                                                                                                    |
+| `payments`      | `PaymentProvider` (Mock / TossPayments)                                                                                           |
+| `shipping`      | 배송지, 송장, `CarrierProvider`                                                                                                   |
+| `chat`          | 1:1 채팅                                                                                                                          |
+| `reviews`       | 거래 리뷰                                                                                                                         |
+| `notifications` | 인앱 알림 + 푸시 (Expo / Web Push)                                                                                                |
+| `reports`       | 신고                                                                                                                              |
+| `admin`         | 회원·상품·경매·주문 관리, 검수, 정책, 배너/공지/쿠폰, 감사 로그                                                                   |
+| `settlements`   | 판매자 정산                                                                                                                       |
 
 각 모듈은 `controller → service → prisma`. 별도 Repository 계층은 두지 않는다 (Prisma 가 그 역할).
 

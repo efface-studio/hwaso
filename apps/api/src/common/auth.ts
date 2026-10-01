@@ -6,7 +6,7 @@ import {
   SetMetadata,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import type { Role } from '@shop/shared';
+import { REAUTH_TTL_SEC, type Role } from '@shop/shared';
 import type { Request } from 'express';
 import { jwtVerify, SignJWT } from 'jose';
 import { env } from '../config/env';
@@ -18,6 +18,8 @@ export interface AuthUser {
   id: string;
   role: Role;
   sessionId: string;
+  /** 세션 family (기기 단위). 이 기능 이전에 발급된 토큰에는 없다 */
+  familyId?: string;
 }
 
 export type AuthedRequest = Request & { user?: AuthUser };
@@ -27,7 +29,13 @@ const ISSUER = 'efface-shop';
 const secret = () => new TextEncoder().encode(env().JWT_SECRET);
 
 export async function signAccessToken(user: AuthUser): Promise<string> {
-  return new SignJWT({ role: user.role, sid: user.sessionId, typ: 'access' })
+  const claims = {
+    role: user.role,
+    sid: user.sessionId,
+    typ: 'access',
+    ...(user.familyId ? { fam: user.familyId } : {}),
+  };
+  return new SignJWT(claims)
     .setProtectedHeader({ alg: 'HS256' })
     .setSubject(user.id)
     .setIssuer(ISSUER)
@@ -40,10 +48,71 @@ export async function verifyAccessToken(token: string): Promise<AuthUser | null>
   try {
     const { payload } = await jwtVerify(token, secret(), { issuer: ISSUER, algorithms: ['HS256'] });
     if (payload.typ !== 'access' || !payload.sub) return null;
-    return { id: payload.sub, role: payload.role as Role, sessionId: String(payload.sid) };
+    return {
+      id: payload.sub,
+      role: payload.role as Role,
+      sessionId: String(payload.sid),
+      ...(typeof payload.fam === 'string' ? { familyId: payload.fam } : {}),
+    };
   } catch {
     return null;
   }
+}
+
+// ───── 재인증 토큰 (민감 작업 step-up, docs/SECURITY.md §계정 보안) ─────
+
+const REAUTH_AUDIENCE = 'reauth';
+
+export interface ReauthClaims {
+  userId: string;
+  sessionId: string;
+  familyId: string;
+}
+
+/** 사용자 + 기기 세션(family)에 묶인 5분짜리 토큰. access 토큰과 typ·aud 가 달라 서로 대신 쓸 수 없다 */
+export async function signReauthToken(c: ReauthClaims): Promise<{ reauthToken: string; expiresAt: string }> {
+  const exp = Math.floor(Date.now() / 1000) + REAUTH_TTL_SEC;
+  const reauthToken = await new SignJWT({ typ: 'reauth', sid: c.sessionId, fam: c.familyId })
+    .setProtectedHeader({ alg: 'HS256' })
+    .setSubject(c.userId)
+    .setIssuer(ISSUER)
+    .setAudience(REAUTH_AUDIENCE)
+    .setIssuedAt()
+    .setExpirationTime(exp)
+    .sign(secret());
+  return { reauthToken, expiresAt: new Date(exp * 1000).toISOString() };
+}
+
+export async function verifyReauthToken(token: string): Promise<ReauthClaims | null> {
+  try {
+    const { payload } = await jwtVerify(token, secret(), {
+      issuer: ISSUER,
+      audience: REAUTH_AUDIENCE,
+      algorithms: ['HS256'],
+    });
+    if (payload.typ !== 'reauth' || !payload.sub || typeof payload.fam !== 'string') return null;
+    return { userId: payload.sub, sessionId: String(payload.sid), familyId: payload.fam };
+  } catch {
+    return null;
+  }
+}
+
+// ───── Access 토큰 즉시 폐기 ─────
+// 로그아웃·원격 로그아웃·비밀번호 변경으로 폐기된 family 를 access 토큰 수명 동안 Redis 에 표시한다.
+// 표시가 사라진 뒤에는 그 family 의 access 토큰도 모두 만료되었다 (폐기된 family 로는 새 토큰이 나오지 않는다).
+
+const revokedKey = (familyId: string) => `auth:revoked:${familyId}`;
+
+export async function markFamiliesRevoked(redis: RedisService, familyIds: readonly string[]) {
+  if (!familyIds.length) return;
+  const m = redis.multi();
+  for (const f of new Set(familyIds)) m.set(revokedKey(f), '1', 'EX', ACCESS_TOKEN_TTL_SEC + 60);
+  await m.exec();
+}
+
+/** family 가 없는 토큰(이 기능 이전 발급, 최대 15분)은 검사하지 않는다 */
+export async function isFamilyRevoked(redis: RedisService, familyId: string | undefined): Promise<boolean> {
+  return !!familyId && (await redis.exists(revokedKey(familyId))) > 0;
 }
 
 /** 짧은 수명 목적 토큰 (이메일 인증 결과, OAuth state 등) */
@@ -90,7 +159,7 @@ function bearer(req: Request): string | null {
 }
 
 /**
- * 전역 가드. 기본은 로그인 필요. 계정 정지/탈퇴 여부는 30초 캐시로 매 요청 확인한다.
+ * 전역 가드. 기본은 로그인 필요. 계정 정지/탈퇴 여부는 30초 캐시로, 세션 폐기 여부는 Redis 표시로 매 요청 확인한다.
  */
 @Injectable()
 export class AuthGuard implements CanActivate {
@@ -109,8 +178,11 @@ export class AuthGuard implements CanActivate {
 
     const token = bearer(req);
     const user = token ? await verifyAccessToken(token) : null;
-    const status = user ? await this.cachedStatus(user.id) : null;
-    if (user && status?.startsWith('ACTIVE')) req.user = withFreshRole(user, status);
+    // Redis 장애 시 요청은 실패한다(fail-closed) — 계정 상태 캐시도 같은 Redis 에 의존한다
+    if (user && !(await isFamilyRevoked(this.redis, user.familyId))) {
+      const status = await this.cachedStatus(user.id);
+      if (status?.startsWith('ACTIVE')) req.user = withFreshRole(user, status);
+    }
 
     if (isPublic || isOptional) return true;
     if (!req.user) throw new AppException(token ? 'INVALID_TOKEN' : 'UNAUTHORIZED');

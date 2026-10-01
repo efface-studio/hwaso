@@ -6,6 +6,7 @@ import { pinoHttp } from 'pino-http';
 const REDACT = [
   'req.headers.authorization',
   'req.headers.cookie',
+  'req.headers["x-reauth-token"]',
   'res.headers["set-cookie"]',
   '*.password',
   '*.newPassword',
@@ -13,6 +14,8 @@ const REDACT = [
   '*.refreshToken',
   '*.accessToken',
   '*.verificationToken',
+  '*.reauthToken',
+  '*.secret',
   '*.code',
   '*.phone',
   '*.address1',

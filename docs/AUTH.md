@@ -2,15 +2,17 @@
 
 ## 1. 토큰 모델
 
-| 토큰         | 형식                             | 수명            | 저장 위치                                                                                         |
-| ------------ | -------------------------------- | --------------- | ------------------------------------------------------------------------------------------------- |
-| Access       | JWT HS256 `{sub, role, sid}`     | 15분            | Web: 메모리(Zustand) · Mobile: 메모리                                                             |
-| Refresh      | 불투명 랜덤 32바이트 (base64url) | 30일 (슬라이딩) | Web: `httpOnly Secure SameSite=Lax` 쿠키 `rt` (Path `/api/v1/auth`) · Mobile: `expo-secure-store` |
-| Verification | JWT `{email, purpose}`           | 10분            | 클라이언트 메모리 (가입/재설정 단계 사이 전달)                                                    |
+| 토큰         | 형식                               | 수명            | 저장 위치                                                                                         |
+| ------------ | ---------------------------------- | --------------- | ------------------------------------------------------------------------------------------------- |
+| Access       | JWT HS256 `{sub, role, sid, fam}`  | 15분            | Web: 메모리(Zustand) · Mobile: 메모리                                                             |
+| Refresh      | 불투명 랜덤 32바이트 (base64url)   | 30일 (슬라이딩) | Web: `httpOnly Secure SameSite=Lax` 쿠키 `rt` (Path `/api/v1/auth`) · Mobile: `expo-secure-store` |
+| Verification | JWT `{email, purpose}`             | 10분            | 클라이언트 메모리 (가입/재설정 단계 사이 전달)                                                    |
+| Reauth       | JWT `{sub, sid, fam}` aud `reauth` | 5분             | 클라이언트 메모리. 민감 작업 요청의 `x-reauth-token` 헤더 (docs/SECURITY.md §계정 보안)           |
 
 - DB 에는 refresh 토큰의 **SHA-256 해시만** 저장 (`Session.refreshTokenHash`).
 - **Refresh Rotation**: `/auth/refresh` 마다 새 토큰 발급, 이전 토큰 무효. 이미 회전된(폐기된) 토큰이 다시 오면 **재사용 탐지** → 해당 `familyId` 전체 세션 폐기 (토큰 탈취 대응).
-- Access 토큰 검증 시 `sid` 의 세션이 폐기됐는지는 확인하지 않는다 (15분 창 허용). 대신 권한 변경·정지·비밀번호 변경 시 세션 전부 폐기 + 계정 상태는 매 요청 Guard 에서 캐시(30s) 확인.
+- `fam` 은 세션 family(기기) ID. 로그아웃·원격 로그아웃·비밀번호 변경/재설정·정지·재사용 탐지로 family 를 폐기하면 Redis 에 `auth:revoked:{fam}` 을 access 토큰 수명(15분+60초) 동안 표시하고, Guard 가 매 요청 확인해 **폐기된 기기의 access 토큰을 즉시 거부**한다(401 `INVALID_TOKEN`). refresh 회전은 같은 family 라 표시하지 않는다. 계정 상태는 매 요청 Guard 에서 캐시(30s) 확인.
+- 재인증이 필요한 엔드포인트는 추가로 DB 에서 family 가 살아 있는지 확인한다 (Redis 표시가 유실돼도 민감 작업은 막힌다).
 - Web 새로고침 시: 앱 부팅 → `/auth/refresh` (쿠키) → access 획득. SSR 페이지는 공개 데이터만 렌더하고 사용자 데이터는 클라이언트에서 조회.
 
 ## 2. 비밀번호
@@ -23,6 +25,7 @@
 ## 3. 이메일 인증 (OTP)
 
 - 6자리 숫자, 10분 유효, 시도 5회, 재발송 60초 간격 / 시간당 5회.
+- 목적: `SIGNUP`, `RESET_PASSWORD`, `DELETE_ACCOUNT` (공개 `send-code`) · `REAUTH` (로그인 사용자 전용 `POST /auth/reauth/code`, 계정 이메일로만 발송 — 공개 엔드포인트로는 요청 불가).
 - DB 에는 `codeHash`(HMAC-SHA256, 서버 시크릿) 만 저장.
 - 발송은 `MailProvider` (개발: Mailpit SMTP, 운영: SMTP/SES). 개발 환경에서는 로그에도 코드 출력.
 - `SIGNUP` 발송 시 이미 가입된 이메일이어도 같은 응답 (계정 열거 방지) — 대신 메일 본문에 "이미 가입된 계정" 안내.
@@ -62,12 +65,13 @@ iOS 앱의 Apple 로그인은 웹 OAuth 가 아니라 시스템 Sign in with App
 
 - 로그인/가입/소셜 시 `device: {name, platform}` 전달 → `Session` 1행.
 - `GET /auth/sessions` : 기기명, 플랫폼, IP(마지막 옥텟 마스킹), 마지막 사용, 현재 기기 표시.
-- 개별/전체 로그아웃, 비밀번호 변경·재설정 시 전체 세션 폐기.
+- 개별/전체 로그아웃, 비밀번호 변경·재설정 시 전체 세션 폐기. 폐기된 기기는 access 토큰도 즉시 거부되고 그 기기의 생체 재인증 키도 삭제된다.
+- 로그인·가입·소셜 로그인은 `SecurityEvent` 에 기록한다. 이전 로그인 기록이 있는 계정이 최근 90일 동안 쓰지 않은 기기(플랫폼 + 기기명)로 로그인하면 `NEW_DEVICE` 를 남기고 인앱·푸시 알림(`SECURITY_NEW_DEVICE`, 끌 수 없는 system 분류)과 메일을 보낸다.
 - 만료 세션은 Worker 가 매일 정리.
 
 ## 7. 탈퇴
 
-- 확인: 비밀번호 또는 이메일 OTP(`DELETE_ACCOUNT`).
+- 확인: 비밀번호 또는 이메일 OTP(`DELETE_ACCOUNT`). 앱 세션은 여기에 더해 재인증 토큰(`x-reauth-token`)이 필요하다.
 - 차단 조건: 진행 중 주문(결제~배송), LIVE 경매 판매/최고 입찰 중 → 409 + 안내.
 - 처리: `User.status=DELETED`, email → `deleted+{id}@invalid`, passwordHash null, 프로필 익명화("탈퇴한 사용자"), 소셜 연결·세션·푸시 토큰 삭제. 주문/리뷰/입찰 기록은 거래 무결성과 법적 보관 의무로 익명 상태로 유지.
 
@@ -87,8 +91,9 @@ iOS 앱의 Apple 로그인은 웹 OAuth 가 아니라 시스템 Sign in with App
 
 ## 9. 생체 인증 (Mobile)
 
-- 설정에서 켜면 앱 실행/포그라운드 복귀 시 `expo-local-authentication` 으로 잠금 해제 후 SecureStore 의 refresh 토큰 사용.
-- 서버 인증 방식 변화 없음 (로컬 잠금).
+- 앱 잠금(선택): 설정에서 켜면 앱 실행/포그라운드 복귀 시 `expo-local-authentication` 으로 잠금 해제 후 SecureStore 의 refresh 토큰 사용 (로컬 잠금, 서버 변화 없음).
+- 생체 재인증 키: 재인증 토큰으로 `POST /auth/reauth/biometric` 을 호출하면 서버가 32바이트 난수 secret 과 keyId 를 한 번만 내려준다. 앱은 secret 을 생체 인증으로 보호되는 SecureStore 항목에 저장하고, 민감 작업 때 생체 인증으로 꺼내 `POST /auth/reauth {method:'biometric', keyId, secret}` 로 보낸다. 서버는 SHA-256 해시만 저장하고 상수 시간으로 비교한다.
+- 키는 기기 세션(family)당 1개 — refresh 회전에는 유지되고, 다시 등록하면 교체되며, 그 기기가 로그아웃·원격 로그아웃되면 삭제된다. 다른 기기의 키로는 재인증할 수 없다.
 
 ## 10. 공개 데모 모드
 

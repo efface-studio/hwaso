@@ -40,6 +40,7 @@ export const NOTIFICATION_CATEGORY: Record<NotificationType, NotificationCategor
   FAVORITE_ON_SALE: 'activity',
   FOLLOWING_NEW_ITEM: 'activity',
   SYSTEM: 'system',
+  SECURITY_NEW_DEVICE: 'system',
 };
 
 export interface NotificationPrefs {

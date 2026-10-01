@@ -32,6 +32,8 @@ NestJS REST API. Base URL `/api/v1`. 모든 요청/응답은 JSON (업로드 제
 - `Authorization: Bearer <accessToken>` (JWT, 15분).
 - Refresh: Web 은 `httpOnly; Secure; SameSite=Lax; Path=/api/v1/auth` 쿠키 `rt`, Mobile 은 본문 `refreshToken`.
 - 쿠키 기반 요청(`/auth/refresh`, `/auth/logout`)은 `Origin` 허용 목록 검사 + `X-Requested-With: shop` 헤더 필수 (CSRF 방어).
+- 로그아웃·원격 로그아웃·비밀번호 변경으로 폐기된 기기의 access 토큰은 만료 전이라도 바로 401 `INVALID_TOKEN`.
+- **재인증(step-up)**: 표에 `R` 이 붙은 엔드포인트는 `x-reauth-token: <reauthToken>` 헤더가 추가로 필요하다. `POST /auth/reauth` 로 받은 5분짜리 토큰이며 같은 사용자·같은 기기 세션(family)에서만 유효하다(refresh 회전에도 유지). 없거나 맞지 않으면 **403 `REAUTH_REQUIRED`** — 401 이 아니므로 클라이언트는 토큰 갱신 대신 본인 확인 화면을 띄운다. 기존 확인(현재 비밀번호 등)은 그대로 요구한다. 현재 **앱 세션(ios·android)에만 적용**하고 웹 세션은 제외한다 (docs/SECURITY.md §계정 보안).
 
 ### 페이지네이션
 
@@ -51,49 +53,62 @@ NestJS REST API. Base URL `/api/v1`. 모든 요청/응답은 JSON (업로드 제
 | 입찰      | 사용자당 10/10s                                                                                                      |
 | 업로드    | 사용자당 60/min                                                                                                      |
 | 채팅 전송 | 사용자당 30/10s (요청) · 도배: 8개/10s `CHAT_TOO_FAST`, 같은 글 30s 에 2번 `CHAT_DUPLICATE` (clientId 재시도는 제외) |
+| 재인증    | 사용자당 10/10min (`/auth/reauth`), 재인증 OTP 발송 사용자당 5/10min + 이메일당 60초 간격·5/시간                     |
+| 생체 키   | 등록 사용자당 10/시간                                                                                                |
+| 무결성    | 신고 사용자당 30/시간                                                                                                |
 
 초과 시 429 `RATE_LIMITED`.
 
 ## 엔드포인트
 
-권한: `-` 공개, `U` 로그인, `S` 판매자(본인 소유), `A` ADMIN 이상, `SA` SUPER_ADMIN.
+권한: `-` 공개, `U` 로그인, `S` 판매자(본인 소유), `A` ADMIN 이상, `SA` SUPER_ADMIN, `R` 재인증 헤더 필요(앱 세션).
 
 ### Auth
 
-| Method | Path                           | 권한 | 설명                                                                                        |
-| ------ | ------------------------------ | ---- | ------------------------------------------------------------------------------------------- |
-| POST   | /auth/email/send-code          | -    | {email, purpose} OTP 발송 (SIGNUP/RESET_PASSWORD/DELETE_ACCOUNT)                            |
-| POST   | /auth/email/verify-code        | -    | {email, purpose, code} → {verificationToken} (10분 유효)                                    |
-| POST   | /auth/signup                   | -    | {verificationToken, password, nickname, device} → 토큰 쌍                                   |
-| POST   | /auth/login                    | -    | {email, password, device} → 토큰 쌍                                                         |
-| POST   | /auth/refresh                  | -    | 쿠키 또는 {refreshToken} → 회전된 토큰 쌍                                                   |
-| POST   | /auth/logout                   | -    | 현재 세션 폐기                                                                              |
-| POST   | /auth/password/reset           | -    | {verificationToken, newPassword} → 전체 세션 폐기                                           |
-| POST   | /auth/password/change          | U    | {currentPassword, newPassword}                                                              |
-| GET    | /auth/oauth/:provider/url      | -    | ?redirectUri → {url, state} (google/apple/kakao/naver)                                      |
-| POST   | /auth/oauth/:provider/callback | -    | {code, state, redirectUri, device} → 토큰 쌍                                                |
-| POST   | /auth/oauth/apple/native       | -    | {identityToken, name?, device} iOS 네이티브 Sign in with Apple → 토큰 쌍                    |
-| GET    | /auth/providers                | -    | {oauth: 웹 OAuth 가 설정된 provider[], appleNative: iOS 네이티브 Apple 가능 여부, identity} |
-| GET    | /auth/sessions                 | U    | 기기(세션) 목록                                                                             |
-| DELETE | /auth/sessions/:id             | U    | 특정 기기 로그아웃                                                                          |
-| DELETE | /auth/sessions                 | U    | 현재 기기 제외 전체 로그아웃                                                                |
-| DELETE | /auth/account                  | U    | {password 또는 verificationToken} 탈퇴 (개인정보 익명화)                                    |
-| GET    | /auth/me                       | U    | 내 계정 + 프로필 + 역할                                                                     |
+| Method | Path                           | 권한 | 설명                                                                                                                                                                       |
+| ------ | ------------------------------ | ---- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| POST   | /auth/email/send-code          | -    | {email, purpose} OTP 발송 (SIGNUP/RESET_PASSWORD/DELETE_ACCOUNT)                                                                                                           |
+| POST   | /auth/email/verify-code        | -    | {email, purpose, code} → {verificationToken} (10분 유효)                                                                                                                   |
+| POST   | /auth/signup                   | -    | {verificationToken, password, nickname, device} → 토큰 쌍                                                                                                                  |
+| POST   | /auth/login                    | -    | {email, password, device} → 토큰 쌍                                                                                                                                        |
+| POST   | /auth/refresh                  | -    | 쿠키 또는 {refreshToken} → 회전된 토큰 쌍                                                                                                                                  |
+| POST   | /auth/logout                   | -    | 현재 세션 폐기                                                                                                                                                             |
+| POST   | /auth/password/reset           | -    | {verificationToken, newPassword} → 전체 세션 폐기                                                                                                                          |
+| POST   | /auth/password/change          | U·R  | {currentPassword, newPassword} — 다른 기기 로그아웃                                                                                                                        |
+| POST   | /auth/reauth                   | U    | {method:'password',password} · {method:'otp',code} · {method:'biometric',keyId,secret} → {reauthToken, expiresAt(5분)}. 실패 400 `REAUTH_FAILED`(OTP 는 `INVALID_CODE` 등) |
+| POST   | /auth/reauth/code              | U    | 로그인한 계정 이메일로 재인증 OTP 발송 → {retryAfterSec}                                                                                                                   |
+| POST   | /auth/reauth/biometric         | U·R  | {deviceName} → {keyId, secret} 이 기기 생체 키 발급(재등록 시 교체, secret 은 이 응답에서만). 웹 세션도 R 필요                                                             |
+| DELETE | /auth/reauth/biometric         | U    | 이 기기 생체 키 삭제                                                                                                                                                       |
+| GET    | /auth/oauth/:provider/url      | -    | ?redirectUri → {url, state} (google/apple/kakao/naver)                                                                                                                     |
+| POST   | /auth/oauth/:provider/callback | -    | {code, state, redirectUri, device} → 토큰 쌍                                                                                                                               |
+| POST   | /auth/oauth/apple/native       | -    | {identityToken, name?, device} iOS 네이티브 Sign in with Apple → 토큰 쌍                                                                                                   |
+| GET    | /auth/providers                | -    | {oauth: 웹 OAuth 가 설정된 provider[], appleNative: iOS 네이티브 Apple 가능 여부, identity}                                                                                |
+| GET    | /auth/sessions                 | U    | 기기(세션) 목록                                                                                                                                                            |
+| DELETE | /auth/sessions/:id             | U    | 특정 기기 로그아웃                                                                                                                                                         |
+| DELETE | /auth/sessions                 | U    | 현재 기기 제외 전체 로그아웃                                                                                                                                               |
+| DELETE | /auth/account                  | U·R  | {password 또는 verificationToken} 탈퇴 (개인정보 익명화)                                                                                                                   |
+| POST   | /auth/social/:provider         | U    | {code, state, redirectUri} 소셜 계정 연결                                                                                                                                  |
+| DELETE | /auth/social/:provider         | U·R  | 소셜 계정 연결 해제 (마지막 로그인 수단이면 409)                                                                                                                           |
+| GET    | /auth/me                       | U    | 내 계정 + 프로필 + 역할                                                                                                                                                    |
 
 ### Users / Profile
 
-| Method                | Path                                            | 권한 | 설명                                                 |
-| --------------------- | ----------------------------------------------- | ---- | ---------------------------------------------------- |
-| GET                   | /users/:id                                      | -    | 공개 프로필 (닉네임, 소개, 신뢰도, 팔로워/팔로잉 수) |
-| PATCH                 | /users/me/profile                               | U    | 닉네임/소개/아바타/지역                              |
-| GET                   | /users/:id/products                             | -    | 판매 상품                                            |
-| GET                   | /users/:id/reviews                              | -    | 받은 리뷰                                            |
-| POST/DELETE           | /users/:id/follow                               | U    | 팔로우/언팔로우                                      |
-| GET                   | /users/:id/followers · /following               | -    |                                                      |
-| GET                   | /me/purchases · /me/sales · /me/bids · /me/wins | U    | 구매/판매/입찰/낙찰 기록                             |
-| GET/POST/PATCH/DELETE | /me/addresses                                   | U    | 배송지                                               |
-| POST                  | /me/seller                                      | U    | 판매자 등록 (정산 계좌) → role SELLER                |
-| POST/DELETE           | /me/push-tokens                                 | U    | 푸시 토큰                                            |
+| Method                | Path                                            | 권한 | 설명                                                                                              |
+| --------------------- | ----------------------------------------------- | ---- | ------------------------------------------------------------------------------------------------- |
+| GET                   | /users/:id                                      | -    | 공개 프로필 (닉네임, 소개, 신뢰도, 팔로워/팔로잉 수)                                              |
+| PATCH                 | /users/me/profile                               | U    | 닉네임/소개/아바타/지역                                                                           |
+| GET                   | /users/:id/products                             | -    | 판매 상품                                                                                         |
+| GET                   | /users/:id/reviews                              | -    | 받은 리뷰                                                                                         |
+| POST/DELETE           | /users/:id/follow                               | U    | 팔로우/언팔로우                                                                                   |
+| GET                   | /users/:id/followers · /following               | -    |                                                                                                   |
+| GET                   | /me/purchases · /me/sales · /me/bids · /me/wins | U    | 구매/판매/입찰/낙찰 기록                                                                          |
+| GET/POST/PATCH/DELETE | /me/addresses                                   | U    | 배송지                                                                                            |
+| POST                  | /me/seller                                      | U    | 판매자 등록 (정산 계좌) → role SELLER                                                             |
+| GET                   | /me/seller                                      | S    | 정산 정보 (계좌 마스킹)                                                                           |
+| PATCH                 | /me/seller                                      | S·R  | 정산 정보·계좌 수정                                                                               |
+| GET                   | /me/security/events                             | U    | ?cursor → 내 보안 기록 (최신순 30개, IP 마스킹)                                                   |
+| POST                  | /me/security/integrity                          | U    | {platform, flags[], appVersion} 기기 무결성 신고 → 204 (경고만, 같은 기기·신호는 24시간 1회 기록) |
+| POST/DELETE           | /me/push-tokens                                 | U    | 푸시 토큰                                                                                         |
 
 ### Catalog
 
@@ -172,7 +187,7 @@ NestJS REST API. Base URL `/api/v1`. 모든 요청/응답은 JSON (업로드 제
 | POST         | /orders                             | U           | {items, addressId, couponCode?, fromCart?} → **한 판매자** 주문, 상품 잠금·재고 예약, 결제 기한 30분 |
 | GET          | /orders · /orders/summary           | U           | 구매 내역 (`filter` all·pending·progress·done·cancelled) / 상태별 건수                               |
 | GET          | /orders/:id                         | U(당사자)/A | 상세 + 결제·배송·상태 로그                                                                           |
-| POST         | /orders/:id/payments                | U           | {method, addressId?} → {paymentId, provider(toss·mock), clientKey, amount, orderName, dueAt}         |
+| POST         | /orders/:id/payments                | U·R         | {method, addressId?} → {paymentId, provider(toss·mock), clientKey, amount, orderName, dueAt}         |
 | POST         | /payments/confirm                   | U           | {paymentId, paymentKey, amount} → **서버가 주문 금액과 대조 후** PG 승인 (멱등)                      |
 | POST         | /payments/webhook/toss              | -           | PG 웹훅 — 본문을 믿지 않고 PG 재조회로 반영 (가상계좌 입금 포함)                                     |
 | POST         | /payments/:id/mock-deposit          | U           | 개발 전용 모의 가상계좌 입금 (운영 404)                                                              |

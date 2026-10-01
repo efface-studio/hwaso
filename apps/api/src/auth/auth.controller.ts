@@ -15,11 +15,13 @@ import type { User } from '@prisma/client';
 import {
   appleLinkSchema,
   appleNativeSchema,
+  biometricRegisterSchema,
   changePasswordSchema,
   deleteAccountSchema,
   loginSchema,
   oauthCallbackSchema,
   oauthLinkSchema,
+  reauthSchema,
   refreshSchema,
   resetPasswordSchema,
   sendCodeSchema,
@@ -27,11 +29,14 @@ import {
   verifyCodeSchema,
   type AppleLinkInput,
   type AppleNativeInput,
+  type BiometricRegisterInput,
   type ChangePasswordInput,
+  type DeviceInput,
   type DeleteAccountInput,
   type LoginInput,
   type OAuthCallbackInput,
   type OAuthLinkInput,
+  type ReauthInput,
   type ResetPasswordInput,
   type SendCodeInput,
   type SignupInput,
@@ -46,6 +51,8 @@ import { ZodPipe } from '../common/zod.pipe';
 import { env, isProd } from '../config/env';
 import { IdentityModule } from '../identity/identity.controller';
 import { IdentityService } from '../identity/identity.service';
+import { RequireReauth } from '../security/reauth.guard';
+import { SecurityService } from '../security/security.service';
 import { AuthService } from './auth.service';
 import { DemoAccountsService, DemoBlocked } from './demo';
 import { OAuthService, providerFromParam } from './oauth.service';
@@ -82,7 +89,18 @@ export class AuthController {
     private readonly sessions: SessionService,
     private readonly oauth: OAuthService,
     private readonly identity: IdentityService,
+    private readonly security: SecurityService,
   ) {}
+
+  /** 로그인·가입·소셜 로그인 공통: 보안 기록 + 새 기기 알림 */
+  private loggedIn(
+    user: Pick<User, 'id' | 'email'>,
+    issued: { familyId: string },
+    device: DeviceInput,
+    req: Request,
+  ) {
+    return this.security.afterLogin(user, issued.familyId, device, client(req));
+  }
 
   /** Web 은 httpOnly 쿠키, 앱은 본문으로 refresh 토큰을 준다 */
   private async respond(
@@ -143,6 +161,7 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ) {
     const r = await this.auth.signup(body, client(req));
+    await this.loggedIn(r.user, r.issued, body.device, req);
     return this.respond(res, r.user, r.issued, r.platform);
   }
 
@@ -156,6 +175,7 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ) {
     const r = await this.auth.login(body, client(req));
+    await this.loggedIn(r.user, r.issued, body.device, req);
     return this.respond(res, r.user, r.issued, r.platform);
   }
 
@@ -193,7 +213,13 @@ export class AuthController {
     const cookieToken = (req.cookies as Record<string, string> | undefined)?.[COOKIE];
     if (!body.refreshToken && cookieToken) assertCsrf(req);
     const token = body.refreshToken ?? cookieToken;
-    if (token) await this.sessions.revokeByRefresh(token);
+    const s = token ? await this.sessions.revokeByRefresh(token) : null;
+    if (s)
+      await this.security.record(s.userId, 'LOGOUT', {
+        ip: clientIp(req),
+        device: s.deviceName,
+        sessionId: s.familyId,
+      });
     res.clearCookie(COOKIE, { path: COOKIE_PATH });
   }
 
@@ -201,18 +227,62 @@ export class AuthController {
   @DemoBlocked()
   @Post('password/reset')
   @HttpCode(204)
-  resetPassword(@Body(new ZodPipe(resetPasswordSchema)) body: ResetPasswordInput) {
-    return this.auth.resetPassword(body);
+  resetPassword(@Body(new ZodPipe(resetPasswordSchema)) body: ResetPasswordInput, @Req() req: Request) {
+    return this.auth.resetPassword(body, client(req));
   }
 
+  @RequireReauth()
   @DemoBlocked()
   @Post('password/change')
   @HttpCode(204)
-  changePassword(
+  async changePassword(
     @CurrentUser() user: AuthUser,
     @Body(new ZodPipe(changePasswordSchema)) body: ChangePasswordInput,
+    @Req() req: Request,
   ) {
-    return this.auth.changePassword(user.id, user.sessionId, body);
+    const ctx = await this.security.contextOf(user, clientIp(req));
+    return this.auth.changePassword(user.id, user.sessionId, body, ctx);
+  }
+
+  // ───── 민감 작업 재인증 ↔ 생체 키 등록 · 해제 ─────
+
+  @Post('reauth')
+  @HttpCode(200)
+  @RateLimit({ name: 'reauth', limit: 10, windowSec: 600, by: 'user' })
+  reauth(
+    @CurrentUser() user: AuthUser,
+    @Body(new ZodPipe(reauthSchema)) body: ReauthInput,
+    @Req() req: Request,
+  ) {
+    return this.auth.reauth(user, body, clientIp(req));
+  }
+
+  /** 재인증용 이메일 인증번호 (로그인한 계정의 이메일로만 보낸다) */
+  @DemoBlocked()
+  @Post('reauth/code')
+  @HttpCode(200)
+  @RateLimit({ name: 'reauth-code', limit: 5, windowSec: 600, by: 'user' })
+  sendReauthCode(@CurrentUser() user: AuthUser) {
+    return this.auth.sendReauthCode(user.id);
+  }
+
+  /** 이 기기에 생체 재인증 키 발급 (secret 은 이 응답에서 한 번만) — 재인증 토큰 필요 */
+  @RequireReauth({ allPlatforms: true })
+  @Post('reauth/biometric')
+  @HttpCode(201)
+  @RateLimit({ name: 'biometric', limit: 10, windowSec: 3600, by: 'user' })
+  registerBiometric(
+    @CurrentUser() user: AuthUser,
+    @Body(new ZodPipe(biometricRegisterSchema)) body: BiometricRegisterInput,
+    @Req() req: Request,
+  ) {
+    return this.security.registerBiometric(user, body.deviceName, clientIp(req));
+  }
+
+  @Delete('reauth/biometric')
+  @HttpCode(204)
+  removeBiometric(@CurrentUser() user: AuthUser, @Req() req: Request) {
+    return this.security.removeBiometric(user, clientIp(req));
   }
 
   @Get('me')
@@ -229,18 +299,37 @@ export class AuthController {
 
   @Delete('sessions/:familyId')
   @HttpCode(204)
-  async revoke(@CurrentUser() user: AuthUser, @Param('familyId') familyId: string) {
+  async revoke(@CurrentUser() user: AuthUser, @Param('familyId') familyId: string, @Req() req: Request) {
     const owned = await this.sessions.list(user.id, user.sessionId);
-    if (!owned.some((s) => s.id === familyId)) throw new AppException('NOT_FOUND');
+    const target = owned.find((s) => s.id === familyId);
+    if (!target) throw new AppException('NOT_FOUND');
     await this.sessions.revokeFamily(familyId);
+    await this.security.record(
+      user.id,
+      'SESSION_REVOKED',
+      await this.security.contextOf(user, clientIp(req)),
+      {
+        target: familyId,
+        targetDevice: target.deviceName,
+      },
+    );
   }
 
   @Delete('sessions')
   @HttpCode(204)
-  async revokeOthers(@CurrentUser() user: AuthUser) {
+  async revokeOthers(@CurrentUser() user: AuthUser, @Req() req: Request) {
     await this.sessions.revokeAll(user.id, await this.sessions.familyOf(user.sessionId));
+    await this.security.record(
+      user.id,
+      'SESSION_REVOKED',
+      await this.security.contextOf(user, clientIp(req)),
+      {
+        target: 'others',
+      },
+    );
   }
 
+  @RequireReauth()
   @DemoBlocked()
   @Delete('account')
   @HttpCode(204)
@@ -292,6 +381,7 @@ export class AuthController {
     const provider = providerFromParam(p);
     const profile = await this.oauth.profileFor(provider, body.code, body.state, body.redirectUri);
     const r = await this.oauth.signIn(provider, profile, body.device, client(req), body.name);
+    await this.loggedIn(r.user, r.issued, body.device, req);
     return this.respond(res, r.user, r.issued, body.device.platform, { isNewUser: r.isNew });
   }
 
@@ -306,12 +396,14 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ) {
     const r = await this.oauth.appleNative(body.identityToken, body.name, body.device, client(req));
+    await this.loggedIn(r.user, r.issued, body.device, req);
     return this.respond(res, r.user, r.issued, body.device.platform, { isNewUser: r.isNew });
   }
 
   // ───── 소셜 계정 연결 ↔ 해제 ─────
 
   /** iOS: 시스템 Sign in with Apple 로 받은 identityToken 으로 연결 (브라우저 OAuth 대신) */
+  @RequireReauth()
   @DemoBlocked()
   @Post('social/apple/native')
   @HttpCode(204)
@@ -323,6 +415,8 @@ export class AuthController {
     await this.oauth.link(user.id, 'APPLE', profile);
   }
 
+  // 계정을 가로챈 사람이 자기 소셜 계정을 로그인 수단으로 심어 두지 못하게
+  @RequireReauth()
   @DemoBlocked()
   @Post('social/:provider')
   @HttpCode(204)
@@ -330,17 +424,36 @@ export class AuthController {
     @CurrentUser() user: AuthUser,
     @Param('provider') p: string,
     @Body(new ZodPipe(oauthLinkSchema)) body: OAuthLinkInput,
+    @Req() req: Request,
   ) {
     const provider = providerFromParam(p);
     const profile = await this.oauth.profileFor(provider, body.code, body.state, body.redirectUri);
     await this.oauth.link(user.id, provider, profile);
+    await this.security.record(
+      user.id,
+      'ACCOUNT_LINKED',
+      await this.security.contextOf(user, clientIp(req)),
+      {
+        provider,
+      },
+    );
   }
 
+  @RequireReauth()
   @DemoBlocked()
   @Delete('social/:provider')
   @HttpCode(204)
-  unlink(@CurrentUser() user: AuthUser, @Param('provider') p: string) {
-    return this.oauth.unlink(user.id, providerFromParam(p));
+  async unlink(@CurrentUser() user: AuthUser, @Param('provider') p: string, @Req() req: Request) {
+    const provider = providerFromParam(p);
+    await this.oauth.unlink(user.id, provider);
+    await this.security.record(
+      user.id,
+      'ACCOUNT_UNLINKED',
+      await this.security.contextOf(user, clientIp(req)),
+      {
+        provider,
+      },
+    );
   }
 }
 
