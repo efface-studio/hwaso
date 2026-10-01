@@ -1,13 +1,14 @@
 import { ApiError } from '@shop/api-client';
 import { containsProhibited, nicknameSchema, passwordSchema } from '@shop/shared';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { StyleSheet, View, type TextInput } from 'react-native';
 import { Agreements, NO_AGREEMENT, requiredAgreed } from '@/components/auth/agreements';
 import { EmailCodeStep } from '@/components/auth/email-code';
 import { nicknameIssueMessage, passwordIssueMessage } from '@/components/auth/validation';
 import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
+import { FormScroll } from '@/components/ui/form-scroll';
 import { Text } from '@/components/ui/text';
 import { api } from '@/lib/api';
 import { appDevice } from '@/lib/device';
@@ -25,6 +26,7 @@ export default function SignupScreen() {
   const [agreement, setAgreement] = useState(NO_AGREEMENT);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
+  const nicknameRef = useRef<TextInput>(null);
 
   const submit = async () => {
     const pw = passwordSchema.safeParse(password);
@@ -59,53 +61,51 @@ export default function SignupScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      style={{ flex: 1, backgroundColor: t.colors.background }}
-    >
-      <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
-        <Text variant="h2">{token ? tr('signup.almostDone') : tr('signup.title')}</Text>
-        {!token ? (
-          <EmailCodeStep purpose="SIGNUP" onVerified={(_e, tk) => setToken(tk)} />
-        ) : (
-          <View style={{ gap: 14 }}>
-            <Field
-              label={tr('signup.password')}
-              secureTextEntry
-              autoComplete="new-password"
-              textContentType="newPassword"
-              value={password}
-              onChangeText={setPassword}
-              error={errors.password}
-              hint={tr('signup.passwordHint')}
-            />
-            <Field
-              label={tr('signup.nickname')}
-              autoCapitalize="none"
-              value={nickname}
-              onChangeText={setNickname}
-              error={errors.nickname}
-              hint={tr('signup.nicknameHint')}
-              maxLength={20}
-            />
-            <Agreements value={agreement} onChange={setAgreement} />
-            {errors.form && (
-              <Text variant="small" color="destructive">
-                {errors.form}
-              </Text>
-            )}
-            <Button
-              title={tr('signup.submit')}
-              size="lg"
-              block
-              loading={busy}
-              disabled={!requiredAgreed(agreement) || !password || !nickname}
-              onPress={() => void submit()}
-            />
-          </View>
-        )}
-      </ScrollView>
-    </KeyboardAvoidingView>
+    <FormScroll style={{ backgroundColor: t.colors.background }} contentContainerStyle={styles.body}>
+      <Text variant="h2">{token ? tr('signup.almostDone') : tr('signup.title')}</Text>
+      {!token ? (
+        <EmailCodeStep purpose="SIGNUP" onVerified={(_e, tk) => setToken(tk)} />
+      ) : (
+        <View style={{ gap: 14 }}>
+          <Field
+            label={tr('signup.password')}
+            secureTextEntry
+            autoComplete="new-password"
+            textContentType="newPassword"
+            returnKeyType="next"
+            value={password}
+            onChangeText={setPassword}
+            onSubmitEditing={() => nicknameRef.current?.focus()}
+            error={errors.password}
+            hint={tr('signup.passwordHint')}
+          />
+          <Field
+            ref={nicknameRef}
+            label={tr('signup.nickname')}
+            autoCapitalize="none"
+            value={nickname}
+            onChangeText={setNickname}
+            error={errors.nickname}
+            hint={tr('signup.nicknameHint')}
+            maxLength={20}
+          />
+          <Agreements value={agreement} onChange={setAgreement} />
+          {errors.form && (
+            <Text variant="small" color="destructive">
+              {errors.form}
+            </Text>
+          )}
+          <Button
+            title={tr('signup.submit')}
+            size="lg"
+            block
+            loading={busy}
+            disabled={!requiredAgreed(agreement) || !password || !nickname}
+            onPress={() => void submit()}
+          />
+        </View>
+      )}
+    </FormScroll>
   );
 }
 

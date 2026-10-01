@@ -4,10 +4,11 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, Stack } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, ScrollView, StyleSheet } from 'react-native';
+import { Alert, StyleSheet } from 'react-native';
 import { BankField } from '@/components/bank-picker';
 import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
+import { FormScroll } from '@/components/ui/form-scroll';
 import { Empty, Loading } from '@/components/ui/state';
 import { Text } from '@/components/ui/text';
 import { api } from '@/lib/api';
@@ -92,11 +93,7 @@ export default function SellerRegisterScreen() {
   };
 
   return (
-    <ScrollView
-      style={{ backgroundColor: t.colors.background }}
-      contentContainerStyle={styles.body}
-      keyboardShouldPersistTaps="handled"
-    >
+    <FormScroll style={{ backgroundColor: t.colors.background }} contentContainerStyle={styles.body}>
       <Stack.Screen
         options={{ title: user.isSeller ? tr('register.titleSeller') : tr('common:screen.sellerRegister') }}
       />
@@ -151,7 +148,7 @@ export default function SellerRegisterScreen() {
           />
         </>
       )}
-    </ScrollView>
+    </FormScroll>
   );
 }
 

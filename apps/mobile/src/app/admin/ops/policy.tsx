@@ -2,9 +2,10 @@ import { auctionPolicySchema, type AuctionPolicyInput } from '@shop/shared';
 import { useQuery } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
 import { useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useAdminAction } from '@/components/admin/admin-list';
 import { Field } from '@/components/ui/field';
+import { FormScroll } from '@/components/ui/form-scroll';
 import { Empty, Loading } from '@/components/ui/state';
 import { Text } from '@/components/ui/text';
 import { api } from '@/lib/api';
@@ -144,11 +145,10 @@ export default function PolicyScreen() {
   };
 
   return (
-    <ScrollView
+    <FormScroll
       contentInsetAdjustmentBehavior="automatic"
       style={{ backgroundColor: t.colors.background }}
       contentContainerStyle={styles.body}
-      keyboardShouldPersistTaps="handled"
       keyboardDismissMode="interactive"
     >
       <Stack.Screen
@@ -200,7 +200,7 @@ export default function PolicyScreen() {
           ))}
         </>
       )}
-    </ScrollView>
+    </FormScroll>
   );
 }
 

@@ -15,6 +15,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Appearance } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import '@/i18n';
 import { ActionSheetHost } from '@/components/action-sheet-host';
@@ -192,21 +193,24 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaProvider>
-        <QueryClientProvider client={client}>
-          <Navigation />
-          <AppSync />
-          <OtaSync />
-          <OfflineBanner />
-          <ActionSheetHost />
-          <ReauthHost />
-          <PushPromptHost />
-          <AppLock />
-          {hydrated && !splashDone && <AnimatedSplash ready={ready} onFinish={finishSplash} />}
-          {/* 앱 전환 화면(스냅숏)에 내용이 보이지 않게 — 가장 위에 */}
-          <PrivacyShield />
-        </QueryClientProvider>
-      </SafeAreaProvider>
+      {/* 키보드 위치를 화면들이 알 수 있게 (입력칸이 키보드에 가리지 않도록 스크롤·채팅 입력창 올리기) */}
+      <KeyboardProvider>
+        <SafeAreaProvider>
+          <QueryClientProvider client={client}>
+            <Navigation />
+            <AppSync />
+            <OtaSync />
+            <OfflineBanner />
+            <ActionSheetHost />
+            <ReauthHost />
+            <PushPromptHost />
+            <AppLock />
+            {hydrated && !splashDone && <AnimatedSplash ready={ready} onFinish={finishSplash} />}
+            {/* 앱 전환 화면(스냅숏)에 내용이 보이지 않게 — 가장 위에 */}
+            <PrivacyShield />
+          </QueryClientProvider>
+        </SafeAreaProvider>
+      </KeyboardProvider>
     </GestureHandlerRootView>
   );
 }

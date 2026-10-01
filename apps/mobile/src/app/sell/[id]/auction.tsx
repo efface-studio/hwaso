@@ -10,9 +10,10 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, ScrollView, StyleSheet } from 'react-native';
+import { Alert, StyleSheet } from 'react-native';
 import { AuctionFields } from '@/components/sell/fields';
 import { Button } from '@/components/ui/button';
+import { FormScroll } from '@/components/ui/form-scroll';
 import { Empty, Loading } from '@/components/ui/state';
 import { Text } from '@/components/ui/text';
 import i18n from '@/i18n';
@@ -73,11 +74,7 @@ export default function AuctionSetupScreen() {
   };
 
   return (
-    <ScrollView
-      style={{ backgroundColor: t.colors.background }}
-      contentContainerStyle={styles.body}
-      keyboardShouldPersistTaps="handled"
-    >
+    <FormScroll style={{ backgroundColor: t.colors.background }} contentContainerStyle={styles.body}>
       <Stack.Screen options={{ title: tr('common:screen.auctionNew') }} />
       <Text variant="h2">{p.title}</Text>
       <AuctionFields a={a} set={(patch) => setA((x) => ({ ...x, ...patch }))} errors={errors} />
@@ -87,7 +84,7 @@ export default function AuctionSetupScreen() {
         </Text>
       )}
       <Button title={tr('auction.submit')} size="lg" loading={pending} onPress={() => void submit()} />
-    </ScrollView>
+    </FormScroll>
   );
 }
 

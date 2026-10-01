@@ -4,9 +4,10 @@ import { useQuery } from '@tanstack/react-query';
 import { router, Stack } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, Platform, StyleSheet, View } from 'react-native';
 import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
+import { FormScroll } from '@/components/ui/form-scroll';
 import { Text } from '@/components/ui/text';
 import i18n from '@/i18n';
 import { label } from '@/i18n/labels';
@@ -107,11 +108,7 @@ export default function DeleteAccountScreen() {
 
   const ready = !!proof || (user.hasPassword ? !!password : code.length === 6);
   return (
-    <ScrollView
-      style={{ backgroundColor: t.colors.background }}
-      contentContainerStyle={styles.body}
-      keyboardShouldPersistTaps="handled"
-    >
+    <FormScroll style={{ backgroundColor: t.colors.background }} contentContainerStyle={styles.body}>
       <Stack.Screen options={{ title: tr('common:screen.deleteAccount') }} />
       <Text color="muted">{tr('deleteAccount.notice')}</Text>
       {user.hasPassword && (
@@ -182,7 +179,7 @@ export default function DeleteAccountScreen() {
         loading={pending}
         onPress={confirm}
       />
-    </ScrollView>
+    </FormScroll>
   );
 }
 

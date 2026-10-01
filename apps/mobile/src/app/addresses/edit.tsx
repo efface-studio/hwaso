@@ -4,10 +4,11 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Switch, View } from 'react-native';
 import { ADDRESSES_KEY, useAddresses } from '@/components/order/address-list';
 import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
+import { FormScroll } from '@/components/ui/form-scroll';
 import { Text } from '@/components/ui/text';
 import { api } from '@/lib/api';
 import { searchPostcode } from '@/lib/bridge';
@@ -82,11 +83,7 @@ export default function AddressEditScreen() {
   };
 
   return (
-    <ScrollView
-      style={{ backgroundColor: t.colors.background }}
-      contentContainerStyle={styles.body}
-      keyboardShouldPersistTaps="handled"
-    >
+    <FormScroll style={{ backgroundColor: t.colors.background }} contentContainerStyle={styles.body}>
       <Stack.Screen options={{ title: id ? tr('address.editTitle') : tr('address.newTitle') }} />
       <Field
         label={tr('address.recipient')}
@@ -197,7 +194,7 @@ export default function AddressEditScreen() {
           }
         />
       )}
-    </ScrollView>
+    </FormScroll>
   );
 }
 

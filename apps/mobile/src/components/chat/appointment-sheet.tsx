@@ -1,9 +1,10 @@
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { useState } from 'react';
-import { Modal, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { Modal, Platform, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
+import { FormScroll } from '@/components/ui/form-scroll';
 import { Text } from '@/components/ui/text';
 import { currentLanguage, LOCALE } from '@/i18n';
 import { useTheme } from '@/theme';
@@ -45,11 +46,7 @@ export function AppointmentSheet({
 
   return (
     <Modal visible animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <ScrollView
-        style={{ backgroundColor: t.colors.background }}
-        contentContainerStyle={styles.body}
-        keyboardShouldPersistTaps="handled"
-      >
+      <FormScroll style={{ backgroundColor: t.colors.background }} contentContainerStyle={styles.body}>
         <View style={styles.head}>
           <Text variant="h2" accessibilityRole="header">
             {tr('appointment.title')}
@@ -107,7 +104,7 @@ export function AppointmentSheet({
           disabled={!valid}
           onPress={() => onSubmit({ at: at.toISOString(), place: place.trim() })}
         />
-      </ScrollView>
+      </FormScroll>
     </Modal>
   );
 }
