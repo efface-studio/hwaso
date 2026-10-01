@@ -3,11 +3,12 @@ import { containsProhibited, nicknameSchema } from '@shop/shared';
 import { router, Stack } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, StyleSheet, View } from 'react-native';
 import i18n from '@/i18n';
 import { AvatarCropper } from '@/components/avatar-cropper';
 import { Avatar } from '@/components/ui/avatar';
 import { Field } from '@/components/ui/field';
+import { FormScroll } from '@/components/ui/form-scroll';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { actionSheet } from '@/lib/action-sheet';
@@ -98,11 +99,10 @@ export default function ProfileScreen() {
   };
 
   return (
-    <ScrollView
+    <FormScroll
       style={{ backgroundColor: t.colors.background }}
       contentContainerStyle={styles.body}
       contentInsetAdjustmentBehavior="automatic"
-      keyboardShouldPersistTaps="handled"
       keyboardDismissMode="interactive"
     >
       <Stack.Screen
@@ -185,7 +185,7 @@ export default function ProfileScreen() {
         />
       </View>
       <AvatarCropper image={cropping} onCancel={cancelCrop} onDone={(img) => void upload(img)} />
-    </ScrollView>
+    </FormScroll>
   );
 }
 

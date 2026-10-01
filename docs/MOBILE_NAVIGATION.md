@@ -82,6 +82,7 @@ scheme `hwaso://`, universal link `https://hwaso.kr` (`APP_LINK_HOST`). 파일 �
 - 필터/정렬: 바텀시트 (`@gorhom/bottom-sheet`), 적용 버튼에 결과 수 표시.
 - 상품 등록: 한 화면 한 질문. 사진 → 상품명 → 카테고리 → 가격 → 판매 방식 → 상세 정보(선택, 접힘) → 등록. 입력값은 단계 이동 시 로컬 저장(드래프트 복구).
 - 숫자 입력은 `number-pad`, 날짜는 네이티브 DateTimePicker.
+- 키보드: 루트에 `KeyboardProvider`(react-native-keyboard-controller). 입력칸이 있는 화면·시트는 `FormScroll`(KeyboardAwareScrollView)로 포커스된 입력칸을 키보드 위로 스크롤하고, 채팅 입력창은 라이브러리 `KeyboardAvoidingView`로 키보드 바로 위에 붙인다.
 - 경매 화면: 포그라운드 복귀(`AppState`) 시 시간 재동기화 + 스냅샷 재조회. 입찰 버튼은 "최소 입찰가로 입찰" + 직접 입력 두 가지.
 - 이미지 갤러리: 가로 페이징 + 탭 시 전체 화면 핀치 줌.
 

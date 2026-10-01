@@ -4,13 +4,14 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, router, Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, Pressable, ScrollView, Share, StyleSheet, View } from 'react-native';
+import { Alert, Pressable, Share, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Rail } from '@/components/home/rail';
 import { Button } from '@/components/ui/button';
 import { Gallery } from '@/components/product/gallery';
 import { Inquiries } from '@/components/product/inquiries';
 import { Avatar } from '@/components/ui/avatar';
+import { FormScroll } from '@/components/ui/form-scroll';
 import { Empty, Loading } from '@/components/ui/state';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
@@ -278,7 +279,7 @@ export default function ProductScreen() {
           ),
         }}
       />
-      <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={{ paddingBottom: 24 }}>
+      <FormScroll contentInsetAdjustmentBehavior="automatic" contentContainerStyle={{ paddingBottom: 24 }}>
         {p.images.length > 0 && <Gallery productId={p.id} images={p.images} title={p.title} />}
         <View style={styles.head}>
           {p.blockedByMe && (
@@ -418,7 +419,7 @@ export default function ProductScreen() {
         </Section>
 
         {!!related.data?.length && <Rail title={tr('detail.section.related')} items={related.data} />}
-      </ScrollView>
+      </FormScroll>
       {/* 로그인하면 관심 여부가 계정 기준으로 다시 오므로 그때 하단 바 상태를 새로 맞춘다 */}
       <BottomBar key={`${p.id}:${p.isFavorite}`} p={p} />
     </View>

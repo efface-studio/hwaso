@@ -10,10 +10,11 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, StyleSheet, View } from 'react-native';
 import { AuthenticityFields, BasicFields, DetailFields, PriceFields } from '@/components/sell/fields';
 import { PhotoManager } from '@/components/sell/photo-manager';
 import { Button } from '@/components/ui/button';
+import { FormScroll } from '@/components/ui/form-scroll';
 import { Empty, Loading } from '@/components/ui/state';
 import { Text } from '@/components/ui/text';
 import i18n from '@/i18n';
@@ -137,11 +138,7 @@ export default function EditProductScreen() {
     ]);
 
   return (
-    <ScrollView
-      style={{ backgroundColor: t.colors.background }}
-      contentContainerStyle={styles.body}
-      keyboardShouldPersistTaps="handled"
-    >
+    <FormScroll style={{ backgroundColor: t.colors.background }} contentContainerStyle={styles.body}>
       <Stack.Screen options={{ title: tr('common:screen.sellEdit') }} />
       <View style={styles.actions}>
         <Text variant="label" color={p.status === 'ACTIVE' ? 'primary' : 'muted'}>
@@ -218,7 +215,7 @@ export default function EditProductScreen() {
       )}
       <Button title={tr('common:action.save')} size="lg" loading={pending === 'save'} onPress={save} />
       <Button title={tr('edit.delete')} variant="ghost" loading={pending === 'delete'} onPress={remove} />
-    </ScrollView>
+    </FormScroll>
   );
 }
 

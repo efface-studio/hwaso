@@ -14,18 +14,9 @@ import { useInfiniteQuery, useQuery, useQueryClient, type InfiniteData } from '@
 import { Image } from 'expo-image';
 import { Link, router, Stack, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  Alert,
-  AppState,
-  FlatList,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  StyleSheet,
-  TextInput,
-  View,
-} from 'react-native';
+import { Alert, AppState, FlatList, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppointmentSheet } from '@/components/chat/appointment-sheet';
@@ -408,10 +399,13 @@ export default function ChatRoomScreen() {
     );
 
   return (
+    // 키보드만큼 아래를 비워 입력창을 키보드 바로 위에 붙인다 (헤더 높이는 automaticOffset 이 잰다).
+    // 입력창 아래 안전 영역 여백은 키보드가 덮으므로 그만큼 덜 올린다
     <KeyboardAvoidingView
       style={{ flex: 1, backgroundColor: t.colors.background }}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+      behavior="padding"
+      automaticOffset
+      keyboardVerticalOffset={canSend ? 8 - Math.max(insets.bottom, 8) : 0}
     >
       <Stack.Screen
         options={{

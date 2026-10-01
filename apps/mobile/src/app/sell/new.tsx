@@ -16,7 +16,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, Stack } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   AuctionFields,
@@ -27,6 +27,7 @@ import {
 } from '@/components/sell/fields';
 import { PhotoManager } from '@/components/sell/photo-manager';
 import { Button } from '@/components/ui/button';
+import { FormScroll, type FormScrollRef } from '@/components/ui/form-scroll';
 import { Empty } from '@/components/ui/state';
 import { Text } from '@/components/ui/text';
 import i18n from '@/i18n';
@@ -56,7 +57,7 @@ export default function SellNewScreen() {
   const insets = useSafeAreaInsets();
   const qc = useQueryClient();
   const user = useAuthStore((s) => s.user);
-  const scroll = useRef<ScrollView>(null);
+  const scroll = useRef<FormScrollRef>(null);
   const categories = useQuery({
     queryKey: ['categories'],
     queryFn: api.market.categories,
@@ -206,7 +207,7 @@ export default function SellNewScreen() {
           }}
         />
       </View>
-      <ScrollView ref={scroll} contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
+      <FormScroll ref={scroll} contentContainerStyle={styles.body}>
         <Text variant="h1" accessibilityRole="header">
           {tr(`new.steps.${step}`)}
         </Text>
@@ -286,7 +287,7 @@ export default function SellNewScreen() {
             {firstError}
           </Text>
         )}
-      </ScrollView>
+      </FormScroll>
       <View
         style={[
           styles.bar,

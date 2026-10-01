@@ -3,9 +3,10 @@ import { passwordSchema } from '@shop/shared';
 import { Stack } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, ScrollView, StyleSheet } from 'react-native';
+import { Alert, StyleSheet } from 'react-native';
 import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
+import { FormScroll } from '@/components/ui/form-scroll';
 import { Text } from '@/components/ui/text';
 import { api } from '@/lib/api';
 import { goBack } from '@/lib/nav';
@@ -46,11 +47,7 @@ export default function PasswordScreen() {
   };
 
   return (
-    <ScrollView
-      style={{ backgroundColor: t.colors.background }}
-      contentContainerStyle={styles.body}
-      keyboardShouldPersistTaps="handled"
-    >
+    <FormScroll style={{ backgroundColor: t.colors.background }} contentContainerStyle={styles.body}>
       <Stack.Screen options={{ title: user.hasPassword ? tr('password.change') : tr('password.set') }} />
       {!user.hasPassword && <Text color="muted">{tr('password.socialNotice')}</Text>}
       {user.hasPassword && (
@@ -80,7 +77,7 @@ export default function PasswordScreen() {
         disabled={!next || (user.hasPassword && !current)}
         onPress={() => void save()}
       />
-    </ScrollView>
+    </FormScroll>
   );
 }
 

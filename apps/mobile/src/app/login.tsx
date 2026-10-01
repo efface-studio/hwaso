@@ -1,16 +1,7 @@
 import { ApiError } from '@shop/api-client';
 import { router } from 'expo-router';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  useWindowDimensions,
-  View,
-  type TextInput,
-} from 'react-native';
+import { Pressable, StyleSheet, useWindowDimensions, View, type TextInput } from 'react-native';
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -26,6 +17,7 @@ import { SocialButtons } from '@/components/auth/social-buttons';
 import { HwasoMark } from '@/components/brand/hwaso-mark';
 import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
+import { FormScroll } from '@/components/ui/form-scroll';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { api } from '@/lib/api';
@@ -101,10 +93,7 @@ export default function LoginScreen() {
     router.push({ pathname: '/policies/[slug]', params: { slug } });
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      style={{ flex: 1, backgroundColor: t.colors.background }}
-    >
+    <View style={{ flex: 1, backgroundColor: t.colors.background }}>
       {/* 로그인하지 않고 둘러보기 */}
       <Pressable
         accessibilityRole="button"
@@ -118,7 +107,7 @@ export default function LoginScreen() {
       >
         <Icon ios="xmark" android="close" color="muted" />
       </Pressable>
-      <ScrollView
+      <FormScroll
         contentContainerStyle={[
           styles.body,
           {
@@ -128,7 +117,6 @@ export default function LoginScreen() {
           },
         ]}
         alwaysBounceVertical={false}
-        keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
       >
         <Rise v={hero}>
@@ -223,8 +211,8 @@ export default function LoginScreen() {
             </Pressable>
           </View>
         </Rise>
-      </ScrollView>
-    </KeyboardAvoidingView>
+      </FormScroll>
+    </View>
   );
 }
 
