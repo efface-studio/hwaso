@@ -57,7 +57,8 @@ const BRAND: Record<AuthProvider, { label: string; className: string; icon: Reac
     label: 'Apple로 계속하기',
     className: 'bg-secondary text-secondary-foreground hover:opacity-90',
     icon: (
-      <svg viewBox="0 0 24 24" className="size-5" aria-hidden>
+      // 로고 그림이 24 칸에서 왼쪽으로 1.3 치우쳐 있어(가로 2.35~19.06) viewBox 를 옮겨 가운데 맞춘다
+      <svg viewBox="-1.3 0 24 24" className="size-5" aria-hidden>
         <path
           fill="currentColor"
           d="M16.37 12.63c-.03-2.6 2.13-3.86 2.23-3.92-1.22-1.78-3.11-2.02-3.78-2.05-1.6-.16-3.13.95-3.94.95-.82 0-2.07-.93-3.4-.9-1.75.03-3.36 1.02-4.26 2.58-1.82 3.15-.46 7.8 1.3 10.36.87 1.25 1.9 2.65 3.24 2.6 1.3-.05 1.79-.84 3.36-.84 1.57 0 2.01.84 3.38.81 1.4-.02 2.29-1.27 3.14-2.53a11 11 0 0 0 1.43-2.93c-.03-.02-2.73-1.05-2.76-4.13ZM13.8 5c.72-.87 1.2-2.08 1.07-3.29-1.03.04-2.29.69-3.03 1.56-.66.77-1.25 2-1.09 3.18 1.15.09 2.33-.58 3.05-1.45Z"
