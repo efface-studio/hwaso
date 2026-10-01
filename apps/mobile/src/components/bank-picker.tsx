@@ -3,7 +3,7 @@ import { Image } from 'expo-image';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, TextInput, useWindowDimensions, View } from 'react-native';
-import { BANK_LOGOS } from '@/components/bank-logos';
+import { BANK_LOGOS, DARK_INK_LOGOS } from '@/components/bank-logos';
 import { Icon } from '@/components/ui/icon';
 import { Sheet } from '@/components/ui/sheet';
 import { Text } from '@/components/ui/text';
@@ -22,7 +22,15 @@ export function BankLogo({ bank, name, height = 36 }: { bank?: Bank; name?: stri
   const box = { width, height, borderRadius: Math.round(height * 0.22) };
   if (logo)
     return (
-      <View accessible={false} style={[styles.logoBox, box]}>
+      <View
+        accessible={false}
+        style={[
+          styles.logoBox,
+          box,
+          // 짙은 글자 로고는 다크 모드에서 흰 바탕 위에 둔다
+          t.dark && bank && DARK_INK_LOGOS.has(bank.code) && { backgroundColor: '#FFFFFF' },
+        ]}
+      >
         <Image source={logo} style={styles.logoImage} contentFit="contain" />
       </View>
     );
