@@ -127,7 +127,8 @@ function PendingPayment({ o, refresh }: { o: OrderDetailDto; refresh: () => void
         <Info name={tr('pending.holder')}>{va.holder}</Info>
         <Info name={tr('pending.depositAmount')}>{formatPrice(o.totalAmount)}</Info>
         <Info name={tr('pending.depositDue')}>{dateTime(va.dueDate)}</Info>
-        {o.payment?.provider === 'mock' && (
+        {/* 모의 입금은 개발 빌드에서만 (운영 결제는 PG 가 입금을 알려 준다) */}
+        {__DEV__ && o.payment?.provider === 'mock' && (
           <Button
             title={tr('pending.mockDeposit')}
             size="sm"

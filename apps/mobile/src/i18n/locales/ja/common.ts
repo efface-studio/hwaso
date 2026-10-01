@@ -90,6 +90,7 @@ const ja: Translation<typeof ko> = {
     notices: 'お知らせ',
     support: 'ヘルプ・規約',
     feed: 'フォロー中の新着',
+    consent: '登録の仕上げ',
   },
   language: {
     title: '言語',
@@ -168,6 +169,18 @@ const ja: Translation<typeof ko> = {
   push: {
     channelName: '一般通知',
   },
+  pushPrompt: {
+    title: '通知をオンにしますか？',
+    reason: {
+      chat: '相手から返信が来たらすぐにお知らせします。',
+      bid: 'より高い入札があったときやオークションが終了したときにお知らせします。',
+      favorite: 'お気に入り作品の価格が変わったりオークションが始まったりしたらお知らせします。',
+      follow: 'フォロー中の出品者が新しい作品を出品したらお知らせします。',
+    },
+    hint: '受け取る通知の種類や時間は、設定でいつでも変更できます。',
+    allow: '通知をオンにする',
+    later: 'あとで',
+  },
   auctionLive: {
     outbid: 'より高い入札がありました',
     extended: '終了間際の入札により{{seconds}}秒延長されました',
@@ -185,6 +198,7 @@ const ja: Translation<typeof ko> = {
     bidIncrement: '入札単位は100ウォン以上にしてください。',
     endAfterStart: '終了時刻は開始時刻より後にしてください。',
     buyNowAboveStart: '即決価格は開始価格より高くしてください。',
+    prohibited: '使用できない表現が含まれています。修正してもう一度入力してください。',
   },
 };
 

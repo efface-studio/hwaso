@@ -41,6 +41,7 @@ import { formatPrice } from '@/i18n/format';
 import { label } from '@/i18n/labels';
 import { actionSheet } from '@/lib/action-sheet';
 import { api } from '@/lib/api';
+import { askPushInContext } from '@/lib/push-prompt';
 import { goBack } from '@/lib/nav';
 import { mediaUrl } from '@/lib/media';
 import { getRealtime } from '@/lib/realtime';
@@ -186,6 +187,8 @@ export default function ChatRoomScreen() {
           upsert(saved);
           setPending((ps) => ps.filter((x) => x.clientId !== m.clientId));
           void qc.invalidateQueries({ queryKey: ['chat', 'rooms'] });
+          // 첫 메시지를 보낸 뒤 맥락에 맞춰 알림 권한을 묻는다 (이미 정했으면 아무것도 하지 않는다)
+          void askPushInContext('chat');
         })
         .catch((e: unknown) => {
           setPending((ps) =>

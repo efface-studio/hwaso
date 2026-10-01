@@ -15,13 +15,16 @@ src/app
 │  ├─ chat/               Stack: 채팅 목록 (탭 배지 = 안 읽은 수)
 │  └─ my/                 Stack: 마이 · 설정(테마·시니어 모드)
 ├─ products/[id].tsx      작품 상세
-├─ login.tsx              로그인 (modal)
+├─ login.tsx              로그인 (아래에서 올라오는 화면, 닫고 둘러보기)
+├─ consent.tsx            필수 동의 (약관·개인정보·만 14세 + 선택 마케팅)
 └─ +not-found.tsx
 ```
 
 - 탭 순서는 웹 하단 탭과 같다: 홈 · 경매 · 판매 · 채팅 · 마이 (검색은 홈 헤더).
 - 각 탭 안에 native Stack 을 두어 큰 제목(iOS large title)·뒤로 가기를 OS 기본 동작으로 쓴다.
-- 로그인이 필요한 화면은 `/login` 모달을 띄우고 성공하면 닫힌다.
+- 로그인 없이 둘러볼 수 있다: 홈·경매·검색·작품/경매/작가/사용자 상세·공지·고객센터·약관 (App Store 5.1.1(v)).
+- 관심·팔로우·입찰·구매·채팅·문의·신고 같은 동작은 `requireLogin()` 이 `/login` 을 띄우고, 로그인하면 보던 화면으로 돌아온다. 채팅·판매 탭과 마이 탭은 비로그인 안내 화면을 보여준다.
+- 동의가 남은 계정(`MeDto.consentRequired`)은 `/consent` 만 열린다 (소셜 첫 가입 등).
 - 웹 미리보기(`pnpm --filter @shop/mobile web`)에서는 탭이 기본 구현으로 대체된다.
 
 ## 2. Deep Linking
@@ -60,17 +63,17 @@ scheme `hwaso://`, universal link `https://hwaso.kr` (`APP_LINK_HOST`). 파일 �
 
 ## 3. 네이티브 기능
 
-| 기능                   | 패키지                                                 | 사용                                                                          |
-| ---------------------- | ------------------------------------------------------ | ----------------------------------------------------------------------------- |
-| Push                   | `expo-notifications`                                   | 로그인 직후 권한 요청, Expo push token → `/me/push-tokens` (로그아웃 시 해제) |
-| Camera / Photo Library | `expo-image-picker` (카메라 + 앨범, 다중 선택 최대 20) | 상품 등록, 채팅 이미지                                                        |
-| 이미지 압축            | `expo-image-manipulator`                               | 업로드 전 긴 변 2400px, JPEG 0.85 (서버에서 재처리)                           |
-| Share                  | RN `Share`                                             | 상품/경매 공유 (웹 URL)                                                       |
-| Secure Storage         | `expo-secure-store`                                    | refresh 토큰                                                                  |
-| Biometric              | `expo-local-authentication`                            | 앱 잠금 해제 (설정)                                                           |
-| Browser Auth           | `expo-web-browser` + `expo-auth-session`               | 소셜 로그인, 결제·우편번호 웹 브리지                                          |
-| Haptics                | `expo-haptics`                                         | 입찰 성공/실패                                                                |
-| Image                  | `expo-image`                                           | 캐시, placeholder 색                                                          |
+| 기능                   | 패키지                                                 | 사용                                                                                                            |
+| ---------------------- | ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------- |
+| Push                   | `expo-notifications`                                   | 맥락 안에서 권한 요청(첫 채팅·입찰·관심·팔로우 뒤 안내 시트, 설정), 토큰 → `/me/push-tokens` (로그아웃 시 해제) |
+| Camera / Photo Library | `expo-image-picker` (카메라 + 앨범, 다중 선택 최대 20) | 상품 등록, 채팅 이미지                                                                                          |
+| 이미지 압축            | `expo-image-manipulator`                               | 업로드 전 긴 변 2400px, JPEG 0.85 (서버에서 재처리)                                                             |
+| Share                  | RN `Share`                                             | 상품/경매 공유 (웹 URL)                                                                                         |
+| Secure Storage         | `expo-secure-store`                                    | refresh 토큰                                                                                                    |
+| Biometric              | `expo-local-authentication`                            | 앱 잠금 해제 (설정)                                                                                             |
+| Browser Auth           | `expo-web-browser` + `expo-auth-session`               | 소셜 로그인, 결제·우편번호 웹 브리지                                                                            |
+| Haptics                | `expo-haptics`                                         | 입찰 성공/실패                                                                                                  |
+| Image                  | `expo-image`                                           | 캐시, placeholder 색                                                                                            |
 
 ## 4. Mobile UX
 

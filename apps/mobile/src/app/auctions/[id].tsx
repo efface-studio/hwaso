@@ -16,6 +16,8 @@ import { useAuctionLive } from '@/hooks/use-auction-live';
 import { dateTimeFormat, formatPrice } from '@/i18n/format';
 import { label } from '@/i18n/labels';
 import { api } from '@/lib/api';
+import { askPushInContext } from '@/lib/push-prompt';
+import { requireLogin } from '@/lib/require-login';
 import { useServerNow } from '@/lib/clock';
 import { mediaUrl } from '@/lib/media';
 import { useAuthStore } from '@/stores/auth';
@@ -130,7 +132,7 @@ export default function AuctionScreen() {
   const won = a.status !== 'LIVE' && !!user && a.winnerId === user.id;
 
   const place = (amount: number, buyNow = false) => {
-    if (!user) return router.push('/login');
+    if (!requireLogin()) return;
     Alert.alert(
       buyNow ? tr('auction.confirmBuyNow') : tr('auction.confirmBid', { amount: formatPrice(amount) }),
       buyNow ? tr('auction.buyNowBody') : tr('auction.bidBody'),
@@ -148,6 +150,7 @@ export default function AuctionScreen() {
                 : await api.auctions.bid(a.id, amount, key);
               haptic(Haptics.NotificationFeedbackType.Success);
               if (r.extended) Alert.alert(tr('auction.extended'));
+              else void askPushInContext('bid');
             } catch (e) {
               haptic(Haptics.NotificationFeedbackType.Error);
               Alert.alert(
@@ -296,7 +299,7 @@ export default function AuctionScreen() {
                 title={tr('auction.enterAmount')}
                 variant="outline"
                 size="lg"
-                onPress={() => (user ? setSheet(true) : router.push('/login'))}
+                onPress={() => requireLogin() && setSheet(true)}
               />
               <Button
                 title={tr('auction.bidShort', { amount: formatPrice(a.minNextBid) })}

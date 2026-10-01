@@ -1,9 +1,16 @@
 import { Injectable } from '@nestjs/common';
 import type { User } from '@prisma/client';
-import type { AuthTokens, DeviceInput, MeDto, SessionDto } from '@shop/shared';
+import {
+  isPlaceholderEmail,
+  type AuthTokens,
+  type DeviceInput,
+  type MeDto,
+  type SessionDto,
+} from '@shop/shared';
 import { AppException } from '../common/app-exception';
 import {
   ACCESS_TOKEN_TTL_SEC,
+  hasRequiredConsent,
   invalidateUserStatus,
   markFamiliesRevoked,
   signAccessToken,
@@ -202,11 +209,14 @@ export class SessionService {
       email: u.email,
       role: u.role,
       emailVerified: !!u.emailVerifiedAt,
+      emailMissing: isPlaceholderEmail(u.email),
       hasPassword: !!u.passwordHash,
       isSeller: !!u.seller,
       identityVerified: !!u.identityVerifiedAt,
       isAdult: u.isAdult,
       socialProviders: u.socialAccounts.map((s) => s.provider),
+      consentRequired: !hasRequiredConsent(u),
+      marketingOptIn: u.marketingOptIn,
       profile: {
         nickname: u.profile?.nickname ?? '',
         bio: u.profile?.bio ?? '',

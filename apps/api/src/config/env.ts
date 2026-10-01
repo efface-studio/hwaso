@@ -36,8 +36,16 @@ const schema = z.object({
   APPLE_TEAM_ID: optional,
   APPLE_KEY_ID: optional,
   APPLE_PRIVATE_KEY: optional,
-  /** iOS 네이티브 Sign in with Apple 의 aud (앱 번들 ID) */
+  /** iOS 네이티브 Sign in with Apple 의 aud (앱 번들 ID). 비우면 앱에 Apple 로그인 버튼이 보이지 않는다 */
   APPLE_BUNDLE_ID: optional,
+  /**
+   * 네이티브 Apple 로그인 토큰 교환·폐기(revoke)용 키 (.p8, Sign in with Apple 사용 설정).
+   * 비우면 APNS_* → APPLE_TEAM_ID/APPLE_KEY_ID/APPLE_PRIVATE_KEY 순으로 쓴다. 개인키는 \n 을 줄바꿈으로 바꾼다
+   */
+  APPLE_SIGNIN_KEY_ID: optional,
+  APPLE_SIGNIN_TEAM_ID: optional,
+  APPLE_SIGNIN_PRIVATE_KEY: optional,
+  // APNS_* 는 아래 푸시 설정에 있다
   /** 모바일 OAuth 가 브라우저에서 돌아올 때 거치는 API 공개 주소 */
   API_PUBLIC_URL: z.string().default('http://localhost:4000'),
   APP_SCHEME: z.string().default('hwaso'),

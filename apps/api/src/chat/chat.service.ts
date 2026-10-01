@@ -14,6 +14,7 @@ import {
   type SendMessageInput,
 } from '@shop/shared';
 import { AppException } from '../common/app-exception';
+import { assertClean } from '../common/moderation';
 import { RateLimitService } from '../common/rate-limit';
 import { createHash } from 'node:crypto';
 import type { AuthUser } from '../common/auth';
@@ -414,6 +415,7 @@ export class ChatService {
 
   async send(user: AuthUser, roomId: string, input: SendMessageInput): Promise<ChatMessageDto> {
     const { counterpartId } = await this.member(user, roomId);
+    if (input.kind === 'TEXT') assertClean({ body: input.body });
     if (await this.safety.blockedBetween(user.id, counterpartId))
       throw new AppException('FORBIDDEN', '차단한 사용자와는 대화할 수 없습니다.');
     const other = await this.prisma.user.findUnique({

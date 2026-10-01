@@ -101,7 +101,7 @@ export const adminApi = (http: Http) => ({
   updateNotice: (noticeId: string, b: NoticeInput) =>
     http.put<NoticeDto>(`/admin/notices/${id(noticeId)}`, b),
   deleteNotice: (noticeId: string) => http.delete(`/admin/notices/${id(noticeId)}`),
-  broadcast: (b: BroadcastInput) => http.post<{ recipients: number }>('/admin/broadcast', b),
+  broadcast: (b: BroadcastInput) => http.post<{ recipients: number; pushed: boolean }>('/admin/broadcast', b),
 
   auditLogs: (q: Query) => http.get<Paged<AuditLogRow>>('/admin/audit-logs', q),
 

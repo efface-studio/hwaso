@@ -23,11 +23,13 @@ import {
 import { hmac, otpCode, randomToken, safeEqual } from '../common/crypto';
 import { RateLimitService } from '../common/rate-limit';
 import { env, isDemo } from '../config/env';
+import { assertClean } from '../common/moderation';
 import { MailService } from '../mail/mail.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 import { type EventContext, SecurityService } from '../security/security.service';
 import { isDemoLogin } from './demo';
+import { OAuthService } from './oauth.service';
 import { type ClientInfo, SessionService } from './session.service';
 
 const CODE_TTL_MIN = 10;
@@ -63,6 +65,7 @@ export class AuthService {
     private readonly limiter: RateLimitService,
     private readonly sessions: SessionService,
     private readonly security: SecurityService,
+    private readonly oauth: OAuthService,
   ) {}
 
   static hashPassword(pw: string) {
@@ -152,7 +155,8 @@ export class AuthService {
     if (!consumed.count) throw new AppException('INVALID_CODE');
   }
 
-  private async consumeVerification(token: string, purpose: VerificationPurpose): Promise<string> {
+  /** 이메일 인증 토큰을 한 번 쓰고 인증된 이메일을 돌려준다 (가입 마무리 POST /me/consent 도 쓴다) */
+  async consumeVerification(token: string, purpose: VerificationPurpose): Promise<string> {
     const claims = await verifyPurposeToken<{ email: string; purpose: string; jti?: string }>(
       token,
       'verify',
@@ -167,6 +171,7 @@ export class AuthService {
   // ───── 가입 · 로그인 ─────
 
   async signup(input: SignupInput, client: ClientInfo) {
+    assertClean({ nickname: input.nickname });
     const email = await this.consumeVerification(input.verificationToken, 'SIGNUP');
     const taken = await this.prisma.profile.findUnique({
       where: { nickname: input.nickname },
@@ -176,13 +181,18 @@ export class AuthService {
     const existing = await this.prisma.user.findUnique({ where: { email } });
     if (existing) throw new AppException('CONFLICT', '이미 가입된 이메일입니다. 로그인해주세요.');
 
+    const now = new Date();
     const user = await this.prisma.user.create({
       data: {
         email,
         passwordHash: await AuthService.hashPassword(input.password),
-        emailVerifiedAt: new Date(),
-        termsAgreedAt: new Date(),
+        emailVerifiedAt: now,
+        // 스키마가 세 필수 동의(literal true)를 모두 확인했다
+        termsAgreedAt: now,
+        privacyAgreedAt: now,
+        ageConfirmedAt: now,
         marketingOptIn: input.agreeMarketing,
+        marketingAgreedAt: input.agreeMarketing ? now : null,
         profile: { create: { nickname: input.nickname } },
       },
     });
@@ -322,9 +332,14 @@ export class AuthService {
       const ok =
         user.passwordHash && (await argon2.verify(user.passwordHash, input.password).catch(() => false));
       if (!ok) throw new AppException('INVALID_CREDENTIALS', '비밀번호가 올바르지 않습니다.', undefined, 400);
-    } else {
-      const email = await this.consumeVerification(input.verificationToken!, 'DELETE_ACCOUNT');
+    } else if (input.verificationToken) {
+      const email = await this.consumeVerification(input.verificationToken, 'DELETE_ACCOUNT');
       if (email !== user.email) throw new AppException('INVALID_TOKEN');
+    } else if (input.provider) {
+      // 비밀번호도 실제 이메일도 없는 소셜 가입자(…@social.invalid)는 연결된 소셜 계정으로 확인한다
+      await this.oauth.assertOwnership(userId, { ...input, provider: input.provider });
+    } else {
+      throw new AppException('VALIDATION_FAILED');
     }
 
     const [orders, auctions, highest] = await Promise.all([
@@ -340,6 +355,9 @@ export class AuthService {
     if (orders || auctions || highest)
       throw new AppException('ACCOUNT_HAS_ACTIVE_TRADES', undefined, undefined, 409);
 
+    // Apple 로그인 연동은 탈퇴 시 폐기한다 (App Store 5.1.1(v)) — 연결 행을 지우기 전에 토큰을 읽어 둔다
+    const appleTokens = await this.oauth.appleTokensOf(userId);
+
     // 거래·리뷰 기록은 법적 보관 의무와 상대방 기록 보존을 위해 익명 상태로 남긴다 (docs/AUTH.md §7)
     await this.prisma.$transaction([
       this.prisma.user.update({
@@ -353,6 +371,7 @@ export class AuthService {
           verifiedNameMasked: null,
           phoneMasked: null,
           marketingOptIn: false,
+          marketingAgreedAt: null,
         },
       }),
       this.prisma.profile.update({
@@ -377,5 +396,6 @@ export class AuthService {
     ]);
     await this.sessions.revokeAll(userId);
     await invalidateUserStatus(this.redis, userId);
+    await this.oauth.revoke(appleTokens);
   }
 }

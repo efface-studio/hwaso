@@ -21,6 +21,7 @@ import { cardInclude, cardSelect, toCard } from '../products/product.mapper';
 import { decodeCursor, encodeCursor, HOME_CACHE_KEY, ProductsService } from '../products/products.service';
 import { RealtimeGateway, RealtimeService } from '../realtime/realtime';
 import { RedisService } from '../redis/redis.service';
+import { SafetyService } from '../safety/safety.controller';
 import { toAuctionDto } from './auction.mapper';
 import { readAuctionPolicy } from './auction-policy';
 
@@ -36,6 +37,7 @@ export class AuctionsService {
     private readonly gateway: RealtimeGateway,
     private readonly products: ProductsService,
     private readonly events: NotificationEvents,
+    private readonly safety: SafetyService,
   ) {}
 
   private policy() {
@@ -329,6 +331,8 @@ export class AuctionsService {
       deletedAt: null,
       publishedAt: { not: null },
       auction: { status: { in: statuses } },
+      // 내가 차단한 판매자의 경매는 뺀다
+      ...(await this.safety.excludeBlocked(viewer?.id, 'sellerId')),
     };
     const orderBy: Prisma.ProductOrderByWithRelationInput[] =
       q.status === 'ended'

@@ -90,6 +90,7 @@ const en: Translation<typeof ko> = {
     notices: 'Notices',
     support: 'Help & policies',
     feed: 'Following',
+    consent: 'Finish signing up',
   },
   language: {
     title: 'Language',
@@ -168,6 +169,18 @@ const en: Translation<typeof ko> = {
   push: {
     channelName: 'General notifications',
   },
+  pushPrompt: {
+    title: 'Turn on notifications?',
+    reason: {
+      chat: 'We’ll let you know as soon as they reply.',
+      bid: 'We’ll let you know if someone outbids you or the auction ends.',
+      favorite: 'We’ll let you know when a saved piece changes price or goes to auction.',
+      follow: 'We’ll let you know when sellers you follow post new work.',
+    },
+    hint: 'You can change which notifications you get, and when, in Settings anytime.',
+    allow: 'Turn on notifications',
+    later: 'Not now',
+  },
   auctionLive: {
     outbid: "You've been outbid",
     extended: 'Extended by {{seconds}}s after a last-minute bid',
@@ -185,6 +198,7 @@ const en: Translation<typeof ko> = {
     bidIncrement: 'The bid increment must be at least ₩100.',
     endAfterStart: 'The end time must be after the start time.',
     buyNowAboveStart: 'The buy-now price must be higher than the starting price.',
+    prohibited: 'This contains words that aren’t allowed. Please edit it and try again.',
   },
 };
 

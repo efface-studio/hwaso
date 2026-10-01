@@ -7,13 +7,18 @@ let seq = 0;
 const uid = () =>
   `${Date.now().toString(36)}${(++seq).toString(36)}${Math.random().toString(36).slice(2, 5)}`;
 
-export async function createUser(t: TestContext, role: Role = 'USER') {
+/** 기본은 필수 동의를 마친 회원. consent: false 면 소셜 첫 로그인처럼 동의 전 상태 */
+export async function createUser(t: TestContext, role: Role = 'USER', opts: { consent?: boolean } = {}) {
   const id = uid();
+  const agreedAt = opts.consent === false ? null : new Date();
   const user = await t.prisma.user.create({
     data: {
       email: `${id}@test.local`,
       role,
       emailVerifiedAt: new Date(),
+      termsAgreedAt: agreedAt,
+      privacyAgreedAt: agreedAt,
+      ageConfirmedAt: agreedAt,
       profile: { create: { nickname: `u_${id}`.slice(0, 20) } },
     },
   });

@@ -6,6 +6,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { cardSelect, PUBLIC_PRODUCT, toCard } from '../products/product.mapper';
 import { decodeCursor, encodeCursor, ProductsService } from '../products/products.service';
+import { SafetyService } from '../safety/safety.controller';
 
 const PAGE = 30;
 
@@ -15,6 +16,7 @@ export class FollowsService {
     private readonly prisma: PrismaService,
     private readonly notifications: NotificationsService,
     private readonly products: ProductsService,
+    private readonly safety: SafetyService,
   ) {}
 
   async follow(user: AuthUser, targetId: string) {
@@ -102,7 +104,11 @@ export class FollowsService {
   /** 팔로우한 판매자의 새 작품 (최신 게시순) */
   async feed(user: AuthUser, cursor: string | undefined) {
     const offset = decodeCursor(cursor);
-    const where = { ...PUBLIC_PRODUCT, seller: { followers: { some: { followerId: user.id } } } };
+    const where = {
+      ...PUBLIC_PRODUCT,
+      ...(await this.safety.excludeBlocked(user.id, 'sellerId')),
+      seller: { followers: { some: { followerId: user.id } } },
+    };
     const rows = await this.prisma.product.findMany({
       where,
       select: cardSelect,

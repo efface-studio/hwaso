@@ -1,11 +1,16 @@
 import type { ReviewDto, ReviewSummaryDto } from '@shop/shared';
 import { Image } from 'expo-image';
+import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Avatar } from '@/components/ui/avatar';
+import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { formatDate } from '@/i18n/format';
+import { actionSheet } from '@/lib/action-sheet';
 import { mediaUrl } from '@/lib/media';
+import { requireLogin } from '@/lib/require-login';
+import { useAuthStore } from '@/stores/auth';
 import { useTheme } from '@/theme';
 
 export function Stars({ value, size = 14 }: { value: number; size?: number }) {
@@ -61,9 +66,20 @@ export function ReviewSummary({ s }: { s: ReviewSummaryDto }) {
   );
 }
 
+/** 후기 한 건. 다른 사람이 쓴 후기는 오른쪽 위 메뉴에서 신고할 수 있다 */
 export function ReviewItem({ r }: { r: ReviewDto }) {
   const t = useTheme();
-  const { t: tr } = useTranslation('product');
+  const { t: tr } = useTranslation(['product', 'common']);
+  const mine = useAuthStore((s) => s.user?.id === r.author.id);
+  const menu = () =>
+    actionSheet(tr('review.menuTitle', { name: r.author.nickname }), [
+      {
+        label: tr('common:action.report'),
+        destructive: true,
+        onPress: () =>
+          requireLogin() && router.push({ pathname: '/report', params: { type: 'REVIEW', id: r.id } }),
+      },
+    ]);
   return (
     <View style={[styles.item, { borderColor: t.colors.borderSoft }]}>
       <View style={styles.row}>
@@ -76,6 +92,17 @@ export function ReviewItem({ r }: { r: ReviewDto }) {
           </Text>
         </View>
         <Stars value={r.rating} />
+        {!mine && (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={tr('review.more')}
+            hitSlop={8}
+            onPress={menu}
+            style={[styles.more, { minWidth: t.touch, minHeight: t.touch }]}
+          >
+            <Icon ios="ellipsis" android="more_horiz" color="muted" size={18} />
+          </Pressable>
+        )}
       </View>
       <Text>{r.comment}</Text>
       {r.images.length > 0 && (
@@ -109,4 +136,5 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
   },
   row: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  more: { alignItems: 'center', justifyContent: 'center', marginVertical: -8, marginRight: -12 },
 });

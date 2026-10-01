@@ -34,14 +34,21 @@ export interface UserSummary {
 
 export interface MeDto {
   id: string;
+  /** emailMissing 이면 내부용 임시 주소(…@social.invalid)다 — 화면에 보이지 않는다 */
   email: string;
   role: Role;
   emailVerified: boolean;
+  /** 이메일을 주지 않는 소셜 provider 로 가입해 아직 실제 이메일이 없다 — 가입 마무리(POST /me/consent)에서 받는다 */
+  emailMissing: boolean;
   hasPassword: boolean;
   isSeller: boolean;
   identityVerified: boolean;
   isAdult: boolean;
   socialProviders: AuthProvider[];
+  /** 필수 동의(이용약관·개인정보 수집·이용·만 14세 이상)를 받지 않은 상태 — POST /me/consent 전까지 쓰기 요청은 403 CONSENT_REQUIRED */
+  consentRequired: boolean;
+  /** 마케팅(광고성 정보) 수신 동의 — POST /me/consent 로 바꾼다 */
+  marketingOptIn: boolean;
   profile: {
     nickname: string;
     bio: string;
@@ -146,6 +153,8 @@ export interface ProductDetailDto extends ProductCardDto {
   provenance: { id: string; kind: ProvenanceKind; period: string; title: string; description: string }[];
   seller: UserSummary & { ratingAvg: number; ratingCount: number; tradeCount: number; verified: boolean };
   isMine: boolean;
+  /** 내가 차단한 판매자의 작품 (상세는 열리지만 클라이언트가 가림 처리) */
+  blockedByMe: boolean;
 }
 
 export interface AuctionDto {

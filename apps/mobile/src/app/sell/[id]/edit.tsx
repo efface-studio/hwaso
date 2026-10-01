@@ -1,5 +1,11 @@
 import { ApiError } from '@shop/api-client';
-import { draftFromProduct, draftToInput, updateProductSchema, type ProductDraft } from '@shop/shared';
+import {
+  containsProhibited,
+  draftFromProduct,
+  draftToInput,
+  updateProductSchema,
+  type ProductDraft,
+} from '@shop/shared';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState, type ReactNode } from 'react';
@@ -98,9 +104,12 @@ export default function EditProductScreen() {
       ? { ...input, images: undefined, price: undefined, saleType: undefined }
       : input;
     const r = updateProductSchema.safeParse(body);
-    if (!r.success) {
-      const e: Record<string, string> = {};
-      for (const i of r.error.issues) e[i.path.join('.')] ??= schemaMessage(i.message);
+    const e: Record<string, string> = {};
+    if (!r.success) for (const i of r.error.issues) e[i.path.join('.')] ??= schemaMessage(i.message);
+    // 쓸 수 없는 표현은 서버도 막지만, 입력한 자리에서 먼저 알려 준다
+    if (containsProhibited(d.title)) e.title ??= tr('common:validation.prohibited');
+    if (containsProhibited(d.description)) e.description ??= tr('common:validation.prohibited');
+    if (!r.success || Object.keys(e).length) {
       setErrors(e);
       return;
     }

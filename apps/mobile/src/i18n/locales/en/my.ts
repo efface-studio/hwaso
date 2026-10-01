@@ -11,11 +11,13 @@ const en: Translation<typeof ko> = {
     viewProfile: 'View my profile',
     loginPrompt: 'Log in to bid, buy, and chat',
     login: 'Log in',
+    signup: 'Sign up',
     group: {
       shopping: 'Shopping',
       community: 'Community',
       account: 'Account',
       display: 'Display',
+      service: 'Help',
     },
     menu: {
       orders: 'Purchases',
@@ -38,6 +40,8 @@ const en: Translation<typeof ko> = {
     },
     logout: 'Log out',
     logoutConfirm: 'Log out?',
+    appInfo: 'App info',
+    appVersion: 'Version {{version}}',
   },
   people: {
     followers: 'Followers',
@@ -108,7 +112,7 @@ const en: Translation<typeof ko> = {
   },
   identity: {
     notReadyTitle: 'Identity verification unavailable',
-    notReadyMessage: 'PASS verification will be available once the PortOne key is configured.',
+    notReadyMessage: 'Identity verification isn’t available right now. Please try again later.',
     doneTitle: "You're verified",
     failedTitle: "Couldn't complete verification",
     verified: 'Verified · PASS',
@@ -163,6 +167,11 @@ const en: Translation<typeof ko> = {
     always: 'Account and service notices are always sent.',
     quietHours: 'Quiet hours',
     quietHoursDescription: 'No push notifications from {{start}}:00 to {{end}}:00.',
+    marketingGroup: 'Marketing',
+    marketing: 'Marketing messages (optional)',
+    marketingDescription: 'Get news about events and offers by push and email.',
+    marketingAgreed: 'You agreed to receive marketing messages on {{date}}.',
+    marketingDeclined: 'You opted out of marketing messages on {{date}}.',
   },
   blocks: {
     notice: "You can't chat with users you've blocked.",
@@ -189,6 +198,12 @@ const en: Translation<typeof ko> = {
     confirmMessage: "Your saved artworks, listings, and follows will be deleted. This can't be undone.",
     doneTitle: 'Your account has been deleted',
     doneMessage: 'Thank you for using Hwaso.',
+    socialTitle: 'Confirm with your linked social account',
+    socialOr: 'Or confirm with a social account',
+    socialVerify: 'Confirm with {{provider}}',
+    socialVerified: 'Confirmed with {{provider}}.',
+    contactSupport:
+      'We can’t confirm your identity in the app right now. Please contact support ({{email}}) to delete your account.',
   },
   user: {
     verifiedSeller: 'Verified seller',
@@ -273,6 +288,7 @@ const en: Translation<typeof ko> = {
     title: {
       terms: 'Terms of service',
       privacy: 'Privacy policy',
+      refund: 'Cancellation & refunds',
       auction: 'Auction policy',
       authenticity: 'Inspection & authenticity policy',
     },

@@ -15,6 +15,7 @@ import { Switch } from '@/components/ui/choice';
 import { Skeleton } from '@/components/ui/display';
 import { api } from '@/lib/api';
 import { disableWebPush, enableWebPush, webPushState, type WebPushState } from '@/lib/web-push';
+import { useAuthStore } from '@/stores/auth';
 import { toast } from '@/stores/toast';
 
 const PUSH_TEXT: Record<WebPushState, string> = {
@@ -63,6 +64,37 @@ function BrowserPush() {
   );
 }
 
+/**
+ * 선택 동의: 마케팅 정보 수신. 바꾸면 처리 결과(날짜·동의 여부)를 알린다 (정보통신망법 수신동의 처리결과 고지).
+ * 광고성 알림은 동의한 회원에게만, 밤 9시~아침 8시에는 푸시 없이 보낸다.
+ */
+function Marketing() {
+  const user = useAuthStore((s) => s.user);
+  const setUser = useAuthStore((s) => s.setUser);
+  const save = useMutation({
+    mutationFn: (marketing: boolean) =>
+      api.auth.consent({ terms: true, privacy: true, ageOver14: true, marketing }),
+    onSuccess: (me) => {
+      setUser(me);
+      const date = new Date().toLocaleDateString('ko-KR');
+      toast.success(`${date} 마케팅 정보 수신에 ${me.marketingOptIn ? '동의했어요' : '동의를 철회했어요'}.`);
+    },
+    onError: (e) => toast.error(e instanceof ApiError ? e.message : '저장하지 못했습니다.'),
+  });
+  if (!user) return null;
+  return (
+    <section className="flex flex-col gap-4 border-t border-border pt-6">
+      <Switch
+        checked={user.marketingOptIn}
+        disabled={save.isPending}
+        onCheckedChange={(v) => save.mutate(v)}
+        label="마케팅 정보 수신 (선택)"
+        description="기획전·할인 소식을 알림으로 받아요. 언제든 끌 수 있어요."
+      />
+    </section>
+  );
+}
+
 function Prefs() {
   const qc = useQueryClient();
   const { data } = useQuery({ queryKey: ['notification-prefs'], queryFn: api.notifications.prefs });
@@ -101,6 +133,7 @@ function Prefs() {
           description={`밤 ${QUIET_HOURS.start}시부터 아침 ${QUIET_HOURS.end}시까지 푸시를 보내지 않아요.`}
         />
       </section>
+      <Marketing />
     </div>
   );
 }

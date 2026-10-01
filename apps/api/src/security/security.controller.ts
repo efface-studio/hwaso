@@ -2,7 +2,7 @@ import { Body, Controller, Get, Global, HttpCode, Module, Post, Query, Req } fro
 import { integrityReportSchema, type IntegrityReportInput } from '@shop/shared';
 import type { Request } from 'express';
 import { z } from 'zod';
-import { CurrentUser, type AuthUser } from '../common/auth';
+import { ConsentExempt, CurrentUser, type AuthUser } from '../common/auth';
 import { clientIp, RateLimit } from '../common/rate-limit';
 import { ZodPipe } from '../common/zod.pipe';
 import { ReauthGuard } from './reauth.guard';
@@ -20,7 +20,8 @@ export class SecurityController {
     return this.security.list(user.id, q.cursor);
   }
 
-  /** 앱이 탐지한 기기 무결성 신호 신고 — 경고만 남기고 이용을 막지 않는다 */
+  /** 앱이 탐지한 기기 무결성 신호 신고 — 경고만 남기고 이용을 막지 않는다 (약관 동의 전에도 기록한다) */
+  @ConsentExempt()
   @Post('integrity')
   @HttpCode(204)
   @RateLimit({ name: 'integrity', limit: 30, windowSec: 3600, by: 'user' })

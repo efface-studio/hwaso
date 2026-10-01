@@ -37,6 +37,8 @@ async function signup(device: Device = ios, password = 'abcd1234') {
       password,
       nickname: `보안${Date.now() % 1e7}${n}`,
       agreeTerms: true,
+      agreePrivacy: true,
+      ageOver14: true,
       device,
     })
     .expect(201);

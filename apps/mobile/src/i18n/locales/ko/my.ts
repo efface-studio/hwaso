@@ -9,11 +9,13 @@ const ko = {
     viewProfile: '내 프로필 보기',
     loginPrompt: '로그인하고 입찰·구매·채팅을 시작하세요',
     login: '로그인',
+    signup: '회원가입',
     group: {
       shopping: '쇼핑',
       community: '커뮤니티',
       account: '계정',
       display: '화면',
+      service: '고객 지원',
     },
     menu: {
       orders: '구매 내역',
@@ -36,6 +38,8 @@ const ko = {
     },
     logout: '로그아웃',
     logoutConfirm: '로그아웃할까요?',
+    appInfo: '앱 정보',
+    appVersion: '버전 {{version}}',
   },
   people: {
     followers: '팔로워',
@@ -106,7 +110,7 @@ const ko = {
   },
   identity: {
     notReadyTitle: '본인인증 준비 중',
-    notReadyMessage: 'PASS 본인인증은 PortOne 키 설정 후 사용할 수 있어요.',
+    notReadyMessage: '지금은 본인인증을 할 수 없어요. 잠시 후 다시 시도해 주세요.',
     doneTitle: '본인인증을 완료했어요',
     failedTitle: '본인인증을 완료하지 못했어요',
     verified: '본인인증 완료 · PASS',
@@ -161,6 +165,11 @@ const ko = {
     always: '계정·운영 공지는 항상 보내드려요.',
     quietHours: '방해 금지 시간',
     quietHoursDescription: '밤 {{start}}시부터 아침 {{end}}시까지 푸시를 보내지 않아요.',
+    marketingGroup: '광고성 정보',
+    marketing: '마케팅 정보 수신 (선택)',
+    marketingDescription: '이벤트·혜택 소식을 푸시와 이메일로 받아요.',
+    marketingAgreed: '{{date}} 마케팅 정보 수신에 동의했어요.',
+    marketingDeclined: '{{date}} 마케팅 정보 수신을 거부했어요.',
   },
   blocks: {
     notice: '차단한 사용자와는 채팅을 주고받을 수 없어요.',
@@ -186,6 +195,11 @@ const ko = {
     confirmMessage: '관심 작품, 판매 중인 작품, 팔로우 정보가 삭제되며 되돌릴 수 없어요.',
     doneTitle: '탈퇴가 완료되었어요',
     doneMessage: '그동안 화소를 이용해 주셔서 감사합니다.',
+    socialTitle: '가입한 소셜 계정으로 본인 확인',
+    socialOr: '또는 소셜 계정으로 본인 확인',
+    socialVerify: '{{provider}} 계정으로 확인',
+    socialVerified: '{{provider}} 계정으로 확인했어요.',
+    contactSupport: '지금은 앱에서 본인 확인을 할 수 없어요. 고객센터({{email}})로 탈퇴를 요청해 주세요.',
   },
   user: {
     verifiedSeller: '인증 판매자',
@@ -270,6 +284,7 @@ const ko = {
     title: {
       terms: '이용약관',
       privacy: '개인정보 처리방침',
+      refund: '청약철회·환불 안내',
       auction: '경매 운영 정책',
       authenticity: '검수·진품 보증 정책',
     },

@@ -10,6 +10,8 @@ export const ERROR_MESSAGES = {
   CHAT_DUPLICATE: '같은 메시지를 반복해서 보낼 수 없어요.',
   INTERNAL: '잠시 문제가 발생했습니다. 다시 시도해주세요.',
   DEMO_DISABLED: '데모에서는 사용할 수 없는 기능이에요.',
+  CONSENT_REQUIRED: '서비스 이용약관과 개인정보 수집·이용에 동의한 뒤 이용할 수 있어요.',
+  PROHIBITED_CONTENT: '부적절한 표현이 포함되어 있어요. 내용을 수정해 주세요.',
 
   INVALID_CREDENTIALS: '이메일 또는 비밀번호가 올바르지 않습니다.',
   ACCOUNT_LOCKED: '로그인 시도가 많아 잠시 잠겼습니다. 15분 후 다시 시도해주세요.',

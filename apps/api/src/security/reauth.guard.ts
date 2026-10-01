@@ -22,9 +22,21 @@ export const REAUTH_ENFORCED_PLATFORMS: readonly string[] = ['ios', 'android'];
 interface ReauthOptions {
   /** true 면 웹 세션에도 요구한다 (생체 키 등록처럼 앱 전용 기능) */
   allPlatforms?: boolean;
+  /**
+   * true 면 본문의 소셜 재인증(`provider` + OAuth 결과·Apple identityToken)을 재인증으로 인정한다 (탈퇴).
+   * provider 로 방금 다시 로그인한 결과이고, 핸들러가 그 계정이 이 회원에게 연결돼 있는지 확인한 뒤에만 진행한다.
+   * 비밀번호도 실제 이메일도 없는 소셜 가입자는 재인증 토큰을 받을 방법이 없어 이 경로로만 탈퇴할 수 있다.
+   */
+  socialProof?: boolean;
 }
 
 const REAUTH = 'auth:reauth';
+
+/** 비밀번호·이메일 인증 없이 소셜 재인증만 담긴 본문 — 핸들러가 이 증명으로만 본인을 확인한다 */
+const isSocialProofOnly = (body: unknown) => {
+  const b = (body ?? {}) as { provider?: unknown; password?: unknown; verificationToken?: unknown };
+  return typeof b.provider === 'string' && !b.password && !b.verificationToken;
+};
 
 /**
  * 민감 작업 step-up 재인증 (docs/SECURITY.md §계정 보안).
@@ -51,6 +63,7 @@ export class ReauthGuard implements CanActivate {
     const session = await this.security.liveSession(user);
     if (!session) throw new AppException('INVALID_TOKEN');
     if (!opts.allPlatforms && !REAUTH_ENFORCED_PLATFORMS.includes(session.platform)) return true;
+    if (opts.socialProof && isSocialProofOnly(req.body)) return true;
 
     const header = req.headers[REAUTH_HEADER];
     const token = typeof header === 'string' ? header : null;

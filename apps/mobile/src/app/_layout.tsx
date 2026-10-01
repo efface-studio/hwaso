@@ -22,6 +22,7 @@ import { AnimatedSplash } from '@/components/animated-splash';
 import { AppLock } from '@/components/app-lock';
 import { OfflineBanner } from '@/components/offline-banner';
 import { PrivacyShield } from '@/components/privacy-shield';
+import { PushPromptHost } from '@/components/push-prompt-host';
 import { ReauthHost } from '@/components/reauth-host';
 import { preloadTabIcons } from '@/components/tab-icons';
 import { refreshAccessToken } from '@/lib/api';
@@ -71,6 +72,8 @@ function Navigation() {
   const { t: tr } = useTranslation();
   const user = useAuthStore((s) => s.user);
   const signedIn = !!user;
+  // 필수 약관 동의가 남았으면 동의 화면만 (서버도 동의 전 쓰기 요청을 막는다)
+  const consentPending = !!user?.consentRequired;
   const admin = isAdmin(user);
   const base = t.dark ? DarkTheme : DefaultTheme;
   return (
@@ -89,22 +92,13 @@ function Navigation() {
     >
       <StatusBar style={t.dark ? 'light' : 'dark'} />
       <Stack screenOptions={{ headerBackButtonDisplayMode: 'minimal', headerTitleStyle: t.type('h3') }}>
-        {/* 로그인해야 앱에 들어간다 — 로그인·로그아웃하면 가드가 바뀌며 자동으로 홈/로그인으로 이동한다 */}
-        <Stack.Protected guard={!signedIn}>
-          <Stack.Screen name="login" options={{ headerShown: false, animation: 'fade' }} />
-          <Stack.Screen name="signup" options={{ title: tr('screen.signup') }} />
-          <Stack.Screen name="forgot-password" options={{ title: tr('screen.forgotPassword') }} />
+        {/* 약관 동의가 남은 계정은 동의 화면만 열린다 (소셜 첫 로그인 등). 동의하면 가드가 바뀌며 홈으로 */}
+        <Stack.Protected guard={consentPending}>
+          <Stack.Screen name="consent" options={{ title: tr('screen.consent'), gestureEnabled: false }} />
         </Stack.Protected>
-        <Stack.Screen name="auth/callback" options={{ headerShown: false }} />
-        <Stack.Screen name="bridge" options={{ headerShown: false, animation: 'none' }} />
-        {/* 약관은 가입 전에도 본다 */}
-        <Stack.Screen name="policies/[slug]" options={{ title: '' }} />
-        <Stack.Protected guard={signedIn}>
+        <Stack.Protected guard={!consentPending}>
+          {/* 둘러보기: 탭·작품·경매·프로필·공지·고객센터는 로그인하지 않아도 본다 */}
           <Stack.Screen name="(tabs)" options={{ headerShown: false, animation: 'fade' }} />
-          {/* 관리자 앱: 관리자 계정에만 열린다 (실제 권한 검사는 API) */}
-          <Stack.Protected guard={admin}>
-            <Stack.Screen name="admin" options={{ headerShown: false, animation: 'fade' }} />
-          </Stack.Protected>
           <Stack.Screen name="products/[id]/index" options={{ title: '' }} />
           <Stack.Screen
             name="products/[id]/viewer"
@@ -112,46 +106,65 @@ function Navigation() {
           />
           <Stack.Screen name="search" options={{ title: tr('screen.search') }} />
           <Stack.Screen name="auctions/[id]" options={{ title: tr('screen.auction') }} />
-          <Stack.Screen name="chat/[id]" options={{ title: tr('screen.chat') }} />
-          <Stack.Screen name="notifications" options={{ title: tr('screen.notifications') }} />
-          <Stack.Screen name="report" options={modal(tr('screen.report'), tr('action.close'))} />
-          <Stack.Screen name="cart" options={{ title: tr('screen.cart') }} />
-          <Stack.Screen name="checkout" options={{ title: tr('screen.checkout') }} />
-          <Stack.Screen name="orders/index" options={{ title: tr('screen.orders') }} />
-          <Stack.Screen name="orders/[id]/index" options={{ title: tr('screen.orderDetail') }} />
-          <Stack.Screen name="orders/[id]/review" options={modal(tr('screen.review'), tr('action.close'))} />
-          <Stack.Screen name="addresses/index" options={{ title: tr('screen.addresses') }} />
-          <Stack.Screen name="addresses/edit" options={modal(tr('screen.address'), tr('action.close'))} />
-          <Stack.Screen
-            name="sell/new"
-            options={{ presentation: 'fullScreenModal', title: tr('screen.sellNew') }}
-          />
-          <Stack.Screen name="sell/[id]/edit" options={{ title: tr('screen.sellEdit') }} />
-          <Stack.Screen name="sell/[id]/auction" options={{ title: tr('screen.auctionNew') }} />
-          <Stack.Screen name="seller/register" options={{ title: tr('screen.sellerRegister') }} />
-          <Stack.Screen name="seller/products" options={{ title: tr('screen.sellerProducts') }} />
-          <Stack.Screen name="seller/settlements" options={{ title: tr('screen.settlements') }} />
-          <Stack.Screen name="settings/index" options={{ title: tr('screen.settings') }} />
-          <Stack.Screen name="settings/profile" options={{ title: tr('screen.profile') }} />
-          <Stack.Screen name="settings/password" options={{ title: tr('screen.password') }} />
-          <Stack.Screen name="settings/identity" options={{ title: tr('screen.identity') }} />
-          <Stack.Screen name="settings/social" options={{ title: tr('screen.social') }} />
-          <Stack.Screen name="settings/devices" options={{ title: tr('screen.devices') }} />
-          <Stack.Screen name="settings/security" options={{ title: '' }} />
-          <Stack.Screen
-            name="settings/notifications"
-            options={{ title: tr('screen.notificationSettings') }}
-          />
-          <Stack.Screen name="settings/blocks" options={{ title: tr('screen.blocks') }} />
-          <Stack.Screen name="settings/reports" options={{ title: tr('screen.reports') }} />
-          <Stack.Screen name="settings/delete" options={{ title: tr('screen.deleteAccount') }} />
           <Stack.Screen name="users/[id]/index" options={{ title: '' }} />
           <Stack.Screen name="users/[id]/follows" options={{ title: tr('screen.followers') }} />
           <Stack.Screen name="notices/index" options={{ title: tr('screen.notices') }} />
           <Stack.Screen name="notices/[id]" options={{ title: tr('screen.notices') }} />
           <Stack.Screen name="support" options={{ title: tr('screen.support') }} />
-          <Stack.Screen name="feed" options={{ title: tr('screen.feed') }} />
+          {/* 로그인은 첫 화면이 아니라 필요할 때 띄우는 화면 — 로그인하면 가드가 빼 주어 보던 화면으로 돌아간다 */}
+          <Stack.Protected guard={!signedIn}>
+            <Stack.Screen name="login" options={{ headerShown: false, animation: 'slide_from_bottom' }} />
+            <Stack.Screen name="signup" options={{ title: tr('screen.signup') }} />
+            <Stack.Screen name="forgot-password" options={{ title: tr('screen.forgotPassword') }} />
+          </Stack.Protected>
+          <Stack.Protected guard={signedIn}>
+            {/* 관리자 앱: 관리자 계정에만 열린다 (실제 권한 검사는 API) */}
+            <Stack.Protected guard={admin}>
+              <Stack.Screen name="admin" options={{ headerShown: false, animation: 'fade' }} />
+            </Stack.Protected>
+            <Stack.Screen name="chat/[id]" options={{ title: tr('screen.chat') }} />
+            <Stack.Screen name="notifications" options={{ title: tr('screen.notifications') }} />
+            <Stack.Screen name="report" options={modal(tr('screen.report'), tr('action.close'))} />
+            <Stack.Screen name="cart" options={{ title: tr('screen.cart') }} />
+            <Stack.Screen name="checkout" options={{ title: tr('screen.checkout') }} />
+            <Stack.Screen name="orders/index" options={{ title: tr('screen.orders') }} />
+            <Stack.Screen name="orders/[id]/index" options={{ title: tr('screen.orderDetail') }} />
+            <Stack.Screen
+              name="orders/[id]/review"
+              options={modal(tr('screen.review'), tr('action.close'))}
+            />
+            <Stack.Screen name="addresses/index" options={{ title: tr('screen.addresses') }} />
+            <Stack.Screen name="addresses/edit" options={modal(tr('screen.address'), tr('action.close'))} />
+            <Stack.Screen
+              name="sell/new"
+              options={{ presentation: 'fullScreenModal', title: tr('screen.sellNew') }}
+            />
+            <Stack.Screen name="sell/[id]/edit" options={{ title: tr('screen.sellEdit') }} />
+            <Stack.Screen name="sell/[id]/auction" options={{ title: tr('screen.auctionNew') }} />
+            <Stack.Screen name="seller/register" options={{ title: tr('screen.sellerRegister') }} />
+            <Stack.Screen name="seller/products" options={{ title: tr('screen.sellerProducts') }} />
+            <Stack.Screen name="seller/settlements" options={{ title: tr('screen.settlements') }} />
+            <Stack.Screen name="settings/index" options={{ title: tr('screen.settings') }} />
+            <Stack.Screen name="settings/profile" options={{ title: tr('screen.profile') }} />
+            <Stack.Screen name="settings/password" options={{ title: tr('screen.password') }} />
+            <Stack.Screen name="settings/identity" options={{ title: tr('screen.identity') }} />
+            <Stack.Screen name="settings/social" options={{ title: tr('screen.social') }} />
+            <Stack.Screen name="settings/devices" options={{ title: tr('screen.devices') }} />
+            <Stack.Screen name="settings/security" options={{ title: '' }} />
+            <Stack.Screen
+              name="settings/notifications"
+              options={{ title: tr('screen.notificationSettings') }}
+            />
+            <Stack.Screen name="settings/blocks" options={{ title: tr('screen.blocks') }} />
+            <Stack.Screen name="settings/reports" options={{ title: tr('screen.reports') }} />
+            <Stack.Screen name="settings/delete" options={{ title: tr('screen.deleteAccount') }} />
+            <Stack.Screen name="feed" options={{ title: tr('screen.feed') }} />
+          </Stack.Protected>
         </Stack.Protected>
+        <Stack.Screen name="auth/callback" options={{ headerShown: false }} />
+        <Stack.Screen name="bridge" options={{ headerShown: false, animation: 'none' }} />
+        {/* 약관은 가입·동의 전에도 본다 */}
+        <Stack.Screen name="policies/[slug]" options={{ title: '' }} />
       </Stack>
     </ThemeProvider>
   );
@@ -187,6 +200,7 @@ export default function RootLayout() {
           <OfflineBanner />
           <ActionSheetHost />
           <ReauthHost />
+          <PushPromptHost />
           <AppLock />
           {hydrated && !splashDone && <AnimatedSplash ready={ready} onFinish={finishSplash} />}
           {/* 앱 전환 화면(스냅숏)에 내용이 보이지 않게 — 가장 위에 */}

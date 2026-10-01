@@ -88,6 +88,7 @@ const ko = {
     notices: '공지사항',
     support: '고객센터',
     feed: '팔로잉 새 작품',
+    consent: '가입 마무리',
   },
   language: {
     title: '언어',
@@ -166,6 +167,18 @@ const ko = {
   push: {
     channelName: '기본 알림',
   },
+  pushPrompt: {
+    title: '알림을 켜 둘까요?',
+    reason: {
+      chat: '상대가 답장하면 바로 알려 드려요.',
+      bid: '다른 사람이 더 높게 입찰하거나 경매가 끝나면 알려 드려요.',
+      favorite: '관심 작품의 가격이 바뀌거나 경매가 시작되면 알려 드려요.',
+      follow: '팔로우한 판매자가 새 작품을 올리면 알려 드려요.',
+    },
+    hint: '받을 알림 종류와 시간은 설정에서 언제든 바꿀 수 있어요.',
+    allow: '알림 켜기',
+    later: '나중에',
+  },
   auctionLive: {
     outbid: '더 높은 입찰이 들어왔어요',
     extended: '마감 직전 입찰로 {{seconds}}초 연장되었어요',
@@ -183,6 +196,7 @@ const ko = {
     bidIncrement: '입찰 단위는 100원 이상이어야 합니다.',
     endAfterStart: '종료 시간은 시작 시간 이후여야 합니다.',
     buyNowAboveStart: '즉시 구매가는 시작가보다 높아야 합니다.',
+    prohibited: '쓸 수 없는 표현이 들어 있어요. 고쳐서 다시 입력해주세요.',
   },
 } as const;
 

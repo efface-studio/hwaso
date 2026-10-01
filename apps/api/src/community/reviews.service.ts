@@ -14,7 +14,9 @@ import { isUniqueViolation } from '../orders/order-state';
 import { toUserSummary } from '../orders/order.mapper';
 import { PrismaService } from '../prisma/prisma.service';
 import { mediaOwnerKey } from '../products/seller-products.service';
+import { assertClean } from '../common/moderation';
 import { RedisService } from '../redis/redis.service';
+import { SafetyService } from '../safety/safety.controller';
 
 const include = {
   author: { select: { id: true, profile: { select: { nickname: true, avatarKey: true } } } },
@@ -32,6 +34,7 @@ export class ReviewsService {
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
     private readonly notifications: NotificationsService,
+    private readonly safety: SafetyService,
   ) {}
 
   private async images(userId: string, keys: string[], existing: ImageDto[] = []): Promise<ImageDto[]> {
@@ -83,6 +86,7 @@ export class ReviewsService {
     if (!o || (o.buyerId !== user.id && o.sellerId !== user.id)) throw new AppException('NOT_FOUND');
     if (o.status !== 'COMPLETED')
       throw new AppException('INVALID_TRANSITION', '구매 확정된 거래만 후기를 남길 수 있습니다.');
+    assertClean({ comment: input.comment });
     const buyer = o.buyerId === user.id;
     const images = await this.images(user.id, input.imageKeys);
     try {
@@ -122,6 +126,7 @@ export class ReviewsService {
 
   async update(user: AuthUser, id: string, input: CreateReviewInput) {
     const r = await this.own(user, id);
+    assertClean({ comment: input.comment });
     if (!editable(r))
       throw new AppException(
         'INVALID_TRANSITION',
@@ -160,7 +165,12 @@ export class ReviewsService {
   async received(userId: string, cursor: string | undefined, viewerId?: string) {
     const PAGE = 20;
     const rows = await this.prisma.review.findMany({
-      where: { targetUserId: userId, deletedAt: null },
+      // 내가 차단한 사람이 쓴 후기는 보이지 않는다
+      where: {
+        targetUserId: userId,
+        deletedAt: null,
+        ...(await this.safety.excludeBlocked(viewerId, 'authorId')),
+      },
       include,
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       take: PAGE + 1,

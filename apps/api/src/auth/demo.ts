@@ -67,6 +67,8 @@ export class DemoAccountsService implements OnApplicationBootstrap {
         role: a.role,
         emailVerifiedAt: new Date(),
         termsAgreedAt: new Date(),
+        privacyAgreedAt: new Date(),
+        ageConfirmedAt: new Date(),
         profile: { create: { nickname } },
       },
     });

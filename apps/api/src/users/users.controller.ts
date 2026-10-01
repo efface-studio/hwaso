@@ -8,6 +8,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { cardSelect, toCard, VISIBLE_PRODUCT } from '../products/product.mapper';
 import { ProductsModule } from '../products/products.controller';
 import { ProductsService } from '../products/products.service';
+import { SafetyService } from '../safety/safety.controller';
 
 const productsQuery = z.object({ tab: z.enum(['selling', 'sold']).default('selling') });
 
@@ -16,6 +17,7 @@ export class UsersController {
   constructor(
     private readonly prisma: PrismaService,
     private readonly products: ProductsService,
+    private readonly safety: SafetyService,
   ) {}
 
   /** 공개 프로필 — 이메일·연락처 등 개인정보는 포함하지 않는다 (docs/SECURITY.md) */
@@ -83,6 +85,8 @@ export class UsersController {
     @Query(new ZodPipe(productsQuery)) q: { tab: 'selling' | 'sold' },
     @CurrentUser() viewer?: AuthUser,
   ) {
+    // 내가 차단한 판매자의 작품 목록은 비워서 준다
+    if ((await this.safety.blockedIds(viewer?.id)).includes(id)) return [];
     const rows = await this.prisma.product.findMany({
       where: {
         AND: [

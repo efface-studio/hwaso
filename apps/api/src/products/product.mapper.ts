@@ -111,7 +111,12 @@ export function toCard(p: CardRow, favorites?: Set<string>): ProductCardDto {
   };
 }
 
-export function toDetail(p: DetailRow, viewerId: string | undefined, isFavorite: boolean): ProductDetailDto {
+export function toDetail(
+  p: DetailRow,
+  viewerId: string | undefined,
+  isFavorite: boolean,
+  blockedByMe = false,
+): ProductDetailDto {
   const card = toCard(
     { ...p, images: p.images.slice(0, 1) } as CardRow,
     isFavorite ? new Set([p.id]) : undefined,
@@ -176,6 +181,7 @@ export function toDetail(p: DetailRow, viewerId: string | undefined, isFavorite:
       verified: p.seller.role === 'VERIFIED_SELLER',
     },
     isMine: viewerId === p.sellerId,
+    blockedByMe,
   };
 }
 

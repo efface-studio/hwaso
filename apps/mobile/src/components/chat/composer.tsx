@@ -1,3 +1,4 @@
+import { containsProhibited } from '@shop/shared';
 import { useImperativeHandle, useRef, useState, type Ref } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
@@ -28,9 +29,11 @@ export function Composer({
   onAttach: () => void;
 }) {
   const t = useTheme();
-  const { t: tr } = useTranslation('chat');
+  const { t: tr } = useTranslation(['chat', 'common']);
   const insets = useSafeAreaInsets();
   const [text, setText] = useState('');
+  /** 보내기 전에 걸러진 표현 안내 (서버도 같은 기준으로 막는다) */
+  const [prohibited, setProhibited] = useState(false);
   const input = useRef<TextInput>(null);
   const lastTyping = useRef(0);
 
@@ -47,73 +50,88 @@ export function Composer({
   const send = () => {
     const body = text.trim();
     if (!body) return;
+    if (containsProhibited(body)) return setProhibited(true);
     setText('');
     onSend(body);
   };
 
   return (
-    <View
-      style={[styles.composer, { borderColor: t.colors.border, paddingBottom: Math.max(insets.bottom, 8) }]}
-    >
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={tr('composer.attach')}
-        onPress={onAttach}
-        style={[styles.round, { width: t.touch, height: t.touch }]}
-      >
-        <Text variant="h2">＋</Text>
-      </Pressable>
-      <TextInput
-        ref={input}
-        accessibilityLabel={tr('composer.inputLabel')}
-        placeholder={tr('composer.placeholder')}
-        placeholderTextColor={t.colors.faint}
-        multiline
-        maxLength={1000}
-        value={text}
-        onChangeText={(v) => {
-          setText(v);
-          if (Date.now() - lastTyping.current > 1000) {
-            lastTyping.current = Date.now();
-            getRealtime().emit('chat:typing', { roomId });
-          }
-        }}
-        style={[
-          t.inputType(true),
-          styles.input,
-          {
-            color: t.colors.foreground,
-            backgroundColor: t.colors.surface2,
-            minHeight: t.touch,
-            // 한 줄일 때 글자가 입력칸 가운데 오도록 위아래 여백을 같게
-            paddingTop: (t.touch - t.inputLineHeight) / 2,
-            paddingBottom: (t.touch - t.inputLineHeight) / 2,
-          },
-        ]}
-      />
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={tr('composer.send')}
-        disabled={!ready}
-        onPress={send}
-        style={[
-          styles.round,
-          {
-            width: t.touch,
-            height: t.touch,
-            backgroundColor: ready ? t.colors.primary : t.colors.surface2,
-          },
-        ]}
-      >
-        <Text variant="bodyStrong" color={ready ? 'primaryForeground' : 'faint'}>
-          ↑
+    <>
+      {prohibited && (
+        <Text
+          variant="caption"
+          color="destructive"
+          accessibilityLiveRegion="polite"
+          style={styles.prohibited}
+        >
+          {tr('common:validation.prohibited')}
         </Text>
-      </Pressable>
-    </View>
+      )}
+      <View
+        style={[styles.composer, { borderColor: t.colors.border, paddingBottom: Math.max(insets.bottom, 8) }]}
+      >
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={tr('composer.attach')}
+          onPress={onAttach}
+          style={[styles.round, { width: t.touch, height: t.touch }]}
+        >
+          <Text variant="h2">＋</Text>
+        </Pressable>
+        <TextInput
+          ref={input}
+          accessibilityLabel={tr('composer.inputLabel')}
+          placeholder={tr('composer.placeholder')}
+          placeholderTextColor={t.colors.faint}
+          multiline
+          maxLength={1000}
+          value={text}
+          onChangeText={(v) => {
+            setText(v);
+            setProhibited(false);
+            if (Date.now() - lastTyping.current > 1000) {
+              lastTyping.current = Date.now();
+              getRealtime().emit('chat:typing', { roomId });
+            }
+          }}
+          style={[
+            t.inputType(true),
+            styles.input,
+            {
+              color: t.colors.foreground,
+              backgroundColor: t.colors.surface2,
+              minHeight: t.touch,
+              // 한 줄일 때 글자가 입력칸 가운데 오도록 위아래 여백을 같게
+              paddingTop: (t.touch - t.inputLineHeight) / 2,
+              paddingBottom: (t.touch - t.inputLineHeight) / 2,
+            },
+          ]}
+        />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={tr('composer.send')}
+          disabled={!ready}
+          onPress={send}
+          style={[
+            styles.round,
+            {
+              width: t.touch,
+              height: t.touch,
+              backgroundColor: ready ? t.colors.primary : t.colors.surface2,
+            },
+          ]}
+        >
+          <Text variant="bodyStrong" color={ready ? 'primaryForeground' : 'faint'}>
+            ↑
+          </Text>
+        </Pressable>
+      </View>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
+  prohibited: { paddingHorizontal: 16, paddingVertical: 6 },
   composer: {
     flexDirection: 'row',
     alignItems: 'flex-end',

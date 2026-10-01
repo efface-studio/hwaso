@@ -1,12 +1,18 @@
 import { createHash } from 'node:crypto';
-import { Injectable } from '@nestjs/common';
-import type { AuthProvider, DeviceInput } from '@shop/shared';
+import { Injectable, Logger } from '@nestjs/common';
+import {
+  containsProhibited,
+  SOCIAL_PLACEHOLDER_EMAIL_DOMAIN,
+  type AuthProvider,
+  type DeviceInput,
+} from '@shop/shared';
 import { AppException } from '../common/app-exception';
-import { randomToken } from '../common/crypto';
+import { decrypt, encrypt, randomToken } from '../common/crypto';
 import { env, isProd } from '../config/env';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
-import { type OAuthProfile, PROVIDERS, verifyAppleIdToken } from './oauth.providers';
+import { AppleAuthClient } from './apple.client';
+import { type OAuthProfile, PROVIDERS } from './oauth.providers';
 import { type ClientInfo, SessionService } from './session.service';
 
 const STATE_TTL_SEC = 600;
@@ -27,15 +33,34 @@ export const providerFromParam = (p: string): AuthProvider => {
 };
 
 /** API 가 받아서 앱으로 넘겨주는 모바일용 redirect_uri */
+/** 탈퇴 본인 확인용 소셜 재인증 (DeleteAccountInput 의 소셜 필드) */
+export interface SocialProof {
+  provider: string;
+  code?: string;
+  state?: string;
+  redirectUri?: string;
+  identityToken?: string;
+  authorizationCode?: string;
+}
+
+type RevokeTarget = { token: string; clientId: string };
+
+/** 암호화된 revoke 토큰 컬럼 값 */
+const tokenColumns = (t: OAuthProfile['revokeToken']) =>
+  t ? { refreshTokenEnc: encrypt(t.token), tokenClientId: t.clientId } : {};
+
 export const mobileRelayUri = (provider: AuthProvider) =>
   `${env().API_PUBLIC_URL}/api/v1/auth/oauth/${provider.toLowerCase()}/redirect`;
 
 @Injectable()
 export class OAuthService {
+  private readonly logger = new Logger(OAuthService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
     private readonly sessions: SessionService,
+    private readonly apple: AppleAuthClient,
   ) {}
 
   configured(): AuthProvider[] {
@@ -127,6 +152,12 @@ export class OAuthService {
             : undefined,
         );
       if (linked.user.status === 'DELETED') throw new AppException('INVALID_CREDENTIALS');
+      // 다시 로그인하며 새 refresh 토큰을 받았으면 갱신한다 (탈퇴 시 폐기용)
+      if (profile.revokeToken)
+        await this.prisma.socialAccount.update({
+          where: { id: linked.id },
+          data: tokenColumns(profile.revokeToken),
+        });
       const issued = await this.sessions.issue(linked.user, device, client);
       return { user: linked.user, issued, isNew: false };
     }
@@ -139,37 +170,58 @@ export class OAuthService {
     const nickname = await this.uniqueNickname(name ?? profile.name);
     const user = await this.prisma.user.create({
       data: {
-        // 이메일을 주지 않는 provider(카카오 동의 미선택 등)는 내부용 주소를 쓴다
-        email: profile.email ?? `${provider.toLowerCase()}+${profile.providerUserId}@social.invalid`,
+        // 이메일을 주지 않는 provider(카카오 동의 미선택 등)는 내부용 주소를 쓴다 — 가입 마무리에서 실제 이메일을 받는다
+        email:
+          profile.email ??
+          `${provider.toLowerCase()}+${profile.providerUserId}@${SOCIAL_PLACEHOLDER_EMAIL_DOMAIN}`,
         emailVerifiedAt: profile.emailVerified ? new Date() : null,
-        termsAgreedAt: new Date(),
+        // 동의는 자동으로 기록하지 않는다 — consentRequired 로 동의 화면을 거친다 (docs/AUTH.md §11)
         profile: { create: { nickname } },
-        socialAccounts: { create: { provider, providerUserId: profile.providerUserId } },
+        socialAccounts: {
+          create: {
+            provider,
+            providerUserId: profile.providerUserId,
+            ...tokenColumns(profile.revokeToken),
+          },
+        },
       },
     });
     const issued = await this.sessions.issue(user, device, client);
     return { user, issued, isNew: true };
   }
 
-  /** iOS 네이티브 Sign in with Apple 의 identityToken 을 Apple 공개키로 검증해 프로필을 얻는다 */
-  async appleProfile(identityToken: string): Promise<OAuthProfile> {
+  /** iOS 네이티브 identityToken 이 받아들일 대상(aud) */
+  private appleAudiences(): string[] {
     const bundle = env().APPLE_BUNDLE_ID;
     if (!bundle) throw new AppException('PROVIDER_NOT_CONFIGURED', undefined, undefined, 400);
-    return verifyAppleIdToken(identityToken, [
+    return [
       bundle,
       ...(env().APPLE_CLIENT_ID ? [env().APPLE_CLIENT_ID!] : []),
       // 개발 중 Expo Go 로 실행하면 토큰 대상(aud)이 Expo Go 번들 ID 다
       ...(isProd() ? [] : [EXPO_GO_BUNDLE_ID]),
-    ]);
+    ];
+  }
+
+  /**
+   * iOS 네이티브 Apple: identityToken 검증 + (있으면) authorization code 를 refresh 토큰으로 교환.
+   * 교환 실패는 로그인·연결을 막지 않는다 — 탈퇴 시 폐기만 건너뛴다.
+   */
+  async appleNativeProfile(identityToken: string, authorizationCode?: string): Promise<OAuthProfile> {
+    const profile = await this.apple.verifyIdToken(identityToken, this.appleAudiences());
+    if (!authorizationCode) return profile;
+    const clientId = env().APPLE_BUNDLE_ID!;
+    const token = await this.apple.exchangeCode(authorizationCode, clientId);
+    return { ...profile, revokeToken: token ? { token, clientId } : null };
   }
 
   async appleNative(
     identityToken: string,
+    authorizationCode: string | undefined,
     name: string | undefined,
     device: DeviceInput,
     client: ClientInfo,
   ) {
-    const profile = await this.appleProfile(identityToken);
+    const profile = await this.appleNativeProfile(identityToken, authorizationCode);
     return this.signIn('APPLE', profile, device, client, name);
   }
 
@@ -180,9 +232,21 @@ export class OAuthService {
     });
     if (exists && exists.userId !== userId)
       throw new AppException('SOCIAL_ALREADY_LINKED', undefined, undefined, 409);
-    if (exists) return;
+    if (exists) {
+      if (profile.revokeToken)
+        await this.prisma.socialAccount.update({
+          where: { id: exists.id },
+          data: tokenColumns(profile.revokeToken),
+        });
+      return;
+    }
     await this.prisma.socialAccount.create({
-      data: { userId, provider, providerUserId: profile.providerUserId },
+      data: {
+        userId,
+        provider,
+        providerUserId: profile.providerUserId,
+        ...tokenColumns(profile.revokeToken),
+      },
     });
   }
 
@@ -195,11 +259,79 @@ export class OAuthService {
     // 로그인 수단이 하나도 남지 않으면 해제할 수 없다
     if (!user.passwordHash && others.length === 0)
       throw new AppException('LAST_LOGIN_METHOD', undefined, undefined, 409);
+    const targets = this.revokeTargets(user.socialAccounts.filter((s) => s.provider === provider));
     await this.prisma.socialAccount.deleteMany({ where: { userId, provider } });
+    await this.revoke(targets);
+  }
+
+  // ───── 탈퇴: 소셜 재인증 · Apple 토큰 폐기 ─────
+
+  /**
+   * 탈퇴 본인 확인 — OAuth 결과 계정이 이 회원에게 연결돼 있어야 한다.
+   * Apple 은 이때 받은 refresh 토큰을 저장해 두어 탈퇴 직후 폐기한다.
+   */
+  async assertOwnership(userId: string, proof: SocialProof) {
+    const provider = providerFromParam(proof.provider);
+    let profile: OAuthProfile;
+    if (proof.identityToken) {
+      if (provider !== 'APPLE') throw new AppException('VALIDATION_FAILED');
+      profile = await this.appleNativeProfile(proof.identityToken, proof.authorizationCode);
+    } else {
+      if (!proof.code || !proof.state || !proof.redirectUri) throw new AppException('VALIDATION_FAILED');
+      profile = await this.profileFor(provider, proof.code, proof.state, proof.redirectUri);
+    }
+    const linked = await this.prisma.socialAccount.findUnique({
+      where: { provider_providerUserId: { provider, providerUserId: profile.providerUserId } },
+    });
+    if (!linked || linked.userId !== userId)
+      throw new AppException(
+        'INVALID_CREDENTIALS',
+        '이 계정에 연결된 소셜 계정으로 확인해주세요.',
+        undefined,
+        400,
+      );
+    if (profile.revokeToken)
+      await this.prisma.socialAccount.update({
+        where: { id: linked.id },
+        data: tokenColumns(profile.revokeToken),
+      });
+  }
+
+  /** 폐기할 Apple 토큰 (연결 행을 지우기 전에 읽어 둔다) */
+  async appleTokensOf(userId: string): Promise<RevokeTarget[]> {
+    const rows = await this.prisma.socialAccount.findMany({ where: { userId, provider: 'APPLE' } });
+    return this.revokeTargets(rows);
+  }
+
+  private revokeTargets(
+    rows: { provider: AuthProvider; refreshTokenEnc: string | null; tokenClientId: string | null }[],
+  ): RevokeTarget[] {
+    const out: RevokeTarget[] = [];
+    for (const r of rows) {
+      if (r.provider !== 'APPLE') continue;
+      if (!r.refreshTokenEnc || !r.tokenClientId) {
+        // 토큰을 받기 전(authorizationCode 도입 전)에 연결된 계정 — 폐기할 토큰이 없다
+        this.logger.warn('apple revoke skipped: no stored refresh token');
+        continue;
+      }
+      try {
+        out.push({ token: decrypt(r.refreshTokenEnc), clientId: r.tokenClientId });
+      } catch {
+        this.logger.warn('apple revoke skipped: token decrypt failed');
+      }
+    }
+    return out;
+  }
+
+  /** Apple 토큰 폐기 — 실패해도 탈퇴·해제는 계속한다 */
+  async revoke(targets: RevokeTarget[]) {
+    await Promise.all(targets.map((t) => this.apple.revoke(t.token, t.clientId).catch(() => false)));
   }
 
   private async uniqueNickname(base: string | null): Promise<string> {
-    const clean = (base ?? '').replace(/[^가-힣A-Za-z0-9_.]/g, '').slice(0, 12);
+    const cleaned = (base ?? '').replace(/[^가-힣A-Za-z0-9_.]/g, '').slice(0, 12);
+    // provider 이름에 금칙어가 있으면 기본 닉네임을 쓴다
+    const clean = containsProhibited(cleaned) ? '' : cleaned;
     const stem = clean.length >= 2 ? clean : '컬렉터';
     for (let i = 0; i < 20; i++) {
       const candidate =

@@ -27,6 +27,8 @@ export interface NotifyInput {
   sender?: PushSender | null;
   /** 같은 대화·대상 푸시를 묶는 키 */
   threadId?: string | null;
+  /** false 면 푸시 없이 알림함에만 (야간 광고성 알림 등) */
+  push?: boolean;
 }
 
 const PAGE = 30;
@@ -82,7 +84,7 @@ export class NotificationsService {
               })),
             });
 
-      const pushTo = users
+      const pushTo = (input.push === false ? [] : users)
         .filter((u) => {
           const prefs = resolveNotificationPrefs(u.notificationPrefs);
           const allowed = category === 'system' || prefs.push[category];

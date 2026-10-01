@@ -45,7 +45,7 @@ import {
 import type { Request, Response } from 'express';
 import { z } from 'zod';
 import { AppException } from '../common/app-exception';
-import { CurrentUser, Public, type AuthUser } from '../common/auth';
+import { ConsentExempt, CurrentUser, Public, type AuthUser } from '../common/auth';
 import { clientIp, RateLimit } from '../common/rate-limit';
 import { ZodPipe } from '../common/zod.pipe';
 import { env, isProd } from '../config/env';
@@ -53,8 +53,10 @@ import { IdentityModule } from '../identity/identity.controller';
 import { IdentityService } from '../identity/identity.service';
 import { RequireReauth } from '../security/reauth.guard';
 import { SecurityService } from '../security/security.service';
+import { AppleAuthClient } from './apple.client';
 import { AuthService } from './auth.service';
 import { DemoAccountsService, DemoBlocked } from './demo';
+import type { OAuthProfile } from './oauth.providers';
 import { OAuthService, providerFromParam } from './oauth.service';
 import { type ClientInfo, REFRESH_TTL_DAYS, SessionService } from './session.service';
 
@@ -82,6 +84,8 @@ function assertCsrf(req: Request) {
   if (origin && !allowed.includes(origin)) throw new AppException('FORBIDDEN');
 }
 
+/** 인증·기기·탈퇴·소셜 연결은 동의 전에도 쓸 수 있다 (동의 화면에서 로그아웃·탈퇴할 수 있어야 한다) */
+@ConsentExempt()
 @Controller('auth')
 export class AuthController {
   constructor(
@@ -329,7 +333,8 @@ export class AuthController {
     );
   }
 
-  @RequireReauth()
+  // 소셜 재인증으로 확인하는 탈퇴는 그 자체를 재인증으로 본다 (핸들러가 연결 여부를 검증)
+  @RequireReauth({ socialProof: true })
   @DemoBlocked()
   @Delete('account')
   @HttpCode(204)
@@ -395,7 +400,13 @@ export class AuthController {
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const r = await this.oauth.appleNative(body.identityToken, body.name, body.device, client(req));
+    const r = await this.oauth.appleNative(
+      body.identityToken,
+      body.authorizationCode,
+      body.name,
+      body.device,
+      client(req),
+    );
     await this.loggedIn(r.user, r.issued, body.device, req);
     return this.respond(res, r.user, r.issued, body.device.platform, { isNewUser: r.isNew });
   }
@@ -410,9 +421,16 @@ export class AuthController {
   async linkAppleNative(
     @CurrentUser() user: AuthUser,
     @Body(new ZodPipe(appleLinkSchema)) body: AppleLinkInput,
+    @Req() req: Request,
   ) {
-    const profile = await this.oauth.appleProfile(body.identityToken);
+    const profile = await this.oauth.appleNativeProfile(body.identityToken, body.authorizationCode);
     await this.oauth.link(user.id, 'APPLE', profile);
+    await this.security.record(
+      user.id,
+      'ACCOUNT_LINKED',
+      await this.security.contextOf(user, clientIp(req)),
+      { provider: 'APPLE' },
+    );
   }
 
   // 계정을 가로챈 사람이 자기 소셜 계정을 로그인 수단으로 심어 두지 못하게
@@ -427,7 +445,14 @@ export class AuthController {
     @Req() req: Request,
   ) {
     const provider = providerFromParam(p);
-    const profile = await this.oauth.profileFor(provider, body.code, body.state, body.redirectUri);
+    let profile: OAuthProfile;
+    if ('identityToken' in body) {
+      // iOS 네이티브 Apple 연결
+      if (provider !== 'APPLE') throw new AppException('VALIDATION_FAILED');
+      profile = await this.oauth.appleNativeProfile(body.identityToken, body.authorizationCode);
+    } else {
+      profile = await this.oauth.profileFor(provider, body.code, body.state, body.redirectUri);
+    }
     await this.oauth.link(user.id, provider, profile);
     await this.security.record(
       user.id,
@@ -460,7 +485,7 @@ export class AuthController {
 @Module({
   imports: [IdentityModule],
   controllers: [AuthController],
-  providers: [AuthService, SessionService, OAuthService, DemoAccountsService],
-  exports: [SessionService],
+  providers: [AuthService, SessionService, OAuthService, AppleAuthClient, DemoAccountsService],
+  exports: [SessionService, OAuthService, AuthService],
 })
 export class AuthModule {}

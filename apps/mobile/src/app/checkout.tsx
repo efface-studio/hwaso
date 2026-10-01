@@ -197,6 +197,18 @@ export default function CheckoutScreen() {
           <Text variant="caption" color="muted">
             {tr('checkout.escrowNotice')}
           </Text>
+          <Pressable
+            accessibilityRole="link"
+            hitSlop={6}
+            onPress={() => router.push({ pathname: '/policies/[slug]', params: { slug: 'refund' } })}
+          >
+            <Text variant="caption" color="muted">
+              {tr('checkout.withdrawal')}{' '}
+              <Text variant="caption" color="primary">
+                {tr('checkout.withdrawalLink')}
+              </Text>
+            </Text>
+          </Pressable>
         </Section>
       </ScrollView>
       <View

@@ -1,14 +1,16 @@
 import { Injectable } from '@nestjs/common';
 import type { Banner, Notice } from '@prisma/client';
-import type {
-  AdminBannerRow,
-  BannerInput,
-  BroadcastInput,
-  NoticeDto,
-  NoticeInput,
-  Paged,
-  PageQuery,
+import {
+  inQuietHours,
+  type AdminBannerRow,
+  type BannerInput,
+  type BroadcastInput,
+  type NoticeDto,
+  type NoticeInput,
+  type Paged,
+  type PageQuery,
 } from '@shop/shared';
+import { Clock } from '../common/clock';
 import { AppException } from '../common/app-exception';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -51,6 +53,7 @@ export class AdminContentService {
     private readonly redis: RedisService,
     private readonly audit: AuditService,
     private readonly notifications: NotificationsService,
+    private readonly clock: Clock,
   ) {}
 
   async banners() {
@@ -149,9 +152,13 @@ export class AdminContentService {
    * ponytail: 수신자를 한 번에 조회해 순차 발송 — 수만 명 규모면 큐로 나눠 보낸다
    */
   async broadcast(ctx: AuditContext, input: BroadcastInput) {
+    // 광고성 정보(정보통신망법 제50조): 수신 동의자에게만, 제목 앞 (광고), 21시~8시(KST)에는 푸시하지 않고 알림함에만
+    const marketing = input.kind === 'MARKETING';
+    const night = marketing && inQuietHours(this.clock.now());
     const users = await this.prisma.user.findMany({
       where: {
         status: 'ACTIVE',
+        ...(marketing ? { marketingOptIn: true } : {}),
         ...(input.audience === 'sellers' ? { seller: { isNot: null } } : {}),
         ...(input.audience === 'buyers' ? { seller: { is: null } } : {}),
       },
@@ -159,12 +166,20 @@ export class AdminContentService {
     });
     await this.audit.log(ctx, 'notification.broadcast', 'NOTIFICATION', input.audience, null, {
       ...input,
+      kind: input.kind ?? 'NOTICE',
       recipients: users.length,
+      pushed: !night,
     });
     void this.notifications.notify(
       users.map((u) => u.id),
-      { type: 'SYSTEM', title: input.title, body: input.body, link: input.link },
+      {
+        type: 'SYSTEM',
+        title: marketing ? `(광고) ${input.title}` : input.title,
+        body: marketing ? `${input.body}\n수신거부: 마이 › 설정` : input.body,
+        link: input.link,
+        push: !night,
+      },
     );
-    return { recipients: users.length };
+    return { recipients: users.length, pushed: !night };
   }
 }

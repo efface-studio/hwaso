@@ -1,7 +1,7 @@
 'use client';
 
 import { ApiError } from '@shop/api-client';
-import { formatPrice, type ProductDetailDto } from '@shop/shared';
+import { formatPrice, POLICIES, type ProductDetailDto } from '@shop/shared';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Gavel, Share2 } from 'lucide-react';
 import Link from 'next/link';
@@ -180,6 +180,13 @@ export function PurchasePanel({ product: p }: { product: ProductDetailDto }) {
               배송비 {p.shippingFee === 0 ? '무료' : formatPrice(p.shippingFee)} · {p.shippingMethod}
             </p>
           )}
+          <p className="mt-2 text-caption text-muted">
+            청약철회(반품)·환불 기준은{' '}
+            <Link href={POLICIES.refund.path} className="underline underline-offset-2 hover:text-foreground">
+              {POLICIES.refund.title}
+            </Link>
+            에서 확인해주세요.
+          </p>
         </div>
 
         <div className="hidden items-center gap-2 md:flex">

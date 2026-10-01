@@ -249,7 +249,12 @@ model User {
   chatPhrases        Json?
   unpaidStrikes      Int        @default(0)
   marketingOptIn     Boolean    @default(false)
+  /// 마케팅 수신 동의 일시 (정보통신망법 제50조 — 동의 사실 확인·2년 주기 재확인용). 철회 시 null
+  marketingAgreedAt  DateTime?  @db.Timestamptz
+  /// 필수 동의: 셋 중 하나라도 null 이면 consentRequired (docs/AUTH.md §11)
   termsAgreedAt      DateTime?  @db.Timestamptz
+  privacyAgreedAt    DateTime?  @db.Timestamptz
+  ageConfirmedAt     DateTime?  @db.Timestamptz
   /// 본인인증(PASS) — CI 는 HMAC 해시만 저장해 중복 가입을 막는다
   identityVerifiedAt DateTime?  @db.Timestamptz
   ciHash             String?    @unique
@@ -310,12 +315,16 @@ model Profile {
 }
 
 model SocialAccount {
-  id             String       @id @default(cuid())
-  provider       AuthProvider
-  providerUserId String
-  userId         String
-  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt      DateTime     @default(now()) @db.Timestamptz
+  id              String       @id @default(cuid())
+  provider        AuthProvider
+  providerUserId  String
+  userId          String
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Apple: 탈퇴·연결 해제 때 폐기(revoke)할 refresh 토큰 (AES-256-GCM, common/crypto.encrypt)
+  refreshTokenEnc String?
+  /// 토큰을 발급받은 client_id (iOS 번들 ID 또는 웹 서비스 ID) — revoke 도 같은 client_id 로 해야 한다
+  tokenClientId   String?
+  createdAt       DateTime     @default(now()) @db.Timestamptz
 
   @@unique([provider, providerUserId])
   @@index([userId])

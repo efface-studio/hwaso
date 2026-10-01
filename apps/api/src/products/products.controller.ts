@@ -26,6 +26,7 @@ import { AppException } from '../common/app-exception';
 import { CurrentUser, OptionalAuth, Public, type AuthedRequest, type AuthUser } from '../common/auth';
 import { clientIp, RateLimit } from '../common/rate-limit';
 import { logNotifyError, NotificationEvents } from '../notifications/notification-events';
+import { assertClean } from '../common/moderation';
 import { ZodPipe } from '../common/zod.pipe';
 import { PrismaService } from '../prisma/prisma.service';
 import { cardSelect, PUBLIC_PRODUCT, toCard } from './product.mapper';
@@ -230,6 +231,7 @@ export class ProductsController {
     @Param('id') id: string,
     @Body(new ZodPipe(inquirySchema)) body: { question: string; isPrivate: boolean },
   ) {
+    assertClean({ question: body.question });
     const product = await this.prisma.product.findFirst({
       where: { id, ...PUBLIC_PRODUCT },
       select: { sellerId: true },
@@ -258,6 +260,7 @@ export class ProductsController {
     @Param('id') id: string,
     @Body(new ZodPipe(inquiryAnswerSchema)) body: { answer: string },
   ) {
+    assertClean({ answer: body.answer });
     const inquiry = await this.prisma.inquiry.findUnique({
       where: { id },
       select: { product: { select: { sellerId: true } } },
