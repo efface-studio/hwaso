@@ -17,7 +17,7 @@ export function RadioList<T extends string>({
 }) {
   const t = useTheme();
   return (
-    <View accessibilityRole="radiogroup" accessibilityLabel={label} style={{ gap: 6 }}>
+    <View accessibilityRole="radiogroup" accessibilityLabel={label} style={{ gap: 8 }}>
       {options.map((o) => {
         const on = o.value === value;
         return (
@@ -31,7 +31,11 @@ export function RadioList<T extends string>({
             }}
             style={[
               styles.option,
-              { minHeight: t.touch, borderColor: on ? t.colors.primary : t.colors.border },
+              {
+                minHeight: t.touch,
+                borderColor: on ? t.colors.primary : t.colors.border,
+                backgroundColor: on ? t.colors.primarySoft : 'transparent',
+              },
             ]}
           >
             <View style={[styles.dot, { borderColor: on ? t.colors.primary : t.colors.borderStrong }]}>
@@ -59,7 +63,8 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    borderWidth: StyleSheet.hairlineWidth,
+    // 선택 여부와 관계없이 같은 두께 — 선택 테두리가 이웃 항목과 붙어 보이지 않게 간격(8)과 배경으로 구분
+    borderWidth: 1,
     borderRadius: 8,
   },
   dot: {
