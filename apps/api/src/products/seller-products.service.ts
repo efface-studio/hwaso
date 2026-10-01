@@ -5,6 +5,7 @@ import { SELLER_ROLES } from '@shop/shared';
 import { AppException } from '../common/app-exception';
 import { assertClean } from '../common/moderation';
 import type { AuthUser } from '../common/auth';
+import { AdminNotifier } from '../notifications/admin-notifier';
 import { logNotifyError, NotificationEvents } from '../notifications/notification-events';
 import { PrismaService, type Tx } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
@@ -29,6 +30,7 @@ export class SellerProductsService {
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
     private readonly events: NotificationEvents,
+    private readonly admins: AdminNotifier,
   ) {}
 
   private assertSeller(user: AuthUser) {
@@ -126,6 +128,7 @@ export class SellerProductsService {
       });
     });
     if (product.status === 'ACTIVE') void this.events.newProduct(product.id).catch(logNotifyError);
+    if (input.certificate) void this.admins.certificateSubmitted(product.id).catch(logNotifyError);
     return product;
   }
 
@@ -283,6 +286,7 @@ export class SellerProductsService {
     await this.redis.del(HOME_CACHE_KEY);
     const priceChanged = oldPrice != null && nextPrice != null && Number(oldPrice) !== nextPrice;
     if (priceChanged) void this.events.priceDropped(id, Number(oldPrice), nextPrice).catch(logNotifyError);
+    if (input.certificate) void this.admins.certificateSubmitted(id).catch(logNotifyError);
     return { id, priceChanged };
   }
 
