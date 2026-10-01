@@ -4,6 +4,7 @@ import { REFRESH_KEY, useAuthStore } from '@/stores/auth';
 import { env } from './env';
 import { biometricKey, requestReauth } from './reauth';
 import { secure } from './secure';
+import { uploadAwareFetch } from './upload-fetch';
 
 let inflight: Promise<string | null> | null = null;
 /** 앱 시작이 refresh 응답에 오래 묶이지 않게 (서버가 답하지 않으면 5초 뒤 포기) */
@@ -49,7 +50,8 @@ export const api = createApiClient({
   // 결제·정산 계좌 변경 등에서 서버가 본인 확인을 요구하면 확인 창을 띄우고 같은 요청을 다시 보낸다
   reauth: requestReauth,
   // 서버가 꺼져 있을 때 기록한 관리자 계정으로 시연 (개발·시연 빌드에서만)
-  fetch: withDemo(globalThis.fetch.bind(globalThis)),
+  // 사진 업로드(FormData)는 XHR 로 — expo/fetch 가 RN 식 파일 첨부를 못 보낸다 (lib/upload-fetch.ts)
+  fetch: withDemo(uploadAwareFetch),
 });
 
 export async function logout() {
