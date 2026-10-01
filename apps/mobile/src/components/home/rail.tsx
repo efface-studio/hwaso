@@ -1,6 +1,6 @@
 import type { ProductCardDto } from '@shop/shared';
 import { FlatList, StyleSheet, View } from 'react-native';
-import { ProductCard } from '@/components/product/product-card';
+import { useCardRenderer } from '@/components/product/product-card';
 import { Text } from '@/components/ui/text';
 import { useTheme } from '@/theme';
 
@@ -13,8 +13,9 @@ const GAP = 12;
  */
 export function Rail({ title, items }: { title: string; items: ProductCardDto[] }) {
   const t = useTheme();
-  if (!items.length) return null;
   const width = Math.round((t.senior ? 168 : 140) * t.scale);
+  const renderCard = useCardRenderer(width);
+  if (!items.length) return null;
   return (
     <View style={styles.section}>
       <Text variant="h3" style={styles.title} accessibilityRole="header">
@@ -24,7 +25,7 @@ export function Rail({ title, items }: { title: string; items: ProductCardDto[] 
         horizontal
         data={items}
         keyExtractor={(p) => p.id}
-        renderItem={({ item }) => <ProductCard p={item} width={width} />}
+        renderItem={renderCard}
         getItemLayout={(_, index) => ({ length: width, offset: PADDING + index * (width + GAP), index })}
         initialNumToRender={4}
         maxToRenderPerBatch={4}

@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { Alert, Pressable, Share, StyleSheet, View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { ReviewItem, ReviewSummary } from '@/components/community/review-item';
-import { ProductCard } from '@/components/product/product-card';
+import { useCardRenderer } from '@/components/product/product-card';
 import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Empty, Loading } from '@/components/ui/state';
@@ -348,6 +348,7 @@ export default function UserScreen() {
   const t = useTheme();
   const { t: tr } = useTranslation(['my', 'common']);
   const g = useGrid();
+  const renderCard = useCardRenderer(g.cardWidth);
   const [tab, setTabState] = useState<Tab>('selling');
   // 탭 밑줄이 직전 탭에서 출발하도록 기억한다
   const prevTab = useRef<Tab>('selling');
@@ -410,7 +411,8 @@ export default function UserScreen() {
       data={items.data ?? []}
       numColumns={g.columns}
       keyExtractor={(p) => p.id}
-      renderItem={({ item }) => <ProductCard p={item} width={g.cardWidth} />}
+      renderItem={renderCard}
+      {...g.listProps}
       columnWrapperStyle={g.columns > 1 ? { gap: g.gap, paddingHorizontal: g.padding } : undefined}
       contentContainerStyle={{ flexGrow: 1, gap: 20, paddingBottom: 32 }}
       ListEmptyComponent={

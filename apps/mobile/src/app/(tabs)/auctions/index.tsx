@@ -1,12 +1,12 @@
 import type { ProductCardDto } from '@shop/shared';
 import { focusManager, useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { useIsFocused } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, View, useWindowDimensions } from 'react-native';
 import { AppRefreshControl } from '@/components/ui/app-refresh-control';
 import { useInfinitePullRefresh } from '@/hooks/use-pull-refresh';
-import { ProductCard } from '@/components/product/product-card';
+import { useCardRenderer } from '@/components/product/product-card';
 import { Chips } from '@/components/ui/chips';
 import { Empty, Loading } from '@/components/ui/state';
 import { List } from '@/components/ui/list';
@@ -27,6 +27,7 @@ export default function AuctionsScreen() {
   const t = useTheme();
   const { t: tr } = useTranslation('home');
   const g = useGrid();
+  const renderCard = useCardRenderer(g.cardWidth);
   const qc = useQueryClient();
   const { height: screenH } = useWindowDimensions();
   const [tab, setTab] = useState<Tab>('live');
@@ -54,7 +55,7 @@ export default function AuctionsScreen() {
     return () => clearInterval(timer);
   }, [tab, focused, qc]);
   const pull = useInfinitePullRefresh(queryKey, q.refetch);
-  const items: ProductCardDto[] = q.data?.pages.flatMap((p) => p.items) ?? [];
+  const items: ProductCardDto[] = useMemo(() => q.data?.pages.flatMap((p) => p.items) ?? [], [q.data]);
   const total = q.data?.pages[0]?.total;
 
   return (
@@ -65,7 +66,8 @@ export default function AuctionsScreen() {
       data={items}
       numColumns={g.columns}
       keyExtractor={(p) => p.id}
-      renderItem={({ item }) => <ProductCard p={item} width={g.cardWidth} />}
+      renderItem={renderCard}
+      {...g.listProps}
       columnWrapperStyle={g.columns > 1 ? { gap: g.gap, paddingHorizontal: g.padding } : undefined}
       contentContainerStyle={{ flexGrow: 1, gap: 20, paddingBottom: 32 }}
       ListHeaderComponent={

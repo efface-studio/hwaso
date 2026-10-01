@@ -23,6 +23,7 @@ import { api } from '@/lib/api';
 import { askPushInContext } from '@/lib/push-prompt';
 import { requireLogin } from '@/lib/require-login';
 import { env } from '@/lib/env';
+import { productQuery } from '@/lib/product-query';
 import { selectionHaptic } from '@/lib/haptics';
 import { useLayout, useReadableGutter } from '@/hooks/use-layout';
 import { useTheme } from '@/theme';
@@ -246,7 +247,8 @@ export default function ProductScreen() {
   const t = useTheme();
   const { t: tr } = useTranslation(['product', 'common']);
   const { split, width } = useLayout();
-  const q = useQuery({ queryKey: ['product', id], queryFn: () => api.market.product(id) });
+  // 카드를 누를 때 미리 요청해 둔 것(lib/product-query)을 그대로 이어받는다
+  const q = useQuery(productQuery(id));
   // 비슷한 작품은 id 만 있으면 되므로 작품 정보와 함께 바로 불러온다
   const related = useQuery({ queryKey: ['related', id], queryFn: () => api.market.related(id) });
   useEffect(() => {

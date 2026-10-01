@@ -68,24 +68,32 @@ scheme `hwaso://`, universal link `https://hwaso.kr` (`APP_LINK_HOST`). 파일 �
 | ---------------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Push                   | `expo-notifications`                                   | 첫 실행 때 스플래시 뒤 권한 요청(기기당 한 번), 미뤘으면 첫 채팅·입찰·관심·팔로우 뒤 안내 시트·설정, 토큰 → `/me/push-tokens` (로그아웃 시 해제) |
 | Camera / Photo Library | `expo-image-picker` (카메라 + 앨범, 다중 선택 최대 20) | 상품 등록, 채팅 이미지                                                                                                                           |
-| 이미지 압축            | `expo-image-manipulator`                               | 업로드 전 긴 변 2400px, JPEG 0.85 (서버에서 재처리)                                                                                              |
+| 이미지 압축            | `expo-image-manipulator`                               | 업로드 전 긴 변 2400px, JPEG 0.85 (서버에서 재처리). 원본은 한 번만 디코딩, 동시에 3장씩 업로드                                                  |
 | Share                  | RN `Share`                                             | 상품/경매 공유 (웹 URL)                                                                                                                          |
 | Secure Storage         | `expo-secure-store`                                    | refresh 토큰                                                                                                                                     |
 | Biometric              | `expo-local-authentication`                            | 앱 잠금 해제 (설정)                                                                                                                              |
 | Browser Auth           | `expo-web-browser` + `expo-auth-session`               | 소셜 로그인, 결제·우편번호 웹 브리지                                                                                                             |
 | Haptics                | `expo-haptics`                                         | 입찰 성공/실패                                                                                                                                   |
-| Image                  | `expo-image`                                           | 캐시, placeholder 색                                                                                                                             |
+| Image                  | `expo-image`                                           | 서버 이미지는 `MediaImage`(표시 폭에 맞는 파생본 + 메모리·디스크 캐시), 대표색 배경 — 아래 「성능」                                              |
 
 ## 4. Mobile UX
 
 - 터치 타깃 최소 44×44, 주요 CTA 높이 52, 하단 고정.
-- 목록: `FlashList` (가상화) + 무한 스크롤 + Pull to Refresh.
+- 목록: `FlatList` (가상화) + 무한 스크롤 + Pull to Refresh. 렌더링 설정은 아래 「성능」.
 - 필터/정렬: 바텀시트 (`@gorhom/bottom-sheet`), 적용 버튼에 결과 수 표시.
 - 상품 등록: 한 화면 한 질문. 사진 → 상품명 → 카테고리 → 가격 → 판매 방식 → 상세 정보(선택, 접힘) → 등록. 입력값은 단계 이동 시 로컬 저장(드래프트 복구).
 - 숫자 입력은 `number-pad`, 날짜는 네이티브 DateTimePicker. iOS 는 시스템 compact 선택기 대신 왼쪽 정렬 알약(날짜·시간)을 그리고, 누르면 아래에 시스템 달력(inline)·시간 휠(10분 단위)을 펼친다 — compact 선택기는 글자 길이에 따라 왼쪽 끝이 달라진다.
 - 키보드: 루트에 `KeyboardProvider`(react-native-keyboard-controller). 입력칸이 있는 화면·시트는 `FormScroll`(KeyboardAwareScrollView)로 포커스된 입력칸을 키보드 위로 스크롤하고(여러 줄 입력칸은 커서만이 아니라 칸·도움말 전체가 보이게 여백을 더한다, 최대 240pt), 채팅 입력창은 라이브러리 `KeyboardAvoidingView`로 키보드 바로 위에 붙인다.
 - 경매 화면: 포그라운드 복귀(`AppState`) 시 시간 재동기화 + 스냅샷 재조회. 입찰 버튼은 "최소 입찰가로 입찰" + 직접 입력 두 가지.
 - 이미지 갤러리: 가로 페이징 + 탭 시 전체 화면 핀치 줌.
+
+### 성능
+
+- **이미지 파생본**: 서버는 폭 400·800·1600 의 WebP·AVIF 를 만든다(`apps/api` `media/image.ts`). 앱은 WebP 만 쓴다 — 서버 AVIF(q55)가 WebP(q82)보다 화질이 조금 낮다. 서버 이미지는 `MediaImage`(`components/ui/media-image.tsx`)로 그리고, 표시 폭(pt) × 화면 배율 이상인 가장 작은 파생본을 고른다(`imageWidthFor`, `lib/media.ts`). 필요 픽셀의 90% 이상이면 한 단계 작은 것으로 충분하다고 본다 — 예: 휴대폰 2열 카드(약 190pt × 3배)는 w800, 홈 가로 목록 카드(140pt × 3배 = 420px)는 w400, 상세 사진(휴대폰 폭 × 3배)은 w1600, 썸네일·아바타는 w400. 홈 작품 이미지 실측 평균은 w400 24KB · w800 90KB · w1600 344KB.
+- **이미지 캐시**: `expo-image` 기본(`disk`)은 다시 그릴 때마다 디스크에서 읽어 디코딩하므로 `MediaImage` 는 `memory-disk` 를 쓴다(메모리는 OS 경고 시 비워진다). 같은 자리에서 다른 이미지로 바뀌면 이전 이미지를 남기지 않는다(`recyclingKey`). 로딩 전에는 대표색(`dominantColor`) 배경.
+- **상세 미리 불러오기**: 작품 카드를 누르기 시작하면 상세 정보를(`prefetchProduct`, 신선한 캐시가 있으면 생략), 누르면 상세 첫 사진을 상세 크기로(`prefetchCover`, 두 칸 배치는 생략) 미리 받는다(`lib/product-query.ts`). 상세 사진은 w400 을 먼저 보여 준다(placeholder).
+- **작품 그리드 렌더링**: `useGrid().listProps` — 처음엔 한 화면 + 1줄만 그리고(FlatList 기본 10줄 = 카드 20장 대신 휴대폰은 8장), 위아래 3화면씩만 유지한다(`windowSize` 7). `renderItem` 은 `useCardRenderer` 로 카드 폭이 같으면 같은 함수를 쓰고, 카드는 `memo` 라 목록을 다시 불러와도 바뀐 카드만 다시 그린다. 카드 높이는 작가 이름 유무·글자 크기에 따라 달라 `getItemLayout` 은 쓰지 않는다(폭이 고정인 홈 가로 목록·배너·갤러리만 쓴다).
+- **시작**: 홈(`/home`)은 로그인 계정별로 다르므로(관심 표시·차단한 판매자 제외) 저장된 로그인 상태 복구가 끝난 뒤 한 번만 받는다 — 복구는 애니메이션 스플래시가 가리는 동안 끝난다. 복구 전에 손님으로 받아 둔 쿼리(딥 링크로 연 작품 등)만 복구 뒤 다시 받는다(`realtime-sync`). 홈은 서버 공통 캐시와 같은 60초 동안 다시 받지 않는다.
 
 ### 화면 폭과 배치 (아이패드)
 

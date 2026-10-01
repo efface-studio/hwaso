@@ -1,12 +1,12 @@
 import type { ImageDto } from '@shop/shared';
-import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FlatList, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { MediaImage } from '@/components/ui/media-image';
 import { Text } from '@/components/ui/text';
-import { READABLE_WIDTH } from '@/hooks/use-layout';
 import { mediaUrl } from '@/lib/media';
+import { galleryWidth } from '@/lib/product-query';
 import { useTheme } from '@/theme';
 
 /**
@@ -28,7 +28,7 @@ export function Gallery({
   const { t: tr } = useTranslation('product');
   const { width: screen } = useWindowDimensions();
   // 태블릿에서는 사진이 화면을 다 차지하지 않게 폭을 제한한다
-  const width = size?.width ?? Math.min(screen, READABLE_WIDTH);
+  const width = size?.width ?? galleryWidth(screen);
   const height = size?.height ?? Math.min(width * 1.15, 640);
   const [index, setIndex] = useState(0);
   return (
@@ -53,9 +53,10 @@ export function Gallery({
             }
             style={{ width, height, backgroundColor: item.dominantColor }}
           >
-            <Image
-              source={mediaUrl(item.key, 1600)}
-              // 목록 카드에서 이미 받아 둔 작은 이미지를 먼저 보여준다
+            <MediaImage
+              mediaKey={item.key}
+              displayWidth={width}
+              // 작은 파생본(w400)을 먼저 보여준다 — 홈 가로 목록·썸네일에서 이미 받아 둔 경우가 많고, 아니어도 금방 온다
               placeholder={mediaUrl(item.key, 400)}
               placeholderContentFit="contain"
               style={StyleSheet.absoluteFill}
