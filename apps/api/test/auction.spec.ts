@@ -385,3 +385,58 @@ describe('판매자 경매 관리 (등록 ↔ 예약 ↔ 예약 취소 ↔ 취�
     expect(Date.parse(snap.body.serverTime)).not.toBeNaN();
   });
 });
+
+describe('경매 목록 (GET /auctions · 마감 임박순)', () => {
+  type Card = { id: string; auction: { endsAt: string } | null };
+  /** 커서를 끝까지 따라가며 모은다 (다른 테스트의 경매도 섞여 있다) */
+  async function walk(path: string) {
+    const items: Card[] = [];
+    let cursor: string | null = null;
+    let total = 0;
+    do {
+      const { body } = (await t.http
+        .get(`${path}&limit=2${cursor ? `&cursor=${cursor}` : ''}`)
+        .expect(200)) as {
+        body: { items: Card[]; nextCursor: string | null; total: number };
+      };
+      items.push(...body.items);
+      cursor = body.nextCursor;
+      total = body.total;
+    } while (cursor);
+    return { items, ids: items.map((i) => i.id), total };
+  }
+  const sortedByEnds = (items: Card[]) =>
+    items.every(
+      (c, i) => i === 0 || Date.parse(items[i - 1]!.auction!.endsAt) <= Date.parse(c.auction!.endsAt),
+    );
+
+  it('진행 중 경매는 종료 임박순으로 빠짐·중복 없이 넘겨 보고, 상품 목록 마감 임박순도 같다', async () => {
+    const made = [];
+    for (const endsInMs of [3_000_000, 1_000_000, 2_000_000]) made.push(await liveAuction({ endsInMs }));
+    const expected = [made[1]!, made[2]!, made[0]!].map((m) => m.product.id);
+
+    for (const path of ['/api/v1/auctions?status=live', '/api/v1/products?sort=ending_soon']) {
+      const { items, ids, total } = await walk(path);
+      expect(new Set(ids).size).toBe(ids.length);
+      expect(total).toBe(ids.length);
+      expect(sortedByEnds(items)).toBe(true);
+      expect(ids.filter((id) => expected.includes(id))).toEqual(expected);
+    }
+  });
+
+  it('종료된 경매는 최근 종료순', async () => {
+    const made = [];
+    for (let i = 0; i < 3; i++) made.push(await liveAuction());
+    // 0 이 가장 먼저, 2 가 가장 최근에 끝났다
+    for (const [i, m] of made.entries()) {
+      await t.prisma.auction.update({
+        where: { id: m.auction.id },
+        data: { status: 'ENDED', result: 'NO_BIDS', endedAt: new Date(Date.now() - (3 - i) * 60_000) },
+      });
+    }
+    const { ids, total } = await walk('/api/v1/auctions?status=ended');
+    expect(total).toBe(ids.length);
+    const mine = made.map((m) => m.product.id);
+    expect(ids.filter((id) => mine.includes(id))).toEqual([...mine].reverse());
+  });
+});

@@ -173,6 +173,12 @@ enum NotificationType {
   FOLLOWING_NEW_ITEM
   SECURITY_NEW_DEVICE
   WELCOME
+  /// 관리자 알림 (관리자만 받는다 — docs/API.md "Notifications")
+  ADMIN_REPORT
+  ADMIN_SELLER_PENDING
+  ADMIN_CERTIFICATE_PENDING
+  ADMIN_PAYMENT_ISSUE
+  ADMIN_APP_UPDATE
 }
 
 enum SecurityEventType {
@@ -242,9 +248,11 @@ model User {
   emailVerifiedAt    DateTime?  @db.Timestamptz
   role               Role       @default(USER)
   status             UserStatus @default(ACTIVE)
-  /// 알림 설정: { push: { auction, trade, chat, activity }, quietHours } (docs/API.md)
+  /// 알림 설정: { push: { auction, trade, chat, activity }, quietHours, admin? } (docs/API.md)
   /// 정지 사유 등 운영 조치 사유 (회원에게 로그인 시 안내)
   statusReason       String?
+  /// 기간 정지 종료 시각. SUSPENDED 인데 null 이면 영구 정지 (지나면 로그인·워커가 해제)
+  suspendedUntil     DateTime?  @db.Timestamptz
   notificationPrefs  Json       @default("{}")
   /// 채팅 자주 쓰는 문구 — null 이면 저장한 적 없음(기본 문구)
   chatPhrases        Json?
@@ -532,6 +540,7 @@ model Product {
   // 공개 목록 최신순은 migrations SQL 의 부분 인덱스 product_published_idx ("publishedAt" DESC, id)
   // WHERE "deletedAt" IS NULL AND "publishedAt" IS NOT NULL 를 쓴다 (Prisma 로 표현 불가).
   // status 조건은 Prisma 가 파라미터로 보내 부분 인덱스 조건으로 증명되지 않으므로 넣지 않는다.
+  // 공개 상품 개수(전체·카테고리)는 같은 조건의 부분 인덱스 product_public_status_category_idx (status, categoryId) 로 센다.
   @@index([status, publishedAt(sort: Desc)])
   @@index([categoryId, status])
   @@index([sellerId, status])
@@ -656,6 +665,7 @@ model Auction {
   bids  AuctionBid[]
   order Order?
 
+  // 종료된 경매 목록(최근 종료순)은 migrations SQL 의 부분 인덱스 auction_ended_idx ("endedAt" DESC) WHERE "endedAt" IS NOT NULL
   @@index([status, endsAt])
   @@index([status, startsAt])
   @@index([sellerId, status])

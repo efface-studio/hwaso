@@ -26,6 +26,9 @@ export const RateLimit = (...rules: RateLimitRule[]) => SetMetadata(RATE_LIMIT, 
 
 export const clientIp = (req: Request) => req.ip ?? req.socket.remoteAddress ?? 'unknown';
 
+/** 전역 IP 제한에서 빼는 경로 — 헬스체크 정확히 하나 (`/api/v1/x/health` 같은 우회 방지) */
+export const isGlobalLimitExempt = (path: string) => path === '/api/v1/health';
+
 @Injectable()
 export class RateLimitService {
   constructor(private readonly redis: RedisService) {}

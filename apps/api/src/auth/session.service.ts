@@ -17,6 +17,7 @@ import {
 } from '../common/auth';
 import { maskIp, randomToken, sha256 } from '../common/crypto';
 import { PrismaService, type Tx } from '../prisma/prisma.service';
+import { RealtimeService } from '../realtime/realtime';
 import { RedisService } from '../redis/redis.service';
 
 export const REFRESH_TTL_DAYS = 30;
@@ -38,6 +39,7 @@ export class SessionService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
+    private readonly realtime: RealtimeService,
   ) {}
 
   async issue(
@@ -129,7 +131,8 @@ export class SessionService {
   }
 
   /**
-   * 폐기 후처리: 이미 발급된 access 토큰을 즉시 거부하도록 Redis 에 표시하고, 그 기기의 생체 재인증 키를 지운다.
+   * 폐기 후처리: 이미 발급된 access 토큰을 즉시 거부하도록 Redis 에 표시하고, 그 기기의 실시간 연결을 끊고,
+   * 생체 재인증 키를 지운다.
    * refresh 회전(같은 family 안에서 행 교체)에는 호출하지 않는다 — 생체 키와 access 토큰은 기기 단위로 유지된다.
    */
   private async afterRevoke(
@@ -137,6 +140,7 @@ export class SessionService {
     keys: { familyId: string } | { userId: string; exceptFamily?: string | null },
   ) {
     await markFamiliesRevoked(this.redis, familyIds);
+    this.realtime.disconnectFamilies(familyIds);
     await this.prisma.biometricKey.deleteMany({
       where:
         'familyId' in keys

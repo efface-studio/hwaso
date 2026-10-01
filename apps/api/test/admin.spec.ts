@@ -164,7 +164,13 @@ describe('members', () => {
       .send({ role: 'ADMIN' })
       .expect(200);
     expect(r.body.role).toBe('ADMIN');
-    await t.http.patch(`${A}/users/${user.id}/role`).set(sa.auth).send({ role: 'SUPER_ADMIN' }).expect(403);
+    // 최고 관리자는 최고 관리자도 지정할 수 있다 (admin-members.spec 에 강등·마지막 최고 관리자 보호)
+    await t.http
+      .patch(`${A}/users/${user.id}/role`)
+      .set(admin.auth)
+      .send({ role: 'SUPER_ADMIN' })
+      .expect(403);
+    await t.http.patch(`${A}/users/${user.id}/role`).set(sa.auth).send({ role: 'SUPER_ADMIN' }).expect(200);
   });
 
   it('verifies sellers and resets unpaid strikes', async () => {

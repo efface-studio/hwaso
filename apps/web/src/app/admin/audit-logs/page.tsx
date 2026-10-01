@@ -21,6 +21,7 @@ const TYPES = [
   'AUCTION_POLICY',
   'MESSAGE',
   'REVIEW',
+  'SERVER_LOG',
 ];
 const json = (v: unknown) => (v == null ? '' : JSON.stringify(v));
 

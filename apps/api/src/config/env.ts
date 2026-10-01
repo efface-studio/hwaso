@@ -17,6 +17,11 @@ const schema = z.object({
   DATA_ENCRYPTION_KEY: z
     .string()
     .regex(/^[0-9a-f]{64}$/i, 'DATA_ENCRYPTION_KEY 는 32바이트 hex 여야 합니다.'),
+  /** 키 교체 중에만: 이전 키(복호화 전용). 재암호화(scripts/reencrypt-data-key.ts)가 끝나면 지운다 */
+  DATA_ENCRYPTION_KEY_PREVIOUS: optional.refine(
+    (v) => !v || /^[0-9a-f]{64}$/i.test(v),
+    'DATA_ENCRYPTION_KEY_PREVIOUS 는 32바이트 hex 여야 합니다.',
+  ),
   S3_ENDPOINT: optional,
   S3_REGION: z.string().default('us-east-1'),
   S3_BUCKET: z.string().default('shop-media'),
@@ -101,11 +106,30 @@ export function env(): Env {
     const issues = parsed.error.issues.map((i) => `  - ${i.path.join('.')}: ${i.message}`).join('\n');
     throw new Error(`환경 변수 설정 오류:\n${issues}`);
   }
-  if (parsed.data.NODE_ENV === 'production' && parsed.data.JWT_SECRET.startsWith('dev-only')) {
-    throw new Error('운영 환경에서 개발용 JWT_SECRET 을 사용할 수 없습니다.');
+  if (parsed.data.NODE_ENV === 'production') {
+    const weak = productionSecretIssues(parsed.data);
+    if (weak.length) throw new Error(`운영 환경 비밀값 오류:\n${weak.map((w) => `  - ${w}`).join('\n')}`);
   }
   cached = parsed.data;
   return cached;
+}
+
+/** 저장소에 공개된 기본값(.env.example·테스트·CI)의 접두사 */
+const DEV_SECRET_PREFIXES = ['dev-only', 'test-', 'e2e-'];
+
+/**
+ * 운영에서 저장소에 공개된 개발용 비밀값을 쓰면 기동하지 않는다 (fail-closed, docs/SECURITY.md).
+ * 값은 출력하지 않고 이름만 알린다.
+ */
+export function productionSecretIssues(e: Env): string[] {
+  const out: string[] = [];
+  const devPrefixed = (v: string) => DEV_SECRET_PREFIXES.some((p) => v.startsWith(p));
+  if (devPrefixed(e.JWT_SECRET)) out.push('JWT_SECRET 이 개발용 기본값입니다.');
+  if (devPrefixed(e.OTP_SECRET)) out.push('OTP_SECRET 이 개발용 기본값입니다.');
+  if (e.JWT_SECRET === e.OTP_SECRET) out.push('JWT_SECRET 과 OTP_SECRET 은 서로 달라야 합니다.');
+  // 0000…·1111… 처럼 한 글자만 반복된 키 (.env.example·CI 값)
+  if (/^(.)\1*$/.test(e.DATA_ENCRYPTION_KEY)) out.push('DATA_ENCRYPTION_KEY 가 개발용 기본값입니다.');
+  return out;
 }
 
 export const isProd = () => env().NODE_ENV === 'production';

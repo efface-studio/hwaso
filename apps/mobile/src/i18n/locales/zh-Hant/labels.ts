@@ -85,6 +85,11 @@ const zhHant: Translation<typeof ko> = {
     SECURITY_NEW_DEVICE: '新裝置登入',
     WELCOME: '註冊成功',
     SYSTEM: '通知',
+    ADMIN_REPORT: '收到檢舉',
+    ADMIN_SELLER_PENDING: '賣家認證申請',
+    ADMIN_CERTIFICATE_PENDING: '鑑定證書審核請求',
+    ADMIN_PAYMENT_ISSUE: '付款異常',
+    ADMIN_APP_UPDATE: 'App 更新',
   },
   productStatus: {
     DRAFT: '草稿',

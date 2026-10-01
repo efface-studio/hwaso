@@ -30,6 +30,7 @@ import {
   VERIFICATION_STATUSES,
 } from './enums';
 import type { ImageDto, UserSummary } from './dto';
+import { emailSchema, nicknameSchema, passwordSchema } from './schemas/auth';
 import { id, money } from './schemas/common';
 
 // ───── 공통 ─────
@@ -81,6 +82,62 @@ export type AdminUsersQuery = z.infer<typeof adminUsersQuery>;
 
 export const adminRoleSchema = z.strictObject({ role: z.enum(ROLES) });
 
+/** 기간 정지 빠른 선택 (일). 직접 고르면 종료 일시를 받는다 */
+export const SUSPEND_PRESET_DAYS = [1, 3, 7, 30] as const;
+/** 기간 정지 상한 (약 5년) */
+export const SUSPEND_MAX_DAYS = 1826;
+
+/** 이용 정지: until 이 null 이면 영구 정지. 종료 시각이 지나면 다음 로그인(또는 워커)에서 풀린다 */
+export const suspendSchema = z.strictObject({
+  reason,
+  until: z.iso.datetime({ offset: true }).nullable().default(null),
+});
+export type SuspendInput = z.input<typeof suspendSchema>;
+
+/**
+ * 관리자 회원 정보 수정. 역할·정지는 기존 조치(PATCH role, suspend/restore)를 그대로 쓴다.
+ * emailVerified: true 면 인증 완료로 기록, false 면 인증 전으로 되돌린다 (이메일만 바꾸면 그대로 둔다).
+ */
+export const adminUpdateUserSchema = z
+  .strictObject({
+    nickname: nicknameSchema.optional(),
+    email: emailSchema.optional(),
+    emailVerified: z.boolean().optional(),
+    bio: z.string().trim().max(300).optional(),
+    region: z.string().trim().max(50).nullable().optional(),
+    /** 판매자 등록 회원만 */
+    businessName: z.string().trim().max(60).nullable().optional(),
+    reason: z.string().trim().max(500).optional(),
+  })
+  .refine((v) => Object.keys(v).some((k) => k !== 'reason'), { message: '바꿀 항목을 입력해주세요.' });
+export type AdminUpdateUserInput = z.infer<typeof adminUpdateUserSchema>;
+
+/**
+ * 계정 생성 화면에서 고를 수 있는 역할. 판매자는 정산 계좌 등록(회원 본인)이 필요해 고를 수 없고,
+ * 관리자는 최고 관리자만 고를 수 있다 (서버가 역할 변경과 같은 규칙으로 다시 검사한다)
+ */
+export const ADMIN_CREATABLE_ROLES = ['USER', 'ADMIN'] as const;
+
+/**
+ * 관리자 계정 생성: 인증 메일 없이 이메일 인증 완료로 만든다. password 를 비우면 서버가 임시 비밀번호를 만들어
+ * 응답에서 한 번만 돌려준다. 필수 동의는 받지 않은 상태로 두어 첫 로그인 때 동의 화면을 거친다.
+ */
+export const adminCreateUserSchema = z.strictObject({
+  email: emailSchema,
+  nickname: nicknameSchema,
+  /** 권한 판단은 서버가 한다 (SUPER_ADMIN 은 누구도, ADMIN 은 최고 관리자만) */
+  role: z.enum(ROLES).default('USER'),
+  password: passwordSchema.optional(),
+  reason: z.string().trim().max(500).optional(),
+});
+export type AdminCreateUserInput = z.input<typeof adminCreateUserSchema>;
+
+export interface AdminCreateUserResult {
+  user: AdminUserDetail;
+  /** 서버가 만든 임시 비밀번호 (직접 정했으면 null). 다시 볼 수 없다 */
+  temporaryPassword: string | null;
+}
+
 export interface AdminUserRow {
   id: string;
   email: string;
@@ -88,6 +145,8 @@ export interface AdminUserRow {
   role: Role;
   status: UserStatus;
   statusReason: string | null;
+  /** 기간 정지 종료 시각 (정지 중이고 null 이면 영구) */
+  suspendedUntil: string | null;
   identityVerified: boolean;
   unpaidStrikes: number;
   isSeller: boolean;
@@ -97,6 +156,11 @@ export interface AdminUserRow {
 }
 
 export interface AdminUserDetail extends AdminUserRow {
+  emailVerifiedAt: string | null;
+  /** 필수 동의 전 (다음 로그인 때 동의 화면) */
+  consentRequired: boolean;
+  /** 이메일 비밀번호 로그인 가능 여부 (소셜 전용이면 false) */
+  hasPassword: boolean;
   profile: { bio: string; region: string | null; ratingAvg: number; ratingCount: number; tradeCount: number };
   seller: {
     businessName: string | null;
@@ -327,17 +391,16 @@ export interface AdminReportRow {
 
 // ───── 콘텐츠 ─────
 
+/** 사이트 안 경로만 — `//host`·`/\host` 처럼 다른 사이트로 가는 주소는 막는다 (오픈 리다이렉트) */
+export const SITE_PATH = /^\/(?![/\\])[^\s\\]*$/;
+
 export const bannerSchema = z
   .strictObject({
     title: z.string().trim().min(1).max(60),
     subtitle: z.string().trim().max(120).default(''),
     tone: z.enum(['dark', 'light']).default('dark'),
     imageKey: z.string().min(1).max(200),
-    link: z
-      .string()
-      .trim()
-      .regex(/^\/[^\s]*$/, '사이트 안 경로(/로 시작)만 쓸 수 있어요.')
-      .max(300),
+    link: z.string().trim().regex(SITE_PATH, '사이트 안 경로(/로 시작)만 쓸 수 있어요.').max(300),
     placement: z.enum(['home']).default('home'),
     sortOrder: z.number().int().min(0).max(999).default(0),
     startsAt: z.iso.datetime({ offset: true }),
@@ -379,13 +442,7 @@ export type BroadcastKind = (typeof BROADCAST_KINDS)[number];
 export const broadcastSchema = z.strictObject({
   title: z.string().trim().min(1).max(60),
   body: z.string().trim().min(1).max(200),
-  link: z
-    .string()
-    .trim()
-    .regex(/^\/[^\s]*$/)
-    .max(300)
-    .nullable()
-    .default(null),
+  link: z.string().trim().regex(SITE_PATH).max(300).nullable().default(null),
   audience: z.enum(['all', 'sellers', 'buyers']),
   /**
    * NOTICE(기본): 운영 공지 — 모두에게. MARKETING: 광고성 정보 — 수신 동의자에게만, 제목에 (광고),
@@ -412,4 +469,73 @@ export interface AuditLogRow {
   after: unknown;
   ip: string | null;
   createdAt: string;
+}
+
+// ───── 서버 로그 (최고 관리자, docs/SECURITY.md "서버 로그 열람") ─────
+
+export const SERVER_LOG_LEVELS = ['trace', 'debug', 'info', 'warn', 'error', 'fatal'] as const;
+export type ServerLogLevel = (typeof SERVER_LOG_LEVELS)[number];
+/** 화면에서 고르는 최소 단계 */
+export const SERVER_LOG_FILTER_LEVELS = ['info', 'warn', 'error'] as const;
+export type ServerLogFilterLevel = (typeof SERVER_LOG_FILTER_LEVELS)[number];
+
+/** 서버가 가린 뒤 내보내는 로그 한 줄. 원문 JSON 은 보내지 않는다 */
+export interface ServerLogEntry {
+  /** 프로세스 안에서 단조 증가 (중복 제거·이어 받기용) */
+  seq: number;
+  time: string;
+  level: ServerLogLevel;
+  msg: string;
+  context?: string;
+  reqId?: string;
+  method?: string;
+  url?: string;
+  status?: number;
+  ms?: number;
+  /** 에러 종류·메시지 (스택은 보내지 않는다) */
+  err?: { type: string; message: string };
+  /** 나머지 단일 값 필드 (가린 뒤, 최대 20개) */
+  fields?: Record<string, string | number | boolean | null>;
+}
+
+export const serverLogQuery = z.object({
+  level: z.enum(SERVER_LOG_FILTER_LEVELS).default('info'),
+  q: z
+    .string()
+    .trim()
+    .max(100)
+    .optional()
+    .transform((v) => v || undefined),
+  /** 이 seq 다음부터 (재연결 때 빈 구간 채우기) */
+  after: z.coerce.number().int().min(0).optional(),
+  limit: z.coerce.number().int().min(1).max(500).default(200),
+});
+export interface ServerLogQuery {
+  level?: ServerLogFilterLevel;
+  q?: string;
+  after?: number;
+  limit?: number;
+}
+
+export interface ServerLogTail {
+  entries: ServerLogEntry[];
+  /** 로그를 보낸 API 프로세스 (여러 대면 서로 다름) */
+  instance: string;
+  /** 메모리에 보관하는 최대 줄 수 */
+  capacity: number;
+}
+
+/** 실시간 로그 Socket.IO namespace — 연결 auth: { token } (최고 관리자) */
+export const LOG_NAMESPACE = '/admin-logs';
+
+export interface LogServerToClientEvents {
+  /** 0.5초마다 모아서 보낸다. dropped: 너무 많아 건너뛴 줄 수 */
+  SERVER_LOG: (p: { entries: ServerLogEntry[]; dropped: number }) => void;
+}
+
+export interface LogClientToServerEvents {
+  'logs:filter': (
+    p: { level?: ServerLogFilterLevel; q?: string },
+    ack: (res: { ok: true } | { ok: false; code: string }) => void,
+  ) => void;
 }

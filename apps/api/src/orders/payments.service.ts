@@ -3,6 +3,7 @@ import type { OrderStatus } from '@prisma/client';
 import type { ConfirmPaymentInput, PaymentRequestDto, PreparePaymentInput } from '@shop/shared';
 import type { AuthUser } from '../common/auth';
 import { AppException } from '../common/app-exception';
+import { AdminNotifier, type PaymentIssue } from '../notifications/admin-notifier';
 import { logNotifyError, NotificationEvents } from '../notifications/notification-events';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeService } from '../realtime/realtime';
@@ -26,6 +27,7 @@ export class PaymentsService {
     private readonly toss: TossClient,
     private readonly realtime: RealtimeService,
     private readonly events: NotificationEvents,
+    private readonly admins: AdminNotifier,
   ) {}
 
   private provider(): 'toss' | 'mock' {
@@ -140,10 +142,16 @@ export class PaymentsService {
         `mismatch-${payment.id}`,
       );
       await this.fail(payment.id, 'AMOUNT_MISMATCH');
+      this.alert(payment.id, 'AMOUNT_MISMATCH');
       throw new AppException('PAYMENT_AMOUNT_MISMATCH');
     }
     await this.apply(payment.id, result);
     return { orderId: payment.orderId };
+  }
+
+  /** PG 쪽 결제 이상은 관리자에게 알린다 (응답을 기다리지 않음). 승인 전 요청 금액 불일치는 돈이 움직이지 않아 알리지 않는다 */
+  private alert(paymentId: string, issue: PaymentIssue) {
+    void this.admins.paymentIssue(paymentId, issue).catch(logNotifyError);
   }
 
   private fail(paymentId: string, code: string) {
@@ -205,6 +213,7 @@ export class PaymentsService {
 
     if (outcome.refund) {
       this.logger.warn({ paymentId }, 'payment completed for a closed order — auto refund');
+      this.alert(paymentId, 'PAID_AFTER_CLOSE');
       await this.refundPayment(outcome.order, '주문이 취소된 뒤 결제가 완료되어 자동 환불');
     }
     if (outcome.changed) this.notify(outcome.order);
@@ -223,6 +232,7 @@ export class PaymentsService {
         );
       } catch (err) {
         this.logger.error({ err, paymentId: payment.id }, 'refund failed');
+        this.alert(payment.id, 'REFUND_FAILED');
         throw new AppException('REFUND_FAILED', undefined, undefined, 502);
       }
       await this.prisma.$transaction([
@@ -265,6 +275,7 @@ export class PaymentsService {
     const fetched = await this.toss.get(key);
     if (fetched.orderId !== payment.id || fetched.totalAmount !== Number(payment.amount)) {
       this.logger.error({ paymentId }, 'webhook payment mismatch');
+      this.alert(payment.id, 'WEBHOOK_MISMATCH');
       return { ok: true };
     }
     await this.apply(payment.id, fetched);
