@@ -12,7 +12,7 @@ import { Text } from '@/components/ui/text';
 import { api } from '@/lib/api';
 import { appDevice } from '@/lib/device';
 import { useAuthStore } from '@/stores/auth';
-import { showWelcome } from '@/stores/welcome';
+import { showWelcome } from '@/lib/welcome';
 import { useTheme } from '@/theme';
 
 /** 회원가입: 이메일 인증 → 비밀번호·닉네임·약관 (이용약관·개인정보·만 14세는 필수, 마케팅은 선택) */

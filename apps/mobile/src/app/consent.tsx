@@ -11,7 +11,7 @@ import { Field } from '@/components/ui/field';
 import { Text } from '@/components/ui/text';
 import { api, logout } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
-import { showWelcome } from '@/stores/welcome';
+import { showWelcome } from '@/lib/welcome';
 import { useTheme } from '@/theme';
 
 type Errors = { email?: string; code?: string; nickname?: string; form?: string };

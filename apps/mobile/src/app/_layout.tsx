@@ -23,7 +23,6 @@ import { AppLock } from '@/components/app-lock';
 import { OfflineBanner } from '@/components/offline-banner';
 import { PushPromptHost } from '@/components/push-prompt-host';
 import { preloadTabIcons } from '@/components/tab-icons';
-import { WelcomeHost } from '@/components/welcome-host';
 import { refreshAccessToken } from '@/lib/api';
 import { isAdmin } from '@/lib/admin';
 import { guardRapidNavigation } from '@/lib/nav';
@@ -196,7 +195,6 @@ export default function RootLayout() {
           <OfflineBanner />
           <ActionSheetHost />
           <PushPromptHost />
-          <WelcomeHost />
           <AppLock />
           {hydrated && !splashDone && <AnimatedSplash ready={ready} onFinish={finishSplash} />}
         </QueryClientProvider>
