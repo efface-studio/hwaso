@@ -1,12 +1,15 @@
+import { useQueryClient, type QueryKey } from '@tanstack/react-query';
 import { useRef, useState } from 'react';
+import { keepFirstPage } from '@/lib/infinite';
 
-/** 응답이 아주 빨라도 스켈레톤이 한순간 깜빡이지 않게 최소한 보여줄 시간 */
+/** 응답이 아주 빨라도 새로고침 표시(스피너)가 한순간 깜빡이지 않게 최소한 보여줄 시간 */
 const MIN_MS = 600;
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /**
- * 당겨서 새로고침. 사용자가 직접 당겼을 때만 refreshing 이 켜진다 — 이때 목록 자리에 스켈레톤을 보여준다.
- * (react-query 의 isRefetching 은 주기 갱신·화면 복귀 재조회에도 켜져서, 보고 있던 내용이 깜빡이게 된다)
+ * 당겨서 새로고침. 사용자가 직접 당겼을 때만 refreshing 이 켜진다 — 보던 내용은 그대로 두고 스피너만 보여준다
+ * (목록을 비우고 스켈레톤으로 바꾸면 목록이 통째로 다시 그려진다. 스켈레톤은 처음 불러올 때만).
+ * react-query 의 isRefetching 은 주기 갱신·화면 복귀 재조회에도 켜져서 쓰지 않는다.
  */
 export function usePullRefresh(refetch: () => Promise<unknown>) {
   const [refreshing, setRefreshing] = useState(false);
@@ -24,4 +27,13 @@ export function usePullRefresh(refetch: () => Promise<unknown>) {
     }
   };
   return { refreshing, onRefresh: () => void onRefresh() };
+}
+
+/** 무한 목록의 당겨서 새로고침 — 맨 위에서 당기므로 첫 페이지만 다시 불러온다 (쌓인 페이지를 차례로 모두 부르지 않게) */
+export function useInfinitePullRefresh(queryKey: QueryKey, refetch: () => Promise<unknown>) {
+  const qc = useQueryClient();
+  return usePullRefresh(() => {
+    keepFirstPage(qc, queryKey);
+    return refetch();
+  });
 }

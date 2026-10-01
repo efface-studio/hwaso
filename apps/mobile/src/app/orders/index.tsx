@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { AppRefreshControl } from '@/components/ui/app-refresh-control';
-import { usePullRefresh } from '@/hooks/use-pull-refresh';
+import { useInfinitePullRefresh } from '@/hooks/use-pull-refresh';
 import { OrderItemRow, OrderStatusBadge } from '@/components/order/order-ui';
 import { Chips } from '@/components/ui/chips';
 import { Empty, Loading } from '@/components/ui/state';
@@ -31,7 +31,7 @@ export default function OrdersScreen() {
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (last) => last.nextCursor ?? undefined,
   });
-  const pull = usePullRefresh(q.refetch);
+  const pull = useInfinitePullRefresh(['orders', as, filter], q.refetch);
   const rows = q.data?.pages.flatMap((p) => p.items) ?? [];
 
   return (
@@ -49,25 +49,21 @@ export default function OrdersScreen() {
         <Loading variant="list" />
       ) : (
         <List
-          data={pull.refreshing ? [] : rows}
+          data={rows}
           keyExtractor={(o) => o.id}
           contentContainerStyle={{ flexGrow: 1, padding: 16, gap: 12 }}
           refreshControl={<AppRefreshControl refreshing={pull.refreshing} onRefresh={pull.onRefresh} />}
           onEndReached={() => q.hasNextPage && !q.isFetchingNextPage && void q.fetchNextPage()}
           ListEmptyComponent={
-            pull.refreshing ? (
-              <Loading variant="list" />
-            ) : (
-              <Empty
-                kind="box"
-                title={as === 'buyer' ? tr('list.buyerEmpty') : tr('list.sellerEmpty')}
-                action={
-                  as === 'buyer'
-                    ? { title: tr('list.browse'), onPress: () => router.push('/search') }
-                    : undefined
-                }
-              />
-            )
+            <Empty
+              kind="box"
+              title={as === 'buyer' ? tr('list.buyerEmpty') : tr('list.sellerEmpty')}
+              action={
+                as === 'buyer'
+                  ? { title: tr('list.browse'), onPress: () => router.push('/search') }
+                  : undefined
+              }
+            />
           }
           renderItem={({ item: o }) => (
             <Pressable

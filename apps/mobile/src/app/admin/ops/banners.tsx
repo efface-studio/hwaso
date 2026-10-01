@@ -297,7 +297,7 @@ export default function AdminBannersScreen() {
   // undefined: 닫힘, null: 새 배너, 행: 수정
   const [edit, setEdit] = useState<AdminBannerRow | null | undefined>(undefined);
   const del = useAdminAction((id: string) => api.admin.deleteBanner(id), '삭제했어요', ['banners']);
-  const items = pull.refreshing ? [] : (q.data ?? []);
+  const items = q.data ?? [];
 
   const menu = (b: AdminBannerRow) =>
     actionSheet(b.title, [
@@ -339,7 +339,7 @@ export default function AdminBannersScreen() {
           </Text>
         }
         ListEmptyComponent={
-          q.isPending || pull.refreshing ? (
+          q.isPending ? (
             <Loading variant="home" />
           ) : (
             <Empty

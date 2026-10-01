@@ -3,7 +3,7 @@ import { router, Stack } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet } from 'react-native';
 import { AppRefreshControl } from '@/components/ui/app-refresh-control';
-import { usePullRefresh } from '@/hooks/use-pull-refresh';
+import { useInfinitePullRefresh } from '@/hooks/use-pull-refresh';
 import { Empty, Loading } from '@/components/ui/state';
 import { Text } from '@/components/ui/text';
 import { List } from '@/components/ui/list';
@@ -23,20 +23,18 @@ export default function NoticesScreen() {
     initialPageParam: 1,
     getNextPageParam: (last) => (last.page * last.size < last.total ? last.page + 1 : undefined),
   });
-  const pull = usePullRefresh(q.refetch);
+  const pull = useInfinitePullRefresh(['notices'], q.refetch);
   if (q.isPending) return <Loading variant="plain-list" />;
   return (
     <List
       contentContainerStyle={{ flexGrow: 1 }}
       style={{ backgroundColor: t.colors.background }}
-      data={pull.refreshing ? [] : (q.data?.pages.flatMap((p) => p.items) ?? [])}
+      data={q.data?.pages.flatMap((p) => p.items) ?? []}
       keyExtractor={(n) => n.id}
       refreshControl={<AppRefreshControl refreshing={pull.refreshing} onRefresh={pull.onRefresh} />}
       onEndReached={() => q.hasNextPage && !q.isFetchingNextPage && void q.fetchNextPage()}
       ListHeaderComponent={<Stack.Screen options={{ title: tr('common:screen.notices') }} />}
-      ListEmptyComponent={
-        pull.refreshing ? <Loading variant="plain-list" /> : <Empty kind="doc" title={tr('notices.empty')} />
-      }
+      ListEmptyComponent={<Empty kind="doc" title={tr('notices.empty')} />}
       renderItem={({ item: n }) => (
         <Pressable
           accessibilityRole="link"

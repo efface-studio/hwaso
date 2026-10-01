@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { AppRefreshControl } from '@/components/ui/app-refresh-control';
-import { usePullRefresh } from '@/hooks/use-pull-refresh';
+import { useInfinitePullRefresh } from '@/hooks/use-pull-refresh';
 import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Chips } from '@/components/ui/chips';
@@ -72,7 +72,7 @@ export default function FollowsScreen() {
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (last) => last.nextCursor ?? undefined,
   });
-  const pull = usePullRefresh(q.refetch);
+  const pull = useInfinitePullRefresh(['follows', params.id, kind], q.refetch);
   const toggle = async (u: FollowUserDto) => {
     setBusy(u.id);
     try {
@@ -107,19 +107,15 @@ export default function FollowsScreen() {
       ) : (
         <List
           contentContainerStyle={{ flexGrow: 1 }}
-          data={pull.refreshing ? [] : (q.data?.pages.flatMap((p) => p.items) ?? [])}
+          data={q.data?.pages.flatMap((p) => p.items) ?? []}
           keyExtractor={(u) => u.id}
           refreshControl={<AppRefreshControl refreshing={pull.refreshing} onRefresh={pull.onRefresh} />}
           onEndReached={() => q.hasNextPage && !q.isFetchingNextPage && void q.fetchNextPage()}
           ListEmptyComponent={
-            pull.refreshing ? (
-              <Loading variant="list" />
-            ) : (
-              <Empty
-                kind="people"
-                title={kind === 'followers' ? tr('follows.emptyFollowers') : tr('follows.emptyFollowing')}
-              />
-            )
+            <Empty
+              kind="people"
+              title={kind === 'followers' ? tr('follows.emptyFollowers') : tr('follows.emptyFollowing')}
+            />
           }
           renderItem={({ item }) => (
             <Row u={item} busy={busy === item.id} onToggle={() => void toggle(item)} />

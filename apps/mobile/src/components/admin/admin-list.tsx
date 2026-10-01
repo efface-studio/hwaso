@@ -9,7 +9,7 @@ import { AppRefreshControl } from '@/components/ui/app-refresh-control';
 import { Empty, Loading, type LoadingVariant } from '@/components/ui/state';
 import { Text } from '@/components/ui/text';
 import { List } from '@/components/ui/list';
-import { usePullRefresh } from '@/hooks/use-pull-refresh';
+import { useInfinitePullRefresh } from '@/hooks/use-pull-refresh';
 import { selectionHaptic } from '@/lib/haptics';
 import { useTheme } from '@/theme';
 
@@ -112,7 +112,7 @@ export function AdminList<T extends { id: string }>({
     initialPageParam: 1,
     getNextPageParam: (last) => (last.page * last.size < last.total ? last.page + 1 : undefined),
   });
-  const pull = usePullRefresh(list.refetch);
+  const pull = useInfinitePullRefresh(['admin', queryKey, params], list.refetch);
   // 구분선 컴포넌트는 들여쓰기가 바뀔 때만 새로 만든다 (렌더마다 새로 만들면 매번 다시 마운트된다)
   const Separator = useMemo(
     () =>
@@ -121,7 +121,7 @@ export function AdminList<T extends { id: string }>({
       },
     [separatorInset],
   );
-  const items = pull.refreshing ? [] : (list.data?.pages.flatMap((p) => p.items) ?? []);
+  const items = list.data?.pages.flatMap((p) => p.items) ?? [];
   const total = list.data?.pages[0]?.total;
 
   const pick = (key: string, v: string) => {
@@ -202,7 +202,7 @@ export function AdminList<T extends { id: string }>({
         ListHeaderComponent={
           <View>
             {header && <View style={styles.header}>{header}</View>}
-            {total !== undefined && !pull.refreshing && (
+            {total !== undefined && (
               <View style={styles.summary}>
                 <Text variant="caption" color="muted" numberOfLines={1} style={{ flexShrink: 1 }}>
                   {[`${total.toLocaleString('ko-KR')}건`, ...active].join(' · ')}
@@ -220,7 +220,7 @@ export function AdminList<T extends { id: string }>({
           </View>
         }
         ListEmptyComponent={
-          list.isPending || pull.refreshing ? (
+          list.isPending ? (
             <Loading variant={skeleton} />
           ) : (
             <Empty

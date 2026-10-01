@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { router, Stack, useIsFocused } from 'expo-router';
-import { useRef, useState } from 'react';
+import { router, Stack, useIsFocused, type NativeStackNavigationOptions } from 'expo-router';
+import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import type { SearchBarCommands } from 'react-native-screens';
@@ -13,7 +13,7 @@ import { BannerCarousel } from '@/components/home/banners';
 import { Rail } from '@/components/home/rail';
 import { Text } from '@/components/ui/text';
 import { SkeletonHome, SkeletonScreen } from '@/components/ui/skeleton';
-import { Empty, RefreshSkeleton } from '@/components/ui/state';
+import { Empty } from '@/components/ui/state';
 import { usePullRefresh } from '@/hooks/use-pull-refresh';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
@@ -56,7 +56,7 @@ export default function HomeScreen() {
         q.refetch(),
         cats.refetch(),
         signedIn ? unreadQ.refetch() : null,
-        // 스켈레톤이 한순간 깜빡이지 않게
+        // 새로고침 표시가 한순간 깜빡이지 않게
         new Promise((r) => setTimeout(r, 600)),
       ]);
     } finally {
@@ -71,39 +71,46 @@ export default function HomeScreen() {
     searchBar.current?.blur();
   };
 
-  const header = (
-    <Stack.Screen
-      options={{
-        unstable_headerLeftItems: tabHeaderOptions(null, { onLogoPress: () => void refreshFromLogo() })
-          .unstable_headerLeftItems,
-        headerSearchBarOptions: {
-          ref: searchBar,
-          placement: 'integratedButton',
-          allowToolbarIntegration: false,
-          hideWhenScrolling: false,
-          placeholder: tr('search.placeholder'),
-          onFocus: () => setSearching(true),
-          onChangeText: (e) => search.setText(e.nativeEvent.text),
-          onSearchButtonPress: (e) => submit(e.nativeEvent.text),
-          onCancelButtonPress: () => {
-            setSearching(false);
-            search.reset();
-          },
+  // 헤더 콜백은 ref 로 최신 함수를 부른다 — 검색어를 칠 때마다 헤더 옵션을 새로 만들어 setOptions 하지 않게
+  const handlers = useRef({ refreshFromLogo, submit, reset: search.reset });
+  useLayoutEffect(() => {
+    handlers.current = { refreshFromLogo, submit, reset: search.reset };
+  });
+  const setSearchText = search.setText;
+  const headerOptions = useMemo<NativeStackNavigationOptions>(
+    () => ({
+      unstable_headerLeftItems: tabHeaderOptions(null, {
+        onLogoPress: () => void handlers.current.refreshFromLogo(),
+      }).unstable_headerLeftItems,
+      headerSearchBarOptions: {
+        ref: searchBar,
+        placement: 'integratedButton',
+        allowToolbarIntegration: false,
+        hideWhenScrolling: false,
+        placeholder: tr('search.placeholder'),
+        onFocus: () => setSearching(true),
+        onChangeText: (e) => setSearchText(e.nativeEvent.text),
+        onSearchButtonPress: (e) => handlers.current.submit(e.nativeEvent.text),
+        onCancelButtonPress: () => {
+          setSearching(false);
+          handlers.current.reset();
         },
-        unstable_headerRightItems: () => [
-          {
-            type: 'button',
-            label: unread
-              ? tr('home.notificationsUnread', { count: unread })
-              : tr('common:screen.notifications'),
-            icon: { type: 'sfSymbol', name: 'bell' },
-            onPress: () => router.push('/notifications'),
-            ...(unread > 0 ? { badge: { value: unread > 99 ? '99+' : unread } } : {}),
-          },
-        ],
-      }}
-    />
+      },
+      unstable_headerRightItems: () => [
+        {
+          type: 'button',
+          label: unread
+            ? tr('home.notificationsUnread', { count: unread })
+            : tr('common:screen.notifications'),
+          icon: { type: 'sfSymbol', name: 'bell' },
+          onPress: () => router.push('/notifications'),
+          ...(unread > 0 ? { badge: { value: unread > 99 ? '99+' : unread } } : {}),
+        },
+      ],
+    }),
+    [tr, unread, setSearchText],
   );
+  const header = <Stack.Screen options={headerOptions} />;
 
   if (searching)
     return (
@@ -143,41 +150,39 @@ export default function HomeScreen() {
       refreshControl={<AppRefreshControl refreshing={refreshing} onRefresh={pull.onRefresh} />}
     >
       {header}
-      <RefreshSkeleton refreshing={refreshing} variant="home">
-        <BannerCarousel banners={h.banners} />
-        {h.notices[0] && (
-          <Pressable
-            accessibilityRole="link"
-            onPress={() => router.push({ pathname: '/notices/[id]', params: { id: h.notices[0]!.id } })}
-            style={[styles.notice, { borderColor: t.colors.borderSoft }]}
-          >
-            <Text variant="caption" color="primary" style={{ fontWeight: '600' }}>
-              {tr('home.notice')}
-            </Text>
-            <Text variant="small" numberOfLines={1} style={{ flex: 1 }}>
-              {h.notices[0].title}
-            </Text>
-            <Text color="faint">›</Text>
-          </Pressable>
-        )}
-        {!!cats.data?.length && (
-          <Chips
-            label={tr('home.categories')}
-            value=""
-            onChange={(slug) => router.push({ pathname: '/category/[slug]', params: { slug } })}
-            options={cats.data.map((c) => ({ value: c.slug, label: c.name }))}
-          />
-        )}
-        <Rail title={tr('home.sections.live')} items={h.liveAuctions} />
-        <Rail title={tr('home.sections.endingSoon')} items={h.endingSoon} />
-        <Rail title={tr('home.sections.upcoming')} items={h.upcomingAuctions} />
-        <Rail title={tr('home.sections.newArrivals')} items={h.newArrivals} />
-        <ArtistRail artists={h.popularArtists} />
-        <Rail title={tr('home.sections.popular')} items={h.popular} />
-        {h.collections.map((c) => (
-          <Rail key={c.category.slug} title={c.category.name} items={c.items} />
-        ))}
-      </RefreshSkeleton>
+      <BannerCarousel banners={h.banners} />
+      {h.notices[0] && (
+        <Pressable
+          accessibilityRole="link"
+          onPress={() => router.push({ pathname: '/notices/[id]', params: { id: h.notices[0]!.id } })}
+          style={[styles.notice, { borderColor: t.colors.borderSoft }]}
+        >
+          <Text variant="caption" color="primary" style={{ fontWeight: '600' }}>
+            {tr('home.notice')}
+          </Text>
+          <Text variant="small" numberOfLines={1} style={{ flex: 1 }}>
+            {h.notices[0].title}
+          </Text>
+          <Text color="faint">›</Text>
+        </Pressable>
+      )}
+      {!!cats.data?.length && (
+        <Chips
+          label={tr('home.categories')}
+          value=""
+          onChange={(slug) => router.push({ pathname: '/category/[slug]', params: { slug } })}
+          options={cats.data.map((c) => ({ value: c.slug, label: c.name }))}
+        />
+      )}
+      <Rail title={tr('home.sections.live')} items={h.liveAuctions} />
+      <Rail title={tr('home.sections.endingSoon')} items={h.endingSoon} />
+      <Rail title={tr('home.sections.upcoming')} items={h.upcomingAuctions} />
+      <Rail title={tr('home.sections.newArrivals')} items={h.newArrivals} />
+      <ArtistRail artists={h.popularArtists} />
+      <Rail title={tr('home.sections.popular')} items={h.popular} />
+      {h.collections.map((c) => (
+        <Rail key={c.category.slug} title={c.category.name} items={c.items} />
+      ))}
     </ScrollView>
   );
 }
