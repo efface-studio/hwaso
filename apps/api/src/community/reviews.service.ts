@@ -99,13 +99,11 @@ export class ReviewsService {
         },
       });
       await this.recalc(r.targetUserId);
-      const me = await this.prisma.profile.findUnique({
-        where: { userId: user.id },
-        select: { nickname: true },
-      });
+      const me = await this.notifications.senderOf(user.id);
       await this.notifications.notify(r.targetUserId, {
         type: 'REVIEW_RECEIVED',
-        title: `${me?.nickname ?? '거래 상대'}님이 후기를 남겼어요`,
+        sender: me,
+        title: `${me?.name ?? '거래 상대'}님이 후기를 남겼어요`,
         body: `${'★'.repeat(input.rating)} ${input.comment.slice(0, 50)}`,
         link: `/users/${r.targetUserId}?tab=reviews`,
       });

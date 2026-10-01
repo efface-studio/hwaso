@@ -67,7 +67,7 @@ docs/         설계 문서
 | `shipping`      | 배송지, 송장, `CarrierProvider`                                  |
 | `chat`          | 1:1 채팅                                                         |
 | `reviews`       | 거래 리뷰                                                        |
-| `notifications` | 인앱 알림 + 푸시 (Expo / Web Push)                               |
+| `notifications` | 인앱 알림 + 푸시 (APNs / FCM / Web Push)                         |
 | `reports`       | 신고                                                             |
 | `admin`         | 회원·상품·경매·주문 관리, 검수, 정책, 배너/공지/쿠폰, 감사 로그  |
 | `settlements`   | 판매자 정산                                                      |
