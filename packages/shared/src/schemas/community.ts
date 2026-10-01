@@ -1,4 +1,5 @@
-import { z } from 'zod';
+import '../zod-config';
+import * as z from 'zod';
 import { REPORT_REASONS, REPORT_TARGETS } from '../enums';
 import { id } from './common';
 import { nicknameSchema } from './auth';

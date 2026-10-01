@@ -1,19 +1,16 @@
 import type { ChatMessageDto, SendMessageInput } from '@shop/shared';
 import { Image } from 'expo-image';
 import { Link } from 'expo-router';
+import { memo, useMemo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { localizePreview, systemText } from '@/components/chat/localize';
 import { Text } from '@/components/ui/text';
-import { currentLanguage, LOCALE } from '@/i18n';
-import { formatPrice } from '@/i18n/format';
+import { dateTimeFormat, formatPrice, formatTime } from '@/i18n/format';
 import { mediaUrl } from '@/lib/media';
 import { useTheme } from '@/theme';
 
 export type PendingMessage = ChatMessageDto & { pending?: 'sending' | 'failed'; retry?: SendMessageInput };
-
-const time = (iso: string) =>
-  new Date(iso).toLocaleTimeString(LOCALE[currentLanguage()], { hour: 'numeric', minute: '2-digit' });
 
 function Body({ m }: { m: PendingMessage }) {
   const t = useTheme();
@@ -66,13 +63,13 @@ function Body({ m }: { m: PendingMessage }) {
         <Text variant="label">{tr('message.appointment')}</Text>
         <Text variant="small">
           🗓{' '}
-          {new Date(m.appointment.at).toLocaleString(LOCALE[currentLanguage()], {
+          {dateTimeFormat({
             month: 'long',
             day: 'numeric',
             weekday: 'short',
             hour: 'numeric',
             minute: '2-digit',
-          })}
+          }).format(new Date(m.appointment.at))}
         </Text>
         <Text variant="small">📍 {m.appointment.place}</Text>
       </View>
@@ -147,8 +144,11 @@ function Quote({ reply, author }: { reply: NonNullable<PendingMessage['replyTo']
   );
 }
 
-/** 말풍선: 내 메시지 오른쪽, 사진·작품·약속은 카드. 길게 눌러 답장·삭제·신고 */
-export function Bubble({
+/**
+ * 말풍선: 내 메시지 오른쪽, 사진·작품·약속은 카드. 길게 눌러 답장·삭제·신고.
+ * 콜백은 메시지를 인자로 받는 고정 함수로 받아, 바뀌지 않은 말풍선은 다시 그리지 않는다.
+ */
+export const Bubble = memo(function Bubble({
   m,
   mine,
   showTime,
@@ -163,18 +163,20 @@ export function Bubble({
   read: boolean;
   /** 답장 원문을 쓴 사람 ('나' 또는 상대 닉네임) */
   replyAuthor: string | null;
-  onLongPress: () => void;
-  onRetry: () => void;
+  onLongPress: (m: PendingMessage) => void;
+  onRetry: (m: PendingMessage) => void;
 }) {
   const t = useTheme();
-  const { t: tr } = useTranslation('chat');
+  const { t: tr, i18n } = useTranslation('chat');
+  // 보낸 시각은 메시지·언어가 바뀔 때만 다시 계산한다
+  const time = useMemo(() => formatTime(m.createdAt), [m.createdAt, i18n.language]);
   if (m.kind === 'SYSTEM') return <SystemLine m={m} />;
   const card = m.kind !== 'TEXT' && !m.deleted;
   return (
     <View style={{ alignItems: mine ? 'flex-end' : 'flex-start', gap: 4 }}>
       <View style={[styles.line, mine && { flexDirection: 'row-reverse' }]}>
         <Pressable
-          onLongPress={onLongPress}
+          onLongPress={() => onLongPress(m)}
           accessibilityHint={tr('message.longPressHint')}
           style={[
             styles.bubble,
@@ -194,7 +196,7 @@ export function Bubble({
         </Pressable>
         <View style={{ alignItems: mine ? 'flex-end' : 'flex-start' }}>
           {m.pending === 'failed' ? (
-            <Pressable accessibilityRole="button" onPress={onRetry} hitSlop={8}>
+            <Pressable accessibilityRole="button" onPress={() => onRetry(m)} hitSlop={8}>
               <Text variant="caption" color="destructive">
                 {tr('message.retry')}
               </Text>
@@ -208,7 +210,7 @@ export function Bubble({
               )}
               {showTime && !m.pending && (
                 <Text variant="caption" color="faint">
-                  {time(m.createdAt)}
+                  {time}
                 </Text>
               )}
             </>
@@ -222,7 +224,7 @@ export function Bubble({
       )}
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   quote: { borderLeftWidth: 2, paddingLeft: 8, marginBottom: 6 },

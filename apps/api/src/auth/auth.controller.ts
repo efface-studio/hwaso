@@ -13,6 +13,7 @@ import {
 } from '@nestjs/common';
 import type { User } from '@prisma/client';
 import {
+  appleLinkSchema,
   appleNativeSchema,
   biometricRegisterSchema,
   changePasswordSchema,
@@ -26,6 +27,7 @@ import {
   sendCodeSchema,
   signupSchema,
   verifyCodeSchema,
+  type AppleLinkInput,
   type AppleNativeInput,
   type BiometricRegisterInput,
   type ChangePasswordInput,
@@ -399,6 +401,19 @@ export class AuthController {
   }
 
   // ───── 소셜 계정 연결 ↔ 해제 ─────
+
+  /** iOS: 시스템 Sign in with Apple 로 받은 identityToken 으로 연결 (브라우저 OAuth 대신) */
+  @RequireReauth()
+  @DemoBlocked()
+  @Post('social/apple/native')
+  @HttpCode(204)
+  async linkAppleNative(
+    @CurrentUser() user: AuthUser,
+    @Body(new ZodPipe(appleLinkSchema)) body: AppleLinkInput,
+  ) {
+    const profile = await this.oauth.appleProfile(body.identityToken);
+    await this.oauth.link(user.id, 'APPLE', profile);
+  }
 
   // 계정을 가로챈 사람이 자기 소셜 계정을 로그인 수단으로 심어 두지 못하게
   @RequireReauth()

@@ -42,6 +42,17 @@ PostgreSQL 16 · Prisma 6. 스키마 원본은 `apps/api/prisma/schema.prisma` �
 
 ### 사용자·인증
 
+| 모델               | 주요 필드                                                                                                                                | 비고                                                                                          |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `User`             | email(unique, 소문자 정규화), passwordHash?, emailVerifiedAt?, role, status, unpaidStrikes(낙찰 미결제 횟수), marketingOptIn, deletedAt? | 소셜 전용 계정은 passwordHash null. 인덱스(createdAt)                                         |
+| `Profile`          | userId(PK·FK), nickname(unique), bio, avatarKey, region, ratingAvg, ratingCount, tradeCount                                              | 1:1                                                                                           |
+| `SocialAccount`    | provider, providerUserId, userId                                                                                                         | unique(provider, providerUserId)                                                              |
+| `Session`          | userId, refreshTokenHash(unique), familyId, deviceName, platform(web/ios/android), ip, userAgent, lastUsedAt, expiresAt, revokedAt?      | 기기 관리 = 세션 목록                                                                         |
+| `VerificationCode` | email, purpose(SIGNUP/RESET_PASSWORD/DELETE_ACCOUNT), codeHash, attempts, expiresAt, consumedAt?                                         | 6자리 OTP, 10분, 5회                                                                          |
+| `PushToken`        | userId, token(unique), platform(expo/web)                                                                                                |                                                                                               |
+| `Follow`           | followerId, followingId, createdAt                                                                                                       | PK(followerId, followingId), 인덱스(followingId, createdAt desc)·(followerId, createdAt desc) |
+| `Seller`           | userId(PK), businessName?, bankName, bankAccountMasked, bankAccountEnc, verifiedAt?                                                      | 정산 계좌 암호화 저장                                                                         |
+| `Address`          | userId, recipient, phone, zipCode, address1, address2, memo, isDefault                                                                   |                                                                                               |
 | 모델               | 주요 필드                                                                                                                                | 비고                                                                                      |
 | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
 | `User`             | email(unique, 소문자 정규화), passwordHash?, emailVerifiedAt?, role, status, unpaidStrikes(낙찰 미결제 횟수), marketingOptIn, deletedAt? | 소셜 전용 계정은 passwordHash null                                                        |
@@ -70,7 +81,9 @@ PostgreSQL 16 · Prisma 6. 스키마 원본은 `apps/api/prisma/schema.prisma` �
 | `RecentView`   | userId, productId, viewedAt                                                                                                                                                                                                                                                                                                                                        | PK(userId, productId)                                                    |
 | `Inquiry`      | productId, userId, question, answer?, answeredAt?, isPrivate                                                                                                                                                                                                                                                                                                       | 상품 문의                                                                |
 
-인덱스: `Product(status, publishedAt desc)`, `Product(categoryId, status)`, `Product(sellerId, status)`, `Product(price)`, `Product.title` GIN trigram.
+인덱스: `Product(status, publishedAt desc)`, `Product(categoryId, status)`, `Product(sellerId, status)`, `Product(listPrice)`, `Product(favoriteCount)`, 공개 목록 최신순 부분 인덱스 `product_published_idx (publishedAt desc, id) WHERE deletedAt IS NULL AND publishedAt IS NOT NULL`, GIN trigram `Product.title`·`maker/brand/era/material` 결합식·`Artist.name`·`Profile.nickname`.
+
+부분 인덱스 조건에 `status` 를 넣지 않는 이유: Prisma 는 enum 값을 바인드 파라미터로 보내므로 `status IN (...)` 가 인덱스 조건을 만족한다고 플래너가 증명하지 못한다. `status` 는 인덱스를 따라 읽으며 거른다.
 
 ### 경매
 
@@ -89,18 +102,18 @@ CHECK 제약:
 
 ### 주문·결제·배송·정산
 
-| 모델               | 주요 필드                                                                                                                                                                                                                                     | 비고                                    |
-| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- |
-| `CartItem`         | userId, productId, quantity                                                                                                                                                                                                                   | unique(userId, productId). FIXED 상품만 |
-| `Order`            | orderNumber(unique), buyerId, sellerId, source, auctionId?(unique), status, itemsAmount, shippingFee, discountAmount, totalAmount, couponId?, paymentDueAt?, shippingAddress(json 스냅샷), paidAt?, cancelledAt?, cancelReason?, completedAt? | 판매자별 1주문                          |
-| `OrderItem`        | orderId, productId, titleSnapshot, imageKeySnapshot, unitPrice, quantity                                                                                                                                                                      | 구매 시점 스냅샷                        |
-| `OrderStatusLog`   | orderId, from, to, actorId?, reason                                                                                                                                                                                                           | 상태 변경 이력                          |
-| `Payment`          | orderId, provider, providerPaymentKey?(unique), method, amount, status, approvedAt?, cancelledAmount, failureCode?, raw(json)                                                                                                                 | 금액은 서버에서 주문 금액과 대조        |
-| `Refund`           | paymentId, amount, reason, createdAt                                                                                                                                                                                                          |                                         |
-| `Shipment`         | orderId(unique), carrier, trackingNumber?, status, shippedAt?, deliveredAt?                                                                                                                                                                   |                                         |
-| `Settlement`       | sellerId, orderId(unique), grossAmount, feeAmount, netAmount, status, scheduledAt, paidAt?                                                                                                                                                    | 수수료율 설정값                         |
-| `Coupon`           | code(unique), name, type, value, minOrderAmount, maxDiscount?, startsAt, endsAt, usageLimit?, usedCount, isActive                                                                                                                             |                                         |
-| `CouponRedemption` | couponId, userId, orderId                                                                                                                                                                                                                     | unique(couponId, userId)                |
+| 모델               | 주요 필드                                                                                                                                                                                                                                     | 비고                                         |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
+| `CartItem`         | userId, productId, quantity                                                                                                                                                                                                                   | unique(userId, productId). FIXED 상품만      |
+| `Order`            | orderNumber(unique), buyerId, sellerId, source, auctionId?(unique), status, itemsAmount, shippingFee, discountAmount, totalAmount, couponId?, paymentDueAt?, shippingAddress(json 스냅샷), paidAt?, cancelledAt?, cancelReason?, completedAt? | 판매자별 1주문. 인덱스(paidAt) — 거래액 집계 |
+| `OrderItem`        | orderId, productId, titleSnapshot, imageKeySnapshot, unitPrice, quantity                                                                                                                                                                      | 구매 시점 스냅샷                             |
+| `OrderStatusLog`   | orderId, from, to, actorId?, reason                                                                                                                                                                                                           | 상태 변경 이력                               |
+| `Payment`          | orderId, provider, providerPaymentKey?(unique), method, amount, status, approvedAt?, cancelledAmount, failureCode?, raw(json)                                                                                                                 | 금액은 서버에서 주문 금액과 대조             |
+| `Refund`           | paymentId, amount, reason, createdAt                                                                                                                                                                                                          |                                              |
+| `Shipment`         | orderId(unique), carrier, trackingNumber?, status, shippedAt?, deliveredAt?                                                                                                                                                                   |                                              |
+| `Settlement`       | sellerId, orderId(unique), grossAmount, feeAmount, netAmount, status, scheduledAt, paidAt?                                                                                                                                                    | 수수료율 설정값                              |
+| `Coupon`           | code(unique), name, type, value, minOrderAmount, maxDiscount?, startsAt, endsAt, usageLimit?, usedCount, isActive                                                                                                                             |                                              |
+| `CouponRedemption` | couponId, userId, orderId                                                                                                                                                                                                                     | unique(couponId, userId)                     |
 
 ### 커뮤니티
 
@@ -108,7 +121,7 @@ CHECK 제약:
 | --------------- | --------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
 | `ChatRoom`      | productId?, buyerId, sellerId, lastMessageAt                                                                                | unique(productId, buyerId, sellerId) |
 | `ChatMessage`   | roomId, senderId, kind(TEXT/IMAGE/PRODUCT), body?, imageKey?, productId?, createdAt, deletedAt?                             |                                      |
-| `ChatReadState` | roomId, userId, lastReadAt                                                                                                  | PK(roomId, userId)                   |
+| `ChatReadState` | roomId, userId, lastReadAt                                                                                                  | PK(roomId, userId), 인덱스(userId)   |
 | `Review`        | orderId, authorId, targetUserId, direction(BUYER_TO_SELLER/SELLER_TO_BUYER), rating(1..5), comment, imageKeys[], deletedAt? | unique(orderId, authorId)            |
 | `Notification`  | userId, type, title, body, link, data(json), readAt?                                                                        | 인덱스(userId, createdAt desc)       |
 
@@ -123,10 +136,20 @@ CHECK 제약:
 
 `Admin` 은 별도 테이블 없이 `User.role ∈ {ADMIN, SUPER_ADMIN}` 으로 표현한다.
 
+### 앱 OTA
+
+| 모델        | 주요 필드                                                                                                                                                                                    | 비고                                                      |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| `OtaUpdate` | platform(ios/android), runtimeVersion, channel, kind(UPDATE/ROLLBACK), message, critical, rolloutPercent(1~100), status(ACTIVE/ROLLED_BACK), launchAsset?, assets, expoClient?, createdById? | 인덱스(platform, runtimeVersion, channel, createdAt desc) |
+
+- `id` 는 코드에서 만든 UUID v4 — 앱(expo-updates)이 업데이트 ID 로 쓴다.
+- `launchAsset`·`assets` 는 `OtaAsset` JSON (ROLLBACK 행은 launchAsset 없음). 매니페스트 내용은 만든 뒤 바꾸지 않는다 (비율·상태만 변경).
+- 같은 (platform, runtimeVersion, channel) 안에서 `createdAt` 은 항상 증가한다 — 앱은 더 새로운 업데이트·되돌리기 지시만 적용한다.
+
 ## 마이그레이션 정책
 
 - `prisma migrate dev` 로 생성하며, 커밋된 migration SQL 은 이후 수정하지 않는다.
-- Prisma 가 표현하지 못하는 것(CHECK, pg_trgm 확장/GIN 인덱스)은 생성된 migration SQL 에 수동 추가.
+- Prisma 가 표현하지 못하는 것(CHECK, pg_trgm 확장/GIN 인덱스, 부분 인덱스)은 생성된 migration SQL 에 수동 추가하고 schema.prisma 해당 모델에 주석으로 남긴다.
 - 운영 적용은 `prisma migrate deploy`.
 
 ## 시드

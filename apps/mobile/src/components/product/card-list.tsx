@@ -29,12 +29,12 @@ export function CardList({
   return (
     <List
       key={g.columns}
-      data={refreshing ? [] : (items ?? [])}
+      data={items ?? []}
       numColumns={g.columns}
       keyExtractor={(p) => p.id}
       renderItem={({ item }) => <ProductCard p={item} width={g.cardWidth} />}
       ListHeaderComponent={header}
-      ListEmptyComponent={refreshing ? <Loading variant="grid" /> : empty}
+      ListEmptyComponent={empty}
       columnWrapperStyle={g.columns > 1 ? { gap: g.gap, paddingHorizontal: g.padding } : undefined}
       contentContainerStyle={{ flexGrow: 1, gap: 20, paddingTop: 12, paddingBottom: 32 }}
       contentInsetAdjustmentBehavior="automatic"

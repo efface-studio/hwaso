@@ -6,6 +6,11 @@ import { serverApi } from '@/lib/server-api';
 
 export const revalidate = 60;
 
+/** 빌드 때는 비워 두고 첫 요청에 렌더해 revalidate 주기로 캐시한다 (on-demand ISR) */
+export async function generateStaticParams() {
+  return [];
+}
+
 async function load(id: string) {
   try {
     return await serverApi.notices.get(id);

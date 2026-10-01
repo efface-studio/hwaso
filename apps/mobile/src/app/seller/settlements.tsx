@@ -27,7 +27,7 @@ export default function SettlementsScreen() {
     <List
       style={{ backgroundColor: t.colors.background }}
       contentContainerStyle={{ flexGrow: 1, padding: 16, gap: 10 }}
-      data={pull.refreshing ? [] : data.items}
+      data={data.items}
       keyExtractor={(s) => s.id}
       refreshControl={<AppRefreshControl refreshing={pull.refreshing} onRefresh={pull.onRefresh} />}
       ListHeaderComponent={
@@ -61,15 +61,7 @@ export default function SettlementsScreen() {
         </View>
       }
       ListEmptyComponent={
-        pull.refreshing ? (
-          <Loading variant="plain-list" />
-        ) : (
-          <Empty
-            kind="doc"
-            title={tr('settlements.empty')}
-            description={tr('settlements.emptyDescription')}
-          />
-        )
+        <Empty kind="doc" title={tr('settlements.empty')} description={tr('settlements.emptyDescription')} />
       }
       renderItem={({ item: s }) => (
         <Pressable

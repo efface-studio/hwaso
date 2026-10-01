@@ -6,6 +6,7 @@ export const ALLOWED_FORMATS = ['jpeg', 'png', 'webp', 'heif', 'avif'] as const;
 export const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
 export const MAX_PIXELS = 50_000_000;
 export const VARIANT_WIDTHS = [400, 800, 1600] as const;
+const MAX_VARIANT_WIDTH = Math.max(...VARIANT_WIDTHS);
 
 export class InvalidImageError extends Error {}
 
@@ -43,34 +44,52 @@ export async function processImage(input: Buffer, opts: { avif?: boolean } = {})
     throw new InvalidImageError(`format ${meta.format}`);
   }
 
-  let normalized: { data: Buffer; info: OutputInfo };
+  // 한 번만 디코딩: 방향 적용 + 가장 큰 파생본 폭으로 줄인 픽셀을 raw 로 들고 작은 파생본은 여기서 만든다
+  const { width, height } = meta.autoOrient;
+  let base: { data: Buffer; info: OutputInfo };
   try {
-    normalized = await sharp(input, { limitInputPixels: MAX_PIXELS })
+    base = await sharp(input, { limitInputPixels: MAX_PIXELS })
       .rotate()
+      .resize({ width: MAX_VARIANT_WIDTH, withoutEnlargement: true })
+      .raw({ depth: 'uchar' })
       .toBuffer({ resolveWithObject: true });
   } catch {
     throw new InvalidImageError('decode failed');
   }
-  const { width, height } = normalized.info;
-  const { dominant } = await sharp(normalized.data).stats();
+  const raw = { raw: { width: base.info.width, height: base.info.height, channels: base.info.channels } };
+  const fromBase = () => sharp(base.data, raw);
+
+  // 대표색은 64px 썸네일로 계산한다 (stats() 는 입력 전체를 읽는다)
+  const thumb = await fromBase()
+    .resize(64, 64, { fit: 'inside', withoutEnlargement: true })
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+  const { dominant } = await sharp(thumb.data, {
+    raw: { width: thumb.info.width, height: thumb.info.height, channels: thumb.info.channels },
+  }).stats();
 
   const key = newImageKey();
-  const variants: ProcessedImage['variants'] = [];
+  const jobs: Promise<ProcessedImage['variants'][number]>[] = [];
   for (const w of VARIANT_WIDTHS) {
-    const resized = sharp(normalized.data).resize({ width: w, withoutEnlargement: true });
-    variants.push({
-      path: `${key}/w${w}.webp`,
-      body: await resized.clone().webp({ quality: 82 }).toBuffer(),
-      contentType: 'image/webp',
-    });
+    const resized = fromBase().resize({ width: w, withoutEnlargement: true });
+    jobs.push(
+      resized
+        .clone()
+        .webp({ quality: 82 })
+        .toBuffer()
+        .then((body) => ({ path: `${key}/w${w}.webp`, body, contentType: 'image/webp' })),
+    );
     if (opts.avif !== false) {
-      variants.push({
-        path: `${key}/w${w}.avif`,
-        body: await resized.clone().avif({ quality: 55, effort: 3 }).toBuffer(),
-        contentType: 'image/avif',
-      });
+      jobs.push(
+        resized
+          .clone()
+          .avif({ quality: 55, effort: 3 })
+          .toBuffer()
+          .then((body) => ({ path: `${key}/w${w}.avif`, body, contentType: 'image/avif' })),
+      );
     }
   }
+  const variants = await Promise.all(jobs);
 
   return {
     key,

@@ -7,6 +7,9 @@ import { withAppDelegate, withInfoPlist, type ConfigPlugin } from 'expo/config-p
  */
 const APP_LINK_HOST = process.env.APP_LINK_HOST ?? 'hwaso.kr';
 const PRIMARY = '#2F7A58';
+// OTA 업데이트 서버 (docs/MOBILE_RELEASE.md 「OTA 업데이트」). API 주소가 없는 개발 빌드에서는 끈다
+const API_URL = process.env.EXPO_PUBLIC_API_URL;
+const OTA_CHANNEL = process.env.OTA_CHANNEL ?? 'production';
 
 /** URL 환경 변수에서 호스트만 뽑는다 (없거나 잘못된 값이면 건너뛴다) */
 function hostOf(url: string | undefined): string | null {
@@ -77,8 +80,22 @@ const config: ExpoConfig = {
   userInterfaceStyle: 'automatic',
   backgroundColor: '#FFFFFF',
   primaryColor: PRIMARY,
+  // 네이티브 코드(모듈·설정·패치)가 같은 빌드끼리만 같은 OTA 를 받는다
+  runtimeVersion: { policy: 'fingerprint' },
+  updates: {
+    enabled: !!API_URL,
+    url: API_URL ? `${API_URL}/ota/manifest` : undefined,
+    // 실행을 기다리게 하지 않는다 — 새 업데이트는 뒤에서 받아 두고 다음 실행 때 적용
+    checkAutomatically: 'ON_LOAD',
+    fallbackToCacheTimeout: 0,
+    requestHeaders: { 'expo-channel-name': OTA_CHANNEL },
+    // 서버가 서명한 매니페스트만 받는다 (개인 키는 저장소 밖, 인증서만 저장소에)
+    codeSigningCertificate: './certs/certificate.pem',
+    codeSigningMetadata: { keyid: 'main', alg: 'rsa-v1_5-sha256' },
+  },
   ios: {
     bundleIdentifier: 'dev.efface.hwaso',
+    appleTeamId: '3NVCLTSP9V',
     buildNumber: '1',
     supportsTablet: true,
     usesAppleSignIn: true,
@@ -91,10 +108,15 @@ const config: ExpoConfig = {
       NSFaceIDUsageDescription:
         '앱 잠금 해제와 결제·계좌 변경 같은 중요한 작업을 확인할 때 Face ID 를 사용해요.',
       CFBundleAllowMixedLocalizations: true,
+      // 푸시에 보낸 사람 이름·프로필 사진을 보여주는 커뮤니케이션 알림 (targets/notification-service)
+      NSUserActivityTypes: ['INSendMessageIntent'],
     },
+    entitlements: { 'com.apple.developer.usernotifications.communication': true },
   },
   android: {
     package: 'dev.efface.hwaso',
+    // FCM 기기 토큰용 Firebase 설정. 파일은 저장소 밖에 두고 경로만 환경 변수로 넘긴다 (EAS 는 파일 환경 변수)
+    ...(process.env.GOOGLE_SERVICES_JSON ? { googleServicesFile: process.env.GOOGLE_SERVICES_JSON } : {}),
     versionCode: 1,
     // 토큰·설정이 adb backup·클라우드 백업으로 다른 기기에 옮겨지지 않게 한다
     allowBackup: false,
@@ -152,6 +174,8 @@ const config: ExpoConfig = {
       },
     ],
     ['expo-notifications', { color: PRIMARY }],
+    // iOS 알림 서비스 확장 등 앱 밖 타깃 (targets/*)
+    '@bacons/apple-targets',
     // 앱이 지원하는 언어 (iOS 설정 > 앱 > 언어 에서 앱별로 고를 수 있다)
     ['expo-localization', { supportedLocales: ['ko', 'en', 'ja', 'zh-Hans', 'zh-Hant'] }],
     [

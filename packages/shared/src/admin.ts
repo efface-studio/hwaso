@@ -1,4 +1,5 @@
-import { z } from 'zod';
+import './zod-config';
+import * as z from 'zod';
 import type {
   AuctionStatus,
   CategoryGroup,

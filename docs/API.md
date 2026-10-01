@@ -116,7 +116,7 @@ NestJS REST API. Base URL `/api/v1`. 모든 요청/응답은 JSON (업로드 제
 | ------ | ---------------- | ---- | --------------------------------------------------------------------------------------- |
 | GET    | /categories      | -    | 트리 + 공개 작품 수(`productCount`, 대분류는 합계)·대표 이미지(`coverImage`) (캐시 60s) |
 | GET    | /artists?q=      | -    | 작가 검색                                                                               |
-| GET    | /artists/popular | -    | 인기 작가                                                                               |
+| GET    | /artists/popular | -    | 인기 작가 (캐시 5분)                                                                    |
 | GET    | /artists/:id     | -    | 작가 + 작품                                                                             |
 
 ### Products
@@ -239,7 +239,7 @@ NestJS REST API. Base URL `/api/v1`. 모든 요청/응답은 JSON (업로드 제
 | GET         | /notifications/unread-count         | U         |                                                                                    |
 | DELETE      | /notifications/:id · /notifications | U         | 한 건 삭제 / 읽은 알림 모두 삭제                                                   |
 | GET/PUT     | /me/notification-settings           | U         | {push:{auction,trade,chat,activity}, quietHours} — 방해 금지 21~8시(KST) 푸시 보류 |
-| POST/DELETE | /me/push-tokens                     | U         | {token, platform: expo·web} 등록(기기당 한 계정)·해제                              |
+| POST/DELETE | /me/push-tokens                     | U         | {token, platform: apns·fcm·expo·web} 등록(기기당 한 계정)·해제                     |
 | GET         | /notifications/push-config          | -         | {vapidPublicKey} (웹 푸시 구독용, 미설정 시 null)                                  |
 | POST        | /reports                            | U         | {targetType, targetId, reason, detail}                                             |
 
@@ -249,7 +249,7 @@ NestJS REST API. Base URL `/api/v1`. 모든 요청/응답은 JSON (업로드 제
 
 | 경로                              | 기능                                                                                                                                                               |
 | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| GET /admin/dashboard              | 회원·판매자·작품·경매·주문·거래액(오늘/30일)·처리 대기(환불 요청·신고·미결제)·정산 예정/보류 + 14일 추이                                                           |
+| GET /admin/dashboard              | 회원·판매자·작품·경매·주문·거래액(오늘/30일)·처리 대기(환불 요청·신고·미결제)·정산 예정/보류 + 14일 추이 (캐시 30s)                                                |
 | /admin/users · /users/:id         | 검색(이메일·닉네임·ID, 역할·상태), 상세, suspend(모든 기기 로그아웃, 로그인 시 사유 안내)·restore, PATCH role(관리자 부여·관리자 대상 조치는 SA 만), reset-strikes |
 | /admin/sellers                    | 인증 대기/완료 필터, verify·unverify (VERIFIED_SELLER)                                                                                                             |
 | /admin/products                   | 검색·상태·검수 필터·미처리 신고 수, hide(SUSPENDED)·restore, DELETE(진행 중 주문 있으면 거부), certificate 검수                                                    |
@@ -263,8 +263,29 @@ NestJS REST API. Base URL `/api/v1`. 모든 요청/응답은 JSON (업로드 제
 | /admin/banners · /notices         | CRUD (배너 링크는 사이트 내부 경로만, 공지는 예약 게시)                                                                                                            |
 | POST /admin/broadcast             | 전체/판매자/구매자 운영 알림 (알림함 + 푸시)                                                                                                                       |
 | GET /admin/audit-logs             | 감사 로그 (대상 유형·관리자 필터)                                                                                                                                  |
+| /admin/ota                        | 앱 OTA 배포 목록(platform·channel 필터), PATCH :id 비율·중단, POST rollback (previous·embedded)                                                                    |
 
 공개: `GET /notices` (고정 먼저, 게시일 지난 것만) · `GET /notices/:id`.
+
+### OTA (앱 업데이트, Expo Updates 프로토콜 v1)
+
+자체 호스팅 OTA. 흐름·키 관리는 docs/MOBILE_RELEASE.md "OTA 업데이트". 이 엔드포인트들은 공통 응답 포맷(`{error}` 제외)을 따르지 않고 Expo 프로토콜을 따른다.
+
+| Method | Path          | 권한   | 설명                                                                                                                           |
+| ------ | ------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------ |
+| GET    | /ota/manifest | -      | 앱(expo-updates)이 호출. 새 업데이트가 있으면 `multipart/mixed` 매니페스트, 되돌리기면 지시(directive), 없으면 204             |
+| POST   | /ota/assets   | 토큰 P | multipart `file` + `contentType`, `fileExtension`(".png", 번들은 "") → `OtaAsset` {hash, key, contentType, fileExtension, url} |
+| POST   | /ota/updates  | 토큰 P | `otaPublishSchema` → `OtaUpdateDto` (201)                                                                                      |
+
+- **토큰 P**: 배포 스크립트 전용. `x-ota-publish-token` 헤더가 `OTA_PUBLISH_TOKEN` 과 같아야 한다 (불일치 401, 서버 미설정 503 `OTA_NOT_CONFIGURED`).
+- **에셋 저장**: 내용 주소 `public/ota/<sha256 hex><ext>` (immutable 캐시). `hash` = sha256 base64url(패딩 없음), `key` = md5 hex. 파일당 최대 50MB.
+- **매니페스트 요청 헤더**: `expo-platform`(ios·android, 필수), `expo-runtime-version`(필수) — 없으면 400. `expo-channel-name`(기본 production), `expo-current-update-id`, `expo-embedded-update-id`, `eas-client-id`, `expo-expect-signature`, `expo-protocol-version`(없으면 1).
+- **선택**: 같은 platform·runtimeVersion·channel 의 ACTIVE 행을 최신순으로 보며, 점진 배포 대상인 첫 행을 고른다. 대상 여부 = `rolloutPercent = 100` 또는 `sha256("<id>:<eas-client-id>")` 앞 4바이트(uint32) % 100 < rolloutPercent. 기기 ID 가 없으면 100% 배포만 받는다.
+  - 고른 행이 없거나, 이미 그 업데이트(`expo-current-update-id`)로 실행 중이면 204.
+  - ROLLBACK 행: 내장 번들로 실행 중(현재 ID 없음 또는 내장 ID 와 같음)이면 204, 아니면 `directive` 파트 `{"type":"rollBackToEmbedded","parameters":{"commitTime"}}`.
+  - UPDATE 행: `manifest` 파트 `{id, createdAt, runtimeVersion, launchAsset, assets, metadata: {}, extra: {expoClient, critical}}` + `extensions` 파트 `{"assetRequestHeaders":{}}`.
+- **응답 헤더**: `expo-protocol-version: 1`, `expo-sfv-version: 0`, `cache-control: private, max-age=0`, `content-type: multipart/mixed; boundary=…` (204 도 `expo-protocol-version` 포함).
+- **서명**: `OTA_SIGNING_KEY` 가 있으면 manifest·directive 파트 본문에 RSA-SHA256(PKCS#1 v1.5) 서명 → 파트 헤더 `expo-signature: sig="<base64>", keyid="<OTA_SIGNING_KEY_ID>"`. `expo-expect-signature` 가 왔는데 키가 없으면 500 `OTA_NOT_CONFIGURED`.
 
 ## WebSocket (Socket.IO, namespace `/rt`)
 

@@ -1,3 +1,4 @@
+import { OAuthService } from '../src/auth/oauth.service';
 import { PROVIDERS } from '../src/auth/oauth.providers';
 import { createTestApp, type TestContext } from './app';
 import { createCategory, createProduct, createUser, reauth } from './fixtures';
@@ -467,5 +468,40 @@ describe('소셜 로그인 (카카오 흐름으로 공통 로직 검증)', () =>
       .send({ currentPassword: 'x', newPassword: 'first1234' })
       .expect(204);
     await t.http.delete('/api/v1/auth/social/kakao').set(auth).expect(204);
+  });
+});
+
+describe('iOS 네이티브 Apple 계정 연결', () => {
+  it('로그인해야 하고, 검증된 Apple 계정을 현재 계정에 연결한다', async () => {
+    await t.http
+      .post('/api/v1/auth/social/apple/native')
+      .send({ identityToken: 'x'.repeat(40) })
+      .expect(401);
+    const { res } = await signup();
+    const auth = { Authorization: `Bearer ${res.body.accessToken}` };
+    const spy = vi.spyOn(OAuthService.prototype, 'appleProfile').mockResolvedValue({
+      providerUserId: `apple${Date.now()}`,
+      email: null,
+      emailVerified: false,
+      name: null,
+    });
+    await t.http
+      .post('/api/v1/auth/social/apple/native')
+      .set(auth)
+      .send({ identityToken: 'x'.repeat(40) })
+      .expect(204);
+    const me = await t.http.get('/api/v1/auth/me').set(auth).expect(200);
+    expect(me.body.socialProviders).toContain('APPLE');
+    spy.mockRestore();
+  });
+
+  it('Apple 번들 ID 가 설정되지 않았으면 400', async () => {
+    const { res } = await signup();
+    const r = await t.http
+      .post('/api/v1/auth/social/apple/native')
+      .set({ Authorization: `Bearer ${res.body.accessToken}` })
+      .send({ identityToken: 'x'.repeat(40) })
+      .expect(400);
+    expect(r.body.error.code).toBe('PROVIDER_NOT_CONFIGURED');
   });
 });

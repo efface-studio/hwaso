@@ -291,7 +291,13 @@ function Header({
             />
           ) : (
             <Button
-              title={u.isFollowing ? tr('people.following') : tr('people.follow')}
+              title={
+                u.isFollowing
+                  ? tr('people.following')
+                  : u.followsMe
+                    ? tr('people.followBack')
+                    : tr('people.follow')
+              }
               variant={u.isFollowing ? 'outline' : 'primary'}
               block
               loading={busy}

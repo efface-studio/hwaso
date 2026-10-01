@@ -126,19 +126,15 @@ export default function SellerProductsScreen() {
       ) : (
         <List
           contentContainerStyle={{ flexGrow: 1 }}
-          data={pull.refreshing ? [] : (q.data ?? [])}
+          data={q.data ?? []}
           keyExtractor={(p) => p.id}
           refreshControl={<AppRefreshControl refreshing={pull.refreshing} onRefresh={pull.onRefresh} />}
           ItemSeparatorComponent={Sep}
           ListEmptyComponent={
-            pull.refreshing ? (
-              <Loading variant="list" />
-            ) : (
-              <Empty
-                title={tr('products.empty')}
-                action={{ title: tr('new.submit'), onPress: () => router.push('/sell/new') }}
-              />
-            )
+            <Empty
+              title={tr('products.empty')}
+              action={{ title: tr('new.submit'), onPress: () => router.push('/sell/new') }}
+            />
           }
           renderItem={({ item: p }) => (
             <Pressable

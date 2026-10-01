@@ -179,8 +179,10 @@ export class AuthGuard implements CanActivate {
     const token = bearer(req);
     const user = token ? await verifyAccessToken(token) : null;
     // Redis 장애 시 요청은 실패한다(fail-closed) — 계정 상태 캐시도 같은 Redis 에 의존한다
-    if (user && !(await isFamilyRevoked(this.redis, user.familyId)) && (await this.isActive(user.id)))
-      req.user = await this.withFreshRole(user);
+    if (user && !(await isFamilyRevoked(this.redis, user.familyId))) {
+      const status = await this.cachedStatus(user.id);
+      if (status?.startsWith('ACTIVE')) req.user = withFreshRole(user, status);
+    }
 
     if (isPublic || isOptional) return true;
     if (!req.user) throw new AppException(token ? 'INVALID_TOKEN' : 'UNAUTHORIZED');
@@ -190,7 +192,8 @@ export class AuthGuard implements CanActivate {
     return true;
   }
 
-  private async isActive(userId: string): Promise<boolean> {
+  /** 계정 상태·역할 캐시 (`{status}:{role}`, 30초) — 요청당 한 번만 읽는다 */
+  private async cachedStatus(userId: string): Promise<string> {
     const key = `user:status:${userId}`;
     let status = await this.redis.get(key);
     if (!status) {
@@ -201,15 +204,14 @@ export class AuthGuard implements CanActivate {
       status = u ? `${u.status}:${u.role}` : 'DELETED:USER';
       await this.redis.set(key, status, 'EX', 30);
     }
-    return status.startsWith('ACTIVE');
+    return status;
   }
+}
 
-  /** 역할 변경이 토큰 재발급 전에도 반영되도록 캐시된 역할을 사용한다 */
-  private async withFreshRole(user: AuthUser): Promise<AuthUser> {
-    const cached = await this.redis.get(`user:status:${user.id}`);
-    const role = cached?.split(':')[1] as Role | undefined;
-    return role ? { ...user, role } : user;
-  }
+/** 역할 변경이 토큰 재발급 전에도 반영되도록 캐시된 역할을 사용한다 */
+function withFreshRole(user: AuthUser, status: string): AuthUser {
+  const role = status.split(':')[1] as Role | undefined;
+  return role ? { ...user, role } : user;
 }
 
 /** 상태/역할 변경 시 캐시를 즉시 무효화한다 */

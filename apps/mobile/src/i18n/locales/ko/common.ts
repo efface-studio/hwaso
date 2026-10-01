@@ -158,6 +158,11 @@ const ko = {
     phone: '휴대폰',
     web: '웹',
   },
+  update: {
+    criticalTitle: '중요 업데이트',
+    criticalMessage: '꼭 필요한 수정이 적용돼요. 앱을 다시 시작할게요.',
+    restart: '다시 시작',
+  },
   push: {
     channelName: '기본 알림',
   },

@@ -21,7 +21,7 @@ import { ReasonSheet, ShipSheet } from '@/components/order/sheets';
 import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { RadioList } from '@/components/ui/radio';
-import { Empty, Loading, RefreshSkeleton } from '@/components/ui/state';
+import { Empty, Loading } from '@/components/ui/state';
 import { usePullRefresh } from '@/hooks/use-pull-refresh';
 import { Text } from '@/components/ui/text';
 import i18n, { currentLanguage, LOCALE } from '@/i18n';
@@ -388,147 +388,140 @@ export default function OrderDetailScreen() {
       refreshControl={<AppRefreshControl refreshing={pull.refreshing} onRefresh={pull.onRefresh} />}
     >
       <Stack.Screen options={{ title: tr('detail.title') }} />
-      <RefreshSkeleton refreshing={pull.refreshing} variant="text">
-        <View style={{ gap: 8 }}>
-          <View style={styles.row}>
-            <OrderStatusBadge status={o.status} />
-            {o.source === 'AUCTION' && (
-              <Text variant="small" color="muted">
-                {tr('detail.auctionWon')}
-              </Text>
-            )}
-          </View>
-          <Text variant="small" color="muted" selectable>
-            {tr('detail.orderNumber', { number: o.orderNumber, date: dateTime(o.createdAt) })}
-          </Text>
-          <OrderSteps status={o.status} />
-        </View>
-
-        {o.status === 'PAYMENT_PENDING' && o.role === 'buyer' && <PendingPayment o={o} refresh={refresh} />}
-        {o.status === 'CANCELLED' && (
-          <View style={[styles.box, { borderColor: t.colors.border }]}>
-            <Text variant="bodyStrong">{tr('detail.cancelled')}</Text>
+      <View style={{ gap: 8 }}>
+        <View style={styles.row}>
+          <OrderStatusBadge status={o.status} />
+          {o.source === 'AUCTION' && (
             <Text variant="small" color="muted">
-              {o.cancelReason}
-              {o.cancelledAt && ` · ${dateTime(o.cancelledAt)}`}
+              {tr('detail.auctionWon')}
             </Text>
-          </View>
-        )}
-        {o.status === 'REFUND_REQUESTED' && (
-          <View style={[styles.box, { borderColor: t.colors.warning }]}>
-            <Text variant="bodyStrong">{tr('detail.refundRequested')}</Text>
-            <Text variant="small">{o.refundReason}</Text>
-          </View>
-        )}
-        {o.autoConfirmAt && o.role === 'buyer' && (
-          <Text variant="small" color="muted">
-            {tr('detail.autoConfirm', { date: dateTime(o.autoConfirmAt) })}
-          </Text>
-        )}
-
-        <Actions o={o} refresh={refresh} />
-        {o.status === 'COMPLETED' && o.role !== 'admin' && (
-          <Button
-            title={
-              o.reviewed ? tr('detail.myReview') : tr('detail.writeReview', { name: counterpart.nickname })
-            }
-            variant={o.reviewed ? 'outline' : 'primary'}
-            onPress={() => router.push({ pathname: '/orders/[id]/review', params: { id: o.id } })}
-          />
-        )}
-        {o.role === 'buyer' && o.items[0] && (
-          <Button
-            title={tr('detail.chatSeller')}
-            variant="outline"
-            size="sm"
-            onPress={() => void openChat()}
-          />
-        )}
-
-        <Block
-          title={tr('detail.items')}
-          action={
-            <Pressable
-              accessibilityRole="link"
-              onPress={() => router.push({ pathname: '/users/[id]', params: { id: counterpart.id } })}
-              style={styles.row}
-            >
-              <Avatar avatarKey={counterpart.avatarKey} name={counterpart.nickname} size={24} />
-              <Text variant="small">
-                {o.role === 'buyer' ? tr('role.seller') : tr('role.buyer')} {counterpart.nickname}
-              </Text>
-            </Pressable>
-          }
-        >
-          {o.items.map((i) => (
-            <OrderItemRow key={i.productId} item={i} />
-          ))}
-        </Block>
-
-        {o.shipment && (
-          <Block title={tr('detail.shipping')}>
-            <Text selectable>
-              {carrierLabel(o.shipment.carrier)} {o.shipment.trackingNumber}
-            </Text>
-            {o.shipment.shippedAt && (
-              <Text variant="small" color="muted">
-                {tr('detail.shippedAt', { date: dateTime(o.shipment.shippedAt) })}
-              </Text>
-            )}
-            {o.shipment.trackingUrl && (
-              <Button
-                title={tr('detail.trackShipment')}
-                variant="outline"
-                size="sm"
-                onPress={() => void WebBrowser.openBrowserAsync(o.shipment!.trackingUrl!)}
-              />
-            )}
-          </Block>
-        )}
-
-        {o.shippingAddress && (
-          <Block title={tr('detail.address')}>
-            <AddressText a={o.shippingAddress} />
-          </Block>
-        )}
-
-        <Block title={tr('detail.payment')}>
-          <AmountSummary q={o} />
-          {pay && pay.status !== 'READY' && pay.status !== 'FAILED' && (
-            <View style={{ gap: 4, marginTop: 6 }}>
-              <Info name={tr('detail.payMethod')}>{label('paymentMethod', pay.method)}</Info>
-              {pay.approvedAt && <Info name={tr('detail.paidAt')}>{dateTime(pay.approvedAt)}</Info>}
-              {pay.cancelledAmount > 0 && (
-                <Info name={tr('detail.refund')}>{formatPrice(pay.cancelledAmount)}</Info>
-              )}
-            </View>
           )}
-          {pay?.receiptUrl && (
+        </View>
+        <Text variant="small" color="muted" selectable>
+          {tr('detail.orderNumber', { number: o.orderNumber, date: dateTime(o.createdAt) })}
+        </Text>
+        <OrderSteps status={o.status} />
+      </View>
+
+      {o.status === 'PAYMENT_PENDING' && o.role === 'buyer' && <PendingPayment o={o} refresh={refresh} />}
+      {o.status === 'CANCELLED' && (
+        <View style={[styles.box, { borderColor: t.colors.border }]}>
+          <Text variant="bodyStrong">{tr('detail.cancelled')}</Text>
+          <Text variant="small" color="muted">
+            {o.cancelReason}
+            {o.cancelledAt && ` · ${dateTime(o.cancelledAt)}`}
+          </Text>
+        </View>
+      )}
+      {o.status === 'REFUND_REQUESTED' && (
+        <View style={[styles.box, { borderColor: t.colors.warning }]}>
+          <Text variant="bodyStrong">{tr('detail.refundRequested')}</Text>
+          <Text variant="small">{o.refundReason}</Text>
+        </View>
+      )}
+      {o.autoConfirmAt && o.role === 'buyer' && (
+        <Text variant="small" color="muted">
+          {tr('detail.autoConfirm', { date: dateTime(o.autoConfirmAt) })}
+        </Text>
+      )}
+
+      <Actions o={o} refresh={refresh} />
+      {o.status === 'COMPLETED' && o.role !== 'admin' && (
+        <Button
+          title={
+            o.reviewed ? tr('detail.myReview') : tr('detail.writeReview', { name: counterpart.nickname })
+          }
+          variant={o.reviewed ? 'outline' : 'primary'}
+          onPress={() => router.push({ pathname: '/orders/[id]/review', params: { id: o.id } })}
+        />
+      )}
+      {o.role === 'buyer' && o.items[0] && (
+        <Button title={tr('detail.chatSeller')} variant="outline" size="sm" onPress={() => void openChat()} />
+      )}
+
+      <Block
+        title={tr('detail.items')}
+        action={
+          <Pressable
+            accessibilityRole="link"
+            onPress={() => router.push({ pathname: '/users/[id]', params: { id: counterpart.id } })}
+            style={styles.row}
+          >
+            <Avatar avatarKey={counterpart.avatarKey} name={counterpart.nickname} size={24} />
+            <Text variant="small">
+              {o.role === 'buyer' ? tr('role.seller') : tr('role.buyer')} {counterpart.nickname}
+            </Text>
+          </Pressable>
+        }
+      >
+        {o.items.map((i) => (
+          <OrderItemRow key={i.productId} item={i} />
+        ))}
+      </Block>
+
+      {o.shipment && (
+        <Block title={tr('detail.shipping')}>
+          <Text selectable>
+            {carrierLabel(o.shipment.carrier)} {o.shipment.trackingNumber}
+          </Text>
+          {o.shipment.shippedAt && (
+            <Text variant="small" color="muted">
+              {tr('detail.shippedAt', { date: dateTime(o.shipment.shippedAt) })}
+            </Text>
+          )}
+          {o.shipment.trackingUrl && (
             <Button
-              title={tr('detail.receipt')}
-              variant="ghost"
+              title={tr('detail.trackShipment')}
+              variant="outline"
               size="sm"
-              onPress={() => void WebBrowser.openBrowserAsync(pay.receiptUrl!)}
+              onPress={() => void WebBrowser.openBrowserAsync(o.shipment!.trackingUrl!)}
             />
           )}
         </Block>
+      )}
 
-        <Block title={tr('detail.history')}>
-          {[...o.logs].reverse().map((l, i) => (
-            <View key={i} style={styles.row}>
-              <Text variant="caption" color="muted" style={{ width: 110 }}>
-                {dateTime(l.createdAt)}
-              </Text>
-              <Text variant="small" style={{ flex: 1 }}>
-                <Text variant="small" style={{ fontWeight: '600' }}>
-                  {label('orderStatus', l.to)}
-                </Text>
-                {l.reason ? ` · ${l.reason}` : ''}
-              </Text>
-            </View>
-          ))}
+      {o.shippingAddress && (
+        <Block title={tr('detail.address')}>
+          <AddressText a={o.shippingAddress} />
         </Block>
-      </RefreshSkeleton>
+      )}
+
+      <Block title={tr('detail.payment')}>
+        <AmountSummary q={o} />
+        {pay && pay.status !== 'READY' && pay.status !== 'FAILED' && (
+          <View style={{ gap: 4, marginTop: 6 }}>
+            <Info name={tr('detail.payMethod')}>{label('paymentMethod', pay.method)}</Info>
+            {pay.approvedAt && <Info name={tr('detail.paidAt')}>{dateTime(pay.approvedAt)}</Info>}
+            {pay.cancelledAmount > 0 && (
+              <Info name={tr('detail.refund')}>{formatPrice(pay.cancelledAmount)}</Info>
+            )}
+          </View>
+        )}
+        {pay?.receiptUrl && (
+          <Button
+            title={tr('detail.receipt')}
+            variant="ghost"
+            size="sm"
+            onPress={() => void WebBrowser.openBrowserAsync(pay.receiptUrl!)}
+          />
+        )}
+      </Block>
+
+      <Block title={tr('detail.history')}>
+        {[...o.logs].reverse().map((l, i) => (
+          <View key={i} style={styles.row}>
+            <Text variant="caption" color="muted" style={{ width: 110 }}>
+              {dateTime(l.createdAt)}
+            </Text>
+            <Text variant="small" style={{ flex: 1 }}>
+              <Text variant="small" style={{ fontWeight: '600' }}>
+                {label('orderStatus', l.to)}
+              </Text>
+              {l.reason ? ` · ${l.reason}` : ''}
+            </Text>
+          </View>
+        ))}
+      </Block>
     </ScrollView>
   );
 }

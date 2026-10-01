@@ -10,7 +10,8 @@
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
     "doctor": "expo-doctor",
-    "demo:record": "tsx scripts/record-demo.ts"
+    "demo:record": "tsx scripts/record-demo.ts",
+    "ota:publish": "tsx scripts/ota-publish.ts"
   },
   "dependencies": {
     "@expo/metro-runtime": "~57.0.16",
@@ -45,6 +46,7 @@
     "expo-status-bar": "~57.0.1",
     "expo-symbols": "~57.0.3",
     "expo-system-ui": "~57.0.4",
+    "expo-updates": "~57.0.24",
     "expo-web-browser": "~57.0.3",
     "i18next": "^26.4.2",
     "react": "19.2.3",
@@ -62,6 +64,7 @@
     "zustand": "^5.0.15"
   },
   "devDependencies": {
+    "@bacons/apple-targets": "5.0.0",
     "@types/react": "~19.2.2",
     "tsx": "^4.23.15"
   }

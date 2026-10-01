@@ -4,10 +4,10 @@ import {
   filterChatRooms,
   looksLikeExternalTrade,
   presenceLabel,
-  sendMessageSchema,
   type ChatRoomDto,
   type ChatRoomFilter,
 } from './chat';
+import { sendMessageSchema } from './schemas/chat';
 
 describe('chat', () => {
   it('flags external trade phrases', () => {

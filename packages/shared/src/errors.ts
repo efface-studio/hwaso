@@ -67,6 +67,8 @@ export const ERROR_MESSAGES = {
   PAYMENT_EXPIRED: '결제 기한이 지나 주문이 취소되었습니다.',
   PAYMENT_NOT_CONFIGURED: '현재 결제를 이용할 수 없습니다. 잠시 후 다시 시도해주세요.',
   REFUND_FAILED: '환불 처리에 실패했습니다. 고객센터에 문의해주세요.',
+
+  OTA_NOT_CONFIGURED: '앱 업데이트 서버가 설정되지 않았습니다.',
 } as const;
 
 export type ErrorCode = keyof typeof ERROR_MESSAGES;
