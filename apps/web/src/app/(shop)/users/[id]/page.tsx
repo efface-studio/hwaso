@@ -48,6 +48,8 @@ export default async function UserPage({ params, searchParams }: Props) {
   const { id } = await params;
   const { tab: rawTab } = await searchParams;
   const tab = rawTab === 'sold' || rawTab === 'reviews' ? rawTab : 'selling';
+  // 작품 목록은 프로필과 함께 요청한다 (404 판단은 프로필 결과로)
+  const itemsP = tab === 'reviews' ? null : safe(serverApi.market.userProducts(id, tab));
   let u;
   try {
     u = await serverApi.market.user(id);
@@ -55,7 +57,7 @@ export default async function UserPage({ params, searchParams }: Props) {
     if (e instanceof ApiError && e.status === 404) notFound();
     return <EmptyState title="프로필을 불러오지 못했습니다" description="잠시 후 다시 시도해주세요." />;
   }
-  const items = tab === 'reviews' ? [] : ((await safe(serverApi.market.userProducts(id, tab))) ?? []);
+  const items = (await itemsP) ?? [];
 
   return (
     <div className="page-x mx-auto max-w-page py-6 md:py-10">
@@ -72,7 +74,7 @@ export default async function UserPage({ params, searchParams }: Props) {
             </p>
             {u.bio && <p className="mt-1 max-w-xl text-body">{u.bio}</p>}
           </div>
-          <ProfileFollow userId={u.id} initial={u.isFollowing} />
+          <ProfileFollow userId={u.id} initial={u.isFollowing} followsMe={u.followsMe} />
           <ProfileMenu userId={u.id} nickname={u.nickname} />
         </div>
         <dl className="flex gap-6">

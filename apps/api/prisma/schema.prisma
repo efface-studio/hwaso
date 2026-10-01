@@ -270,6 +270,8 @@ model User {
   coupons        CouponRedemption[]
   blocking       UserBlock[]        @relation("Blocker")
   blockedBy      UserBlock[]        @relation("Blocked")
+
+  @@index([createdAt])
 }
 
 model Profile {
@@ -348,7 +350,8 @@ model Follow {
   createdAt   DateTime @default(now()) @db.Timestamptz
 
   @@id([followerId, followingId])
-  @@index([followingId])
+  @@index([followingId, createdAt(sort: Desc)])
+  @@index([followerId, createdAt(sort: Desc)])
 }
 
 model Seller {
@@ -461,6 +464,9 @@ model Product {
   chatRooms   ChatRoom[]
   chatShares  ChatMessage[]
 
+  // 공개 목록 최신순은 migrations SQL 의 부분 인덱스 product_published_idx ("publishedAt" DESC, id)
+  // WHERE "deletedAt" IS NULL AND "publishedAt" IS NOT NULL 를 쓴다 (Prisma 로 표현 불가).
+  // status 조건은 Prisma 가 파라미터로 보내 부분 인덱스 조건으로 증명되지 않으므로 넣지 않는다.
   @@index([status, publishedAt(sort: Desc)])
   @@index([categoryId, status])
   @@index([sellerId, status])
@@ -672,6 +678,7 @@ model Order {
   @@index([buyerId, createdAt(sort: Desc)])
   @@index([sellerId, status, createdAt(sort: Desc)])
   @@index([status, paymentDueAt])
+  @@index([paidAt])
 }
 
 model OrderItem {
@@ -855,6 +862,7 @@ model ChatReadState {
   pinnedAt   DateTime? @db.Timestamptz
 
   @@id([roomId, userId])
+  @@index([userId])
 }
 
 model UserBlock {

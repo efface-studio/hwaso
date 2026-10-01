@@ -220,7 +220,7 @@ export default function CategoriesScreen() {
         <Text variant="small" color="muted" style={styles.intro}>
           작품이 있는 카테고리는 삭제 대신 숨김으로 관리해 주세요.
         </Text>
-        {pull.refreshing || q.isPending ? (
+        {q.isPending ? (
           <Loading variant="plain-list" />
         ) : !data ? (
           <Empty

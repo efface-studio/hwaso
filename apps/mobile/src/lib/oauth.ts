@@ -44,8 +44,8 @@ export async function linkSocial(provider: AuthProvider): Promise<void> {
   await api.auth.linkSocial(provider, await authorizeInBrowser(provider));
 }
 
-/** iOS: 시스템 Sign in with Apple — identityToken 을 서버가 Apple 공개키로 검증 */
-export async function appleNativeLogin(): Promise<AuthTokens & { isNewUser: boolean }> {
+/** iOS 시스템 Sign in with Apple 창 — identityToken(서버가 Apple 공개키로 검증)과 이름 */
+async function appleCredential(): Promise<{ identityToken: string; name?: string }> {
   try {
     const cred = await AppleAuthentication.signInAsync({
       requestedScopes: [
@@ -55,15 +55,23 @@ export async function appleNativeLogin(): Promise<AuthTokens & { isNewUser: bool
     });
     if (!cred.identityToken) throw new Error(i18n.t('common:oauth.appleNoToken'));
     const name = [cred.fullName?.familyName, cred.fullName?.givenName].filter(Boolean).join('') || undefined;
-    const tokens = await api.auth.appleNative({
-      identityToken: cred.identityToken,
-      name,
-      device: appDevice(),
-    });
-    await useAuthStore.getState().setSession(tokens);
-    return tokens;
+    return { identityToken: cred.identityToken, name };
   } catch (e) {
     if ((e as { code?: string }).code === 'ERR_REQUEST_CANCELED') throw new OAuthCancelled();
     throw e;
   }
+}
+
+/** iOS: 시스템 Sign in with Apple 로 로그인 */
+export async function appleNativeLogin(): Promise<AuthTokens & { isNewUser: boolean }> {
+  const { identityToken, name } = await appleCredential();
+  const tokens = await api.auth.appleNative({ identityToken, name, device: appDevice() });
+  await useAuthStore.getState().setSession(tokens);
+  return tokens;
+}
+
+/** iOS: 로그인한 계정에 시스템 Sign in with Apple 계정 연결 */
+export async function linkAppleNative(): Promise<void> {
+  const { identityToken } = await appleCredential();
+  await api.auth.linkAppleNative({ identityToken });
 }

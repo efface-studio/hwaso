@@ -1,4 +1,5 @@
-import { z } from 'zod';
+import '../zod-config';
+import * as z from 'zod';
 import { AUCTION_LIMITS } from '../auction';
 import { cursorQuery, id, positiveMoney } from './common';
 

@@ -1,12 +1,12 @@
 'use client';
 
+import type { RealtimeSocket } from '@shop/api-client';
 import { chatPreview } from '@shop/shared';
 import { useQueryClient } from '@tanstack/react-query';
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef } from 'react';
 import { useAuthStore } from '@/stores/auth';
 import { toast } from '@/stores/toast';
-import { getRealtime } from './realtime';
 
 export const NOTI_UNREAD_KEY = ['notifications', 'unread'] as const;
 export const CHAT_UNREAD_KEY = ['chat', 'unread'] as const;
@@ -25,7 +25,8 @@ export function RealtimeSync() {
 
   useEffect(() => {
     if (!userId) return;
-    const socket = getRealtime();
+    let socket: RealtimeSocket | null = null;
+    let cancelled = false;
     const onNotification = ({
       notification,
       unreadCount,
@@ -50,15 +51,21 @@ export function RealtimeSync() {
     };
     const onRead = () => void qc.invalidateQueries({ queryKey: CHAT_UNREAD_KEY });
     const onOrder = () => void qc.invalidateQueries({ queryKey: ['orders'] });
-    socket.on('NOTIFICATION', onNotification);
-    socket.on('CHAT_MESSAGE', onChat);
-    socket.on('CHAT_READ', onRead);
-    socket.on('ORDER_STATUS_UPDATED', onOrder);
+    // socket.io 클라이언트는 로그인 사용자에게만 필요하다 — 공통 번들에서 빼고 이때 불러온다
+    void import('./realtime').then(({ getRealtime }) => {
+      if (cancelled) return;
+      socket = getRealtime();
+      socket.on('NOTIFICATION', onNotification);
+      socket.on('CHAT_MESSAGE', onChat);
+      socket.on('CHAT_READ', onRead);
+      socket.on('ORDER_STATUS_UPDATED', onOrder);
+    });
     return () => {
-      socket.off('NOTIFICATION', onNotification);
-      socket.off('CHAT_MESSAGE', onChat);
-      socket.off('CHAT_READ', onRead);
-      socket.off('ORDER_STATUS_UPDATED', onOrder);
+      cancelled = true;
+      socket?.off('NOTIFICATION', onNotification);
+      socket?.off('CHAT_MESSAGE', onChat);
+      socket?.off('CHAT_READ', onRead);
+      socket?.off('ORDER_STATUS_UPDATED', onOrder);
     };
   }, [userId, qc]);
   return null;

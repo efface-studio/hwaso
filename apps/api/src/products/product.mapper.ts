@@ -1,4 +1,4 @@
-import type { Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import {
   minNextBid,
   type AuctionSummary,
@@ -13,6 +13,9 @@ export const PUBLIC_PRODUCT: Prisma.ProductWhereInput = {
   publishedAt: { not: null },
   status: { in: ['ACTIVE', 'RESERVED'] },
 };
+
+/** PUBLIC_PRODUCT 와 같은 조건의 raw SQL 조각 — "Product" 별칭은 p */
+export const PUBLIC_PRODUCT_SQL = Prisma.sql`p."deletedAt" IS NULL AND p."publishedAt" IS NOT NULL AND p.status IN ('ACTIVE', 'RESERVED')`;
 
 /** 상세·프로필에서는 판매 완료도 보여준다 */
 export const VISIBLE_PRODUCT: Prisma.ProductWhereInput = {
@@ -37,7 +40,20 @@ export const cardInclude = {
   auction: { select: auctionSummarySelect },
 } satisfies Prisma.ProductInclude;
 
-export type CardRow = Prisma.ProductGetPayload<{ include: typeof cardInclude }>;
+/** 카드에 필요한 열만 읽는다 (설명 등 긴 본문 제외). 카드 외 필드가 필요하면 cardInclude */
+export const cardSelect = {
+  id: true,
+  title: true,
+  maker: true,
+  era: true,
+  saleType: true,
+  status: true,
+  price: true,
+  favoriteCount: true,
+  ...cardInclude,
+} satisfies Prisma.ProductSelect;
+
+export type CardRow = Prisma.ProductGetPayload<{ select: typeof cardSelect }>;
 
 export const detailInclude = {
   images: { select: imageSelect, orderBy: { sortOrder: 'asc' } },

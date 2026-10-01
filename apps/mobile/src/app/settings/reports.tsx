@@ -23,13 +23,11 @@ export default function ReportsScreen() {
     <List
       style={{ backgroundColor: t.colors.background }}
       contentContainerStyle={{ flexGrow: 1, padding: 16 }}
-      data={pull.refreshing ? [] : (q.data ?? [])}
+      data={q.data ?? []}
       keyExtractor={(r) => r.id}
       refreshControl={<AppRefreshControl refreshing={pull.refreshing} onRefresh={pull.onRefresh} />}
       ListHeaderComponent={<Stack.Screen options={{ title: tr('common:screen.reports') }} />}
-      ListEmptyComponent={
-        pull.refreshing ? <Loading variant="plain-list" /> : <Empty kind="doc" title={tr('reports.empty')} />
-      }
+      ListEmptyComponent={<Empty kind="doc" title={tr('reports.empty')} />}
       renderItem={({ item: r }) => (
         <View style={[styles.row, { borderColor: t.colors.borderSoft }]}>
           <Text variant="label" color={r.status === 'RESOLVED' ? 'muted' : 'primary'}>

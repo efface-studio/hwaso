@@ -15,13 +15,16 @@ pnpm --filter @shop/mobile exec eas build --profile production --platform all
 pnpm --filter @shop/mobile exec eas submit --profile production --platform all
 ```
 
-- `EAS_PROJECT_ID` 를 환경 변수로 넣어야 푸시 토큰이 발급된다 (`app.config.ts` → `extra.eas.projectId`).
+- 푸시는 기기 토큰(iOS APNs·Android FCM)을 쓴다 — Expo 프로젝트 ID 는 푸시에 필요 없다. Android 빌드는 `GOOGLE_SERVICES_JSON`(Firebase `google-services.json` 경로, 저장소 밖)이 있어야 FCM 토큰이 발급된다.
 - 번들 ID: `dev.efface.hwaso` (iOS·Android 동일). 바꾸면 웹 `APP_BUNDLE_ID` 도 함께 바꾼다.
 - `submit.production.ios` 의 `ascAppId`·`appleTeamId` 는 App Store Connect 앱을 만든 뒤 채운다.
 
 ## 2. 자격 증명
 
-- **푸시**: `eas credentials` 로 APNs 키(iOS)·FCM v1 서비스 계정(Android)을 등록한다. 서버는 Expo Push 로 보낸다.
+- **푸시**: 서버가 직접 보낸다 (`apps/api/src/notifications/push.service.ts`).
+  - iOS: APNs 토큰 인증 — `APNS_KEY_ID`·`APNS_TEAM_ID`(3NVCLTSP9V)·`APNS_PRIVATE_KEY`(.p8, 줄바꿈 `\n`)·`APNS_BUNDLE_ID`. 개발 서명 빌드 토큰은 샌드박스로 자동 재시도 후 기억한다.
+  - Android: FCM HTTP v1 — `FCM_SERVICE_ACCOUNT`(서비스 계정 JSON 한 줄).
+  - 보낸 사람 사진: iOS 알림 서비스 확장(`apps/mobile/targets/notification-service`)이 페이로드 `body.sender` 로 커뮤니케이션 알림을 만든다. 앱 ID 에 Communication Notifications 기능이 켜져 있어야 한다 (자동 서명이면 빌드 때 켜진다).
 - **Sign in with Apple**: iOS 는 시스템 로그인(`expo-apple-authentication`). 서버 `APPLE_*` 키는 docs/AUTH.md.
 - **결제·본인인증**: 토스페이먼츠·포트원 키는 서버(`apps/api/.env`)에만 둔다. 앱은 웹 브리지(`/app-bridge/*`)로 결제창·인증창을 연다 (docs/MOBILE_NAVIGATION.md).
 

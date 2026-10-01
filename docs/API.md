@@ -101,7 +101,7 @@ NestJS REST API. Base URL `/api/v1`. 모든 요청/응답은 JSON (업로드 제
 | ------ | ---------------- | ---- | --------------------------------------------------------------------------------------- |
 | GET    | /categories      | -    | 트리 + 공개 작품 수(`productCount`, 대분류는 합계)·대표 이미지(`coverImage`) (캐시 60s) |
 | GET    | /artists?q=      | -    | 작가 검색                                                                               |
-| GET    | /artists/popular | -    | 인기 작가                                                                               |
+| GET    | /artists/popular | -    | 인기 작가 (캐시 5분)                                                                    |
 | GET    | /artists/:id     | -    | 작가 + 작품                                                                             |
 
 ### Products
@@ -224,7 +224,7 @@ NestJS REST API. Base URL `/api/v1`. 모든 요청/응답은 JSON (업로드 제
 | GET         | /notifications/unread-count         | U         |                                                                                    |
 | DELETE      | /notifications/:id · /notifications | U         | 한 건 삭제 / 읽은 알림 모두 삭제                                                   |
 | GET/PUT     | /me/notification-settings           | U         | {push:{auction,trade,chat,activity}, quietHours} — 방해 금지 21~8시(KST) 푸시 보류 |
-| POST/DELETE | /me/push-tokens                     | U         | {token, platform: expo·web} 등록(기기당 한 계정)·해제                              |
+| POST/DELETE | /me/push-tokens                     | U         | {token, platform: apns·fcm·expo·web} 등록(기기당 한 계정)·해제                     |
 | GET         | /notifications/push-config          | -         | {vapidPublicKey} (웹 푸시 구독용, 미설정 시 null)                                  |
 | POST        | /reports                            | U         | {targetType, targetId, reason, detail}                                             |
 
@@ -234,7 +234,7 @@ NestJS REST API. Base URL `/api/v1`. 모든 요청/응답은 JSON (업로드 제
 
 | 경로                              | 기능                                                                                                                                                               |
 | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| GET /admin/dashboard              | 회원·판매자·작품·경매·주문·거래액(오늘/30일)·처리 대기(환불 요청·신고·미결제)·정산 예정/보류 + 14일 추이                                                           |
+| GET /admin/dashboard              | 회원·판매자·작품·경매·주문·거래액(오늘/30일)·처리 대기(환불 요청·신고·미결제)·정산 예정/보류 + 14일 추이 (캐시 30s)                                                |
 | /admin/users · /users/:id         | 검색(이메일·닉네임·ID, 역할·상태), 상세, suspend(모든 기기 로그아웃, 로그인 시 사유 안내)·restore, PATCH role(관리자 부여·관리자 대상 조치는 SA 만), reset-strikes |
 | /admin/sellers                    | 인증 대기/완료 필터, verify·unverify (VERIFIED_SELLER)                                                                                                             |
 | /admin/products                   | 검색·상태·검수 필터·미처리 신고 수, hide(SUSPENDED)·restore, DELETE(진행 중 주문 있으면 거부), certificate 검수                                                    |

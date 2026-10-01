@@ -227,11 +227,8 @@ export default function ProductScreen() {
   const { t: tr } = useTranslation(['product', 'common']);
   const user = useAuthStore((s) => s.user);
   const q = useQuery({ queryKey: ['product', id], queryFn: () => api.market.product(id) });
-  const related = useQuery({
-    queryKey: ['related', id],
-    queryFn: () => api.market.related(id),
-    enabled: !!q.data,
-  });
+  // 비슷한 작품은 id 만 있으면 되므로 작품 정보와 함께 바로 불러온다
+  const related = useQuery({ queryKey: ['related', id], queryFn: () => api.market.related(id) });
   useEffect(() => {
     void api.market.recordView(id).catch(() => undefined);
   }, [id]);
