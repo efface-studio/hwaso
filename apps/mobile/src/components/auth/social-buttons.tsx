@@ -132,8 +132,11 @@ export function SocialButtons({
   );
 }
 
+/** 테두리는 Google 버튼 가이드와 같은 1pt — 더 얇으면(3x 에서 2px) 화면을 줄여 볼 때 좌우 세로선이 사라진다 */
+const BORDER_WIDTH = 1;
+
 const styles = StyleSheet.create({
-  btn: { alignItems: 'center', justifyContent: 'center', borderWidth: StyleSheet.hairlineWidth * 2 },
+  btn: { alignItems: 'center', justifyContent: 'center', borderWidth: BORDER_WIDTH },
   icon: { position: 'absolute', left: 16 },
   row: { flexDirection: 'row', justifyContent: 'center', gap: 16 },
   round: {
@@ -142,6 +145,6 @@ const styles = StyleSheet.create({
     borderRadius: 26,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: StyleSheet.hairlineWidth * 2,
+    borderWidth: BORDER_WIDTH,
   },
 });
