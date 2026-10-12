@@ -57,10 +57,12 @@ function fromCache<S extends IconSet>(set: S) {
  * 탭 바는 먼저 SF Symbol 로 그리고, 다음 프레임에 모든 탭을 한 번에 이미지로 바꾼다.
  * iOS 26 탭 바는 처음부터 이 이미지로 만들면 선택되지 않은 탭의 라벨을 아래로 밀어 그리고,
  * 탭마다 따로 바꾸면 SF Symbol 과 이미지가 섞여 라벨 높이가 어긋난다 (시뮬레이터에서 재현·확인).
+ * 화면 전환과 함께 나타나는 탭 바(관리자 앱)는 전환이 끝나기 전에 바꿔도 같은 문제가 생기므로 ready 가 된 뒤에 바꾼다.
  */
-export function useTabIconSet<S extends IconSet>(set: S) {
+export function useTabIconSet<S extends IconSet>(set: S, ready = true) {
   const [icons, setIcons] = useState<Partial<Record<keyof S, TabIcon>>>({});
   useEffect(() => {
+    if (!ready) return;
     let cancelled = false;
     let frame = 0;
     const entries = Object.entries(set);
@@ -73,7 +75,7 @@ export function useTabIconSet<S extends IconSet>(set: S) {
       cancelled = true;
       cancelAnimationFrame(frame);
     };
-  }, [set]);
+  }, [set, ready]);
   return icons;
 }
 
