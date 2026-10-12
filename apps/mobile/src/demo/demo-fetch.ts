@@ -12,6 +12,8 @@ import type { DemoSnapshot } from './types';
  *   검색어(q)는 기록 안에서 거른다. 날짜는 기록한 시각 기준으로 지금에 맞춰 옮긴다.
  * - 쓰기 요청은 저장하지 않고 "시연 모드" 오류로 답한다 (조회 기록·푸시 등록처럼 조용한 요청은 성공 처리).
  * - 시연 토큰으로 refresh 하면 다시 시연 모드로 이어진다 (앱을 다시 켜도 유지). 로그아웃하면 끝난다.
+ * - 둘러보기(로그인 전)에서도 서버에 닿지 않는 조회는 기록한 응답으로 답한다. 서버가 다시 답하면 실제 응답으로 돌아간다.
+ * - "서버에 닿지 않음"은 연결 실패와 게이트웨이 오류(서버가 꺼졌을 때 프록시가 주는 5xx) 모두다.
  * - 개발 빌드와 EXPO_PUBLIC_DEMO=1 빌드에서만 켜진다.
  */
 export const demoEnabled = __DEV__ || process.env.EXPO_PUBLIC_DEMO === '1';
@@ -34,8 +36,13 @@ let snapshot: DemoSnapshot | null = null;
 let index = new Map<string, Entry[]>();
 let media: Record<string, ImageSourcePropType> = {};
 let active = false;
+/** 둘러보기 중 서버에 닿지 않아 조회를 기록으로 답하고 있다 (이미지도 기록한 것을 쓴다) */
+let offline = false;
 
 export const isDemoActive = () => active;
+
+/** 서버가 꺼졌을 때 앞단 프록시(Cloudflare 등)가 돌려주는 상태 */
+const UNREACHABLE_STATUS = new Set([502, 503, 504, 520, 521, 522, 523, 524]);
 
 function parseQuery(qs: string): Record<string, string> {
   const params: Record<string, string> = {};
@@ -242,23 +249,38 @@ export function withDemo(base: typeof fetch): typeof fetch {
     }
     if (active) return respond(method, rel);
 
-    try {
-      return await base(input, init);
-    } catch (e) {
-      if (e instanceof Error && e.name === 'AbortError') throw e;
-      // 서버에 닿지 않을 때만, 기록한 관리자 계정이면 시연 모드로
+    // 서버에 닿지 않을 때만 기록으로 답한다: 기록한 관리자 계정 로그인은 시연 모드로, 둘러보기 조회는 기록 응답으로
+    const fallback = async (): Promise<Response | null> => {
       if (method === 'POST' && rel === '/auth/login' && (await isDemoLogin(body))) {
         await enter();
         return tokens();
       }
+      if (method === 'GET' && !new Headers(init?.headers).has('Authorization')) {
+        await load();
+        offline = true;
+        return respond(method, rel);
+      }
+      return null;
+    };
+
+    let res: Response;
+    try {
+      res = await base(input, init);
+    } catch (e) {
+      if (e instanceof Error && e.name === 'AbortError') throw e;
+      const out = await fallback();
+      if (out) return out;
       throw e;
     }
+    if (UNREACHABLE_STATUS.has(res.status)) return (await fallback()) ?? res;
+    offline = false;
+    return res;
   };
 }
 
-/** 시연 중이면 이미지 키를 앱에 담긴 이미지 주소로 바꾼다 */
+/** 시연 중(둘러보기 기록 응답 포함)이면 이미지 키를 앱에 담긴 이미지 주소로 바꾼다 */
 export function demoMediaUri(key: string): string | undefined {
-  if (!active) return undefined;
+  if (!active && !offline) return undefined;
   const src = media[key];
   return src ? Image.resolveAssetSource(src).uri : undefined;
 }
