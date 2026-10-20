@@ -27,7 +27,7 @@ export function SocialButtons({
   compact?: boolean;
 }) {
   const t = useTheme();
-  const { t: tr } = useTranslation('auth');
+  const { t: tr } = useTranslation(['auth', 'common']);
   const continueWith = (p: AuthProvider) => tr('social.continueWith', { provider: label('authProvider', p) });
   const [busy, setBusy] = useState<AuthProvider | null>(null);
   // Expo Go 에는 Sign in with Apple 네이티브 모듈이 없다 (개발 빌드·배포 빌드에서만 동작)
@@ -40,14 +40,25 @@ export function SocialButtons({
     queryFn: api.auth.providers,
     staleTime: 600_000,
   });
-  const nativeApple = Platform.OS === 'ios' && !!providers.data?.appleNative;
-  const configured = (p: AuthProvider) =>
-    (p === 'APPLE' && nativeApple) || !!providers.data?.oauth.includes(p);
-  const visible = __DEV__ ? ORDER : ORDER.filter(configured);
+  const isConfigured = (data: typeof providers.data, p: AuthProvider) =>
+    (p === 'APPLE' && Platform.OS === 'ios' && !!data?.appleNative) || !!data?.oauth.includes(p);
+  // 서버가 응답하지 않아 목록을 모르면 버튼을 숨기지 않고 모두 보여준다 (누를 때 다시 확인)
+  const visible = __DEV__ || !providers.data ? ORDER : ORDER.filter((p) => isConfigured(providers.data, p));
   if (!visible.length) return null;
 
   const run = async (p: AuthProvider) => {
-    if (!configured(p)) {
+    let data = providers.data;
+    if (!data) {
+      setBusy(p);
+      data = (await providers.refetch()).data;
+      setBusy(null);
+      if (!data) {
+        Alert.alert(tr('social.failedTitle'), tr('common:state.network'));
+        return;
+      }
+    }
+    const nativeApple = Platform.OS === 'ios' && !!data.appleNative;
+    if (!isConfigured(data, p)) {
       Alert.alert(
         tr('social.notConfiguredTitle', { provider: label('authProvider', p) }),
         tr('social.notConfiguredMessage'),

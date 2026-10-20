@@ -78,15 +78,25 @@ export function useAuthProviders() {
 }
 
 export function SocialButtons({ next, mode = 'login' }: { next?: string; mode?: 'login' | 'link' }) {
-  const { data } = useAuthProviders();
+  const { data, refetch } = useAuthProviders();
   const [busy, setBusy] = useState<AuthProvider | null>(null);
-  const configured = (p: AuthProvider) => !!data?.oauth.includes(p);
   // 운영: 키가 설정된 방식만 노출. 개발: 모든 버튼을 보여주고 미설정이면 안내한다
-  const visible = SHOW_UNCONFIGURED ? ORDER : ORDER.filter(configured);
+  // 서버가 응답하지 않아 목록을 모르면 버튼을 숨기지 않고 모두 보여준다 (누를 때 다시 확인)
+  const visible = SHOW_UNCONFIGURED || !data ? ORDER : ORDER.filter((p) => data.oauth.includes(p));
   if (!visible.length) return null;
 
   const go = async (p: AuthProvider) => {
-    if (!configured(p)) {
+    let providers = data;
+    if (!providers) {
+      setBusy(p);
+      providers = (await refetch()).data;
+      setBusy(null);
+      if (!providers) {
+        toast.error('서버에 연결하지 못했어요. 잠시 후 다시 시도해주세요.');
+        return;
+      }
+    }
+    if (!providers.oauth.includes(p)) {
       toast.show(`${PROVIDER_LABEL[p]} 로그인은 API 키 설정 후 사용할 수 있어요 (apps/api/.env)`);
       return;
     }
