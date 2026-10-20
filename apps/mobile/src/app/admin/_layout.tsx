@@ -1,6 +1,12 @@
-import { ThemeProvider, useTheme as useNavigationTheme } from 'expo-router';
+import {
+  type NativeStackNavigationProp,
+  ThemeProvider,
+  useNavigation,
+  useTheme as useNavigationTheme,
+} from 'expo-router';
 import { NativeTabs } from 'expo-router/unstable-native-tabs';
 import type { AndroidSymbol, SFSymbol } from 'expo-symbols';
+import { useEffect, useState } from 'react';
 import { PromptHost } from '@/components/admin/prompt';
 import { ADMIN_TAB_ICONS, useTabIconSet } from '@/components/tab-icons';
 import { AccentProvider, TAB_BAR_SCALE, useTheme } from '@/theme';
@@ -31,7 +37,11 @@ export default function AdminLayout() {
 function AdminTabs() {
   const t = useTheme();
   const nav = useNavigationTheme();
-  const icons = useTabIconSet(ADMIN_TAB_ICONS);
+  // 사용자 앱에서 전환(fade)으로 들어오므로, 전환이 끝난 뒤에 아이콘 이미지로 바꾼다 (먼저 바꾸면 iOS 26 탭 바가 라벨을 아래로 민다)
+  const navigation = useNavigation<NativeStackNavigationProp<Record<string, object | undefined>>>();
+  const [entered, setEntered] = useState(false);
+  useEffect(() => navigation.addListener('transitionEnd', () => setEntered(true)), [navigation]);
+  const icons = useTabIconSet(ADMIN_TAB_ICONS, entered);
   return (
     // 네이티브 헤더 버튼·뒤로 가기 색도 같은 강조 색으로
     <ThemeProvider value={{ ...nav, colors: { ...nav.colors, primary: t.colors.primary } }}>
