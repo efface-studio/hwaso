@@ -99,7 +99,7 @@ const config: ExpoConfig = {
   slug: 'hwaso',
   scheme: 'hwaso',
   version: '1.0.0',
-  // 세로 화면만 (아이폰·아이패드·안드로이드 모두). 아이패드는 아래 requireFullScreen 과 함께 쓴다
+  // 세로 화면만 (아이폰·안드로이드)
   orientation: 'portrait',
   icon: './assets/icon.png',
   userInterfaceStyle: 'automatic',
@@ -121,12 +121,11 @@ const config: ExpoConfig = {
   ios: {
     bundleIdentifier: 'dev.efface.hwaso',
     appleTeamId: '3NVCLTSP9V',
-    buildNumber: '3',
-    // iPad 지원 — 화면 폭에 맞춘 배치(src/hooks/use-layout.ts). 세로 전용이라 전체 화면만 쓴다:
-    // 멀티태스킹(Split View·Slide Over)을 지원하는 iPad 앱은 네 방향을 모두 지원해야 App Store 에 올릴 수 있다 (ITMS-90474).
-    // 심사에 iPad 13" 스크린숏이 필요하다
-    supportsTablet: true,
-    requireFullScreen: true,
+    buildNumber: '4',
+    // iPhone 전용 — iPad 에서는 iPhone 호환 모드로 열린다(iPad 스크린숏·iPad 심사 없음).
+    // 다시 iPad 를 지원하려면 supportsTablet: true + requireFullScreen: true(세로 전용이라 멀티태스킹 불가, ITMS-90474)
+    // + infoPlist 'UISupportedInterfaceOrientations~ipad' 를 되돌린다. 화면 폭 배치(src/hooks/use-layout.ts)는 그대로 남아 있다
+    supportsTablet: false,
     usesAppleSignIn: true,
     associatedDomains: [`applinks:${APP_LINK_HOST}`],
     config: { usesNonExemptEncryption: false },
@@ -135,13 +134,8 @@ const config: ExpoConfig = {
       NSPhotoLibraryUsageDescription:
         '판매할 작품 사진과 채팅 사진을 앨범에서 고르려면 사진 접근이 필요해요.',
       NSFaceIDUsageDescription:
-        '앱 잠금 해제와 결제·계좌 변경 같은 중요한 작업을 확인할 때 Face ID 를 사용해요.',
+        'Face ID 로 로그인하고, 앱 잠금 해제와 결제·계좌 변경 같은 중요한 작업을 확인할 때 사용해요.',
       CFBundleAllowMixedLocalizations: true,
-      // 아이패드도 세로만 (이전에 생성된 네 방향 값이 남지 않게 직접 적는다)
-      'UISupportedInterfaceOrientations~ipad': [
-        'UIInterfaceOrientationPortrait',
-        'UIInterfaceOrientationPortraitUpsideDown',
-      ],
       // 푸시에 보낸 사람 이름·프로필 사진을 보여주는 커뮤니케이션 알림 (targets/notification-service)
       NSUserActivityTypes: ['INSendMessageIntent'],
     },
