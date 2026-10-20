@@ -232,7 +232,10 @@ const config: ExpoConfig = {
     ['expo-localization', { supportedLocales: ['ko', 'en', 'ja', 'zh-Hans', 'zh-Hant'] }],
     [
       'expo-local-authentication',
-      { faceIDPermission: 'Face ID 로 로그인하고, 앱 잠금 해제와 결제·계좌 변경 같은 중요한 작업을 확인할 때 사용해요.' },
+      {
+        faceIDPermission:
+          'Face ID 로 로그인하고, 앱 잠금 해제와 결제·계좌 변경 같은 중요한 작업을 확인할 때 사용해요.',
+      },
     ],
     [
       './plugins/with-tls-pinning',
